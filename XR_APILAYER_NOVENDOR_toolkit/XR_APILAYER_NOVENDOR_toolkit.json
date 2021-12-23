@@ -1,0 +1,14 @@
+{
+  "file_format_version" : "1.0.0",
+  "api_layer": {
+    "name": "XR_APILAYER_NOVENDOR_toolkit",
+    "library_path": ".\\XR_APILAYER_NOVENDOR_toolkit.dll",
+    "api_version": "1.0",
+    "implementation_version": "1",
+    "description": "OpenXR toolkit API layer",
+    "functions": {
+      "xrNegotiateLoaderApiLayerInterface": "xrNegotiateLoaderApiLayerInterface"
+    },
+    "disable_environment": "DISABLE_XR_APILAYER_NOVENDOR_toolkit"
+  }
+}

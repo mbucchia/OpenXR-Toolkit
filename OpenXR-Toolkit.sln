@@ -1,0 +1,42 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31911.196
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XR_APILAYER_NOVENDOR_toolkit", "XR_APILAYER_NOVENDOR_toolkit\XR_APILAYER_NOVENDOR_toolkit.vcxproj", "{93D573D0-634F-4BA0-8FE0-FB63D7D00A05}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution Files", "{387062F2-BCA2-4776-A414-B6DE41FC9E12}"
+	ProjectSection(SolutionItems) = preProject
+		.clang-format = .clang-format
+		.gitignore = .gitignore
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scripts", "Scripts", "{1E41057B-9167-4ED0-A3FA-6F2CA6B55922}"
+	ProjectSection(SolutionItems) = preProject
+		scripts\Install-Layer.ps1 = scripts\Install-Layer.ps1
+		scripts\Uninstall-Layer.ps1 = scripts\Uninstall-Layer.ps1
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{93D573D0-634F-4BA0-8FE0-FB63D7D00A05}.Debug|x64.ActiveCfg = Debug|x64
+		{93D573D0-634F-4BA0-8FE0-FB63D7D00A05}.Debug|x64.Build.0 = Debug|x64
+		{93D573D0-634F-4BA0-8FE0-FB63D7D00A05}.Release|x64.ActiveCfg = Release|x64
+		{93D573D0-634F-4BA0-8FE0-FB63D7D00A05}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{1E41057B-9167-4ED0-A3FA-6F2CA6B55922} = {387062F2-BCA2-4776-A414-B6DE41FC9E12}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {777B0DEC-4E36-4B64-BD29-1832B32A076B}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,9 @@
+[submodule "external/OpenXR-SDK-Source"]
+	path = external/OpenXR-SDK-Source
+	url = https://github.com/KhronosGroup/OpenXR-SDK-Source.git
+[submodule "external/OpenXR-MixedReality"]
+	path = external/OpenXR-MixedReality
+	url = https://github.com/microsoft/OpenXR-MixedReality.git
+[submodule "external/OpenXR-SDK"]
+	path = external/OpenXR-SDK
+	url = https://github.com/KhronosGroup/OpenXR-SDK.git
