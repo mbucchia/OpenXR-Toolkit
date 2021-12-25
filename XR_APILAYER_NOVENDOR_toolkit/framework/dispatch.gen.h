@@ -1,3 +1,4 @@
+// *********** THIS FILE IS GENERATED - DO NOT EDIT ***********
 // MIT License
 //
 // Copyright(c) 2021 Matthieu Bucchianeri
@@ -20,8 +21,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// TODO: This file to be auto-generated with genxr.py in the future.
-
 #pragma once
 
 #ifndef LAYER_NAMESPACE
@@ -33,6 +32,9 @@ namespace LAYER_NAMESPACE
 
 	class OpenXrApi
 	{
+	private:
+		XrInstance m_instance{ XR_NULL_HANDLE };
+
 	protected:
 		OpenXrApi() = default;
 
@@ -40,6 +42,8 @@ namespace LAYER_NAMESPACE
 		{
 			return m_instance;
 		}
+
+		PFN_xrGetInstanceProcAddr m_xrGetInstanceProcAddr{ nullptr };
 
 	public:
 		virtual ~OpenXrApi() = default;
@@ -52,31 +56,46 @@ namespace LAYER_NAMESPACE
 
 		// Specially-handled by the auto-generated code.
 		virtual XrResult xrGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function);
+		virtual XrResult xrCreateInstance(const XrInstanceCreateInfo* createInfo);
 
-		// Specially-handled. Does nothing, meant to be overriden.
-		virtual XrResult xrCreateInstance(const XrInstanceCreateInfo* createInfo)
-		{
-			return XR_SUCCESS;
-		}
 
 		// Auto-generated entries for the requested APIs.
 
+	public:
 		virtual XrResult xrDestroyInstance(XrInstance instance)
 		{
 			return m_xrDestroyInstance(instance);
 		}
+	private:
+		PFN_xrDestroyInstance m_xrDestroyInstance{ nullptr };
 
+	public:
+		virtual XrResult xrGetSystem(XrInstance instance, const XrSystemGetInfo* getInfo, XrSystemId* systemId)
+		{
+			return m_xrGetSystem(instance, getInfo, systemId);
+		}
+	private:
+		PFN_xrGetSystem m_xrGetSystem{ nullptr };
+
+	public:
 		virtual XrResult xrCreateSession(XrInstance instance, const XrSessionCreateInfo* createInfo, XrSession* session)
 		{
 			return m_xrCreateSession(instance, createInfo, session);
 		}
-
 	private:
-		XrInstance m_instance{ XR_NULL_HANDLE };
-
-		PFN_xrGetInstanceProcAddr m_xrGetInstanceProcAddr{ nullptr };
-		PFN_xrDestroyInstance m_xrDestroyInstance{ nullptr };
 		PFN_xrCreateSession m_xrCreateSession{ nullptr };
+
+	public:
+		virtual XrResult xrDestroySession(XrSession session)
+		{
+			return m_xrDestroySession(session);
+		}
+	private:
+		PFN_xrDestroySession m_xrDestroySession{ nullptr };
+
+
+
 	};
 
-}
+} // namespace LAYER_NAMESPACE
+

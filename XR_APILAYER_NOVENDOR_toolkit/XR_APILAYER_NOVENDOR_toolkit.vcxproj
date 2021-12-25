@@ -76,6 +76,20 @@ copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)</Command>
     <PostBuildEvent>
       <Message>Copy dependencies...</Message>
     </PostBuildEvent>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+    </PreLinkEvent>
+    <PreLinkEvent>
+      <Message>
+      </Message>
+    </PreLinkEvent>
+    <PreBuildEvent>
+      <Command>python3 $(ProjectDir)\framework\dispatch_generator.py</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Generating layer dispatcher...</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -106,6 +120,20 @@ copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)</Command>
     <PostBuildEvent>
       <Message>Copy dependencies...</Message>
     </PostBuildEvent>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+    </PreLinkEvent>
+    <PreLinkEvent>
+      <Message>
+      </Message>
+    </PreLinkEvent>
+    <PreBuildEvent>
+      <Command>python3 $(ProjectDir)\framework\dispatch_generator.py</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Generating layer dispatcher...</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework\dispatch.gen.h" />
@@ -126,6 +154,8 @@ copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)</Command>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="framework\dispatch_generator.py" />
+    <None Include="framework\layer_apis.py" />
     <None Include="XR_APILAYER_NOVENDOR_toolkit.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,4 +1,6 @@
 .vs/
 bin/
 **/x64/
+**/__pycache__/
+*.pyc
 *.vcxproj.user

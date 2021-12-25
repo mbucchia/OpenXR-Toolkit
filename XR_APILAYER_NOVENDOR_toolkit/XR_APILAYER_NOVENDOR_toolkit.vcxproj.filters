@@ -52,5 +52,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="XR_APILAYER_NOVENDOR_toolkit.json" />
+    <None Include="framework\dispatch_generator.py">
+      <Filter>Framework</Filter>
+    </None>
+    <None Include="framework\layer_apis.py">
+      <Filter>Framework</Filter>
+    </None>
   </ItemGroup>
 </Project>

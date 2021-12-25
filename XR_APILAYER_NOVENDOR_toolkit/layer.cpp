@@ -34,13 +34,26 @@ namespace {
         ~OpenXrLayer() override = default;
 
         XrResult xrCreateInstance(const XrInstanceCreateInfo* createInfo) override {
+            // Needed to resolve the requested function pointers.
+            OpenXrApi::xrCreateInstance(createInfo);
+
+            // TODO: Add custom code for xrCreateInstance().
+
             return XR_SUCCESS;
         }
 
         XrResult xrCreateSession(XrInstance instance,
                                  const XrSessionCreateInfo* createInfo,
                                  XrSession* session) override {
-            return OpenXrApi::xrCreateSession(instance, createInfo, session);
+            XrResult result;
+
+            // TODO: Add custom code pre-xrCreateSession().
+
+            result = OpenXrApi::xrCreateSession(instance, createInfo, session);
+
+            // TODO: Add custom code post-xrCreateSession().
+
+            return result;
         }
     };
 

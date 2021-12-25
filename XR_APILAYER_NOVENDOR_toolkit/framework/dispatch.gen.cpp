@@ -1,3 +1,4 @@
+// *********** THIS FILE IS GENERATED - DO NOT EDIT ***********
 // MIT License
 //
 // Copyright(c) 2021 Matthieu Bucchianeri
@@ -26,8 +27,6 @@
 
 #include "dispatch.h"
 #include "log.h"
-
-// TODO: This file to be auto-generated with genxr.py in the future.
 
 #ifndef LAYER_NAMESPACE
 #error Must define LAYER_NAMESPACE
@@ -60,6 +59,27 @@ namespace LAYER_NAMESPACE
 		return result;
 	}
 
+	XrResult xrDestroySession(XrSession session)
+	{
+		DebugLog("--> xrDestroySession\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrDestroySession(session);
+		}
+		catch (std::runtime_error exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrDestroySession %d\n", result);
+
+		return result;
+	}
+
+
 	// Auto-generated dispatcher handler.
 	XrResult OpenXrApi::xrGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function)
 	{
@@ -79,9 +99,26 @@ namespace LAYER_NAMESPACE
 				m_xrCreateSession = reinterpret_cast<PFN_xrCreateSession>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrCreateSession);
 			}
+			else if (apiName == "xrDestroySession")
+			{
+				m_xrDestroySession = reinterpret_cast<PFN_xrDestroySession>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrDestroySession);
+			}
+
 		}
 
 		return result;
 	}
 
-}
+	// Auto-generated create instance handler.
+	XrResult OpenXrApi::xrCreateInstance(const XrInstanceCreateInfo* createInfo)
+    {
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrGetSystem", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrGetSystem))))
+		{
+			throw new std::runtime_error("Failed to resolve xrGetSystem");
+		}
+		return XR_SUCCESS;
+	}
+
+} // namespace LAYER_NAMESPACE
+
