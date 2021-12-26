@@ -70,6 +70,14 @@ namespace LAYER_NAMESPACE
 		PFN_xrDestroyInstance m_xrDestroyInstance{ nullptr };
 
 	public:
+		virtual XrResult xrGetInstanceProperties(XrInstance instance, XrInstanceProperties* instanceProperties)
+		{
+			return m_xrGetInstanceProperties(instance, instanceProperties);
+		}
+	private:
+		PFN_xrGetInstanceProperties m_xrGetInstanceProperties{ nullptr };
+
+	public:
 		virtual XrResult xrGetSystem(XrInstance instance, const XrSystemGetInfo* getInfo, XrSystemId* systemId)
 		{
 			return m_xrGetSystem(instance, getInfo, systemId);
@@ -92,6 +100,46 @@ namespace LAYER_NAMESPACE
 		}
 	private:
 		PFN_xrDestroySession m_xrDestroySession{ nullptr };
+
+	public:
+		virtual XrResult xrCreateSwapchain(XrSession session, const XrSwapchainCreateInfo* createInfo, XrSwapchain* swapchain)
+		{
+			return m_xrCreateSwapchain(session, createInfo, swapchain);
+		}
+	private:
+		PFN_xrCreateSwapchain m_xrCreateSwapchain{ nullptr };
+
+	public:
+		virtual XrResult xrDestroySwapchain(XrSwapchain swapchain)
+		{
+			return m_xrDestroySwapchain(swapchain);
+		}
+	private:
+		PFN_xrDestroySwapchain m_xrDestroySwapchain{ nullptr };
+
+	public:
+		virtual XrResult xrEnumerateSwapchainImages(XrSwapchain swapchain, uint32_t imageCapacityInput, uint32_t* imageCountOutput, XrSwapchainImageBaseHeader* images)
+		{
+			return m_xrEnumerateSwapchainImages(swapchain, imageCapacityInput, imageCountOutput, images);
+		}
+	private:
+		PFN_xrEnumerateSwapchainImages m_xrEnumerateSwapchainImages{ nullptr };
+
+	public:
+		virtual XrResult xrAcquireSwapchainImage(XrSwapchain swapchain, const XrSwapchainImageAcquireInfo* acquireInfo, uint32_t* index)
+		{
+			return m_xrAcquireSwapchainImage(swapchain, acquireInfo, index);
+		}
+	private:
+		PFN_xrAcquireSwapchainImage m_xrAcquireSwapchainImage{ nullptr };
+
+	public:
+		virtual XrResult xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo)
+		{
+			return m_xrEndFrame(session, frameEndInfo);
+		}
+	private:
+		PFN_xrEndFrame m_xrEndFrame{ nullptr };
 
 
 

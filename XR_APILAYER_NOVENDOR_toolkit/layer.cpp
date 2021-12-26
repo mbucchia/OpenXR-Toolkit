@@ -27,8 +27,21 @@
 #include "factories.h"
 #include "interfaces.h"
 #include "layer.h"
+#include "log.h"
 
 namespace {
+
+    using namespace toolkit;
+    using namespace toolkit::log;
+
+    struct SwapchainImages {
+        std::vector<std::shared_ptr<graphics::ITexture>> chain;
+    };
+
+    struct SwapchainState {
+        std::vector<SwapchainImages> images;
+        uint32_t acquiredImageIndex;
+    };
 
     class OpenXrLayer : public toolkit::OpenXrApi {
       public:
@@ -39,24 +52,231 @@ namespace {
             // Needed to resolve the requested function pointers.
             OpenXrApi::xrCreateInstance(createInfo);
 
-            // TODO: Add custom code for xrCreateInstance().
+            // Dump the OpenXR runtime information to help debugging customer issues.
+            XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES};
+            CHECK_XRCMD(xrGetInstanceProperties(GetXrInstance(), &instanceProperties));
+            const std::string runtimeName(instanceProperties.runtimeName);
+            Log("Using OpenXR runtime %s, version %u.%u.%u\n",
+                runtimeName.c_str(),
+                XR_VERSION_MAJOR(instanceProperties.runtimeVersion),
+                XR_VERSION_MINOR(instanceProperties.runtimeVersion),
+                XR_VERSION_PATCH(instanceProperties.runtimeVersion));
 
             return XR_SUCCESS;
+        }
+
+        XrResult xrGetSystem(XrInstance instance, const XrSystemGetInfo* getInfo, XrSystemId* systemId) override {
+            const XrResult result = OpenXrApi::xrGetSystem(instance, getInfo, systemId);
+            if (XR_SUCCEEDED(result) && getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY) {
+                // Remember the XrSystemId to use.
+                m_vrSystemId = *systemId;
+            }
+
+            return result;
         }
 
         XrResult xrCreateSession(XrInstance instance,
                                  const XrSessionCreateInfo* createInfo,
                                  XrSession* session) override {
-            XrResult result;
+            const XrResult result = OpenXrApi::xrCreateSession(instance, createInfo, session);
+            if (XR_SUCCEEDED(result) && isVrSystem(createInfo->systemId)) {
+                // Get the graphics device.
+                const XrBaseInStructure* entry = reinterpret_cast<const XrBaseInStructure*>(createInfo->next);
+                while (entry) {
+                    if (entry->type == XR_TYPE_GRAPHICS_BINDING_D3D11_KHR) {
+                        const XrGraphicsBindingD3D11KHR* d3dBindings =
+                            reinterpret_cast<const XrGraphicsBindingD3D11KHR*>(entry);
+                        m_graphicsDevice = graphics::WrapD3D11Device(d3dBindings->device);
+                        break;
+                    }
 
-            // TODO: Add custom code pre-xrCreateSession().
+                    entry = entry->next;
+                }
 
-            result = OpenXrApi::xrCreateSession(instance, createInfo, session);
+                if (m_graphicsDevice) {
+                    // TODO: Initialize the other resources (eg: menu).
+                } else {
+                    Log("Unsupported graphics runtime.\n");
+                }
 
-            // TODO: Add custom code post-xrCreateSession().
+                // Remember the XrSession to use.
+                m_vrSession = *session;
+            }
 
             return result;
         }
+
+        XrResult xrDestroySession(XrSession session) override {
+            const XrResult result = OpenXrApi::xrDestroySession(session);
+            if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                m_swapchains.clear();
+                m_graphicsDevice.reset();
+                m_vrSession = XR_NULL_HANDLE;
+            }
+
+            return result;
+        }
+
+        XrResult xrCreateSwapchain(XrSession session,
+                                   const XrSwapchainCreateInfo* createInfo,
+                                   XrSwapchain* swapchain) override {
+            if (!isVrSession(session) || !m_graphicsDevice) {
+                return OpenXrApi::xrCreateSwapchain(session, createInfo, swapchain);
+            }
+
+            // TODO: Identify the swapchains of interest for our processing chain. For now, we only handle color
+            // buffers.
+            const bool useSwapchain = createInfo->usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+
+            XrSwapchainCreateInfo chainCreateInfo = *createInfo;
+            if (useSwapchain) {
+                // TODO: Modify the swapchain to handle our processing chain (eg: change resolution and/or select usage
+                // XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT).
+            }
+
+            const XrResult result = OpenXrApi::xrCreateSwapchain(session, &chainCreateInfo, swapchain);
+            if (XR_SUCCEEDED(result) && useSwapchain) {
+                // Store the runtime images into the state (last entry in the processing chain).
+                uint32_t imageCount;
+                CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(*swapchain, 0, &imageCount, nullptr));
+
+                SwapchainState swapchainState;
+                if (m_graphicsDevice->getApi() == graphics::Api::D3D11) {
+                    std::vector<XrSwapchainImageD3D11KHR> d3dImages(imageCount, {XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
+                    CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(
+                        *swapchain,
+                        imageCount,
+                        &imageCount,
+                        reinterpret_cast<XrSwapchainImageBaseHeader*>(d3dImages.data())));
+                    for (uint32_t i = 0; i < imageCount; i++) {
+                        SwapchainImages images;
+
+                        // Store the runtime images into the state (last entry in the processing chain).
+                        images.chain.push_back(graphics::WrapD3D11Texture(
+                            m_graphicsDevice, chainCreateInfo, d3dImages[i].texture, "Runtime swapchain TEX2D"));
+
+                        swapchainState.images.push_back(images);
+                    }
+                } else {
+                    throw new std::runtime_error("Unsupported graphics runtime");
+                }
+
+                // TODO: Create other entries in the chain based on the processing to do (scaling, post-processing...).
+
+                m_swapchains.insert_or_assign(*swapchain, swapchainState);
+            }
+
+            return result;
+        }
+
+        XrResult xrDestroySwapchain(XrSwapchain swapchain) override {
+            const XrResult result = OpenXrApi::xrDestroySwapchain(swapchain);
+            if (XR_SUCCEEDED(result)) {
+                m_swapchains.erase(swapchain);
+            }
+
+            return result;
+        }
+
+        XrResult xrEnumerateSwapchainImages(XrSwapchain swapchain,
+                                            uint32_t imageCapacityInput,
+                                            uint32_t* imageCountOutput,
+                                            XrSwapchainImageBaseHeader* images) override {
+            const XrResult result =
+                OpenXrApi::xrEnumerateSwapchainImages(swapchain, imageCapacityInput, imageCountOutput, images);
+            if (XR_SUCCEEDED(result) && images) {
+                auto swapchainIt = m_swapchains.find(swapchain);
+                if (swapchainIt != m_swapchains.end()) {
+                    auto swapchainState = swapchainIt->second;
+
+                    // Return the application texture (first entry in the processing chain).
+                    if (m_graphicsDevice->getApi() == graphics::Api::D3D11) {
+                        XrSwapchainImageD3D11KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D11KHR*>(images);
+                        for (uint32_t i = 0; i < *imageCountOutput; i++) {
+                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getNative<graphics::D3D11>();
+                        }
+                    } else {
+                        throw new std::runtime_error("Unsupported graphics runtime");
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        XrResult xrAcquireSwapchainImage(XrSwapchain swapchain,
+                                         const XrSwapchainImageAcquireInfo* acquireInfo,
+                                         uint32_t* index) override {
+            const XrResult result = OpenXrApi::xrAcquireSwapchainImage(swapchain, acquireInfo, index);
+            if (XR_SUCCEEDED(result)) {
+                // Record the index so we know which texture to use in xrEndFrame().
+                auto swapchainIt = m_swapchains.find(swapchain);
+                if (swapchainIt != m_swapchains.end()) {
+                    swapchainIt->second.acquiredImageIndex = *index;
+                }
+            }
+
+            return result;
+        }
+
+        XrResult xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo) override {
+            if (!isVrSession(session) || !m_graphicsDevice) {
+                return OpenXrApi::xrEndFrame(session, frameEndInfo);
+            }
+
+            // Identify the last projection layer: this is the one we will draw onto.
+            int32_t lastProjectionLayerIndex = -1;
+            for (uint32_t i = 0; i < frameEndInfo->layerCount; i++) {
+                if (frameEndInfo->layers[i]->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION) {
+                    lastProjectionLayerIndex = i;
+                }
+            }
+
+            // Apply the processing chain to all the (supported) layers.
+            for (uint32_t i = 0; i < frameEndInfo->layerCount; i++) {
+                if (frameEndInfo->layers[i]->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION) {
+                    const XrCompositionLayerProjection* proj =
+                        reinterpret_cast<const XrCompositionLayerProjection*>(frameEndInfo->layers[i]);
+
+                    // For VPRT, we need to handle texture arrays.
+                    const bool useVPRT = proj->views[0].subImage.swapchain == proj->views[1].subImage.swapchain;
+
+                    assert(proj->viewCount == 2);
+                    for (uint32_t eye = 0; eye < 2; eye++) {
+                        const XrCompositionLayerProjectionView& view = proj->views[eye];
+
+                        auto swapchainIt = m_swapchains.find(view.subImage.swapchain);
+                        if (swapchainIt == m_swapchains.end()) {
+                            throw new std::runtime_error("Swapchain is not registered");
+                        }
+                        auto swapchainState = swapchainIt->second;
+                        auto swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
+                        uint32_t nextImage = 0;
+
+                        // TODO: Insert processing here.
+
+                        // TODO: Render things (eg: menu).
+                    }
+                }
+            }
+
+            return OpenXrApi::xrEndFrame(session, frameEndInfo);
+        }
+
+      private:
+        bool isVrSystem(XrSystemId systemId) const {
+            return systemId == m_vrSystemId;
+        }
+
+        bool isVrSession(XrSession session) const {
+            return session == m_vrSession;
+        }
+
+        XrSystemId m_vrSystemId{XR_NULL_SYSTEM_ID};
+        XrSession m_vrSession{XR_NULL_HANDLE};
+
+        std::shared_ptr<graphics::IDevice> m_graphicsDevice;
+        std::map<XrSwapchain, SwapchainState> m_swapchains;
     };
 
     std::unique_ptr<OpenXrLayer> g_instance = nullptr;
@@ -64,7 +284,6 @@ namespace {
 } // namespace
 
 namespace toolkit {
-
     OpenXrApi* GetInstance() {
         if (!g_instance) {
             g_instance = std::make_unique<OpenXrLayer>();
