@@ -24,6 +24,8 @@
 
 #include "pch.h"
 
+#include "factories.h"
+#include "interfaces.h"
 #include "layer.h"
 
 namespace {

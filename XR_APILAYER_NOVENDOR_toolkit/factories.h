@@ -22,46 +22,18 @@
 
 #pragma once
 
-// Standard library.
-#include <array>
-#include <cstdarg>
-#include <ctime>
-#include <deque>
-#include <iomanip>
-#include <iostream>
-#include <filesystem>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <memory>
-#include <map>
-#include <optional>
-#include <vector>
+#include "interfaces.h"
 
-// Windows header files.
-#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
-#include <windows.h>
-#include <unknwn.h>
-#include <wrl.h>
+namespace toolkit {
 
-using Microsoft::WRL::ComPtr;
+    namespace graphics {
 
-// Direct3D.
-#include <d3d11.h>
-#include <d3d12.h>
-#include <d3dcompiler.h>
+        std::shared_ptr<IDevice> WrapD3D11Device(ID3D11Device* device);
+        std::shared_ptr<ITexture> WrapD3D11Texture(std::shared_ptr<IDevice> device,
+                                                   const XrSwapchainCreateInfo& info,
+                                                   ID3D11Texture2D* texture,
+                                                   const std::optional<std::string>& debugName);
 
-// OpenXR + Windows-specific definitions.
-#define XR_NO_PROTOTYPES
-#define XR_USE_PLATFORM_WIN32
-#define XR_USE_GRAPHICS_API_D3D11
-#define XR_USE_GRAPHICS_API_D3D12
-#include <openxr/openxr.h>
-#include <openxr/openxr_platform.h>
+    } // namespace graphics
 
-// OpenXR loader interfaces.
-#include <loader_interfaces.h>
-
-// OpenXR utilities.
-#include <XrError.h>
-#include <XrMath.h>
+} // namespace toolkit

@@ -29,6 +29,15 @@
     <ClInclude Include="framework\dispatch.h">
       <Filter>Framework</Filter>
     </ClInclude>
+    <ClInclude Include="factories.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="interfaces.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shader_utilities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -48,6 +57,9 @@
     </ClCompile>
     <ClCompile Include="framework\entry.cpp">
       <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="d3d11.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
