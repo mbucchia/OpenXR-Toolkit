@@ -94,7 +94,8 @@ namespace {
                 }
 
                 if (m_graphicsDevice) {
-                    // TODO: Initialize the other resources (eg: menu).
+                    // Initialize the other resources.
+                    m_menuHandler = menu::CreateMenuHandler(m_graphicsDevice);
                 } else {
                     Log("Unsupported graphics runtime.\n");
                 }
@@ -110,6 +111,7 @@ namespace {
             const XrResult result = OpenXrApi::xrDestroySession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 m_swapchains.clear();
+                m_menuHandler.reset();
                 m_graphicsDevice.reset();
                 m_vrSession = XR_NULL_HANDLE;
             }
@@ -224,6 +226,20 @@ namespace {
                 return OpenXrApi::xrEndFrame(session, frameEndInfo);
             }
 
+            // Update the FPS counter.
+            const auto now = std::chrono::steady_clock::now();
+            m_frameTimestamps.push_back(now);
+            while (std::chrono::duration<double>(now - m_frameTimestamps.front()).count() > 1.0) {
+                m_frameTimestamps.pop_front();
+
+            }
+            m_stats.fps = (float)m_frameTimestamps.size();
+
+            if (m_menuHandler) {
+                m_menuHandler->handleInput();
+                m_menuHandler->updateStatistics(m_stats);
+            }
+
             // Identify the last projection layer: this is the one we will draw onto.
             int32_t lastProjectionLayerIndex = -1;
             for (uint32_t i = 0; i < frameEndInfo->layerCount; i++) {
@@ -255,7 +271,14 @@ namespace {
 
                         // TODO: Insert processing here.
 
-                        // TODO: Render things (eg: menu).
+                        // Render the menu in the last entry of the last projection layer.
+                        if (m_menuHandler && i == lastProjectionLayerIndex) {
+                            // When using VPRT, we rely on the menu renderer to render both views at once. Otherwise we
+                            // render each view one at a time.
+                            if (!useVPRT || eye == 0) {
+                                m_menuHandler->render(swapchainImages.chain[nextImage]);
+                            }
+                        }
                     }
                 }
             }
@@ -277,6 +300,11 @@ namespace {
 
         std::shared_ptr<graphics::IDevice> m_graphicsDevice;
         std::map<XrSwapchain, SwapchainState> m_swapchains;
+
+        std::shared_ptr<menu::IMenuHandler> m_menuHandler;
+
+        LayerStatistics m_stats{};
+        std::deque<std::chrono::time_point<std::chrono::steady_clock>> m_frameTimestamps;
     };
 
     std::unique_ptr<OpenXrLayer> g_instance = nullptr;

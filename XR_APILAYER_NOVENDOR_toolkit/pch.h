@@ -24,6 +24,7 @@
 
 // Standard library.
 #include <array>
+#include <chrono>
 #include <cstdarg>
 #include <ctime>
 #include <deque>
@@ -65,3 +66,9 @@ using Microsoft::WRL::ComPtr;
 // OpenXR utilities.
 #include <XrError.h>
 #include <XrMath.h>
+
+// FW1FontWrapper.
+#include "FW1FontWrapper.h"
+
+// FMT formatter.
+#include <fmt/core.h>

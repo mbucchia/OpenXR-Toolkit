@@ -24,6 +24,10 @@
 
 namespace toolkit {
 
+    struct LayerStatistics {
+        float fps;
+    };
+
     namespace graphics {
 
         enum class Api { D3D11 };
@@ -258,5 +262,18 @@ namespace toolkit {
         };
 
     } // namespace graphics
+
+    namespace menu {
+
+        // A menu handler.
+        struct IMenuHandler {
+            virtual ~IMenuHandler() = default;
+
+            virtual void handleInput() = 0;
+            virtual void render(std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
+            virtual void updateStatistics(const LayerStatistics& stats) = 0;
+        };
+
+    } // namespace menu
 
 } // namespace toolkit

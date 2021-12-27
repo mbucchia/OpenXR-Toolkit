@@ -36,4 +36,10 @@ namespace toolkit {
 
     } // namespace graphics
 
+    namespace menu {
+
+        std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::graphics::IDevice> device);
+
+    } // namespace menu
+
 } // namespace toolkit
