@@ -170,7 +170,7 @@ namespace LAYER_NAMESPACE
 		{{
 			result = LAYER_NAMESPACE::GetInstance()->{cur_cmd.name}({arguments_list});
 		}}
-		catch (std::runtime_error exc)
+		catch (std::exception exc)
 		{{
 			Log("%s\\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
