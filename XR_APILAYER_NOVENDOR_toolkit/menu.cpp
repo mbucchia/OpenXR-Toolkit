@@ -232,29 +232,55 @@ namespace {
             }
 
             // TODO: Add menu entries here.
-            m_menuEntries.push_back(
-                {"Overlay", MenuEntryType::Choice, "overlay", 0, (int)OverlayType::MaxValue - 1, [](int value) {
-                     std::string labels[] = {"Off", "FPS", "Detailed"};
-                     return labels[value];
-                 }});
-            m_configManager->setEnumDefault("overlay", OverlayType::None);
+            m_menuEntries.push_back({"Overlay",
+                                     MenuEntryType::Choice,
+                                     SettingOverlayType,
+                                     0,
+                                     (int)OverlayType::MaxValue - 1,
+                                     [](int value) {
+                                         std::string labels[] = {"Off", "FPS", "Detailed"};
+                                         return labels[value];
+                                     }});
+            m_configManager->setEnumDefault(SettingOverlayType, OverlayType::None);
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
-            m_menuEntries.push_back(
-                {"Font size", MenuEntryType::Choice, "font_size", 0, (int)MenuFontSize::MaxValue - 1, [](int value) {
-                     std::string labels[] = {"Small", "Medium", "Large"};
-                     return labels[value];
-                 }});
-            m_configManager->setEnumDefault("font_size", MenuFontSize::Medium);
+            m_menuEntries.push_back({"Upscaling",
+                                     MenuEntryType::Choice,
+                                     SettingScalingType,
+                                     0,
+                                     (int)ScalingType::MaxValue - 1,
+                                     [](int value) {
+                                         std::string labels[] = {"Off", "NIS"};
+                                         return labels[value];
+                                     }});
+            m_menuEntries.push_back({"Factor", MenuEntryType::Slider, SettingScaling, 100, 200, [](int value) {
+                                         // TODO: Display resolution.
+                                         return fmt::format("{}%", value);
+                                     }});
+            m_menuEntries.push_back({"Sharpness", MenuEntryType::Slider, SettingSharpness, 0, 100, [](int value) {
+                                         return fmt::format("{}%", value);
+                                     }});
+
+            m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
+            m_menuEntries.push_back({"Font size",
+                                     MenuEntryType::Choice,
+                                     SettingMenuFontSize,
+                                     0,
+                                     (int)MenuFontSize::MaxValue - 1,
+                                     [](int value) {
+                                         std::string labels[] = {"Small", "Medium", "Large"};
+                                         return labels[value];
+                                     }});
+            m_configManager->setEnumDefault(SettingMenuFontSize, MenuFontSize::Medium);
             m_menuEntries.push_back({"Menu timeout",
                                      MenuEntryType::Choice,
-                                     "menu_timeout",
+                                     SettingMenuTimeout,
                                      0,
                                      (int)MenuTimeout::MaxValue - 1,
                                      [](int value) {
                                          std::string labels[] = {"Short", "Medium", "Long"};
                                          return labels[value];
                                      }});
-            m_configManager->setEnumDefault("menu_timeout", MenuTimeout::Medium);
+            m_configManager->setEnumDefault(SettingMenuTimeout, MenuTimeout::Medium);
             m_menuEntries.push_back({"Restore defaults", MenuEntryType::RestoreDefaultsButton, BUTTON_OR_SEPARATOR});
             m_menuEntries.push_back({"Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
         }
@@ -327,11 +353,11 @@ namespace {
                 renderTarget->getInfo().height * 0.015f,
                 renderTarget->getInfo().height * 0.02f,
             };
-            const float fontSize = fontSizes[m_configManager->getValue("font_size")];
+            const float fontSize = fontSizes[m_configManager->getValue(SettingMenuFontSize)];
 
             const double timeouts[(int)MenuTimeout::MaxValue] = {3.0, 10.0, 60.0};
             const double timeout =
-                m_state == MenuState::Splash ? 10.0 : timeouts[m_configManager->getValue("menu_timeout")];
+                m_state == MenuState::Splash ? 10.0 : timeouts[m_configManager->getValue(SettingMenuTimeout)];
 
             const auto now = std::chrono::steady_clock::now();
             const auto duration = std::chrono::duration<double>(now - m_lastInput).count();
@@ -409,7 +435,7 @@ namespace {
                     case MenuEntryType::Separator:
                         // Counteract the auto-down and add our own spacing.
                         top -= 1.05f * fontSize;
-                        top += fontSize / 4;
+                        top += fontSize / 3;
                         break;
 
                     case MenuEntryType::RestoreDefaultsButton:
@@ -431,7 +457,7 @@ namespace {
                 }
             }
 
-            auto overlayType = m_configManager->getEnumValue<OverlayType>("overlay");
+            auto overlayType = m_configManager->getEnumValue<OverlayType>(SettingOverlayType);
             if (overlayType != OverlayType::None) {
                 m_textRenderer->drawString(fmt::format("FPS: {}", m_stats.fps),
                                            TextStyle::Normal,

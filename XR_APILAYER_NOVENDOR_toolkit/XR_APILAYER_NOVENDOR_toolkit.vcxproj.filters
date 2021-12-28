@@ -12,6 +12,21 @@
     <Filter Include="Framework">
       <UniqueIdentifier>{060fbbc6-44b1-4494-b904-cb9719cec138}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shader Files">
+      <UniqueIdentifier>{c2ebac9a-c581-4829-a34f-51315d3c0ee9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\NIS">
+      <UniqueIdentifier>{3f84eb2b-0b37-4979-a72a-6c50cb5a63b0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\PostProcess">
+      <UniqueIdentifier>{71c2b74e-024a-4829-a66d-951e36521380}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader Files\NIS">
+      <UniqueIdentifier>{333f1c24-08c0-41f5-a1e9-9a3d8f26c3ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader Files\PostProcess">
+      <UniqueIdentifier>{b3914fc2-ccc0-4628-8e7b-2ad1558c2762}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -37,6 +52,15 @@
     </ClInclude>
     <ClInclude Include="shader_utilities.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\NVIDIAImageScaling\NIS\NIS_Config.h">
+      <Filter>Header Files\NIS</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\NVIDIAImageScaling\NIS\NIS_Scaler.h">
+      <Filter>Shader Files\NIS</Filter>
+    </ClInclude>
+    <ClInclude Include="postprocess.h">
+      <Filter>Header Files\PostProcess</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -67,6 +91,12 @@
     <ClCompile Include="config.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="nis.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="imageprocess.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="XR_APILAYER_NOVENDOR_toolkit.json" />
@@ -77,5 +107,13 @@
       <Filter>Framework</Filter>
     </None>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\external\NVIDIAImageScaling\NIS\NIS_Main.hlsl">
+      <Filter>Shader Files\NIS</Filter>
+    </FxCompile>
+    <FxCompile Include="postprocess.hlsl">
+      <Filter>Shader Files\PostProcess</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

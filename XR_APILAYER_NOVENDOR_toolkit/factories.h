@@ -40,6 +40,20 @@ namespace toolkit {
                                                    ID3D11Texture2D* texture,
                                                    const std::optional<std::string>& debugName);
 
+        std::pair<uint32_t, uint32_t>
+        GetNISScaledResolution(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                               uint32_t outputWidth,
+                               uint32_t outputHeight);
+        std::shared_ptr<IUpscaler> CreateNISUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                                                     std::shared_ptr<IDevice> graphicsDevice,
+                                                     uint32_t outputWidth,
+                                                     uint32_t outputHeight);
+
+        std::shared_ptr<IImageProcessor>
+        CreateImageProcessor(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                             std::shared_ptr<IDevice> graphicsDevice,
+                             const std::string& shaderFile);
+
     } // namespace graphics
 
     namespace menu {

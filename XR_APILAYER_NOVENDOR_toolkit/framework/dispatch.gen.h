@@ -102,6 +102,14 @@ namespace LAYER_NAMESPACE
 		PFN_xrDestroySession m_xrDestroySession{ nullptr };
 
 	public:
+		virtual XrResult xrEnumerateViewConfigurationViews(XrInstance instance, XrSystemId systemId, XrViewConfigurationType viewConfigurationType, uint32_t viewCapacityInput, uint32_t* viewCountOutput, XrViewConfigurationView* views)
+		{
+			return m_xrEnumerateViewConfigurationViews(instance, systemId, viewConfigurationType, viewCapacityInput, viewCountOutput, views);
+		}
+	private:
+		PFN_xrEnumerateViewConfigurationViews m_xrEnumerateViewConfigurationViews{ nullptr };
+
+	public:
 		virtual XrResult xrCreateSwapchain(XrSession session, const XrSwapchainCreateInfo* createInfo, XrSwapchain* swapchain)
 		{
 			return m_xrCreateSwapchain(session, createInfo, swapchain);

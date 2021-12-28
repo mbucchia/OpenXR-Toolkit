@@ -30,9 +30,17 @@ namespace toolkit {
 
     namespace config {
 
+        const std::string SettingOverlayType = "overlay";
+        const std::string SettingMenuFontSize = "font_size";
+        const std::string SettingMenuTimeout = "menu_timeout";
+        const std::string SettingScalingType = "scaling_type";
+        const std::string SettingScaling = "scaling";
+        const std::string SettingSharpness = "sharpness";
+
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
         enum class MenuTimeout { Small = 0, Medium, Large, MaxValue };
+        enum class ScalingType { None = 0, NIS, MaxValue };
 
         struct IConfigManager {
             virtual ~IConfigManager() = default;
@@ -296,6 +304,22 @@ namespace toolkit {
                 }
                 return reinterpret_cast<typename ApiTraits::Context>(getContextPtr());
             }
+        };
+
+        // A texture upscaler (such as NIS).
+        struct IUpscaler {
+            virtual ~IUpscaler() = default;
+
+            virtual void update() = 0;
+            virtual void upscale(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output) = 0;
+        };
+
+        // A texture post-processor.
+        struct IImageProcessor {
+            virtual ~IImageProcessor() = default;
+
+            virtual void update() = 0;
+            virtual void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output) = 0;
         };
 
     } // namespace graphics

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <DisableFastUpToDateCheck>True</DisableFastUpToDateCheck>
+  </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -59,7 +62,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -71,7 +74,12 @@
     <PostBuildEvent>
       <Command>copy $(ProjectDir)\$(ProjectName).json $(OutDir)
 copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
-copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)</Command>
+copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
+md $(OutDir)\shaders
+copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Main.hlsl $(OutDir)\shaders
+copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
+copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
+copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy dependencies...</Message>
@@ -101,7 +109,7 @@ copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)</Command>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -115,7 +123,12 @@ copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)</Command>
     <PostBuildEvent>
       <Command>copy $(ProjectDir)\$(ProjectName).json $(OutDir)
 copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
-copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)</Command>
+copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
+md $(OutDir)\shaders
+copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Main.hlsl $(OutDir)\shaders
+copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
+copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
+copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy dependencies...</Message>
@@ -136,6 +149,12 @@ copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\external\NVIDIAImageScaling\NIS\NIS_Config.h" />
+    <ClInclude Include="..\external\NVIDIAImageScaling\NIS\NIS_Scaler.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="postprocess.h" />
     <ClInclude Include="shader_utilities.h" />
     <ClInclude Include="factories.h" />
     <ClInclude Include="framework\dispatch.gen.h" />
@@ -154,16 +173,30 @@ copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)</Command>
     <ClCompile Include="layer.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="menu.cpp" />
+    <ClCompile Include="nis.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="imageprocess.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="framework\dispatch_generator.py" />
     <None Include="framework\layer_apis.py" />
     <None Include="packages.config" />
     <None Include="XR_APILAYER_NOVENDOR_toolkit.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\external\NVIDIAImageScaling\NIS\NIS_Main.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="postprocess.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

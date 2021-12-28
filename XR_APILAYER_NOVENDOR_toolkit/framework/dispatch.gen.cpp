@@ -48,7 +48,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrGetSystem(instance, getInfo, systemId);
 		}
-		catch (std::runtime_error exc)
+		catch (std::exception exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -68,7 +68,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrCreateSession(instance, createInfo, session);
 		}
-		catch (std::runtime_error exc)
+		catch (std::exception exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -88,13 +88,33 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrDestroySession(session);
 		}
-		catch (std::runtime_error exc)
+		catch (std::exception exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
 		DebugLog("<-- xrDestroySession %d\n", result);
+
+		return result;
+	}
+
+	XrResult xrEnumerateViewConfigurationViews(XrInstance instance, XrSystemId systemId, XrViewConfigurationType viewConfigurationType, uint32_t viewCapacityInput, uint32_t* viewCountOutput, XrViewConfigurationView* views)
+	{
+		DebugLog("--> xrEnumerateViewConfigurationViews\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrEnumerateViewConfigurationViews(instance, systemId, viewConfigurationType, viewCapacityInput, viewCountOutput, views);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrEnumerateViewConfigurationViews %d\n", result);
 
 		return result;
 	}
@@ -108,7 +128,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrCreateSwapchain(session, createInfo, swapchain);
 		}
-		catch (std::runtime_error exc)
+		catch (std::exception exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -128,7 +148,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrDestroySwapchain(swapchain);
 		}
-		catch (std::runtime_error exc)
+		catch (std::exception exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -148,7 +168,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrEnumerateSwapchainImages(swapchain, imageCapacityInput, imageCountOutput, images);
 		}
-		catch (std::runtime_error exc)
+		catch (std::exception exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -168,7 +188,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrAcquireSwapchainImage(swapchain, acquireInfo, index);
 		}
-		catch (std::runtime_error exc)
+		catch (std::exception exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -188,7 +208,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrEndFrame(session, frameEndInfo);
 		}
-		catch (std::runtime_error exc)
+		catch (std::exception exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -229,6 +249,11 @@ namespace LAYER_NAMESPACE
 				m_xrDestroySession = reinterpret_cast<PFN_xrDestroySession>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrDestroySession);
 			}
+			else if (apiName == "xrEnumerateViewConfigurationViews")
+			{
+				m_xrEnumerateViewConfigurationViews = reinterpret_cast<PFN_xrEnumerateViewConfigurationViews>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrEnumerateViewConfigurationViews);
+			}
 			else if (apiName == "xrCreateSwapchain")
 			{
 				m_xrCreateSwapchain = reinterpret_cast<PFN_xrCreateSwapchain>(*function);
@@ -266,6 +291,10 @@ namespace LAYER_NAMESPACE
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrGetInstanceProperties", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrGetInstanceProperties))))
 		{
 			throw new std::runtime_error("Failed to resolve xrGetInstanceProperties");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrEnumerateViewConfigurationViews", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrEnumerateViewConfigurationViews))))
+		{
+			throw new std::runtime_error("Failed to resolve xrEnumerateViewConfigurationViews");
 		}
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrEnumerateSwapchainImages", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrEnumerateSwapchainImages))))
 		{
