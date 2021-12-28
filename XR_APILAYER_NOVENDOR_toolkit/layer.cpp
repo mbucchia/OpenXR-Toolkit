@@ -62,6 +62,8 @@ namespace {
                 XR_VERSION_MINOR(instanceProperties.runtimeVersion),
                 XR_VERSION_PATCH(instanceProperties.runtimeVersion));
 
+            m_configManager = config::CreateConfigManager(createInfo->applicationInfo.applicationName);
+
             return XR_SUCCESS;
         }
 
@@ -95,7 +97,7 @@ namespace {
 
                 if (m_graphicsDevice) {
                     // Initialize the other resources.
-                    m_menuHandler = menu::CreateMenuHandler(m_graphicsDevice);
+                    m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice);
                 } else {
                     Log("Unsupported graphics runtime.\n");
                 }
@@ -226,15 +228,18 @@ namespace {
                 return OpenXrApi::xrEndFrame(session, frameEndInfo);
             }
 
+            // Make sure config gets written if needed.
+            m_configManager->tick();
+
             // Update the FPS counter.
             const auto now = std::chrono::steady_clock::now();
             m_frameTimestamps.push_back(now);
             while (std::chrono::duration<double>(now - m_frameTimestamps.front()).count() > 1.0) {
                 m_frameTimestamps.pop_front();
-
             }
             m_stats.fps = (float)m_frameTimestamps.size();
 
+            // Handle menu stuff.
             if (m_menuHandler) {
                 m_menuHandler->handleInput();
                 m_menuHandler->updateStatistics(m_stats);
@@ -297,6 +302,8 @@ namespace {
 
         XrSystemId m_vrSystemId{XR_NULL_SYSTEM_ID};
         XrSession m_vrSession{XR_NULL_HANDLE};
+
+        std::shared_ptr<config::IConfigManager> m_configManager;
 
         std::shared_ptr<graphics::IDevice> m_graphicsDevice;
         std::map<XrSwapchain, SwapchainState> m_swapchains;

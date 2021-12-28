@@ -28,6 +28,43 @@ namespace toolkit {
         float fps;
     };
 
+    namespace config {
+
+        enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
+        enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
+        enum class MenuTimeout { Small = 0, Medium, Large, MaxValue };
+
+        struct IConfigManager {
+            virtual ~IConfigManager() = default;
+
+            // Tick to indicate that the game loop ran successfully. This is used for deferred write to the config
+            // database.
+            virtual void tick() = 0;
+
+            virtual void setDefault(const std::string& name, int value) = 0;
+
+            virtual int getValue(const std::string& name) const = 0;
+            virtual int peekValue(const std::string& name) const = 0;
+            virtual void setValue(const std::string& name, int value) = 0;
+            virtual bool hasChanged(const std::string& name) const = 0;
+
+            virtual void resetToDefaults() = 0;
+
+            virtual void hardReset() = 0;
+
+            template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
+            void setEnumDefault(const std::string& name, T value) {
+                setDefault(name, (int)value);
+            }
+
+            template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
+            T getEnumValue(const std::string& name) const {
+                return (T)getValue(name);
+            }
+        };
+
+    } // namespace config
+
     namespace graphics {
 
         enum class Api { D3D11 };

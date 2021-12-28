@@ -26,6 +26,12 @@
 
 namespace toolkit {
 
+    namespace config {
+
+        std::shared_ptr<IConfigManager> CreateConfigManager(const std::string& appName);
+
+    } // namespace config
+
     namespace graphics {
 
         std::shared_ptr<IDevice> WrapD3D11Device(ID3D11Device* device);
@@ -38,7 +44,8 @@ namespace toolkit {
 
     namespace menu {
 
-        std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::graphics::IDevice> device);
+        std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                                                        std::shared_ptr<toolkit::graphics::IDevice> device);
 
     } // namespace menu
 

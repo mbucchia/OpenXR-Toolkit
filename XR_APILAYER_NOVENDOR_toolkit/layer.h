@@ -28,6 +28,7 @@ namespace toolkit {
 
     const std::string LayerName = "XR_APILAYER_NOVENDOR_toolkit";
     const std::string VersionString = "Unreleased";
+    const std::string RegPrefix = "SOFTWARE\\OpenXR_Toolkit";
 
     // Singleton accessor.
     OpenXrApi* GetInstance();

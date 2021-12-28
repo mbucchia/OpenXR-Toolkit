@@ -29,6 +29,7 @@
 namespace {
 
     using namespace toolkit;
+    using namespace toolkit::config;
     using namespace toolkit::graphics;
     using namespace toolkit::menu;
     using namespace toolkit::log;
@@ -94,7 +95,7 @@ namespace {
                 m_fontSelected->Flush(m_deferredContext.Get());
 
                 ComPtr<ID3D11CommandList> commandList;
-                CHECK_HRCMD(m_deferredContext->FinishCommandList(FALSE, commandList.GetAddressOf()));
+                CHECK_HRCMD(m_deferredContext->FinishCommandList(FALSE, &commandList));
 
                 m_device->getContext<D3D11>()->ExecuteCommandList(commandList.Get(), TRUE);
                 m_deferredContext = nullptr;
@@ -197,8 +198,6 @@ namespace {
     constexpr uint32_t ColorDefault = 0xffffffff;
     constexpr uint32_t ColorSelected = 0xff0099ff;
 
-    enum class FontSize { Small, Medium, Large };
-
     enum class MenuState { Splash, NotVisible, Visible };
     enum class MenuEntryType { Slider, Choice, Separator, RestoreDefaultsButton, ExitButton };
 
@@ -215,32 +214,63 @@ namespace {
     // The logic of our menus.
     class MenuHandler : public IMenuHandler {
       public:
-        MenuHandler(std::shared_ptr<IDevice> device) : m_device(device) {
+        MenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> device)
+            : m_configManager(configManager), m_device(device) {
             if (m_device->getApi() == Api::D3D11) {
                 m_textRenderer = std::make_shared<D3D11TextRenderer>(device);
             } else {
                 Log("Unsupported graphics runtime.\n");
             }
             m_lastInput = std::chrono::steady_clock::now();
-            // TODO: Hook to config manager for timeout, size, etc...
+
+            // We display the hint for menu hotkeys for the first few runs.
+            int firstRun = m_configManager->getValue("first_run");
+            if (firstRun <= 10) {
+                m_numSplashLeft = 10 - firstRun;
+                m_state = MenuState::Splash;
+                m_configManager->setValue("first_run", firstRun + 1);
+            }
 
             // TODO: Add menu entries here.
-            m_menuEntries.push_back({"Overlay", MenuEntryType::Choice, "overlay", 0, 2, [](int value) {
-                                         std::string labels[] = {"Off", "FPS", "Detailed"};
-                                         return labels[value];
-                                     }});
+            m_menuEntries.push_back(
+                {"Overlay", MenuEntryType::Choice, "overlay", 0, (int)OverlayType::MaxValue - 1, [](int value) {
+                     std::string labels[] = {"Off", "FPS", "Detailed"};
+                     return labels[value];
+                 }});
+            m_configManager->setEnumDefault("overlay", OverlayType::None);
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
-            m_menuEntries.push_back({"Font size", MenuEntryType::Choice, "font_size", 0, 2, [](int value) {
-                                         std::string labels[] = {"Small", "Medium", "Large"};
+            m_menuEntries.push_back(
+                {"Font size", MenuEntryType::Choice, "font_size", 0, (int)MenuFontSize::MaxValue - 1, [](int value) {
+                     std::string labels[] = {"Small", "Medium", "Large"};
+                     return labels[value];
+                 }});
+            m_configManager->setEnumDefault("font_size", MenuFontSize::Medium);
+            m_menuEntries.push_back({"Menu timeout",
+                                     MenuEntryType::Choice,
+                                     "menu_timeout",
+                                     0,
+                                     (int)MenuTimeout::MaxValue - 1,
+                                     [](int value) {
+                                         std::string labels[] = {"Short", "Medium", "Long"};
                                          return labels[value];
                                      }});
+            m_configManager->setEnumDefault("menu_timeout", MenuTimeout::Medium);
             m_menuEntries.push_back({"Restore defaults", MenuEntryType::RestoreDefaultsButton, BUTTON_OR_SEPARATOR});
             m_menuEntries.push_back({"Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
         }
 
         void handleInput() override {
             const bool isF1Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F1);
-            if (!m_wasF1Pressed && isF1Pressed) {
+            const bool menuControl = !m_wasF1Pressed && isF1Pressed;
+            m_wasF1Pressed = isF1Pressed;
+            const bool isF2Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F2);
+            const bool moveLeft = !m_wasF2Pressed && isF2Pressed;
+            m_wasF2Pressed = isF2Pressed;
+            const bool isF3Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F3);
+            const bool moveRight = !m_wasF3Pressed && isF3Pressed;
+            m_wasF3Pressed = isF3Pressed;
+
+            if (menuControl) {
                 if (m_state != MenuState::Visible) {
                     m_state = MenuState::Visible;
                 } else {
@@ -251,14 +281,6 @@ namespace {
 
                 m_lastInput = std::chrono::steady_clock::now();
             }
-            m_wasF1Pressed = isF1Pressed;
-
-            const bool isF2Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F2);
-            const bool moveLeft = !m_wasF2Pressed && isF2Pressed;
-            m_wasF2Pressed = isF2Pressed;
-            const bool isF3Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F3);
-            const bool moveRight = !m_wasF3Pressed && isF3Pressed;
-            m_wasF3Pressed = isF3Pressed;
 
             if (m_state == MenuState::Visible && (moveLeft || moveRight)) {
                 const auto& menuEntry = m_menuEntries[m_selectedItem];
@@ -268,7 +290,7 @@ namespace {
                     break;
 
                 case MenuEntryType::RestoreDefaultsButton:
-                    // TODO: Hook to config manager.
+                    m_configManager->resetToDefaults();
                     break;
 
                 case MenuEntryType::ExitButton:
@@ -277,13 +299,20 @@ namespace {
                     break;
 
                 default:
-                    // TODO: Hook to config manager.
-                    const int value = 0;
-                    int newValue = std::clamp(value + (moveLeft ? -1 : 1), menuEntry.minValue, menuEntry.maxValue);
-
-                    m_lastInput = std::chrono::steady_clock::now();
+                    const int value = m_configManager->peekValue(menuEntry.configName);
+                    const int newValue =
+                        std::clamp(value + (moveLeft ? -1 : 1), menuEntry.minValue, menuEntry.maxValue);
+                    m_configManager->setValue(menuEntry.configName, newValue);
                     break;
                 }
+
+                m_lastInput = std::chrono::steady_clock::now();
+            }
+
+            if (menuControl && moveLeft && moveRight) {
+                m_configManager->hardReset();
+                m_state = MenuState::Splash;
+                m_selectedItem = 0;
             }
         }
 
@@ -292,37 +321,43 @@ namespace {
 
             const float leftAlign = renderTarget->getInfo().width / 4.0f;
             const float topAlign = renderTarget->getInfo().height / 3.0f;
-            const float fontSizes[] = {
+
+            const float fontSizes[(int)MenuFontSize::MaxValue] = {
                 renderTarget->getInfo().height * 0.0075f,
                 renderTarget->getInfo().height * 0.015f,
                 renderTarget->getInfo().height * 0.02f,
             };
-            const float fontSize = fontSizes[(unsigned int)m_fontSize];
+            const float fontSize = fontSizes[m_configManager->getValue("font_size")];
+
+            const double timeouts[(int)MenuTimeout::MaxValue] = {3.0, 10.0, 60.0};
+            const double timeout =
+                m_state == MenuState::Splash ? 10.0 : timeouts[m_configManager->getValue("menu_timeout")];
 
             const auto now = std::chrono::steady_clock::now();
             const auto duration = std::chrono::duration<double>(now - m_lastInput).count();
 
-            const auto alpha = (unsigned int)(std::clamp(m_timeout - duration, 0.0, 1.0) * 255.0);
-
             // Apply menu fade.
+            const auto alpha = (unsigned int)(std::clamp(timeout - duration, 0.0, 1.0) * 255.0);
             const auto colorNormal = (ColorDefault & 0xffffff) | (alpha << 24);
             const auto colorSelected = (ColorSelected & 0xffffff) | (alpha << 24);
 
             // Leave upon timeout.
-            if (duration >= m_timeout) {
+            if (duration >= timeout) {
                 m_state = MenuState::NotVisible;
             }
 
             if (m_state == MenuState::Splash) {
                 m_textRenderer->drawString(
-                    fmt::format("Press CTRL+F1 to bring up the menu ({}s)", (int)(std::ceil(m_timeout - duration))),
+                    fmt::format("Press CTRL+F1 to bring up the menu ({}s)", (int)(std::ceil(timeout - duration))),
                     TextStyle::Normal,
                     fontSize,
                     leftAlign,
                     topAlign,
                     colorSelected);
-                // TODO: Hook to config manager.
-                m_textRenderer->drawString(fmt::format("(this message will be displayed {} more time{})", 1, ""),
+
+                m_textRenderer->drawString(fmt::format("(this message will be displayed {} more time{})",
+                                                       m_numSplashLeft,
+                                                       m_numSplashLeft == 1 ? "" : "s"),
                                            TextStyle::Normal,
                                            fontSize * 0.75f,
                                            leftAlign,
@@ -350,8 +385,7 @@ namespace {
                     m_textRenderer->drawString(menuEntry.title, entryStyle, fontSize, left, top, entryColor);
                     left += m_textRenderer->measureString(menuEntry.title, entryStyle, fontSize) + 50;
 
-                    // TODO: Hook to config manager.
-                    const int value = 0;
+                    const int value = m_configManager->peekValue(menuEntry.configName);
 
                     // Display the current value.
                     switch (menuEntry.type) {
@@ -383,7 +417,7 @@ namespace {
 
                     case MenuEntryType::ExitButton:
                         if (duration > 1.0) {
-                            m_textRenderer->drawString(fmt::format("({}s)", (int)(std::ceil(m_timeout - duration))),
+                            m_textRenderer->drawString(fmt::format("({}s)", (int)(std::ceil(timeout - duration))),
                                                        entryStyle,
                                                        fontSize,
                                                        left,
@@ -397,7 +431,8 @@ namespace {
                 }
             }
 
-            if (m_enableOverlay) {
+            auto overlayType = m_configManager->getEnumValue<OverlayType>("overlay");
+            if (overlayType != OverlayType::None) {
                 m_textRenderer->drawString(fmt::format("FPS: {}", m_stats.fps),
                                            TextStyle::Normal,
                                            fontSize,
@@ -405,6 +440,11 @@ namespace {
                                            topAlign,
                                            ColorSelected,
                                            true);
+
+                // Advanced displasy.
+                if (overlayType == OverlayType::Advanced) {
+                    // TODO: Add more stats.
+                }
             }
 
             m_textRenderer->end();
@@ -415,34 +455,29 @@ namespace {
         }
 
       private:
+        const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
         std::shared_ptr<ITextRenderer> m_textRenderer;
         LayerStatistics m_stats{};
 
+        int m_numSplashLeft;
         std::vector<MenuEntry> m_menuEntries;
         unsigned int m_selectedItem{0};
-        const FontSize m_fontSize{FontSize::Medium};
-        const double m_timeout{10.0};
         std::chrono::time_point<std::chrono::steady_clock> m_lastInput;
         bool m_wasF1Pressed{false};
         bool m_wasF2Pressed{false};
         bool m_wasF3Pressed{false};
 
-        mutable MenuState m_state{MenuState::Splash};
-        bool m_enableOverlay{
-#ifdef _DEBUG
-            true
-#else
-            false
-#endif
-        };
+        mutable MenuState m_state{MenuState::NotVisible};
     };
 
 } // namespace
 
 namespace toolkit::menu {
-    std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::graphics::IDevice> device) {
-        return std::make_shared<MenuHandler>(device);
+
+    std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                                                    std::shared_ptr<toolkit::graphics::IDevice> device) {
+        return std::make_shared<MenuHandler>(configManager, device);
     }
 
 } // namespace toolkit::menu
