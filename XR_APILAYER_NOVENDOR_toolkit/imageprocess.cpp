@@ -52,6 +52,11 @@ namespace {
             m_shader = m_device->createQuadShader(
                 shaderPath.string(), "main", "Post-process PS", nullptr, shadersDir.string());
 
+            utilities::shader::Defines defines;
+            defines.add("VPRT", true);
+            m_shaderVPRT = m_device->createQuadShader(
+                shaderPath.string(), "main", "Post-process VPRT PS", defines.get(), shadersDir.string());
+
             // TODO: For now, we're going to require that all image processing shaders share the same configuration
             // structure.
             m_configBuffer = m_device->createBuffer(sizeof(PostProcessConfig), "Post-process Configuration CB");
@@ -61,11 +66,11 @@ namespace {
             // TODO: Future usage: check configManager, then upload new parameters to m_configBuffer.
         }
 
-        void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output) override {
-            m_device->setShader(m_shader);
+        void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
+            m_device->setShader(!input->isArray() ? m_shader : m_shaderVPRT);
             m_device->setShaderInput(0, m_configBuffer);
-            m_device->setShaderInput(0, input);
-            m_device->setShaderOutput(0, output);
+            m_device->setShaderInput(0, input, slice);
+            m_device->setShaderOutput(0, output, slice);
 
             m_device->dispatchShader();
         }
@@ -75,6 +80,7 @@ namespace {
         const std::shared_ptr<IDevice> m_device;
 
         std::shared_ptr<IQuadShader> m_shader;
+        std::shared_ptr<IQuadShader> m_shaderVPRT;
         std::shared_ptr<IShaderBuffer> m_configBuffer;
     };
 

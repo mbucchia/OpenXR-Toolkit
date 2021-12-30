@@ -125,11 +125,11 @@ namespace {
             }
         }
 
-        void upscale(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output) override {
-            m_device->setShader(m_shader);
+        void upscale(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice = -1) override {
+            m_device->setShader(!input->isArray() ? m_shader : m_shaderVPRT);
             m_device->setShaderInput(0, m_configBuffer);
-            m_device->setShaderInput(0, input);
-            m_device->setShaderOutput(0, output);
+            m_device->setShaderInput(0, input, slice);
+            m_device->setShaderOutput(0, output, slice);
             if (!m_isSharpenOnly) {
                 m_device->setShaderInput(1, m_coefScale);
                 m_device->setShaderInput(2, m_coefUSM);
@@ -141,7 +141,7 @@ namespace {
       private:
         void initializeScaler() {
             const auto shadersDir = std::filesystem::path(dllHome) / std::filesystem::path("shaders");
-            const auto shaderPath = shadersDir / std::filesystem::path("NIS_Main.hlsl");
+            const auto shaderPath = shadersDir / std::filesystem::path("NIS.hlsl");
 
             utilities::shader::Defines defines;
             defines.add("NIS_SCALER", true);
@@ -157,6 +157,10 @@ namespace {
 
             m_shader = m_device->createComputeShader(
                 shaderPath.string(), "main", "NISScaler CS", threadGroups, defines.get(), shadersDir.string());
+
+            defines.add("VPRT", true);
+            m_shaderVPRT = m_device->createComputeShader(
+                shaderPath.string(), "main", "NISScaler VPRT CS", threadGroups, defines.get(), shadersDir.string());
 
             const int rowPitch = kFilterSize * 4;
             const int imageSize = rowPitch * kPhaseCount;
@@ -179,7 +183,7 @@ namespace {
 
         void initializeSharpen() {
             const auto shadersDir = std::filesystem::path(dllHome) / std::filesystem::path("shaders");
-            const auto shaderPath = shadersDir / std::filesystem::path("NIS_Main.hlsl");
+            const auto shaderPath = shadersDir / std::filesystem::path("NIS.hlsl");
 
             utilities::shader::Defines defines;
             defines.add("NIS_SCALER", false);
@@ -196,6 +200,10 @@ namespace {
             m_shader = m_device->createComputeShader(
                 shaderPath.string(), "main", "NISSharpen CS", threadGroups, defines.get(), shadersDir.string());
 
+            defines.add("VPRT", true);
+            m_shaderVPRT = m_device->createComputeShader(
+                shaderPath.string(), "main", "NISSharpen VPRT CS", threadGroups, defines.get(), shadersDir.string());
+
             // Sharpen does not use the coefficient inputs.
             m_isSharpenOnly = true;
         }
@@ -211,6 +219,7 @@ namespace {
         uint32_t m_inputWidth;
         uint32_t m_inputHeight;
         std::shared_ptr<IComputeShader> m_shader;
+        std::shared_ptr<IComputeShader> m_shaderVPRT;
         bool m_isSharpenOnly{false};
         std::shared_ptr<IShaderBuffer> m_configBuffer;
         std::shared_ptr<ITexture> m_coefScale;

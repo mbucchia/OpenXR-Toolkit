@@ -420,16 +420,10 @@ namespace {
                 m_menuHandler->updateStatistics(m_stats);
             }
 
-            // Identify the last projection layer: this is the one we will draw onto.
-            int32_t lastProjectionLayerIndex = -1;
-            for (uint32_t i = 0; i < frameEndInfo->layerCount; i++) {
-                if (frameEndInfo->layers[i]->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION) {
-                    lastProjectionLayerIndex = i;
-                }
-            }
-
             // Unbind all textures from the render targets.
             m_graphicsDevice->clearRenderTargets();
+
+            std::shared_ptr<graphics::ITexture> topLayer[2] = {};
 
             // Apply the processing chain to all the (supported) layers.
             for (uint32_t i = 0; i < frameEndInfo->layerCount; i++) {
@@ -458,22 +452,24 @@ namespace {
                         // Perform post-processing.
                         if (m_preProcessor) {
                             nextImage++;
-                            m_preProcessor->process(swapchainImages.chain[lastImage], swapchainImages.chain[nextImage]);
+                            m_preProcessor->process(
+                                swapchainImages.chain[lastImage], swapchainImages.chain[nextImage], useVPRT ? eye : -1);
                             lastImage++;
                         }
 
                         // Perform upscaling (if requested).
                         if (m_upscaler) {
                             nextImage++;
-                            m_upscaler->upscale(swapchainImages.chain[lastImage], swapchainImages.chain[nextImage]);
+                            m_upscaler->upscale(
+                                swapchainImages.chain[lastImage], swapchainImages.chain[nextImage], useVPRT ? eye : -1);
                             lastImage++;
                         }
 
                         // Perform post-processing.
                         if (m_postProcessor) {
                             nextImage++;
-                            m_postProcessor->process(swapchainImages.chain[lastImage],
-                                                     swapchainImages.chain[nextImage]);
+                            m_postProcessor->process(
+                                swapchainImages.chain[lastImage], swapchainImages.chain[nextImage], useVPRT ? eye : -1);
                             lastImage++;
                         }
 
@@ -482,20 +478,23 @@ namespace {
                             throw new std::runtime_error("Processing chain incomplete!");
                         }
 
-                        // Render the menu in the last entry of the last projection layer.
-                        if (m_menuHandler && i == lastProjectionLayerIndex) {
-                            // When using VPRT, we rely on the menu renderer to render both views at once. Otherwise we
-                            // render each view one at a time.
-                            if (!useVPRT || eye == 0) {
-                                m_menuHandler->render(swapchainImages.chain[nextImage]);
-                            }
-                        }
+                        topLayer[eye] = swapchainImages.chain[nextImage];
 
                         // TODO: This is non-compliant AND dangerous. We cannot bypass the constness here and should
                         // make a copy instead.
                         ((XrCompositionLayerProjectionView*)&view)->subImage.imageRect.extent.width = m_displayWidth;
                         ((XrCompositionLayerProjectionView*)&view)->subImage.imageRect.extent.height = m_displayHeight;
                     }
+                }
+            }
+
+            // Render the menu in the top-most layer.
+            if (m_menuHandler && topLayer[0]) {
+                // When using VPRT, we rely on the menu renderer to render both views at once. Otherwise we
+                // render each view one at a time.
+                m_menuHandler->render(topLayer[0]);
+                if (topLayer[1] != topLayer[0]) {
+                    m_menuHandler->render(topLayer[1]);
                 }
             }
 

@@ -179,9 +179,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                      const D3D11_TEXTURE2D_DESC& textureDesc,
                      ComPtr<ID3D11Texture2D> texture)
             : m_device(device), m_info(info), m_textureDesc(textureDesc), m_texture(texture) {
-            m_shaderResourceSubView.reserve(info.arraySize);
-            m_unorderedAccessSubView.reserve(info.arraySize);
-            m_renderTargetSubView.reserve(info.arraySize);
+            m_shaderResourceSubView.resize(info.arraySize);
+            m_unorderedAccessSubView.resize(info.arraySize);
+            m_renderTargetSubView.resize(info.arraySize);
         }
 
         Api getApi() const override {
@@ -243,10 +243,10 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 desc.Format = (DXGI_FORMAT)m_info.format;
                 desc.ViewDimension =
                     m_info.arraySize == 1 ? D3D11_SRV_DIMENSION_TEXTURE2D : D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = m_info.arraySize;
+                desc.Texture2DArray.ArraySize = 1;
                 desc.Texture2DArray.FirstArraySlice = slice;
                 desc.Texture2DArray.MipLevels = m_info.mipCount;
-                desc.Texture2DArray.MostDetailedMip = D3D10CalcSubresource(0, slice, m_info.mipCount);
+                desc.Texture2DArray.MostDetailedMip = D3D11CalcSubresource(0, 0, m_info.mipCount);
 
                 ComPtr<ID3D11ShaderResourceView> srv;
                 CHECK_HRCMD(device->CreateShaderResourceView(m_texture.Get(), &desc, &srv));
@@ -270,9 +270,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 desc.Format = (DXGI_FORMAT)m_info.format;
                 desc.ViewDimension =
                     m_info.arraySize == 1 ? D3D11_UAV_DIMENSION_TEXTURE2D : D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = m_info.arraySize;
+                desc.Texture2DArray.ArraySize = 1;
                 desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipSlice = D3D10CalcSubresource(0, slice, m_info.mipCount);
+                desc.Texture2DArray.MipSlice = D3D11CalcSubresource(0, 0, m_info.mipCount);
 
                 ComPtr<ID3D11UnorderedAccessView> uav;
                 CHECK_HRCMD(device->CreateUnorderedAccessView(m_texture.Get(), &desc, &uav));
@@ -296,9 +296,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 desc.Format = (DXGI_FORMAT)m_info.format;
                 desc.ViewDimension =
                     m_info.arraySize == 1 ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = m_info.arraySize;
+                desc.Texture2DArray.ArraySize = 1;
                 desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipSlice = D3D10CalcSubresource(0, slice, m_info.mipCount);
+                desc.Texture2DArray.MipSlice = D3D11CalcSubresource(0, 0, m_info.mipCount);
 
                 ComPtr<ID3D11RenderTargetView> rtv;
                 CHECK_HRCMD(device->CreateRenderTargetView(m_texture.Get(), &desc, &rtv));
@@ -669,7 +669,13 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 if (slot) {
                     throw new std::runtime_error("Only use slot 0 for IQuadShader");
                 }
-                setRenderTargets({output});
+                if (slice == -1) {
+                    setRenderTargets({output});
+                } else {
+                    std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> rtvs;
+                    rtvs.push_back(std::make_pair(output, slice));
+                    setRenderTargets(rtvs);
+                }
 
                 D3D11_VIEWPORT viewport;
                 ZeroMemory(&viewport, sizeof(viewport));

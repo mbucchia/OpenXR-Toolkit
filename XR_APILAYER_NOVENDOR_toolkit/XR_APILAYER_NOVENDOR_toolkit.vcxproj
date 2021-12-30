@@ -76,8 +76,9 @@
 copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
 copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
 md $(OutDir)\shaders
-copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Main.hlsl $(OutDir)\shaders
 copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
+type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
+copy $(ProjectDir)\NIS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     </PostBuildEvent>
@@ -125,8 +126,9 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
 copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
 copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
 md $(OutDir)\shaders
-copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Main.hlsl $(OutDir)\shaders
 copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
+type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
+copy $(ProjectDir)\NIS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     </PostBuildEvent>
@@ -187,7 +189,11 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     <None Include="XR_APILAYER_NOVENDOR_toolkit.json" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\external\NVIDIAImageScaling\NIS\NIS_Main.hlsl">
+    <FxCompile Include="NIS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
