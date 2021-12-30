@@ -459,18 +459,33 @@ namespace {
 
             auto overlayType = m_configManager->getEnumValue<OverlayType>(SettingOverlayType);
             if (overlayType != OverlayType::None) {
-                m_textRenderer->drawString(fmt::format("FPS: {}", m_stats.fps),
-                                           TextStyle::Normal,
-                                           fontSize,
-                                           renderTarget->getInfo().width - leftAlign,
-                                           topAlign,
-                                           ColorSelected,
-                                           true);
+                float top = topAlign;
+
+#define OVERLAY_COMMON TextStyle::Normal, fontSize, renderTarget->getInfo().width - leftAlign, top, ColorSelected, true
+
+                m_textRenderer->drawString(fmt::format("FPS: {}", m_stats.fps), OVERLAY_COMMON);
+                top += 1.05f * fontSize;
 
                 // Advanced displasy.
                 if (overlayType == OverlayType::Advanced) {
-                    // TODO: Add more stats.
+                    m_textRenderer->drawString(fmt::format("lay CPU: {}", m_stats.endFrameCpuTimeUs), OVERLAY_COMMON);
+                    top += 1.05f * fontSize;
+
+                    m_textRenderer->drawString(fmt::format("pre GPU: {}", m_stats.preProcessorGpuTimeUs),
+                                               OVERLAY_COMMON);
+                    top += 1.05f * fontSize;
+                    m_textRenderer->drawString(fmt::format("scl GPU: {}", m_stats.upscalerGpuTimeUs), OVERLAY_COMMON);
+                    top += 1.05f * fontSize;
+                    m_textRenderer->drawString(fmt::format("pst GPU: {}", m_stats.postProcessorGpuTimeUs),
+                                               OVERLAY_COMMON);
+                    top += 1.05f * fontSize;
+
+                    m_textRenderer->drawString(fmt::format("ovl CPU: {}", m_stats.overlayCpuTimeUs), OVERLAY_COMMON);
+                    top += 1.05f * fontSize;
+                    m_textRenderer->drawString(fmt::format("ovl GPU: {}", m_stats.overlayGpuTimeUs), OVERLAY_COMMON);
+                    top += 1.05f * fontSize;
                 }
+#undef OVERLAY_COMMON
             }
 
             m_textRenderer->end();

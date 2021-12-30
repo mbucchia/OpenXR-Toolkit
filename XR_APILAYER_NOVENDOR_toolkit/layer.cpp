@@ -31,11 +31,22 @@
 
 namespace {
 
+    // 2 views to process, one per eye.
+    constexpr uint32_t ViewCount = 2;
+
+    // The xrWaitFrame() loop might cause to have 2 frames in-flight, so we want to delay the GPU timer re-use by those
+    // 2 frames.
+    constexpr uint32_t GpuTimerLatency = 2;
+
     using namespace toolkit;
     using namespace toolkit::log;
 
     struct SwapchainImages {
         std::vector<std::shared_ptr<graphics::ITexture>> chain;
+
+        std::shared_ptr<graphics::IGpuTimer> upscalerGpuTimer[ViewCount];
+        std::shared_ptr<graphics::IGpuTimer> preProcessorGpuTimer[ViewCount];
+        std::shared_ptr<graphics::IGpuTimer> postProcessorGpuTimer[ViewCount];
     };
 
     struct SwapchainState {
@@ -71,11 +82,11 @@ namespace {
             const XrResult result = OpenXrApi::xrGetSystem(instance, getInfo, systemId);
             if (XR_SUCCEEDED(result) && getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY) {
                 // Store the actual OpenXR resolution.
-                XrViewConfigurationView views[2] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW},
-                                                    {XR_TYPE_VIEW_CONFIGURATION_VIEW}};
+                XrViewConfigurationView views[ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW},
+                                                            {XR_TYPE_VIEW_CONFIGURATION_VIEW}};
                 uint32_t viewCount;
                 CHECK_XRCMD(OpenXrApi::xrEnumerateViewConfigurationViews(
-                    instance, *systemId, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 2, &viewCount, views));
+                    instance, *systemId, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, ViewCount, &viewCount, views));
 
                 m_displayWidth = views[0].recommendedImageRectWidth;
                 m_displayHeight = views[0].recommendedImageRectHeight;
@@ -186,6 +197,15 @@ namespace {
                     m_postProcessor =
                         graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
 
+                    m_performanceCounters.endFrameCpuTimer = utilities::CreateCpuTimer();
+                    m_performanceCounters.overlayCpuTimer = utilities::CreateCpuTimer();
+
+                    for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
+                        m_performanceCounters.overlayGpuTimer[i] = m_graphicsDevice->createTimer();
+                    }
+
+                    m_performanceCounters.lastWindowStart = std::chrono::steady_clock::now();
+
                     m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice);
                 } else {
                     Log("Unsupported graphics runtime.\n");
@@ -290,6 +310,11 @@ namespace {
 
                             // We place the texture at the very front (app texture).
                             images.chain.insert(images.chain.begin(), inputTexture);
+
+                            images.preProcessorGpuTimer[0] = m_graphicsDevice->createTimer();
+                            if (createInfo->arraySize > 1) {
+                                images.preProcessorGpuTimer[1] = m_graphicsDevice->createTimer();
+                            }
                         }
 
                         if (m_upscaler) {
@@ -302,6 +327,11 @@ namespace {
                             // We place the texture before the runtime texture, which means at the very front (app
                             // texture) or after the pre-processor.
                             images.chain.insert(images.chain.end() - 1, inputTexture);
+
+                            images.upscalerGpuTimer[0] = m_graphicsDevice->createTimer();
+                            if (createInfo->arraySize > 1) {
+                                images.upscalerGpuTimer[1] = m_graphicsDevice->createTimer();
+                            }
                         }
 
                         if (m_postProcessor) {
@@ -323,6 +353,11 @@ namespace {
 
                             // We place the texture just before the runtime texture.
                             images.chain.insert(images.chain.end() - 1, intermediateTexture);
+
+                            images.postProcessorGpuTimer[0] = m_graphicsDevice->createTimer();
+                            if (createInfo->arraySize > 1) {
+                                images.postProcessorGpuTimer[1] = m_graphicsDevice->createTimer();
+                            }
                         }
 
                         swapchainState.images.push_back(images);
@@ -387,11 +422,40 @@ namespace {
             return result;
         }
 
-        XrResult xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo) override {
-            if (!isVrSession(session) || !m_graphicsDevice) {
-                return OpenXrApi::xrEndFrame(session, frameEndInfo);
-            }
+        void updateStatisticsForFrame() {
+            const auto now = std::chrono::steady_clock::now();
 
+            m_frameTimestamps.push_back(now);
+
+            if (std::chrono::duration<double>(now - m_performanceCounters.lastWindowStart).count() > 1.0) {
+                // Update the FPS counter.
+                while (std::chrono::duration<double>(now - m_frameTimestamps.front()).count() > 1.0) {
+                    m_frameTimestamps.pop_front();
+                }
+                m_stats.fps = (float)m_frameTimestamps.size();
+
+                // Push the last averaged statistics.
+                if (m_performanceCounters.numFrames) {
+                    m_stats.endFrameCpuTimeUs /= m_performanceCounters.numFrames;
+                    m_stats.upscalerGpuTimeUs /= m_performanceCounters.numFrames;
+                    m_stats.preProcessorGpuTimeUs /= m_performanceCounters.numFrames;
+                    m_stats.postProcessorGpuTimeUs /= m_performanceCounters.numFrames;
+                    m_stats.overlayCpuTimeUs /= m_performanceCounters.numFrames;
+                    m_stats.overlayGpuTimeUs /= m_performanceCounters.numFrames;
+                }
+                m_menuHandler->updateStatistics(m_stats);
+
+                // Start from fresh!
+                m_stats.endFrameCpuTimeUs = 0;
+                m_stats.overlayCpuTimeUs = m_stats.overlayGpuTimeUs = 0;
+                m_stats.upscalerGpuTimeUs = m_stats.preProcessorGpuTimeUs = m_stats.postProcessorGpuTimeUs = 0;
+
+                m_performanceCounters.numFrames = 0;
+                m_performanceCounters.lastWindowStart = now;
+            }
+        }
+
+        void updateConfiguration() {
             // Make sure config gets written if needed.
             m_configManager->tick();
 
@@ -405,25 +469,32 @@ namespace {
             if (m_postProcessor) {
                 m_postProcessor->update();
             }
+        }
 
-            // Update the FPS counter.
-            const auto now = std::chrono::steady_clock::now();
-            m_frameTimestamps.push_back(now);
-            while (std::chrono::duration<double>(now - m_frameTimestamps.front()).count() > 1.0) {
-                m_frameTimestamps.pop_front();
+        XrResult xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo) override {
+            if (!isVrSession(session) || !m_graphicsDevice) {
+                return OpenXrApi::xrEndFrame(session, frameEndInfo);
             }
-            m_stats.fps = (float)m_frameTimestamps.size();
+
+            updateStatisticsForFrame();
+
+            m_stats.endFrameCpuTimeUs = m_performanceCounters.endFrameCpuTimer->query();
+            m_performanceCounters.endFrameCpuTimer->start();
+
+            updateConfiguration();
+
+            // Toggle to the next set of GPU timers.
+            m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
 
             // Handle menu stuff.
             if (m_menuHandler) {
                 m_menuHandler->handleInput();
-                m_menuHandler->updateStatistics(m_stats);
             }
 
             // Unbind all textures from the render targets.
             m_graphicsDevice->clearRenderTargets();
 
-            std::shared_ptr<graphics::ITexture> topLayer[2] = {};
+            std::shared_ptr<graphics::ITexture> topLayer[ViewCount] = {};
 
             // Apply the processing chain to all the (supported) layers.
             for (uint32_t i = 0; i < frameEndInfo->layerCount; i++) {
@@ -432,10 +503,11 @@ namespace {
                         reinterpret_cast<const XrCompositionLayerProjection*>(frameEndInfo->layers[i]);
 
                     // For VPRT, we need to handle texture arrays.
+                    static_assert(ViewCount == 2);
                     const bool useVPRT = proj->views[0].subImage.swapchain == proj->views[1].subImage.swapchain;
 
-                    assert(proj->viewCount == 2);
-                    for (uint32_t eye = 0; eye < 2; eye++) {
+                    assert(proj->viewCount == ViewCount);
+                    for (uint32_t eye = 0; eye < ViewCount; eye++) {
                         const XrCompositionLayerProjectionView& view = proj->views[eye];
 
                         auto swapchainIt = m_swapchains.find(view.subImage.swapchain);
@@ -446,30 +518,58 @@ namespace {
                         auto swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
                         uint32_t nextImage = 0;
                         uint32_t lastImage = 0;
+                        uint32_t gpuTimerIndex = useVPRT ? eye : 0;
 
                         // TODO: Insert processing below.
+                        // The pattern typically follows these steps:
+                        // - Advanced to the right source and/or destination image;
+                        // - Pull the previously measured timer value;
+                        // - Start the timer;
+                        // - Invoke the processing;
+                        // - Stop the timer;
+                        // - Advanced to the right source and/or destination image;
 
                         // Perform post-processing.
                         if (m_preProcessor) {
                             nextImage++;
+
+                            m_stats.preProcessorGpuTimeUs +=
+                                swapchainImages.preProcessorGpuTimer[gpuTimerIndex]->query();
+                            swapchainImages.preProcessorGpuTimer[gpuTimerIndex]->start();
+
                             m_preProcessor->process(
                                 swapchainImages.chain[lastImage], swapchainImages.chain[nextImage], useVPRT ? eye : -1);
+                            swapchainImages.preProcessorGpuTimer[gpuTimerIndex]->stop();
+
                             lastImage++;
                         }
 
                         // Perform upscaling (if requested).
                         if (m_upscaler) {
                             nextImage++;
+
+                            m_stats.upscalerGpuTimeUs += swapchainImages.upscalerGpuTimer[gpuTimerIndex]->query();
+                            swapchainImages.upscalerGpuTimer[gpuTimerIndex]->start();
+
                             m_upscaler->upscale(
                                 swapchainImages.chain[lastImage], swapchainImages.chain[nextImage], useVPRT ? eye : -1);
+                            swapchainImages.upscalerGpuTimer[gpuTimerIndex]->stop();
+
                             lastImage++;
                         }
 
                         // Perform post-processing.
                         if (m_postProcessor) {
                             nextImage++;
+
+                            m_stats.postProcessorGpuTimeUs +=
+                                swapchainImages.postProcessorGpuTimer[gpuTimerIndex]->query();
+                            swapchainImages.postProcessorGpuTimer[gpuTimerIndex]->start();
+
                             m_postProcessor->process(
                                 swapchainImages.chain[lastImage], swapchainImages.chain[nextImage], useVPRT ? eye : -1);
+                            swapchainImages.postProcessorGpuTimer[gpuTimerIndex]->stop();
+
                             lastImage++;
                         }
 
@@ -488,15 +588,32 @@ namespace {
                 }
             }
 
+            // We intentionally exclude the overlay from this timer, as it has its own separate timer.
+            m_performanceCounters.endFrameCpuTimer->stop();
+
             // Render the menu in the top-most layer.
-            if (m_menuHandler && topLayer[0]) {
-                // When using VPRT, we rely on the menu renderer to render both views at once. Otherwise we
-                // render each view one at a time.
-                m_menuHandler->render(topLayer[0]);
-                if (topLayer[1] != topLayer[0]) {
-                    m_menuHandler->render(topLayer[1]);
+            if (m_menuHandler) {
+                // Update with the statistics from the last frame.
+                m_stats.overlayCpuTimeUs += m_performanceCounters.overlayCpuTimer->query();
+                m_stats.overlayGpuTimeUs +=
+                    m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
+
+                if (topLayer[0]) {
+                    // When using VPRT, we rely on the menu renderer to render both views at once. Otherwise we
+                    // render each view one at a time.
+                    m_performanceCounters.overlayCpuTimer->start();
+                    m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
+                    m_menuHandler->render(topLayer[0]);
+                    static_assert(ViewCount == 2);
+                    if (topLayer[1] != topLayer[0]) {
+                        m_menuHandler->render(topLayer[1]);
+                    }
+                    m_performanceCounters.overlayCpuTimer->stop();
+                    m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
                 }
             }
+
+            m_performanceCounters.numFrames++;
 
             return OpenXrApi::xrEndFrame(session, frameEndInfo);
         }
@@ -525,6 +642,16 @@ namespace {
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
 
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
+
+        struct {
+            std::shared_ptr<utilities::ICpuTimer> endFrameCpuTimer;
+            std::shared_ptr<utilities::ICpuTimer> overlayCpuTimer;
+            std::shared_ptr<graphics::IGpuTimer> overlayGpuTimer[GpuTimerLatency + 1];
+
+            unsigned int gpuTimerIndex{0};
+            std::chrono::time_point<std::chrono::steady_clock> lastWindowStart;
+            uint32_t numFrames{0};
+        } m_performanceCounters;
 
         LayerStatistics m_stats{};
         std::deque<std::chrono::time_point<std::chrono::steady_clock>> m_frameTimestamps;

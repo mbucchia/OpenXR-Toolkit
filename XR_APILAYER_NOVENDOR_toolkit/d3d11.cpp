@@ -29,6 +29,7 @@
 
 namespace {
 
+    using namespace toolkit;
     using namespace toolkit::graphics;
     using namespace toolkit::log;
 
@@ -358,6 +359,79 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         const ComPtr<ID3D11Buffer> m_buffer;
     };
 
+    class D3D11GpuTimer : public IGpuTimer {
+      public:
+        D3D11GpuTimer(std::shared_ptr<IDevice> device) : m_device(device) {
+            auto d3dDevice = m_device->getNative<D3D11>();
+
+            D3D11_QUERY_DESC queryDesc;
+            ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
+            queryDesc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+            CHECK_HRCMD(d3dDevice->CreateQuery(&queryDesc, &m_timeStampDis));
+            queryDesc.Query = D3D11_QUERY_TIMESTAMP;
+            CHECK_HRCMD(d3dDevice->CreateQuery(&queryDesc, &m_timeStampStart));
+            CHECK_HRCMD(d3dDevice->CreateQuery(&queryDesc, &m_timeStampEnd));
+        }
+
+        Api getApi() const override {
+            return Api::D3D11;
+        }
+
+        std::shared_ptr<IDevice> getDevice() const override {
+            return m_device;
+        }
+
+        void start() override {
+            assert(!m_valid);
+
+            auto context = m_device->getContext<D3D11>();
+
+            context->Begin(m_timeStampDis.Get());
+            context->End(m_timeStampStart.Get());
+        }
+
+        void stop() override {
+            assert(!m_valid);
+
+            auto context = m_device->getContext<D3D11>();
+
+            context->End(m_timeStampEnd.Get());
+            context->End(m_timeStampDis.Get());
+            m_valid = true;
+        }
+
+        uint64_t query(bool reset) const override {
+            auto context = m_device->getContext<D3D11>();
+
+            D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disData;
+            UINT64 startime;
+            UINT64 endtime;
+
+            uint64_t duration = 0;
+
+            if (m_valid &&
+                context->GetData(m_timeStampDis.Get(), &disData, sizeof(D3D11_QUERY_DATA_TIMESTAMP_DISJOINT), 0) ==
+                    S_OK &&
+                context->GetData(m_timeStampStart.Get(), &startime, sizeof(UINT64), 0) == S_OK &&
+                context->GetData(m_timeStampEnd.Get(), &endtime, sizeof(UINT64), 0) == S_OK && !disData.Disjoint) {
+                duration = (uint64_t)((endtime - startime) / double(disData.Frequency) * 1e6);
+            }
+
+            m_valid = !reset;
+
+            return duration;
+        }
+
+      private:
+        const std::shared_ptr<IDevice> m_device;
+        ComPtr<ID3D11Query> m_timeStampDis;
+        ComPtr<ID3D11Query> m_timeStampStart;
+        ComPtr<ID3D11Query> m_timeStampEnd;
+
+        // Can the timer be queried (it might still only read 0).
+        mutable bool m_valid{false};
+    };
+
     class D3D11Device : public IDevice, public std::enable_shared_from_this<D3D11Device> {
       public:
         D3D11Device(ID3D11Device* device) {
@@ -602,6 +676,10 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             }
 
             return std::make_shared<D3D11ComputeShader>(shared_from_this(), compiledShader.Get(), threadGroups);
+        }
+
+        std::shared_ptr<IGpuTimer> createTimer() override {
+            return std::make_shared<D3D11GpuTimer>(shared_from_this());
         }
 
         void setShader(std::shared_ptr<IQuadShader> shader) override {

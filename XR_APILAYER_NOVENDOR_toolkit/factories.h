@@ -26,6 +26,12 @@
 
 namespace toolkit {
 
+    namespace utilities {
+
+        std::shared_ptr<ICpuTimer> CreateCpuTimer();
+
+    }
+
     namespace config {
 
         std::shared_ptr<IConfigManager> CreateConfigManager(const std::string& appName);

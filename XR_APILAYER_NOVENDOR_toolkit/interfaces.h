@@ -25,8 +25,32 @@
 namespace toolkit {
 
     struct LayerStatistics {
-        float fps;
+        float fps{0.0f};
+        uint64_t endFrameCpuTimeUs{0};
+        uint64_t preProcessorGpuTimeUs{0};
+        uint64_t upscalerGpuTimeUs{0};
+        uint64_t postProcessorGpuTimeUs{0};
+        uint64_t overlayCpuTimeUs{0};
+        uint64_t overlayGpuTimeUs{0};
     };
+
+    namespace {
+        // A generic timer.
+        struct ITimer {
+            virtual ~ITimer() = default;
+
+            virtual void start() = 0;
+            virtual void stop() = 0;
+
+            virtual uint64_t query(bool reset = true) const = 0;
+        };
+    } // namespace
+
+    namespace utilities {
+        // A CPU synchronous timer.
+        struct ICpuTimer : public ITimer {
+        };
+    }
 
     namespace config {
 
@@ -239,6 +263,12 @@ namespace toolkit {
             }
         };
 
+        // A GPU asynchronous timer.
+        struct IGpuTimer : public ITimer {
+            virtual Api getApi() const = 0;
+            virtual std::shared_ptr<IDevice> getDevice() const = 0;
+        };
+
         // A graphics device.
         struct IDevice {
             virtual ~IDevice() = default;
@@ -269,6 +299,7 @@ namespace toolkit {
                                                                         const std::array<unsigned int, 3>& threadGroups,
                                                                         const D3D_SHADER_MACRO* defines = nullptr,
                                                                         const std::string includePath = "") = 0;
+            virtual std::shared_ptr<IGpuTimer> createTimer() = 0;
 
             // Must be invoked prior to setting the input/output.
             virtual void setShader(std::shared_ptr<IQuadShader> shader) = 0;

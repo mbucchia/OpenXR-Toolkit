@@ -181,6 +181,7 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="imageprocess.cpp" />
+    <ClCompile Include="utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="framework\dispatch_generator.py" />
