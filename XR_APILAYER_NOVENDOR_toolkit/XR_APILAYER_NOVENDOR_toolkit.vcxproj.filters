@@ -109,11 +109,11 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\external\NVIDIAImageScaling\NIS\NIS_Main.hlsl">
-      <Filter>Shader Files\NIS</Filter>
-    </FxCompile>
     <FxCompile Include="postprocess.hlsl">
       <Filter>Shader Files\PostProcess</Filter>
+    </FxCompile>
+    <FxCompile Include="NIS.hlsl">
+      <Filter>Shader Files\NIS</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>
