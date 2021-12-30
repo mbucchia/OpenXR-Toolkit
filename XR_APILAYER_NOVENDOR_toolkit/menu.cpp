@@ -209,6 +209,13 @@ namespace {
         int minValue;
         int maxValue;
         std::function<std::string(int)> valueToString;
+
+        bool visible{true};
+    };
+
+    struct MenuGroup {
+        size_t start;
+        size_t end;
     };
 
     // The logic of our menus.
@@ -252,6 +259,7 @@ namespace {
                                          std::string labels[] = {"Off", "NIS"};
                                          return labels[value];
                                      }});
+            m_upscalingGroup.start = m_menuEntries.size();
             m_menuEntries.push_back({"Factor", MenuEntryType::Slider, SettingScaling, 100, 200, [](int value) {
                                          // TODO: Display resolution.
                                          return fmt::format("{}%", value);
@@ -259,6 +267,7 @@ namespace {
             m_menuEntries.push_back({"Sharpness", MenuEntryType::Slider, SettingSharpness, 0, 100, [](int value) {
                                          return fmt::format("{}%", value);
                                      }});
+            m_upscalingGroup.end = m_menuEntries.size();
 
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
             m_menuEntries.push_back({"Font size",
@@ -302,7 +311,8 @@ namespace {
                 } else {
                     do {
                         m_selectedItem = (m_selectedItem + 1) % m_menuEntries.size();
-                    } while (m_menuEntries[m_selectedItem].type == MenuEntryType::Separator);
+                    } while (m_menuEntries[m_selectedItem].type == MenuEntryType::Separator ||
+                             !m_menuEntries[m_selectedItem].visible);
                 }
 
                 m_lastInput = std::chrono::steady_clock::now();
@@ -329,6 +339,12 @@ namespace {
                     const int newValue =
                         std::clamp(value + (moveLeft ? -1 : 1), menuEntry.minValue, menuEntry.maxValue);
                     m_configManager->setValue(menuEntry.configName, newValue);
+
+                    // When changing the font size, force re-alignment.
+                    if (menuEntry.configName == SettingMenuFontSize) {
+                        m_menuEntriesTitleWidth = 0.0f;
+                    }
+
                     break;
                 }
 
@@ -340,12 +356,27 @@ namespace {
                 m_state = MenuState::Splash;
                 m_selectedItem = 0;
             }
+
+            handleGroups();
+        }
+
+        // Show/hide subgroups based on the current config.
+        void handleGroups() {
+            auto updateGroupVisibility = [&](MenuGroup& group, bool visible) {
+                for (size_t i = group.start; i < group.end; i++) {
+                    m_menuEntries[i].visible = visible;
+                }
+            };
+
+            updateGroupVisibility(m_upscalingGroup,
+                                  m_configManager->getEnumValue<ScalingType>(SettingScalingType) != ScalingType::None);
         }
 
         void render(std::shared_ptr<ITexture> renderTarget) const override {
             m_textRenderer->begin(renderTarget);
 
             const float leftAlign = renderTarget->getInfo().width / 4.0f;
+            const float rightAlign = 2 * renderTarget->getInfo().width / 3.0f;
             const float topAlign = renderTarget->getInfo().height / 3.0f;
 
             const float fontSizes[(int)MenuFontSize::MaxValue] = {
@@ -398,18 +429,36 @@ namespace {
                                            leftAlign,
                                            top,
                                            colorNormal);
-                top += 1.1f * fontSize;
+                top += 1.5f * fontSize;
+
+                float menuEntriesTitleWidth = m_menuEntriesTitleWidth;
 
                 // Display each menu entry.
                 for (unsigned int i = 0; i < m_menuEntries.size(); i++) {
                     float left = leftAlign;
                     const auto& menuEntry = m_menuEntries[i];
 
+                    // Always account for entries, even invisible ones, when calculating the alignment.
+                    float entryWidth = 0.0f;
+                    if (menuEntriesTitleWidth == 0.0f) {
+                        // Worst case should be Selected (bold).
+                        entryWidth = m_textRenderer->measureString(menuEntry.title, TextStyle::Selected, fontSize) + 50;
+                        m_menuEntriesTitleWidth = max(m_menuEntriesTitleWidth, entryWidth);
+                    }
+
+                    if (!menuEntry.visible) {
+                        continue;
+                    }
+
                     const auto entryStyle = i == m_selectedItem ? TextStyle::Selected : TextStyle::Normal;
                     const auto entryColor = i == m_selectedItem ? colorSelected : colorNormal;
 
                     m_textRenderer->drawString(menuEntry.title, entryStyle, fontSize, left, top, entryColor);
-                    left += m_textRenderer->measureString(menuEntry.title, entryStyle, fontSize) + 50;
+                    if (menuEntriesTitleWidth == 0.0f) {
+                        left += entryWidth;
+                    } else {
+                        left += menuEntriesTitleWidth;
+                    }
 
                     const int value = m_configManager->peekValue(menuEntry.configName);
 
@@ -461,7 +510,7 @@ namespace {
             if (overlayType != OverlayType::None) {
                 float top = topAlign;
 
-#define OVERLAY_COMMON TextStyle::Normal, fontSize, renderTarget->getInfo().width - leftAlign, top, ColorSelected, true
+#define OVERLAY_COMMON TextStyle::Normal, fontSize, rightAlign, top, ColorSelected, true
 
                 m_textRenderer->drawString(fmt::format("FPS: {}", m_stats.fps), OVERLAY_COMMON);
                 top += 1.05f * fontSize;
@@ -514,7 +563,10 @@ namespace {
         bool m_wasF2Pressed{false};
         bool m_wasF3Pressed{false};
 
+        MenuGroup m_upscalingGroup;
+
         mutable MenuState m_state{MenuState::NotVisible};
+        mutable float m_menuEntriesTitleWidth{0.0f};
     };
 
 } // namespace
