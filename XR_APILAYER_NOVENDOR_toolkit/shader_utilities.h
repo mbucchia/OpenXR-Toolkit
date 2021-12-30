@@ -25,7 +25,7 @@
 
 #include "log.h"
 
-namespace utilities::shader {
+namespace toolkit::utilities::shader {
 
     using namespace toolkit::log;
 
@@ -131,4 +131,4 @@ namespace utilities::shader {
         std::unique_ptr<D3D_SHADER_MACRO[]> m_defines;
     };
 
-} // namespace utilities::shader
+} // namespace toolkit::utilities::shader

@@ -39,6 +39,7 @@ namespace {
     using namespace toolkit;
     using namespace toolkit::config;
     using namespace toolkit::graphics;
+    using namespace toolkit::graphics;
     using namespace toolkit::log;
 
     class ImageProcessor : public IImageProcessor {
