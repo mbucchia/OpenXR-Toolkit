@@ -496,11 +496,27 @@ namespace {
 
             std::shared_ptr<graphics::ITexture> topLayer[ViewCount] = {};
 
+            // Because the frame info is passed const, we are going to need to reconstruct a writable version of it to
+            // patch the resolution.
+            XrFrameEndInfo chainFrameEndInfo = *frameEndInfo;
+            std::vector<const XrCompositionLayerBaseHeader*> correctedLayers;
+
+            std::vector<XrCompositionLayerProjection> layerProjectionAllocator;
+            std::vector<std::array<XrCompositionLayerProjectionView, 2>> layerProjectionViewsAllocator;
+
             // Apply the processing chain to all the (supported) layers.
-            for (uint32_t i = 0; i < frameEndInfo->layerCount; i++) {
-                if (frameEndInfo->layers[i]->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION) {
+            for (uint32_t i = 0; i < chainFrameEndInfo.layerCount; i++) {
+                if (chainFrameEndInfo.layers[i]->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION) {
                     const XrCompositionLayerProjection* proj =
-                        reinterpret_cast<const XrCompositionLayerProjection*>(frameEndInfo->layers[i]);
+                        reinterpret_cast<const XrCompositionLayerProjection*>(chainFrameEndInfo.layers[i]);
+
+                    // To patch the resolution of the layer we need to recreate the whole projection & views
+                    // data structures.
+                    auto correctedProjectionLayer = &layerProjectionAllocator.emplace_back(*proj);
+                    auto correctedProjectionViews = layerProjectionViewsAllocator
+                                                        .emplace_back(std::array<XrCompositionLayerProjectionView, 2>(
+                                                            {proj->views[0], proj->views[1]}))
+                                                        .data();
 
                     // For VPRT, we need to handle texture arrays.
                     static_assert(ViewCount == 2);
@@ -580,13 +596,20 @@ namespace {
 
                         topLayer[eye] = swapchainImages.chain[nextImage];
 
-                        // TODO: This is non-compliant AND dangerous. We cannot bypass the constness here and should
-                        // make a copy instead.
-                        ((XrCompositionLayerProjectionView*)&view)->subImage.imageRect.extent.width = m_displayWidth;
-                        ((XrCompositionLayerProjectionView*)&view)->subImage.imageRect.extent.height = m_displayHeight;
+                        // Patch the resolution.
+                        correctedProjectionViews[eye].subImage.imageRect.extent.width = m_displayWidth;
+                        correctedProjectionViews[eye].subImage.imageRect.extent.height = m_displayHeight;
                     }
+
+                    correctedProjectionLayer->views = correctedProjectionViews;
+                    correctedLayers.push_back(
+                        reinterpret_cast<const XrCompositionLayerBaseHeader*>(correctedProjectionLayer));
+                } else {
+                    correctedLayers.push_back(chainFrameEndInfo.layers[i]);
                 }
             }
+
+            chainFrameEndInfo.layers = correctedLayers.data();
 
             // We intentionally exclude the overlay from this timer, as it has its own separate timer.
             m_performanceCounters.endFrameCpuTimer->stop();
@@ -615,7 +638,7 @@ namespace {
 
             m_performanceCounters.numFrames++;
 
-            return OpenXrApi::xrEndFrame(session, frameEndInfo);
+            return OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
         }
 
       private:
