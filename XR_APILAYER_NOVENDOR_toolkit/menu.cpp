@@ -468,6 +468,11 @@ namespace {
 
                 // Advanced displasy.
                 if (overlayType == OverlayType::Advanced) {
+                    m_textRenderer->drawString(fmt::format("app CPU: {}", m_stats.appCpuTimeUs), OVERLAY_COMMON);
+                    top += 1.05f * fontSize;
+                    m_textRenderer->drawString(fmt::format("app GPU: {}", m_stats.appGpuTimeUs), OVERLAY_COMMON);
+                    top += 1.05f * fontSize;
+
                     m_textRenderer->drawString(fmt::format("lay CPU: {}", m_stats.endFrameCpuTimeUs), OVERLAY_COMMON);
                     top += 1.05f * fontSize;
 

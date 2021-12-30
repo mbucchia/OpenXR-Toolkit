@@ -197,10 +197,12 @@ namespace {
                     m_postProcessor =
                         graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
 
+                    m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.endFrameCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.overlayCpuTimer = utilities::CreateCpuTimer();
 
                     for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
+                        m_performanceCounters.appGpuTimer[i] = m_graphicsDevice->createTimer();
                         m_performanceCounters.overlayGpuTimer[i] = m_graphicsDevice->createTimer();
                     }
 
@@ -422,6 +424,17 @@ namespace {
             return result;
         }
 
+        XrResult xrBeginFrame(XrSession session, const XrFrameBeginInfo* frameBeginInfo) override {
+            const XrResult result = OpenXrApi::xrBeginFrame(session, frameBeginInfo);
+            if (XR_SUCCEEDED(result)) {
+                m_performanceCounters.appCpuTimer->start();
+                m_stats.appGpuTimeUs += m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
+                m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
+            }
+
+            return result;
+        }
+
         void updateStatisticsForFrame() {
             const auto now = std::chrono::steady_clock::now();
 
@@ -436,6 +449,8 @@ namespace {
 
                 // Push the last averaged statistics.
                 if (m_performanceCounters.numFrames) {
+                    m_stats.appCpuTimeUs /= m_performanceCounters.numFrames;
+                    m_stats.appGpuTimeUs /= m_performanceCounters.numFrames;
                     m_stats.endFrameCpuTimeUs /= m_performanceCounters.numFrames;
                     m_stats.upscalerGpuTimeUs /= m_performanceCounters.numFrames;
                     m_stats.preProcessorGpuTimeUs /= m_performanceCounters.numFrames;
@@ -446,7 +461,7 @@ namespace {
                 m_menuHandler->updateStatistics(m_stats);
 
                 // Start from fresh!
-                m_stats.endFrameCpuTimeUs = 0;
+                m_stats.appCpuTimeUs = m_stats.appGpuTimeUs = m_stats.endFrameCpuTimeUs = 0;
                 m_stats.overlayCpuTimeUs = m_stats.overlayGpuTimeUs = 0;
                 m_stats.upscalerGpuTimeUs = m_stats.preProcessorGpuTimeUs = m_stats.postProcessorGpuTimeUs = 0;
 
@@ -478,7 +493,11 @@ namespace {
 
             updateStatisticsForFrame();
 
-            m_stats.endFrameCpuTimeUs = m_performanceCounters.endFrameCpuTimer->query();
+            m_performanceCounters.appCpuTimer->stop();
+            m_stats.appCpuTimeUs += m_performanceCounters.appCpuTimer->query();
+            m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
+
+            m_stats.endFrameCpuTimeUs += m_performanceCounters.endFrameCpuTimer->query();
             m_performanceCounters.endFrameCpuTimer->start();
 
             updateConfiguration();
@@ -667,6 +686,8 @@ namespace {
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
 
         struct {
+            std::shared_ptr<utilities::ICpuTimer> appCpuTimer;
+            std::shared_ptr<graphics::IGpuTimer> appGpuTimer[GpuTimerLatency + 1];
             std::shared_ptr<utilities::ICpuTimer> endFrameCpuTimer;
             std::shared_ptr<utilities::ICpuTimer> overlayCpuTimer;
             std::shared_ptr<graphics::IGpuTimer> overlayGpuTimer[GpuTimerLatency + 1];
