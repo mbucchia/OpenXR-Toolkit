@@ -199,6 +199,26 @@ namespace LAYER_NAMESPACE
 		return result;
 	}
 
+	XrResult xrBeginFrame(XrSession session, const XrFrameBeginInfo* frameBeginInfo)
+	{
+		DebugLog("--> xrBeginFrame\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrBeginFrame(session, frameBeginInfo);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrBeginFrame %d\n", result);
+
+		return result;
+	}
+
 	XrResult xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo)
 	{
 		DebugLog("--> xrEndFrame\n");
@@ -273,6 +293,11 @@ namespace LAYER_NAMESPACE
 			{
 				m_xrAcquireSwapchainImage = reinterpret_cast<PFN_xrAcquireSwapchainImage>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrAcquireSwapchainImage);
+			}
+			else if (apiName == "xrBeginFrame")
+			{
+				m_xrBeginFrame = reinterpret_cast<PFN_xrBeginFrame>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrBeginFrame);
 			}
 			else if (apiName == "xrEndFrame")
 			{

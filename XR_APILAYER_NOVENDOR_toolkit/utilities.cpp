@@ -32,11 +32,11 @@ namespace {
     class CpuTimer : public ICpuTimer {
       public:
         void start() override {
-            m_timeStart = std::chrono::steady_clock::now();
+            m_timeStart = std::chrono::high_resolution_clock::now();
         }
 
         void stop() override {
-            m_duration = std::chrono::duration(std::chrono::steady_clock::now() - m_timeStart).count() / 1000;
+            m_duration = std::chrono::duration(std::chrono::high_resolution_clock::now() - m_timeStart).count() / 1000;
         }
 
         uint64_t query(bool reset) const override {
@@ -50,7 +50,7 @@ namespace {
         }
 
       private:
-        std::chrono::time_point<std::chrono::steady_clock> m_timeStart;
+        std::chrono::time_point<std::chrono::high_resolution_clock> m_timeStart;
 
         mutable uint64_t m_duration{0};
     };

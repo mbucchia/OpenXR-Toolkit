@@ -26,6 +26,8 @@ namespace toolkit {
 
     struct LayerStatistics {
         float fps{0.0f};
+        uint64_t appCpuTimeUs{0};
+        uint64_t appGpuTimeUs{0};
         uint64_t endFrameCpuTimeUs{0};
         uint64_t preProcessorGpuTimeUs{0};
         uint64_t upscalerGpuTimeUs{0};
