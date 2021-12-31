@@ -10,6 +10,7 @@ override_functions = [
     "xrDestroySwapchain",
     "xrEnumerateSwapchainImages",
     "xrAcquireSwapchainImage",
+    "xrLocateViews",
     "xrBeginFrame",
     "xrEndFrame"
 ]

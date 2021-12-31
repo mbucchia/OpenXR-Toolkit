@@ -157,6 +157,14 @@ namespace LAYER_NAMESPACE
 	private:
 		PFN_xrEndFrame m_xrEndFrame{ nullptr };
 
+	public:
+		virtual XrResult xrLocateViews(XrSession session, const XrViewLocateInfo* viewLocateInfo, XrViewState* viewState, uint32_t viewCapacityInput, uint32_t* viewCountOutput, XrView* views)
+		{
+			return m_xrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
+		}
+	private:
+		PFN_xrLocateViews m_xrLocateViews{ nullptr };
+
 
 
 	};

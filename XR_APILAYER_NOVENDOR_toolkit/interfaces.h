@@ -62,6 +62,7 @@ namespace toolkit {
         const std::string SettingScalingType = "scaling_type";
         const std::string SettingScaling = "scaling";
         const std::string SettingSharpness = "sharpness";
+        const std::string SettingICD = "icd";
 
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
