@@ -33,6 +33,7 @@ namespace {
     using namespace toolkit::graphics;
     using namespace toolkit::menu;
     using namespace toolkit::log;
+    using namespace toolkit::utilities;
 
     enum class TextStyle { Normal, Selected };
 
@@ -199,6 +200,7 @@ namespace {
 
     constexpr uint32_t ColorDefault = 0xffffffff;
     constexpr uint32_t ColorSelected = 0xff0099ff;
+    constexpr uint32_t ColorWarning = 0xff0000ff;
 
     enum class MenuState { Splash, NotVisible, Visible };
     enum class MenuEntryType { Slider, Choice, Separator, RestoreDefaultsButton, ExitButton };
@@ -223,8 +225,12 @@ namespace {
     // The logic of our menus.
     class MenuHandler : public IMenuHandler {
       public:
-        MenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> device)
-            : m_configManager(configManager), m_device(device) {
+        MenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                    std::shared_ptr<IDevice> device,
+                    uint32_t displayWidth,
+                    uint32_t displayHeight)
+            : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
+              m_displayHeight(displayHeight) {
             if (m_device->getApi() == Api::D3D11) {
                 m_textRenderer = std::make_shared<D3D11TextRenderer>(device);
             } else {
@@ -262,10 +268,13 @@ namespace {
                                          return labels[value];
                                      }});
             m_upscalingGroup.start = m_menuEntries.size();
-            m_menuEntries.push_back({"Factor", MenuEntryType::Slider, SettingScaling, 100, 200, [](int value) {
-                                         // TODO: Display resolution.
-                                         return fmt::format("{}%", value);
+            m_menuEntries.push_back({"Factor", MenuEntryType::Slider, SettingScaling, 100, 200, [&](int value) {
+                                         // We don't even use value, the utility function below will query it.
+                                         const auto& resolution =
+                                             GetScaledResolution(m_configManager, m_displayWidth, m_displayHeight);
+                                         return fmt::format("{}% ({}x{})", value, resolution.first, resolution.second);
                                      }});
+            m_originalScalingValue = getCurrentScaling();
             m_menuEntries.push_back({"Sharpness", MenuEntryType::Slider, SettingSharpness, 0, 100, [](int value) {
                                          return fmt::format("{}%", value);
                                      }});
@@ -303,6 +312,12 @@ namespace {
             m_configManager->setEnumDefault(SettingMenuTimeout, MenuTimeout::Medium);
             m_menuEntries.push_back({"Restore defaults", MenuEntryType::RestoreDefaultsButton, BUTTON_OR_SEPARATOR});
             m_menuEntries.push_back({"Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
+        }
+
+        uint32_t getCurrentScaling() const {
+            return m_configManager->getEnumValue<ScalingType>(SettingScalingType) != ScalingType::None
+                       ? m_configManager->getValue(SettingScaling)
+                       : 0;
         }
 
         void handleInput() override {
@@ -367,6 +382,9 @@ namespace {
                         m_menuEntriesTitleWidth = 0.0f;
                     }
 
+                    // When changing the upscaling, display the warning.
+                    m_needRestart = m_originalScalingValue != getCurrentScaling();
+
                     break;
                 }
 
@@ -419,6 +437,7 @@ namespace {
             const auto alpha = (unsigned int)(std::clamp(timeout - duration, 0.0, 1.0) * 255.0);
             const auto colorNormal = (ColorDefault & 0xffffff) | (alpha << 24);
             const auto colorSelected = (ColorSelected & 0xffffff) | (alpha << 24);
+            const auto colorWarning = (ColorWarning & 0xffffff) | (alpha << 24);
 
             // Leave upon timeout.
             if (duration >= timeout) {
@@ -445,7 +464,7 @@ namespace {
             } else if (m_state == MenuState::Visible) {
                 float top = topAlign;
 
-                m_textRenderer->drawString(L"\x2193 : CTRL+F1   \x2190 : CTRL+F2   \x2192 : CTRL+F3",
+                m_textRenderer->drawString(L"\x25BC : CTRL+F1   \x25C4 : CTRL+F2   \x25BA : CTRL+F3",
                                            TextStyle::Normal,
                                            fontSize,
                                            leftAlign,
@@ -526,6 +545,16 @@ namespace {
 
                     top += 1.05f * fontSize;
                 }
+
+                if (m_needRestart) {
+                    top += fontSize;
+                    m_textRenderer->drawString(L"\x25CA  Some settings require to restart the VR session \x25CA",
+                                               TextStyle::Normal,
+                                               fontSize,
+                                               leftAlign,
+                                               top,
+                                               colorWarning);
+                }
             }
 
             auto overlayType = m_configManager->getEnumValue<OverlayType>(SettingOverlayType);
@@ -574,6 +603,8 @@ namespace {
       private:
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
+        const uint32_t m_displayWidth;
+        const uint32_t m_displayHeight;
         std::shared_ptr<ITextRenderer> m_textRenderer;
         LayerStatistics m_stats{};
 
@@ -587,6 +618,9 @@ namespace {
 
         MenuGroup m_upscalingGroup;
 
+        uint32_t m_originalScalingValue{0};
+        bool m_needRestart{false};
+
         mutable MenuState m_state{MenuState::NotVisible};
         mutable float m_menuEntriesTitleWidth{0.0f};
     };
@@ -596,8 +630,10 @@ namespace {
 namespace toolkit::menu {
 
     std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                                                    std::shared_ptr<toolkit::graphics::IDevice> device) {
-        return std::make_shared<MenuHandler>(configManager, device);
+                                                    std::shared_ptr<toolkit::graphics::IDevice> device,
+                                                    uint32_t displayWidth,
+                                                    uint32_t displayHeight) {
+        return std::make_shared<MenuHandler>(configManager, device, displayWidth, displayHeight);
     }
 
 } // namespace toolkit::menu

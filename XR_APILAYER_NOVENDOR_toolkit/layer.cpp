@@ -123,8 +123,7 @@ namespace {
 
                 switch (upscaleMode) {
                 case config::ScalingType::NIS: {
-                    auto resolution =
-                        graphics::GetNISScaledResolution(m_configManager, m_displayWidth, m_displayHeight);
+                    auto resolution = utilities::GetScaledResolution(m_configManager, m_displayWidth, m_displayHeight);
                     inputWidth = resolution.first;
                     inputHeight = resolution.second;
                     break;
@@ -212,7 +211,8 @@ namespace {
 
                     m_performanceCounters.lastWindowStart = std::chrono::steady_clock::now();
 
-                    m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice);
+                    m_menuHandler =
+                        menu::CreateMenuHandler(m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
                 } else {
                     Log("Unsupported graphics runtime.\n");
                 }
