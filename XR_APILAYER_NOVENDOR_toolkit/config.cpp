@@ -71,6 +71,10 @@ namespace {
     class ConfigManager : public IConfigManager {
       public:
         ConfigManager(const std::string& appName) : m_appName(appName) {
+            // Check for safe mode.
+            m_safeMode =
+                RegGetDword(HKEY_LOCAL_MACHINE, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"safe_mode", 0);
+
             std::string baseKey = RegPrefix + "\\" + appName;
             m_baseKey = std::wstring(baseKey.begin(), baseKey.end());
         }
@@ -145,14 +149,14 @@ namespace {
             return entry.value;
         }
 
-        void setValue(const std::string& name, int value) override {
+        void setValue(const std::string& name, int value, bool noCommitDelay) override {
             auto it = m_values.find(name);
 
             ConfigValue newEntry;
             ConfigValue& entry = it != m_values.end() ? it->second : newEntry;
             entry.value = value;
             entry.changedSinceLastQuery = true;
-            entry.writeCountdown = WriteDelay;
+            entry.writeCountdown = noCommitDelay ? 1 : WriteDelay;
             if (it == m_values.end()) {
                 m_values.insert_or_assign(name, entry);
             }
@@ -185,6 +189,10 @@ namespace {
             }
         }
 
+        bool isSafeMode() const override {
+            return m_safeMode;
+        }
+
         void hardReset() override {
             RegDeleteKey(HKEY_CURRENT_USER, m_baseKey);
             for (auto& value : m_values) {
@@ -198,6 +206,12 @@ namespace {
 
       private:
         void readValue(const std::string& name, ConfigValue& entry) const {
+            if (m_safeMode) {
+                entry.value = entry.defaultValue;
+                entry.changedSinceLastQuery = true;
+                return;
+            }
+
             entry.value =
                 RegGetDword(HKEY_CURRENT_USER, m_baseKey, std::wstring(name.begin(), name.end()), entry.defaultValue);
             entry.changedSinceLastQuery = true;
@@ -209,6 +223,7 @@ namespace {
 
         const std::string m_appName;
         std::wstring m_baseKey;
+        bool m_safeMode;
 
         mutable std::map<std::string, ConfigValue> m_values;
     };
