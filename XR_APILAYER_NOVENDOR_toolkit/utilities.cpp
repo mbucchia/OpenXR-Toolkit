@@ -59,8 +59,31 @@ namespace {
 
 namespace toolkit::utilities {
 
+    using namespace toolkit::config;
+
     std::shared_ptr<ICpuTimer> CreateCpuTimer() {
         return std::make_shared<CpuTimer>();
+    }
+
+    std::pair<uint32_t, uint32_t> GetScaledResolution(std::shared_ptr<IConfigManager> configManager,
+                                                      uint32_t outputWidth,
+                                                      uint32_t outputHeight) {
+        uint32_t inputWidth = outputWidth;
+        uint32_t inputHeight = outputHeight;
+
+        const int upscalingPercent = configManager->getValue(SettingScaling);
+        if (upscalingPercent > 100) {
+            inputWidth = (uint32_t)((100.0f / upscalingPercent) * outputWidth);
+            if (inputWidth % 2) {
+                inputWidth++;
+            }
+            inputHeight = (uint32_t)((100.0f / upscalingPercent) * outputHeight);
+            if (inputHeight % 2) {
+                inputHeight++;
+            }
+        }
+
+        return std::make_pair(inputWidth, inputHeight);
     }
 
 } // namespace toolkit::utilities
