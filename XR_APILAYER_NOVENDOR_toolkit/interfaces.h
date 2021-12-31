@@ -56,6 +56,7 @@ namespace toolkit {
 
     namespace config {
 
+        const std::string SettingOverlayEyeOffset = "overlay_eye_offset";
         const std::string SettingOverlayType = "overlay";
         const std::string SettingMenuFontSize = "font_size";
         const std::string SettingMenuTimeout = "menu_timeout";
@@ -372,7 +373,7 @@ namespace toolkit {
             virtual ~IMenuHandler() = default;
 
             virtual void handleInput() = 0;
-            virtual void render(std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
+            virtual void render(std::shared_ptr<graphics::ITexture> renderTarget, uint32_t eye = 0) const = 0;
             virtual void updateStatistics(const LayerStatistics& stats) = 0;
         };
 
