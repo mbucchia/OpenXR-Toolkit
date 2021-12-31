@@ -482,7 +482,7 @@ namespace {
 
         XrResult xrBeginFrame(XrSession session, const XrFrameBeginInfo* frameBeginInfo) override {
             const XrResult result = OpenXrApi::xrBeginFrame(session, frameBeginInfo);
-            if (XR_SUCCEEDED(result)) {
+            if (XR_SUCCEEDED(result) && m_graphicsDevice) {
                 m_performanceCounters.appCpuTimer->start();
                 m_stats.appGpuTimeUs += m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
                 m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
@@ -712,10 +712,10 @@ namespace {
                     // render each view one at a time.
                     m_performanceCounters.overlayCpuTimer->start();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
-                    m_menuHandler->render(topLayer[0]);
+                    m_menuHandler->render(topLayer[0], 0);
                     static_assert(ViewCount == 2);
                     if (topLayer[1] != topLayer[0]) {
-                        m_menuHandler->render(topLayer[1]);
+                        m_menuHandler->render(topLayer[1], 1);
                     }
                     m_performanceCounters.overlayCpuTimer->stop();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();

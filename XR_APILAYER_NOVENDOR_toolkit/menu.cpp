@@ -41,7 +41,7 @@ namespace {
     struct ITextRenderer {
         virtual ~ITextRenderer() = default;
 
-        virtual void begin(std::shared_ptr<ITexture> renderTarget) = 0;
+        virtual void begin(std::shared_ptr<ITexture> renderTarget, float rightEyeOffset = 0.0f) = 0;
         virtual void end() = 0;
 
         virtual void drawString(std::wstring string,
@@ -86,8 +86,9 @@ namespace {
                 device->getNative<D3D11>(), dwriteFactory, &params, &m_fontSelected));
         }
 
-        void begin(std::shared_ptr<ITexture> renderTarget) override {
+        void begin(std::shared_ptr<ITexture> renderTarget, float rightEyeOffset) override {
             m_renderTarget = renderTarget;
+            m_rightEyeOffset = rightEyeOffset;
         }
 
         void end() override {
@@ -151,7 +152,7 @@ namespace {
                     font->DrawString(m_deferredContext.Get(),
                                      string.c_str(),
                                      size,
-                                     x,
+                                     x + (eye * m_rightEyeOffset),
                                      y,
                                      color,
                                      (alignRight ? FW1_RIGHT : FW1_LEFT) | FW1_NOFLUSH);
@@ -193,6 +194,7 @@ namespace {
         ComPtr<IFW1FontWrapper> m_fontSelected;
 
         std::shared_ptr<ITexture> m_renderTarget;
+        float m_rightEyeOffset;
         mutable ComPtr<ID3D11DeviceContext> m_deferredContext;
     };
 
@@ -310,6 +312,11 @@ namespace {
                                          return labels[value];
                                      }});
             m_configManager->setEnumDefault(SettingMenuTimeout, MenuTimeout::Medium);
+            m_menuEntries.push_back(
+                {"Menu eye offset", MenuEntryType::Slider, SettingOverlayEyeOffset, -500, 500, [](int value) {
+                     return fmt::format("{}px", value);
+                 }});
+            m_configManager->setDefault(SettingOverlayEyeOffset, 0);
             m_menuEntries.push_back({"Restore defaults", MenuEntryType::RestoreDefaultsButton, BUTTON_OR_SEPARATOR});
             m_menuEntries.push_back({"Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
         }
@@ -418,11 +425,15 @@ namespace {
                                   m_configManager->getEnumValue<ScalingType>(SettingScalingType) != ScalingType::None);
         }
 
-        void render(std::shared_ptr<ITexture> renderTarget) const override {
-            m_textRenderer->begin(renderTarget);
+        void render(std::shared_ptr<ITexture> renderTarget, uint32_t eye) const override {
+            assert(eye == 0 || eye == 1);
 
-            const float leftAlign = renderTarget->getInfo().width / 4.0f;
-            const float rightAlign = 2 * renderTarget->getInfo().width / 3.0f;
+            const float rightEyeOffset = (float)m_configManager->getValue(SettingOverlayEyeOffset);
+
+            m_textRenderer->begin(renderTarget, rightEyeOffset);
+
+            const float leftAlign = (renderTarget->getInfo().width / 4.0f) + (eye * rightEyeOffset);
+            const float rightAlign = (2 * renderTarget->getInfo().width / 3.0f) + (eye * rightEyeOffset);
             const float topAlign = renderTarget->getInfo().height / 3.0f;
 
             const float fontSizes[(int)MenuFontSize::MaxValue] = {
