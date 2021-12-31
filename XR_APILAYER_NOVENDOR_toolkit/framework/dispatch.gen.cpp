@@ -239,6 +239,26 @@ namespace LAYER_NAMESPACE
 		return result;
 	}
 
+	XrResult xrLocateViews(XrSession session, const XrViewLocateInfo* viewLocateInfo, XrViewState* viewState, uint32_t viewCapacityInput, uint32_t* viewCountOutput, XrView* views)
+	{
+		DebugLog("--> xrLocateViews\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrLocateViews %d\n", result);
+
+		return result;
+	}
+
 
 	// Auto-generated dispatcher handler.
 	XrResult OpenXrApi::xrGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function)
@@ -303,6 +323,11 @@ namespace LAYER_NAMESPACE
 			{
 				m_xrEndFrame = reinterpret_cast<PFN_xrEndFrame>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrEndFrame);
+			}
+			else if (apiName == "xrLocateViews")
+			{
+				m_xrLocateViews = reinterpret_cast<PFN_xrLocateViews>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrLocateViews);
 			}
 
 		}

@@ -41,6 +41,8 @@ namespace {
     using namespace toolkit;
     using namespace toolkit::log;
 
+    using namespace xr::math;
+
     struct SwapchainImages {
         std::vector<std::shared_ptr<graphics::ITexture>> chain;
 
@@ -418,6 +420,42 @@ namespace {
                 auto swapchainIt = m_swapchains.find(swapchain);
                 if (swapchainIt != m_swapchains.end()) {
                     swapchainIt->second.acquiredImageIndex = *index;
+                }
+            }
+
+            return result;
+        }
+
+        XrResult xrLocateViews(XrSession session,
+                               const XrViewLocateInfo* viewLocateInfo,
+                               XrViewState* viewState,
+                               uint32_t viewCapacityInput,
+                               uint32_t* viewCountOutput,
+                               XrView* views) override {
+            const XrResult result =
+                OpenXrApi::xrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
+            if (XR_SUCCEEDED(result) &&
+                viewLocateInfo->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
+                assert(*viewCountOutput == ViewCount);
+
+                const auto vec = views[1].pose.position - views[0].pose.position;
+                const auto ipd = Length(vec);
+
+                // If it's the first time, initialize the ICD to be the same as IPD.
+                int icdInTenthmm = m_configManager->getValue(config::SettingICD);
+                if (icdInTenthmm == 0) {
+                    icdInTenthmm = (int)(ipd * 10000.0f);
+                    m_configManager->setValue(config::SettingICD, icdInTenthmm);
+                }
+                const float icd = icdInTenthmm / 10000.0f;
+
+                // Override the ICD if requested. We can't do a real epsilon-compare since we use this weird tenth of mm intermediate unit.
+                if (std::abs(ipd - icd) > 0.00005f) {
+                    const auto center = views[0].pose.position + vec / 2.0f;
+                    const auto unit = Normalize(vec);
+
+                    views[0].pose.position = center - unit * (icd / 2.0f);
+                    views[1].pose.position = center + unit * (icd / 2.0f);
                 }
             }
 

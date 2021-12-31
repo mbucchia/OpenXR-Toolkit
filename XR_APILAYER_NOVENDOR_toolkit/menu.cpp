@@ -272,6 +272,12 @@ namespace {
             m_upscalingGroup.end = m_menuEntries.size();
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
+            // The unit for ICD is tenth of millimeters.
+            m_menuEntries.push_back({"ICD", MenuEntryType::Slider, SettingICD, 1, 10000, [](int value) {
+                                         return fmt::format("{}mm", value / 10.0f);
+                                     }});
+            m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
+
             m_menuEntries.push_back({"Font size",
                                      MenuEntryType::Choice,
                                      SettingMenuFontSize,
