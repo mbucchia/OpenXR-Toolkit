@@ -98,6 +98,8 @@ namespace {
                 m_configManager->setDefault(config::SettingScaling, 100);
                 m_configManager->setDefault(config::SettingSharpness, 20);
 
+                m_configManager->setDefault(config::SettingFOV, 100);
+
                 // Remember the XrSystemId to use.
                 m_vrSystemId = *systemId;
             }
@@ -449,13 +451,29 @@ namespace {
                 }
                 const float icd = icdInTenthmm / 10000.0f;
 
-                // Override the ICD if requested. We can't do a real epsilon-compare since we use this weird tenth of mm intermediate unit.
+                // Override the ICD if requested. We can't do a real epsilon-compare since we use this weird tenth of mm
+                // intermediate unit.
                 if (std::abs(ipd - icd) > 0.00005f) {
                     const auto center = views[0].pose.position + vec / 2.0f;
                     const auto unit = Normalize(vec);
 
                     views[0].pose.position = center - unit * (icd / 2.0f);
                     views[1].pose.position = center + unit * (icd / 2.0f);
+                }
+
+                // Override the FOV if requested.
+                const int fov = m_configManager->getValue(config::SettingFOV);
+                if (fov != 100) {
+                    const float multiplier = fov / 100.0f;
+
+                    views[0].fov.angleUp *= multiplier;
+                    views[0].fov.angleDown *= multiplier;
+                    views[0].fov.angleLeft *= multiplier;
+                    views[0].fov.angleRight *= multiplier;
+                    views[1].fov.angleUp *= multiplier;
+                    views[1].fov.angleDown *= multiplier;
+                    views[1].fov.angleLeft *= multiplier;
+                    views[1].fov.angleRight *= multiplier;
                 }
             }
 
@@ -656,6 +674,17 @@ namespace {
                         // Patch the resolution.
                         correctedProjectionViews[eye].subImage.imageRect.extent.width = m_displayWidth;
                         correctedProjectionViews[eye].subImage.imageRect.extent.height = m_displayHeight;
+
+                        // Patch the FOV when set above 100%.
+                        const int fov = m_configManager->getValue(config::SettingFOV);
+                        if (fov > 100) {
+                            const float multiplier = 100.0f / fov;
+
+                            correctedProjectionViews[eye].fov.angleUp *= multiplier;
+                            correctedProjectionViews[eye].fov.angleDown *= multiplier;
+                            correctedProjectionViews[eye].fov.angleLeft *= multiplier;
+                            correctedProjectionViews[eye].fov.angleRight *= multiplier;
+                        }
                     }
 
                     correctedProjectionLayer->views = correctedProjectionViews;
