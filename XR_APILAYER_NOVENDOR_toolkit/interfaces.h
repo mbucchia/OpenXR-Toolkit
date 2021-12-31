@@ -81,12 +81,14 @@ namespace toolkit {
 
             virtual int getValue(const std::string& name) const = 0;
             virtual int peekValue(const std::string& name) const = 0;
-            virtual void setValue(const std::string& name, int value) = 0;
+            virtual void setValue(const std::string& name, int value, bool noCommitDelay = false) = 0;
             virtual bool hasChanged(const std::string& name) const = 0;
 
             virtual void resetToDefaults() = 0;
 
             virtual void hardReset() = 0;
+
+            virtual bool isSafeMode() const = 0;
 
             template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
             void setEnumDefault(const std::string& name, T value) {

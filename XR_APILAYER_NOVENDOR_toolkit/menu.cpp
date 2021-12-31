@@ -375,7 +375,13 @@ namespace {
                     const int value = m_configManager->peekValue(menuEntry.configName);
                     const int newValue =
                         std::clamp(value + (moveLeft ? -1 : 1), menuEntry.minValue, menuEntry.maxValue);
-                    m_configManager->setValue(menuEntry.configName, newValue);
+
+                    // When changing the upscaling, people might immediately exit VR to test the change. Bypass the
+                    // commit delay.
+                    const bool noCommitDelay =
+                        menuEntry.configName == SettingScalingType || menuEntry.configName == SettingScaling;
+
+                    m_configManager->setValue(menuEntry.configName, newValue, noCommitDelay);
 
                     // When changing the font size, force re-alignment.
                     if (menuEntry.configName == SettingMenuFontSize) {
@@ -546,10 +552,19 @@ namespace {
                     top += 1.05f * fontSize;
                 }
 
-                if (m_needRestart) {
+                if (m_configManager->isSafeMode()) {
+                    top += fontSize;
+                    m_textRenderer->drawString(
+                        L"\x25CA  Running in safe mode, settings are cleared when restarting the VR session \x25CA",
+                        TextStyle::Selected,
+                        fontSize,
+                        leftAlign,
+                        top,
+                        colorWarning);
+                } else if (m_needRestart) {
                     top += fontSize;
                     m_textRenderer->drawString(L"\x25CA  Some settings require to restart the VR session \x25CA",
-                                               TextStyle::Normal,
+                                               TextStyle::Selected,
                                                fontSize,
                                                leftAlign,
                                                top,
