@@ -195,6 +195,8 @@ namespace {
         mutable ComPtr<ID3D11DeviceContext> m_deferredContext;
     };
 
+    constexpr double KeyRepeat = 0.2;
+
     constexpr uint32_t ColorDefault = 0xffffffff;
     constexpr uint32_t ColorSelected = 0xff0099ff;
 
@@ -268,8 +270,8 @@ namespace {
                                          return fmt::format("{}%", value);
                                      }});
             m_upscalingGroup.end = m_menuEntries.size();
-
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
+
             m_menuEntries.push_back({"Font size",
                                      MenuEntryType::Choice,
                                      SettingMenuFontSize,
@@ -295,12 +297,23 @@ namespace {
         }
 
         void handleInput() override {
+            const auto now = std::chrono::steady_clock::now();
+
+            // Check whether this is a long press and the event needs to be repeated.
+            const double keyRepeat = GetAsyncKeyState(VK_SHIFT) ? KeyRepeat / 10 : KeyRepeat;
+            const bool repeat = std::chrono::duration<double>(now - m_lastInput).count() > keyRepeat;
+
+            m_wasF1Pressed = m_wasF1Pressed && !repeat;
             const bool isF1Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F1);
             const bool menuControl = !m_wasF1Pressed && isF1Pressed;
             m_wasF1Pressed = isF1Pressed;
+
+            m_wasF2Pressed = m_wasF2Pressed && !repeat;
             const bool isF2Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F2);
             const bool moveLeft = !m_wasF2Pressed && isF2Pressed;
             m_wasF2Pressed = isF2Pressed;
+
+            m_wasF3Pressed = m_wasF3Pressed && !repeat;
             const bool isF3Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F3);
             const bool moveRight = !m_wasF3Pressed && isF3Pressed;
             m_wasF3Pressed = isF3Pressed;
@@ -315,7 +328,7 @@ namespace {
                              !m_menuEntries[m_selectedItem].visible);
                 }
 
-                m_lastInput = std::chrono::steady_clock::now();
+                m_lastInput = now;
             }
 
             if (m_state == MenuState::Visible && (moveLeft || moveRight)) {
@@ -348,7 +361,7 @@ namespace {
                     break;
                 }
 
-                m_lastInput = std::chrono::steady_clock::now();
+                m_lastInput = now;
             }
 
             if (menuControl && moveLeft && moveRight) {
