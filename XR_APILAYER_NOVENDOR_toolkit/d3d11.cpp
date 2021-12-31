@@ -202,23 +202,6 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             return m_device;
         }
 
-        void clear(float top, float left, float bottom, float right, XrColor4f& color) const override {
-            ComPtr<ID3D11DeviceContext1> d3d11Context;
-            if (FAILED(m_device->getContext<D3D11>()->QueryInterface(
-                    __uuidof(ID3D11DeviceContext1), reinterpret_cast<void**>(d3d11Context.GetAddressOf())))) {
-                // The app did not use a sufficient FEATURE_LEVEL. Nothing we can do.
-                return;
-            }
-
-            float clearColor[] = {color.r, color.g, color.b, color.a};
-            D3D11_RECT rect;
-            rect.top = (LONG)top;
-            rect.left = (LONG)left;
-            rect.bottom = (LONG)bottom;
-            rect.right = (LONG)right;
-            d3d11Context->ClearView(m_renderTargetView.Get(), clearColor, &rect, 1);
-        }
-
         void* getNativePtr() const override {
             return m_renderTargetView.Get();
         }
@@ -241,10 +224,6 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 
         std::shared_ptr<IDevice> getDevice() const override {
             return m_device;
-        }
-
-        void clearDepth(float value) override {
-            m_device->getContext<D3D11>()->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, value, 0);
         }
 
         void* getNativePtr() const override {
@@ -600,176 +579,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 
     class D3D11Device : public IDevice, public std::enable_shared_from_this<D3D11Device> {
       public:
-        D3D11Device(ID3D11Device* device) : m_device(device) {
+        D3D11Device(ID3D11Device* device, bool textOnly = false) : m_device(device) {
             m_device->GetImmediateContext(&m_context);
             m_currentContext = m_context;
-
-            // Create common resources.
-            {
-                D3D11_SAMPLER_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
-                desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-                desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-                desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-                desc.MaxAnisotropy = 1;
-                desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-                CHECK_HRCMD(m_device->CreateSamplerState(&desc, &m_linearClampSamplerPS));
-            }
-            {
-                D3D11_SAMPLER_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-                desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-                desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-                desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-                desc.MaxAnisotropy = 1;
-                desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-                desc.MinLOD = D3D11_MIP_LOD_BIAS_MIN;
-                desc.MaxLOD = D3D11_MIP_LOD_BIAS_MAX;
-                CHECK_HRCMD(m_device->CreateSamplerState(&desc, &m_linearClampSamplerCS));
-            }
-            {
-                D3D11_RASTERIZER_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.FillMode = D3D11_FILL_SOLID;
-                desc.CullMode = D3D11_CULL_NONE;
-                desc.FrontCounterClockwise = TRUE;
-                CHECK_HRCMD(m_device->CreateRasterizerState(&desc, &m_quadRasterizer));
-                desc.MultisampleEnable = TRUE;
-                CHECK_HRCMD(m_device->CreateRasterizerState(&desc, &m_quadRasterizerMSAA));
-            }
-            {
-                ComPtr<ID3DBlob> errors;
-                ComPtr<ID3DBlob> vsBytes;
-                HRESULT hr = D3DCompile(MeshShaders.c_str(),
-                                        MeshShaders.length(),
-                                        nullptr,
-                                        nullptr,
-                                        nullptr,
-                                        "vsMain",
-                                        "vs_5_0",
-                                        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
-                                        0,
-                                        &vsBytes,
-                                        &errors);
-                if (FAILED(hr)) {
-                    if (errors) {
-                        Log("%s", (char*)errors->GetBufferPointer());
-                    }
-                    CHECK_HRESULT(hr, "Failed to compile shader");
-                }
-                CHECK_HRCMD(m_device->CreateVertexShader(
-                    vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, &m_meshVertexShader));
-                {
-                    const std::string debugName = "SimpleMesh VS";
-                    m_meshVertexShader->SetPrivateData(
-                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
-                }
-
-                const D3D11_INPUT_ELEMENT_DESC vertexDesc[] = {
-                    {"POSITION",
-                     0,
-                     DXGI_FORMAT_R32G32B32_FLOAT,
-                     0,
-                     D3D11_APPEND_ALIGNED_ELEMENT,
-                     D3D11_INPUT_PER_VERTEX_DATA,
-                     0},
-                    {"COLOR",
-                     0,
-                     DXGI_FORMAT_R32G32B32_FLOAT,
-                     0,
-                     D3D11_APPEND_ALIGNED_ELEMENT,
-                     D3D11_INPUT_PER_VERTEX_DATA,
-                     0},
-                };
-
-                CHECK_HRCMD(m_device->CreateInputLayout(vertexDesc,
-                                                        (UINT)std::size(vertexDesc),
-                                                        vsBytes->GetBufferPointer(),
-                                                        vsBytes->GetBufferSize(),
-                                                        &m_meshInputLayout));
-            }
-            {
-                ComPtr<ID3DBlob> errors;
-                ComPtr<ID3DBlob> psBytes;
-                HRESULT hr = D3DCompile(MeshShaders.c_str(),
-                                        MeshShaders.length(),
-                                        nullptr,
-                                        nullptr,
-                                        nullptr,
-                                        "psMain",
-                                        "ps_5_0",
-                                        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
-                                        0,
-                                        &psBytes,
-                                        &errors);
-                if (FAILED(hr)) {
-                    if (errors) {
-                        Log("%s", (char*)errors->GetBufferPointer());
-                    }
-                    CHECK_HRESULT(hr, "Failed to compile shader");
-                }
-                CHECK_HRCMD(m_device->CreatePixelShader(
-                    psBytes->GetBufferPointer(), psBytes->GetBufferSize(), nullptr, &m_meshPixelShader));
-                {
-                    const std::string debugName = "SimpleMesh PS";
-                    m_meshPixelShader->SetPrivateData(
-                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
-                }
-            }
-            {
-                D3D11_DEPTH_STENCIL_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.DepthEnable = true;
-                desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-                desc.DepthFunc = D3D11_COMPARISON_GREATER;
-                CHECK_HRCMD(m_device->CreateDepthStencilState(&desc, &m_reversedZDepthNoStencilTest));
-            }
-            {
-                ComPtr<ID3DBlob> errors;
-                ComPtr<ID3DBlob> vsBytes;
-                HRESULT hr = D3DCompile(QuadVertexShader.c_str(),
-                                        QuadVertexShader.length(),
-                                        nullptr,
-                                        nullptr,
-                                        nullptr,
-                                        "vsMain",
-                                        "vs_5_0",
-                                        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
-                                        0,
-                                        &vsBytes,
-                                        &errors);
-                if (FAILED(hr)) {
-                    if (errors) {
-                        Log("%s", (char*)errors->GetBufferPointer());
-                    }
-                    CHECK_HRESULT(hr, "Failed to compile shader");
-                }
-                CHECK_HRCMD(m_device->CreateVertexShader(
-                    vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, &m_quadVertexShader));
-                {
-                    const std::string debugName = "Quad PS";
-                    m_quadVertexShader->SetPrivateData(
-                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
-                }
-            }
-            {
-                CHECK_HRCMD(FW1CreateFactory(FW1_VERSION, &m_fontWrapperFactory));
-
-                CHECK_HRCMD(m_fontWrapperFactory->CreateFontWrapper(m_device.Get(), FontFamily.c_str(), &m_fontNormal));
-
-                IDWriteFactory* dwriteFactory = nullptr;
-                CHECK_HRCMD(m_fontNormal->GetDWriteFactory(&dwriteFactory));
-                FW1_FONTWRAPPERCREATEPARAMS params;
-                ZeroMemory(&params, sizeof(params));
-                params.DefaultFontParams.pszFontFamily = FontFamily.c_str();
-                params.DefaultFontParams.FontWeight = DWRITE_FONT_WEIGHT_BOLD;
-                params.DefaultFontParams.FontStretch = DWRITE_FONT_STRETCH_NORMAL;
-                params.DefaultFontParams.FontStyle = DWRITE_FONT_STYLE_NORMAL;
-                CHECK_HRCMD(
-                    m_fontWrapperFactory->CreateFontWrapper(m_device.Get(), dwriteFactory, &params, &m_fontBold));
-            }
 
             {
                 ComPtr<IDXGIDevice> dxgiDevice;
@@ -788,8 +600,15 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                                [](wchar_t c) { return (char)c; });
 
                 // Log the adapter name to help debugging customer issues.
-                Log("Using adapter: %s\n", m_deviceName.c_str());
+                Log("Using Direct3D 11 on adapter: %s\n", m_deviceName.c_str());
             }
+
+            // Create common resources.
+            if (!textOnly) {
+                initializeShadingResources();
+                initializeMeshResources();
+            }
+            initializeTextResources();
         }
 
         ~D3D11Device() override {
@@ -835,6 +654,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         }
 
         void saveContext(bool clear) override {
+            // Ensure we are not dropping an unfinished context.
+            assert(m_currentContext == m_context);
+
             CHECK_HRCMD(m_device->CreateDeferredContext(0, &m_currentContext));
             if (clear) {
                 m_currentContext->ClearState();
@@ -842,11 +664,23 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         }
 
         void restoreContext() override {
+            // Ensure saveContext() was called.
+            assert(m_currentContext != m_context);
+
             ComPtr<ID3D11CommandList> commandList;
             CHECK_HRCMD(m_currentContext->FinishCommandList(FALSE, &commandList));
             m_context->ExecuteCommandList(commandList.Get(), TRUE);
 
             m_currentContext = m_context;
+        }
+
+        void flushContext(bool blocking) override {
+            // Ensure we are not dropping an unfinished context.
+            assert(m_currentContext == m_context);
+
+            if (blocking) {
+                m_currentContext->Flush();
+            }
         }
 
         std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
@@ -1081,7 +915,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 if (slice == -1) {
                     setRenderTargets({output}, nullptr);
                 } else {
-                    setRenderTargets({std::make_pair(output, slice)}, nullptr);
+                    setRenderTargets({std::make_pair(output, slice)}, {});
                 }
 
                 D3D11_VIEWPORT viewport;
@@ -1155,7 +989,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             }
         }
 
-        void clearRenderTargets() override {
+        void unsetRenderTargets() override {
             std::vector<ID3D11RenderTargetView*> rtvs;
 
             for (int i = 0; i < 8; i++) {
@@ -1171,23 +1005,15 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 
         void setRenderTargets(std::vector<std::shared_ptr<ITexture>> renderTargets,
                               std::shared_ptr<ITexture> depthBuffer) override {
-            std::vector<ID3D11RenderTargetView*> rtvs;
-
+            std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargetsNoSlice;
             for (auto renderTarget : renderTargets) {
-                rtvs.push_back(renderTarget->getRenderTargetView()->getNative<D3D11>());
+                renderTargetsNoSlice.push_back(std::make_pair(renderTarget, -1));
             }
-
-            m_currentContext->OMSetRenderTargets((UINT)rtvs.size(),
-                                                 rtvs.data(),
-                                                 depthBuffer ? depthBuffer->getDepthStencilView()->getNative<D3D11>()
-                                                             : nullptr);
-
-            m_currentDrawRenderTarget = renderTargets.size() > 0 ? renderTargets[0] : nullptr;
-            m_currentDrawDepthBuffer = depthBuffer;
+            setRenderTargets(renderTargetsNoSlice, std::make_pair(depthBuffer, -1));
         }
 
         void setRenderTargets(std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargets,
-                              std::shared_ptr<ITexture> depthBuffer) override {
+                              std::pair<std::shared_ptr<ITexture>, int32_t> depthBuffer) override {
             std::vector<ID3D11RenderTargetView*> rtvs;
 
             for (auto renderTarget : renderTargets) {
@@ -1199,16 +1025,76 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                     rtvs.push_back(renderTarget.first->getRenderTargetView(slice)->getNative<D3D11>());
                 }
             }
-            m_currentContext->OMSetRenderTargets((UINT)rtvs.size(),
-                                                 rtvs.data(),
-                                                 depthBuffer ? depthBuffer->getDepthStencilView()->getNative<D3D11>()
-                                                             : nullptr);
+            m_currentContext->OMSetRenderTargets(
+                (UINT)rtvs.size(),
+                rtvs.data(),
+                depthBuffer.first ? depthBuffer.first->getDepthStencilView()->getNative<D3D11>() : nullptr);
 
-            m_currentDrawRenderTarget = renderTargets.size() > 0 ? renderTargets[0].first : nullptr;
-            m_currentDrawDepthBuffer = depthBuffer;
+            if (renderTargets.size() > 0) {
+                m_currentDrawRenderTarget = renderTargets[0].first;
+                m_currentDrawRenderTargetSlice = renderTargets[0].second;
+                m_currentDrawDepthBuffer = depthBuffer.first;
+                m_currentDrawDepthBufferSlice = depthBuffer.second;
+
+                D3D11_VIEWPORT viewport;
+                ZeroMemory(&viewport, sizeof(viewport));
+                viewport.TopLeftX = 0.0f;
+                viewport.TopLeftY = 0.0f;
+                viewport.Width = (float)m_currentDrawRenderTarget->getInfo().width;
+                viewport.Height = (float)m_currentDrawRenderTarget->getInfo().height;
+                m_currentContext->RSSetViewports(1, &viewport);
+            } else {
+                m_currentDrawRenderTarget.reset();
+                m_currentDrawDepthBuffer.reset();
+            }
         }
 
-        void setViewProjection(const XrPosef& eyePose, XrFovf& fov, float depthNear, float depthFar) override {
+        void clearColor(float top, float left, float bottom, float right, XrColor4f& color) const override {
+            if (!m_currentDrawRenderTarget) {
+                return;
+            }
+
+            ComPtr<ID3D11DeviceContext1> d3d11Context;
+            if (FAILED(m_currentContext->QueryInterface(__uuidof(ID3D11DeviceContext1),
+                                                        reinterpret_cast<void**>(d3d11Context.GetAddressOf())))) {
+                // The app did not use a sufficient FEATURE_LEVEL. Nothing we can do.
+                return;
+            }
+
+            ID3D11RenderTargetView* renderTargetView;
+            if (m_currentDrawRenderTargetSlice == -1) {
+                renderTargetView = m_currentDrawRenderTarget->getRenderTargetView()->getNative<D3D11>();
+            } else {
+                renderTargetView =
+                    m_currentDrawRenderTarget->getRenderTargetView(m_currentDrawRenderTargetSlice)->getNative<D3D11>();
+            }
+
+            float clearColor[] = {color.r, color.g, color.b, color.a};
+            D3D11_RECT rect;
+            rect.top = (LONG)top;
+            rect.left = (LONG)left;
+            rect.bottom = (LONG)bottom;
+            rect.right = (LONG)right;
+            d3d11Context->ClearView(renderTargetView, clearColor, &rect, 1);
+        }
+
+        void clearDepth(float value) override {
+            if (!m_currentDrawDepthBuffer) {
+                return;
+            }
+
+            ID3D11DepthStencilView* depthStencilView;
+            if (m_currentDrawDepthBufferSlice == -1) {
+                depthStencilView = m_currentDrawDepthBuffer->getDepthStencilView()->getNative<D3D11>();
+            } else {
+                depthStencilView =
+                    m_currentDrawDepthBuffer->getDepthStencilView(m_currentDrawDepthBufferSlice)->getNative<D3D11>();
+            }
+
+            m_currentContext->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, value, 0);
+        }
+
+        void setViewProjection(const XrPosef& eyePose, const XrFovf& fov, float depthNear, float depthFar) override {
             xr::math::NearFar nearFar{depthNear, depthFar};
             const DirectX::XMMATRIX projection = xr::math::ComposeProjectionMatrix(fov, nearFar);
             const DirectX::XMMATRIX view = xr::math::LoadInvertedXrPose(eyePose);
@@ -1221,13 +1107,6 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             }
             m_meshViewProjectionBuffer->uploadData(&staging, sizeof(staging));
 
-            D3D11_VIEWPORT viewport;
-            ZeroMemory(&viewport, sizeof(viewport));
-            viewport.TopLeftX = 0.0f;
-            viewport.TopLeftY = 0.0f;
-            viewport.Width = (float)m_currentDrawRenderTarget->getInfo().width;
-            viewport.Height = (float)m_currentDrawRenderTarget->getInfo().height;
-            m_currentContext->RSSetViewports(1, &viewport);
             m_currentContext->OMSetDepthStencilState(
                 depthNear > depthFar ? m_reversedZDepthNoStencilTest.Get() : nullptr, 0);
         }
@@ -1313,9 +1192,13 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             return measureString(std::wstring(string.begin(), string.end()), style, size);
         }
 
+        void beginText() override {
+        }
+
         void flushText() override {
             m_fontNormal->Flush(m_currentContext.Get());
             m_fontBold->Flush(m_currentContext.Get());
+            m_currentContext->Flush();
         }
 
         void* getNativePtr() const override {
@@ -1327,6 +1210,180 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         }
 
       private:
+        // Initialize the resources needed for dispatchShader() and related calls.
+        void initializeShadingResources() {
+            {
+                D3D11_SAMPLER_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+                desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+                desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+                desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+                desc.MaxAnisotropy = 1;
+                desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+                CHECK_HRCMD(m_device->CreateSamplerState(&desc, &m_linearClampSamplerPS));
+            }
+            {
+                D3D11_SAMPLER_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+                desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+                desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+                desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+                desc.MaxAnisotropy = 1;
+                desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+                desc.MinLOD = D3D11_MIP_LOD_BIAS_MIN;
+                desc.MaxLOD = D3D11_MIP_LOD_BIAS_MAX;
+                CHECK_HRCMD(m_device->CreateSamplerState(&desc, &m_linearClampSamplerCS));
+            }
+            {
+                D3D11_RASTERIZER_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.FillMode = D3D11_FILL_SOLID;
+                desc.CullMode = D3D11_CULL_NONE;
+                desc.FrontCounterClockwise = TRUE;
+                CHECK_HRCMD(m_device->CreateRasterizerState(&desc, &m_quadRasterizer));
+                desc.MultisampleEnable = TRUE;
+                CHECK_HRCMD(m_device->CreateRasterizerState(&desc, &m_quadRasterizerMSAA));
+            }
+            {
+                ComPtr<ID3DBlob> errors;
+                ComPtr<ID3DBlob> vsBytes;
+                HRESULT hr = D3DCompile(QuadVertexShader.c_str(),
+                                        QuadVertexShader.length(),
+                                        nullptr,
+                                        nullptr,
+                                        nullptr,
+                                        "vsMain",
+                                        "vs_5_0",
+                                        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
+                                        0,
+                                        &vsBytes,
+                                        &errors);
+                if (FAILED(hr)) {
+                    if (errors) {
+                        Log("%s", (char*)errors->GetBufferPointer());
+                    }
+                    CHECK_HRESULT(hr, "Failed to compile shader");
+                }
+                CHECK_HRCMD(m_device->CreateVertexShader(
+                    vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, &m_quadVertexShader));
+                {
+                    const std::string debugName = "Quad PS";
+                    m_quadVertexShader->SetPrivateData(
+                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
+                }
+            }
+        }
+
+        // Initialize the calls needed for draw() and related calls.
+        void initializeMeshResources() {
+            {
+                ComPtr<ID3DBlob> errors;
+                ComPtr<ID3DBlob> vsBytes;
+                HRESULT hr = D3DCompile(MeshShaders.c_str(),
+                                        MeshShaders.length(),
+                                        nullptr,
+                                        nullptr,
+                                        nullptr,
+                                        "vsMain",
+                                        "vs_5_0",
+                                        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
+                                        0,
+                                        &vsBytes,
+                                        &errors);
+                if (FAILED(hr)) {
+                    if (errors) {
+                        Log("%s", (char*)errors->GetBufferPointer());
+                    }
+                    CHECK_HRESULT(hr, "Failed to compile shader");
+                }
+                CHECK_HRCMD(m_device->CreateVertexShader(
+                    vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, &m_meshVertexShader));
+                {
+                    const std::string debugName = "SimpleMesh VS";
+                    m_meshVertexShader->SetPrivateData(
+                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
+                }
+
+                const D3D11_INPUT_ELEMENT_DESC vertexDesc[] = {
+                    {"POSITION",
+                     0,
+                     DXGI_FORMAT_R32G32B32_FLOAT,
+                     0,
+                     D3D11_APPEND_ALIGNED_ELEMENT,
+                     D3D11_INPUT_PER_VERTEX_DATA,
+                     0},
+                    {"COLOR",
+                     0,
+                     DXGI_FORMAT_R32G32B32_FLOAT,
+                     0,
+                     D3D11_APPEND_ALIGNED_ELEMENT,
+                     D3D11_INPUT_PER_VERTEX_DATA,
+                     0},
+                };
+
+                CHECK_HRCMD(m_device->CreateInputLayout(vertexDesc,
+                                                        (UINT)std::size(vertexDesc),
+                                                        vsBytes->GetBufferPointer(),
+                                                        vsBytes->GetBufferSize(),
+                                                        &m_meshInputLayout));
+            }
+            {
+                ComPtr<ID3DBlob> errors;
+                ComPtr<ID3DBlob> psBytes;
+                HRESULT hr = D3DCompile(MeshShaders.c_str(),
+                                        MeshShaders.length(),
+                                        nullptr,
+                                        nullptr,
+                                        nullptr,
+                                        "psMain",
+                                        "ps_5_0",
+                                        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
+                                        0,
+                                        &psBytes,
+                                        &errors);
+                if (FAILED(hr)) {
+                    if (errors) {
+                        Log("%s", (char*)errors->GetBufferPointer());
+                    }
+                    CHECK_HRESULT(hr, "Failed to compile shader");
+                }
+                CHECK_HRCMD(m_device->CreatePixelShader(
+                    psBytes->GetBufferPointer(), psBytes->GetBufferSize(), nullptr, &m_meshPixelShader));
+                {
+                    const std::string debugName = "SimpleMesh PS";
+                    m_meshPixelShader->SetPrivateData(
+                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
+                }
+            }
+            {
+                D3D11_DEPTH_STENCIL_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.DepthEnable = true;
+                desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+                desc.DepthFunc = D3D11_COMPARISON_GREATER;
+                CHECK_HRCMD(m_device->CreateDepthStencilState(&desc, &m_reversedZDepthNoStencilTest));
+            }
+        }
+
+        // Initialize resources for drawString() and related calls.
+        void initializeTextResources() {
+            CHECK_HRCMD(FW1CreateFactory(FW1_VERSION, &m_fontWrapperFactory));
+
+            CHECK_HRCMD(m_fontWrapperFactory->CreateFontWrapper(m_device.Get(), FontFamily.c_str(), &m_fontNormal));
+
+            IDWriteFactory* dwriteFactory = nullptr;
+            CHECK_HRCMD(m_fontNormal->GetDWriteFactory(&dwriteFactory));
+            FW1_FONTWRAPPERCREATEPARAMS params;
+            ZeroMemory(&params, sizeof(params));
+            params.DefaultFontParams.pszFontFamily = FontFamily.c_str();
+            params.DefaultFontParams.FontWeight = DWRITE_FONT_WEIGHT_BOLD;
+            params.DefaultFontParams.FontStretch = DWRITE_FONT_STRETCH_NORMAL;
+            params.DefaultFontParams.FontStyle = DWRITE_FONT_STYLE_NORMAL;
+            CHECK_HRCMD(m_fontWrapperFactory->CreateFontWrapper(m_device.Get(), dwriteFactory, &params, &m_fontBold));
+        }
+
         const ComPtr<ID3D11Device> m_device;
         ComPtr<ID3D11DeviceContext> m_context;
         ComPtr<ID3D11DeviceContext> m_currentContext;
@@ -1348,7 +1405,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         ComPtr<IFW1FontWrapper> m_fontBold;
 
         std::shared_ptr<ITexture> m_currentDrawRenderTarget;
+        int32_t m_currentDrawRenderTargetSlice;
         std::shared_ptr<ITexture> m_currentDrawDepthBuffer;
+        int32_t m_currentDrawDepthBufferSlice;
         std::shared_ptr<ISimpleMesh> m_currentMesh;
         mutable std::shared_ptr<IQuadShader> m_currentQuadShader;
         mutable std::shared_ptr<IComputeShader> m_currentComputeShader;
@@ -1362,6 +1421,10 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 namespace toolkit::graphics {
     std::shared_ptr<IDevice> WrapD3D11Device(ID3D11Device* device) {
         return std::make_shared<D3D11Device>(device);
+    }
+
+    std::shared_ptr<IDevice> WrapD3D11TextDevice(ID3D11Device* device) {
+        return std::make_shared<D3D11Device>(device, true);
     }
 
     std::shared_ptr<ITexture> WrapD3D11Texture(std::shared_ptr<IDevice> device,

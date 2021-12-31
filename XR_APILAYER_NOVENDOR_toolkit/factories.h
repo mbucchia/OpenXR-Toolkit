@@ -49,9 +49,16 @@ namespace toolkit {
     namespace graphics {
 
         std::shared_ptr<IDevice> WrapD3D11Device(ID3D11Device* device);
+        std::shared_ptr<IDevice> WrapD3D11TextDevice(ID3D11Device* device);
         std::shared_ptr<ITexture> WrapD3D11Texture(std::shared_ptr<IDevice> device,
                                                    const XrSwapchainCreateInfo& info,
                                                    ID3D11Texture2D* texture,
+                                                   const std::optional<std::string>& debugName);
+
+        std::shared_ptr<IDevice> WrapD3D12Device(ID3D12Device* device, ID3D12CommandQueue* queue);
+        std::shared_ptr<ITexture> WrapD3D12Texture(std::shared_ptr<IDevice> device,
+                                                   const XrSwapchainCreateInfo& info,
+                                                   ID3D12Resource* texture,
                                                    const std::optional<std::string>& debugName);
 
         std::shared_ptr<IUpscaler> CreateNISUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
