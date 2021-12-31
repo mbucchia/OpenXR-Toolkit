@@ -203,6 +203,11 @@ namespace {
                             reinterpret_cast<const XrGraphicsBindingD3D11KHR*>(entry);
                         m_graphicsDevice = graphics::WrapD3D11Device(d3dBindings->device);
                         break;
+                    } else if (entry->type == XR_TYPE_GRAPHICS_BINDING_D3D12_KHR) {
+                        const XrGraphicsBindingD3D12KHR* d3dBindings =
+                            reinterpret_cast<const XrGraphicsBindingD3D12KHR*>(entry);
+                        m_graphicsDevice = graphics::WrapD3D12Device(d3dBindings->device, d3dBindings->queue);
+                        break;
                     }
 
                     entry = entry->next;
@@ -237,8 +242,11 @@ namespace {
                         break;
                     }
 
-                    m_postProcessor =
-                        graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
+                    // XXX: Workaround: For now D3D12 support is extremely limited.
+                    if (m_graphicsDevice->getApi() != graphics::Api::D3D12) {
+                        m_postProcessor =
+                            graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
+                    }
 
                     m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.endFrameCpuTimer = utilities::CreateCpuTimer();
@@ -292,9 +300,9 @@ namespace {
                 // destroyed _before_ we see this message.
                 // eg:
                 // 2022-01-01 17:15:35 -0800: D3D11Device is destructed
-                // 2022-01-01 17:15:35 -0800: Dession destroyed
+                // 2022-01-01 17:15:35 -0800: Session destroyed
                 // If the order is reversed, then it means that we are not cleaning up the resources properly.
-                DebugLog("Dession destroyed\n");
+                DebugLog("Session destroyed\n");
             }
 
             return result;
@@ -367,11 +375,30 @@ namespace {
                         SwapchainImages images;
 
                         // Store the runtime images into the state (last entry in the processing chain).
-                        auto texture = graphics::WrapD3D11Texture(m_graphicsDevice,
-                                                                  chainCreateInfo,
-                                                                  d3dImages[i].texture,
-                                                                  fmt::format("Runtime swapchain {} TEX2D", i));
-                        images.chain.push_back(texture);
+                        images.chain.push_back(
+                            graphics::WrapD3D11Texture(m_graphicsDevice,
+                                                       chainCreateInfo,
+                                                       d3dImages[i].texture,
+                                                       fmt::format("Runtime swapchain {} TEX2D", i)));
+
+                        swapchainState.images.push_back(images);
+                    }
+                } else if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
+                    std::vector<XrSwapchainImageD3D12KHR> d3dImages(imageCount, {XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR});
+                    CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(
+                        *swapchain,
+                        imageCount,
+                        &imageCount,
+                        reinterpret_cast<XrSwapchainImageBaseHeader*>(d3dImages.data())));
+                    for (uint32_t i = 0; i < imageCount; i++) {
+                        SwapchainImages images;
+
+                        // Store the runtime images into the state (last entry in the processing chain).
+                        images.chain.push_back(
+                            graphics::WrapD3D12Texture(m_graphicsDevice,
+                                                       chainCreateInfo,
+                                                       d3dImages[i].texture,
+                                                       fmt::format("Runtime swapchain {} TEX2D", i)));
 
                         swapchainState.images.push_back(images);
                     }
@@ -537,6 +564,11 @@ namespace {
                         XrSwapchainImageD3D11KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D11KHR*>(images);
                         for (uint32_t i = 0; i < *imageCountOutput; i++) {
                             d3dImages[i].texture = swapchainState.images[i].chain[0]->getNative<graphics::D3D11>();
+                        }
+                    } else if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
+                        XrSwapchainImageD3D12KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D12KHR*>(images);
+                        for (uint32_t i = 0; i < *imageCountOutput; i++) {
+                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getNative<graphics::D3D12>();
                         }
                     } else {
                         throw new std::runtime_error("Unsupported graphics runtime");
@@ -820,7 +852,7 @@ namespace {
             updateConfiguration();
 
             // Unbind all textures from the render targets.
-            m_graphicsDevice->clearRenderTargets();
+            m_graphicsDevice->unsetRenderTargets();
 
             std::shared_ptr<graphics::ITexture> textureForOverlay[ViewCount] = {};
             XrCompositionLayerProjectionView* viewsForOverlay = nullptr;
@@ -982,22 +1014,36 @@ namespace {
                     m_needCalibrateEyeOffsets = false;
                 }
 
-                for (uint32_t eye = 0; eye < ViewCount; eye++) {
-                    if (!useVPRT) {
-                        m_graphicsDevice->setRenderTargets({textureForOverlay[eye]});
-                    } else {
-                        m_graphicsDevice->setRenderTargets({std::make_pair(textureForOverlay[eye], eye)});
-                    }
-                    m_graphicsDevice->setViewProjection(
-                        viewsForOverlay[eye].pose, viewsForOverlay[eye].fov, 0.001f, 100.0f);
+                // Render the hands.
+                if (m_handTracker) {
+                    for (uint32_t eye = 0; eye < ViewCount; eye++) {
+                        if (!useVPRT) {
+                            m_graphicsDevice->setRenderTargets({textureForOverlay[eye]});
+                        } else {
+                            m_graphicsDevice->setRenderTargets({std::make_pair(textureForOverlay[eye], eye)});
+                        }
+                        m_graphicsDevice->setViewProjection(
+                            viewsForOverlay[eye].pose, viewsForOverlay[eye].fov, 0.001f, 100.0f);
 
-                    // Render the hands.
-                    if (m_handTracker) {
                         m_handTracker->render(viewsForOverlay[eye].pose, spaceForOverlay, textureForOverlay[eye]);
                     }
+                }
 
-                    // Render the menu.
-                    if (m_menuHandler) {
+                // Render the menu.
+                // Ideally, we would not have to split this from the branch above, however with D3D12 we are forced to
+                // flush the context, and we'd rather do it only once.
+                if (m_menuHandler) {
+                    if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
+                        m_graphicsDevice->flushContext();
+                    }
+                    for (uint32_t eye = 0; eye < ViewCount; eye++) {
+                        if (!useVPRT) {
+                            m_graphicsDevice->setRenderTargets({textureForOverlay[eye]});
+                        } else {
+                            m_graphicsDevice->setRenderTargets({std::make_pair(textureForOverlay[eye], eye)});
+                        }
+
+                        m_graphicsDevice->beginText();
                         m_menuHandler->render(eye, viewsForOverlay[eye].pose, textureForOverlay[eye]);
                         m_graphicsDevice->flushText();
                     }
@@ -1019,6 +1065,8 @@ namespace {
             if (textureForOverlay[0] && requestScreenshot) {
                 takeScreenshot(textureForOverlay[0]);
             }
+
+            m_graphicsDevice->flushContext();
 
             return OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
         }

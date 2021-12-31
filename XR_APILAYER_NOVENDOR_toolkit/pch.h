@@ -38,7 +38,10 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <thread>
 #include <vector>
+
+using namespace std::chrono_literals;
 
 // Windows header files.
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
@@ -54,6 +57,8 @@ using Microsoft::WRL::ComPtr;
 #include <d3d11_1.h>
 #include <D3DX11tex.h>
 #include <d3d12.h>
+#include <d3dx12.h>
+#include <d3d11on12.h>
 #include <d3dcompiler.h>
 
 // OpenXR + Windows-specific definitions.

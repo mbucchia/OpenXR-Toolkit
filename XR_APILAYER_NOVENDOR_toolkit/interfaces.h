@@ -114,7 +114,7 @@ namespace toolkit {
 
     namespace graphics {
 
-        enum class Api { D3D11 };
+        enum class Api { D3D11, D3D12 };
 
         // Type traits for D3D11.
         struct D3D11 {
@@ -137,6 +137,33 @@ namespace toolkit {
             using ComputeShaderOutputView = ID3D11UnorderedAccessView*;
             using RenderTargetView = ID3D11RenderTargetView*;
             using DepthStencilView = ID3D11DepthStencilView*;
+        };
+
+        // Type traits for D3D12.
+        struct D3D12 {
+            static constexpr Api Api = Api::D3D12;
+
+            using Device = ID3D12Device*;
+            using Context = ID3D12GraphicsCommandList*;
+            using Texture = ID3D12Resource*;
+            using Buffer = ID3D12Resource*;
+            struct MeshData {
+                ID3D12Resource* vertexBuffer;
+                UINT stride;
+                ID3D12Resource* indexBuffer;
+                UINT numIndices;
+            };
+            using Mesh = MeshData*;
+            struct ShaderData {
+                ID3D12RootSignature* rootSignature;
+                ID3D12PipelineState* pipelineState;
+            };
+            using PixelShader = ShaderData*;
+            using ComputeShader = ShaderData*;
+            using ShaderInputView = D3D12_CPU_DESCRIPTOR_HANDLE*;
+            using ComputeShaderOutputView = D3D12_CPU_DESCRIPTOR_HANDLE*;
+            using RenderTargetView = D3D12_CPU_DESCRIPTOR_HANDLE*;
+            using DepthStencilView = D3D12_CPU_DESCRIPTOR_HANDLE*;
         };
 
         // A few handy texture formats.
@@ -230,8 +257,6 @@ namespace toolkit {
             virtual Api getApi() const = 0;
             virtual std::shared_ptr<IDevice> getDevice() const = 0;
 
-            virtual void clear(float top, float left, float bottom, float right, XrColor4f& color) const = 0;
-
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
@@ -249,8 +274,6 @@ namespace toolkit {
 
             virtual Api getApi() const = 0;
             virtual std::shared_ptr<IDevice> getDevice() const = 0;
-
-            virtual void clearDepth(float value) = 0;
 
             virtual void* getNativePtr() const = 0;
 
@@ -356,6 +379,7 @@ namespace toolkit {
 
             virtual void saveContext(bool clear = true) = 0;
             virtual void restoreContext() = 0;
+            virtual void flushContext(bool blocking = false) = 0;
 
             virtual std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
                                                             const std::optional<std::string>& debugName,
@@ -394,13 +418,17 @@ namespace toolkit {
 
             virtual void dispatchShader(bool doNotClear = false) const = 0;
 
-            virtual void clearRenderTargets() = 0;
+            virtual void unsetRenderTargets() = 0;
             virtual void setRenderTargets(std::vector<std::shared_ptr<ITexture>> renderTargets,
                                           std::shared_ptr<ITexture> depthBuffer = {}) = 0;
             virtual void setRenderTargets(std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargets,
-                                          std::shared_ptr<ITexture> depthBuffer = {}) = 0;
+                                          std::pair<std::shared_ptr<ITexture>, int32_t> depthBuffer = {}) = 0;
 
-            virtual void setViewProjection(const XrPosef& eyePose, XrFovf& fov, float depthNear, float depthFar) = 0;
+            virtual void clearColor(float top, float left, float bottom, float right, XrColor4f& color) const = 0;
+            virtual void clearDepth(float value) = 0;
+
+            virtual void
+            setViewProjection(const XrPosef& eyePose, const XrFovf& fov, float depthNear, float depthFar) = 0;
             virtual void draw(std::shared_ptr<ISimpleMesh> mesh,
                               const XrPosef& pose,
                               XrVector3f scaling = {1.0f, 1.0f, 1.0f}) = 0;
@@ -423,6 +451,7 @@ namespace toolkit {
                                      bool alignRight = false) = 0;
             virtual float measureString(std::wstring string, TextStyle style, float size) const = 0;
             virtual float measureString(std::string string, TextStyle style, float size) const = 0;
+            virtual void beginText() = 0;
             virtual void flushText() = 0;
 
             virtual void* getNativePtr() const = 0;
