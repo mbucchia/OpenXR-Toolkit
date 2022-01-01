@@ -44,6 +44,8 @@ namespace {
         virtual void begin(std::shared_ptr<ITexture> renderTarget, float rightEyeOffset = 0.0f) = 0;
         virtual void end() = 0;
 
+        virtual void clear(float top, float left, float bottom, float right) const = 0;
+
         virtual void drawString(std::wstring string,
                                 TextStyle style,
                                 float size,
@@ -102,6 +104,34 @@ namespace {
                 m_device->getContext<D3D11>()->ExecuteCommandList(commandList.Get(), TRUE);
                 m_deferredContext = nullptr;
                 m_renderTarget = nullptr;
+            }
+        }
+
+        void clear(float top, float left, float bottom, float right) const override {
+            ComPtr<ID3D11DeviceContext1> d3d11Context;
+            if (FAILED(m_device->getContext<D3D11>()->QueryInterface(
+                    __uuidof(ID3D11DeviceContext1), reinterpret_cast<void**>(d3d11Context.GetAddressOf())))) {
+                // The app did not use a sufficient FEATURE_LEVEL. Nothing we can do.
+                return;
+            }
+
+            float clearColor[] = {0, 0, 0, 0};
+            D3D11_RECT rect;
+            rect.top = (LONG)top;
+            rect.left = (LONG)left;
+            rect.bottom = (LONG)bottom;
+            rect.right = (LONG)right;
+            if (!m_renderTarget->isArray()) {
+                d3d11Context->ClearView(
+                    m_renderTarget->getRenderTargetView()->getNative<D3D11>(), clearColor, &rect, 1);
+            } else {
+                // When VPRT is used, draw each eye.
+                d3d11Context->ClearView(
+                    m_renderTarget->getRenderTargetView(0)->getNative<D3D11>(), clearColor, &rect, 1);
+                rect.left += (LONG)m_rightEyeOffset;
+                rect.right += (LONG)m_rightEyeOffset;
+                d3d11Context->ClearView(
+                    m_renderTarget->getRenderTargetView(1)->getNative<D3D11>(), clearColor, &rect, 1);
             }
         }
 
@@ -393,6 +423,7 @@ namespace {
                     // When changing the font size, force re-alignment.
                     if (menuEntry.configName == SettingMenuFontSize) {
                         m_menuEntriesTitleWidth = 0.0f;
+                        m_menuEntriesRight = m_menuEntriesBottom = 0.0f;
                     }
 
                     // When changing the upscaling, display the warning.
@@ -479,6 +510,10 @@ namespace {
                                            topAlign + 1.05f * fontSize,
                                            colorSelected);
             } else if (m_state == MenuState::Visible) {
+                if (m_menuEntriesRight != 0.0f && m_menuEntriesBottom != 0.0f) {
+                    m_textRenderer->clear(topAlign, leftAlign, m_menuEntriesBottom, m_menuEntriesRight);
+                }
+
                 float top = topAlign;
 
                 m_textRenderer->drawString(L"\x25BC : CTRL+F1   \x25C4 : CTRL+F2   \x25BA : CTRL+F3",
@@ -561,26 +596,41 @@ namespace {
                     }
 
                     top += 1.05f * fontSize;
+
+                    // TODO: Cheap hack for now: we consider that the MenuEntryType::Choice are always going to be the
+                    // longest entries.
+                    if (eye == 0) {
+                        m_menuEntriesRight = max(m_menuEntriesRight, left);
+                    }
                 }
 
-                if (m_configManager->isSafeMode()) {
-                    top += fontSize;
-                    m_textRenderer->drawString(
-                        L"\x25CA  Running in safe mode, settings are cleared when restarting the VR session \x25CA",
-                        TextStyle::Selected,
-                        fontSize,
-                        leftAlign,
-                        top,
-                        colorWarning);
-                } else if (m_needRestart) {
-                    top += fontSize;
-                    m_textRenderer->drawString(L"\x25CA  Some settings require to restart the VR session \x25CA",
-                                               TextStyle::Selected,
-                                               fontSize,
-                                               leftAlign,
-                                               top,
-                                               colorWarning);
+                {
+                    float left = leftAlign;
+                    if (m_configManager->isSafeMode()) {
+                        top += fontSize;
+
+                        std::wstring text =
+                            L"\x25CA  Running in safe mode, settings are cleared when restarting the VR "
+                            L"session \x25CA";
+                        m_textRenderer->drawString(text, TextStyle::Selected, fontSize, left, top, colorWarning);
+                        left += m_textRenderer->measureString(text, TextStyle::Selected, fontSize);
+
+                        top += 1.05f * fontSize;
+                    } else if (m_needRestart) {
+                        top += fontSize;
+
+                        std::wstring text = L"\x25CA  Some settings require to restart the VR session \x25CA";
+                        m_textRenderer->drawString(text, TextStyle::Selected, fontSize, left, top, colorWarning);
+                        left += m_textRenderer->measureString(text, TextStyle::Selected, fontSize);
+
+                        top += 1.05f * fontSize;
+                    }
+
+                    if (eye == 0) {
+                        m_menuEntriesRight = max(m_menuEntriesRight, left);
+                    }
                 }
+                m_menuEntriesBottom = top;
             }
 
             auto overlayType = m_configManager->getEnumValue<OverlayType>(SettingOverlayType);
@@ -649,6 +699,8 @@ namespace {
 
         mutable MenuState m_state{MenuState::NotVisible};
         mutable float m_menuEntriesTitleWidth{0.0f};
+        mutable float m_menuEntriesRight{0.0f};
+        mutable float m_menuEntriesBottom{0.0f};
     };
 
 } // namespace
