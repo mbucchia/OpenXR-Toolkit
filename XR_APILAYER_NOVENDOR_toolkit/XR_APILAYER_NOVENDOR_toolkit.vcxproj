@@ -94,7 +94,7 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
       </Message>
     </PreLinkEvent>
     <PreBuildEvent>
-      <Command>python3 $(ProjectDir)\framework\dispatch_generator.py</Command>
+      <Command>python $(ProjectDir)\framework\dispatch_generator.py</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Generating layer dispatcher...</Message>
@@ -144,7 +144,7 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
       </Message>
     </PreLinkEvent>
     <PreBuildEvent>
-      <Command>python3 $(ProjectDir)\framework\dispatch_generator.py</Command>
+      <Command>python $(ProjectDir)\framework\dispatch_generator.py</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Generating layer dispatcher...</Message>
