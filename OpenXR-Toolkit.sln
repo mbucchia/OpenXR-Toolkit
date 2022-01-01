@@ -21,6 +21,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scripts", "Scripts", "{1E41
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "companion", "companion\companion.csproj", "{69C43742-D646-44B8-A869-3D8016D525CE}"
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Setup", "installer\installer.vdproj", "{9D1EF86B-6B13-4C14-BBD7-E70CF7DD48DE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -35,6 +37,9 @@ Global
 		{69C43742-D646-44B8-A869-3D8016D525CE}.Debug|x64.Build.0 = Debug|Any CPU
 		{69C43742-D646-44B8-A869-3D8016D525CE}.Release|x64.ActiveCfg = Release|Any CPU
 		{69C43742-D646-44B8-A869-3D8016D525CE}.Release|x64.Build.0 = Release|Any CPU
+		{9D1EF86B-6B13-4C14-BBD7-E70CF7DD48DE}.Debug|x64.ActiveCfg = Debug
+		{9D1EF86B-6B13-4C14-BBD7-E70CF7DD48DE}.Release|x64.ActiveCfg = Release
+		{9D1EF86B-6B13-4C14-BBD7-E70CF7DD48DE}.Release|x64.Build.0 = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
