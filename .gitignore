@@ -2,6 +2,8 @@
 packages/
 bin/
 **/x64/
+**/obj/
 **/__pycache__/
 *.pyc
 *.vcxproj.user
+*.csproj.user
