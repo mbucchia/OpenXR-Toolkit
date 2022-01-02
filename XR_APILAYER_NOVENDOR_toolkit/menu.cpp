@@ -366,12 +366,12 @@ namespace {
 
             m_wasF1Pressed = m_wasF1Pressed && !repeat;
             const bool isF1Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F1);
-            const bool menuControl = !m_wasF1Pressed && isF1Pressed;
+            const bool moveLeft = !m_wasF1Pressed && isF1Pressed;
             m_wasF1Pressed = isF1Pressed;
 
             m_wasF2Pressed = m_wasF2Pressed && !repeat;
             const bool isF2Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F2);
-            const bool moveLeft = !m_wasF2Pressed && isF2Pressed;
+            const bool menuControl = !m_wasF2Pressed && isF2Pressed;
             m_wasF2Pressed = isF2Pressed;
 
             m_wasF3Pressed = m_wasF3Pressed && !repeat;
@@ -494,7 +494,7 @@ namespace {
 
             if (m_state == MenuState::Splash) {
                 m_textRenderer->drawString(
-                    fmt::format("Press CTRL+F1 to bring up the menu ({}s)", (int)(std::ceil(timeout - duration))),
+                    fmt::format("Press CTRL+F2 to bring up the menu ({}s)", (int)(std::ceil(timeout - duration))),
                     TextStyle::Normal,
                     fontSize,
                     leftAlign,
@@ -516,7 +516,14 @@ namespace {
 
                 float top = topAlign;
 
-                m_textRenderer->drawString(L"\x25BC : CTRL+F1   \x25C4 : CTRL+F2   \x25BA : CTRL+F3",
+                m_textRenderer->drawString(L"\x25C4 : CTRL+F1   \x25BC : CTRL+F2   \x25BA : CTRL+F3",
+                                           TextStyle::Normal,
+                                           fontSize,
+                                           leftAlign,
+                                           top,
+                                           colorNormal);
+                top += 1.05f * fontSize;
+                m_textRenderer->drawString(L"Use SHIFT to scroll faster",
                                            TextStyle::Normal,
                                            fontSize,
                                            leftAlign,

@@ -17,7 +17,7 @@ Once installed, use the _OpenXR Toolkit Companion app_ (found on the desktop or 
 
 ## Keyboard shortcuts
 
-Once installed, please run the desired OpenXR application and use Ctrl+F1 to enter the configuration menu.
+Once installed, please run the desired OpenXR application and use Ctrl+F2 to enter the configuration menu.
 
 ## Limitations
 
