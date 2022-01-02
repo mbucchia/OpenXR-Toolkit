@@ -68,7 +68,7 @@ namespace companion
             // screenshotCheckbox
             // 
             this.screenshotCheckbox.AutoSize = true;
-            this.screenshotCheckbox.Location = new System.Drawing.Point(38, 319);
+            this.screenshotCheckbox.Location = new System.Drawing.Point(38, 339);
             this.screenshotCheckbox.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.screenshotCheckbox.Name = "screenshotCheckbox";
             this.screenshotCheckbox.Size = new System.Drawing.Size(243, 24);
@@ -122,7 +122,7 @@ namespace companion
             // experimentalCheckbox
             // 
             this.experimentalCheckbox.AutoSize = true;
-            this.experimentalCheckbox.Location = new System.Drawing.Point(38, 238);
+            this.experimentalCheckbox.Location = new System.Drawing.Point(38, 258);
             this.experimentalCheckbox.Name = "experimentalCheckbox";
             this.experimentalCheckbox.Size = new System.Drawing.Size(239, 24);
             this.experimentalCheckbox.TabIndex = 18;
@@ -132,17 +132,17 @@ namespace companion
             // 
             // label2
             // 
-            this.label2.AutoSize = true;
             this.label2.Location = new System.Drawing.Point(61, 195);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(481, 20);
+            this.label2.Size = new System.Drawing.Size(522, 40);
             this.label2.TabIndex = 19;
-            this.label2.Text = "Recover an application by deleting all its settings upon next startup.";
+            this.label2.Text = "Recover an application by ignoring all its settings upon next startup. When in sa" +
+    "fe mode, press Ctrl+F1+F2+F3 to delete all settings.";
             // 
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(61, 276);
+            this.label3.Location = new System.Drawing.Point(61, 296);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(470, 20);
             this.label3.TabIndex = 20;
@@ -151,7 +151,7 @@ namespace companion
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(61, 357);
+            this.label4.Location = new System.Drawing.Point(61, 377);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(329, 20);
             this.label4.TabIndex = 21;
