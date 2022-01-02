@@ -68,7 +68,7 @@ namespace {
                 gpuArch = NISGPUArchitecture::AMD_Generic;
             }
 
-            NISOptimizer opt(true, NISGPUArchitecture::NVIDIA_Generic);
+            NISOptimizer opt(true, gpuArch);
             m_blockWidth = opt.GetOptimalBlockWidth();
             m_blockHeight = opt.GetOptimalBlockHeight();
             m_threadGroupSize = opt.GetOptimalThreadGroupSize();
