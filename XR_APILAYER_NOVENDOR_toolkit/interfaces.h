@@ -37,6 +37,7 @@ namespace toolkit {
     };
 
     namespace {
+
         // A generic timer.
         struct ITimer {
             virtual ~ITimer() = default;
@@ -46,13 +47,15 @@ namespace toolkit {
 
             virtual uint64_t query(bool reset = true) const = 0;
         };
+
     } // namespace
 
     namespace utilities {
+
         // A CPU synchronous timer.
-        struct ICpuTimer : public ITimer {
-        };
-    }
+        struct ICpuTimer : public ITimer {};
+
+    } // namespace utilities
 
     namespace config {
 
