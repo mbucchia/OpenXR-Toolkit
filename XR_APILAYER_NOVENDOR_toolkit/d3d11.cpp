@@ -517,6 +517,10 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             }
         }
 
+        ~D3D11Device() override {
+            DebugLog("D3D11Device is destructed\n");
+        }
+
         Api getApi() const override {
             return Api::D3D11;
         }

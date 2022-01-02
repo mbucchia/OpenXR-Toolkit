@@ -227,10 +227,27 @@ namespace {
         XrResult xrDestroySession(XrSession session) override {
             const XrResult result = OpenXrApi::xrDestroySession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                m_upscaler.reset();
+                m_preProcessor.reset();
+                m_postProcessor.reset();
+                for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
+                    m_performanceCounters.appGpuTimer[i].reset();
+                    m_performanceCounters.overlayGpuTimer[i].reset();
+                }
+                m_performanceCounters.appCpuTimer.reset();
+                m_performanceCounters.endFrameCpuTimer.reset();
+                m_performanceCounters.overlayCpuTimer.reset();
                 m_swapchains.clear();
                 m_menuHandler.reset();
                 m_graphicsDevice.reset();
                 m_vrSession = XR_NULL_HANDLE;
+                // A good check to ensure there are no resources leak is to confirm that the graphics device is
+                // destroyed _before_ we see this message.
+                // eg:
+                // 2022-01-01 17:15:35 -0800: D3D11Device is destructed
+                // 2022-01-01 17:15:35 -0800: Dession destroyed
+                // If the order is reversed, then it means that we are not cleaning up the resources properly.
+                DebugLog("Dession destroyed\n");
             }
 
             return result;
