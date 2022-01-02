@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -41,25 +41,29 @@ namespace {
     struct ITextRenderer {
         virtual ~ITextRenderer() = default;
 
-        virtual void begin(std::shared_ptr<ITexture> renderTarget, float rightEyeOffset = 0.0f) = 0;
+        virtual void begin(std::shared_ptr<ITexture> renderTarget,
+                           float leftEyeOffset = 0.0f,
+                           float rightEyeOffset = 0.0f) = 0;
         virtual void end() = 0;
 
         virtual void clear(float top, float left, float bottom, float right) const = 0;
 
-        virtual void drawString(std::wstring string,
-                                TextStyle style,
-                                float size,
-                                float x,
-                                float y,
-                                uint32_t color,
-                                bool alignRight = false) const = 0;
-        virtual void drawString(std::string string,
-                                TextStyle style,
-                                float size,
-                                float x,
-                                float y,
-                                uint32_t color,
-                                bool alignRight = false) const = 0;
+        virtual float drawString(std::wstring string,
+                                 TextStyle style,
+                                 float size,
+                                 float x,
+                                 float y,
+                                 uint32_t color,
+                                 bool measure = false,
+                                 bool alignRight = false) const = 0;
+        virtual float drawString(std::string string,
+                                 TextStyle style,
+                                 float size,
+                                 float x,
+                                 float y,
+                                 uint32_t color,
+                                 bool measure = false,
+                                 bool alignRight = false) const = 0;
         virtual float measureString(std::wstring string, TextStyle style, float size) const = 0;
         virtual float measureString(std::string string, TextStyle style, float size) const = 0;
     };
@@ -88,8 +92,9 @@ namespace {
                 device->getNative<D3D11>(), dwriteFactory, &params, &m_fontSelected));
         }
 
-        void begin(std::shared_ptr<ITexture> renderTarget, float rightEyeOffset) override {
+        void begin(std::shared_ptr<ITexture> renderTarget, float leftEyeOffset, float rightEyeOffset) override {
             m_renderTarget = renderTarget;
+            m_leftEyeOffset = leftEyeOffset;
             m_rightEyeOffset = rightEyeOffset;
         }
 
@@ -126,22 +131,31 @@ namespace {
                     m_renderTarget->getRenderTargetView()->getNative<D3D11>(), clearColor, &rect, 1);
             } else {
                 // When VPRT is used, draw each eye.
-                d3d11Context->ClearView(
-                    m_renderTarget->getRenderTargetView(0)->getNative<D3D11>(), clearColor, &rect, 1);
-                rect.left += (LONG)m_rightEyeOffset;
-                rect.right += (LONG)m_rightEyeOffset;
-                d3d11Context->ClearView(
-                    m_renderTarget->getRenderTargetView(1)->getNative<D3D11>(), clearColor, &rect, 1);
+                {
+                    D3D11_RECT correctedRect = rect;
+                    correctedRect.left += (LONG)m_leftEyeOffset;
+                    correctedRect.right += (LONG)m_leftEyeOffset;
+                    d3d11Context->ClearView(
+                        m_renderTarget->getRenderTargetView(0)->getNative<D3D11>(), clearColor, &rect, 1);
+                }
+                {
+                    D3D11_RECT correctedRect = rect;
+                    correctedRect.left += (LONG)m_rightEyeOffset;
+                    correctedRect.right += (LONG)m_rightEyeOffset;
+                    d3d11Context->ClearView(
+                        m_renderTarget->getRenderTargetView(1)->getNative<D3D11>(), clearColor, &rect, 1);
+                }
             }
         }
 
-        void drawString(std::wstring string,
-                        TextStyle style,
-                        float size,
-                        float x,
-                        float y,
-                        uint32_t color,
-                        bool alignRight = false) const override {
+        float drawString(std::wstring string,
+                         TextStyle style,
+                         float size,
+                         float x,
+                         float y,
+                         uint32_t color,
+                         bool measure,
+                         bool alignRight) const override {
             // Upon first call for this frame, we create the deferred context.
             // This is needed because FW1_RESTORESTATE won't help us in the case of multiple consecutive draw calls.
             if (!m_deferredContext) {
@@ -179,25 +193,31 @@ namespace {
                     ID3D11RenderTargetView* rtvs[] = {m_renderTarget->getRenderTargetView(eye)->getNative<D3D11>()};
                     m_deferredContext->OMSetRenderTargets(1, rtvs, nullptr);
 
+                    const float eyeOffset = eye ? m_rightEyeOffset : m_leftEyeOffset;
+
                     font->DrawString(m_deferredContext.Get(),
                                      string.c_str(),
                                      size,
-                                     x + (eye * m_rightEyeOffset),
+                                     x + eyeOffset,
                                      y,
                                      color,
                                      (alignRight ? FW1_RIGHT : FW1_LEFT) | FW1_NOFLUSH);
                 }
             }
+
+            return measure ? measureString(string, style, size) : 0.0f;
         }
 
-        void drawString(std::string string,
-                        TextStyle style,
-                        float size,
-                        float x,
-                        float y,
-                        uint32_t color,
-                        bool alignRight = false) const override {
-            drawString(std::wstring(string.begin(), string.end()), style, size, x, y, color, alignRight);
+        float drawString(std::string string,
+                         TextStyle style,
+                         float size,
+                         float x,
+                         float y,
+                         uint32_t color,
+                         bool measure,
+                         bool alignRight) const override {
+            return drawString(
+                std::wstring(string.begin(), string.end()), style, size, x, y, color, measure, alignRight);
         }
 
         float measureString(std::wstring string, TextStyle style, float size) const override {
@@ -224,7 +244,8 @@ namespace {
         ComPtr<IFW1FontWrapper> m_fontSelected;
 
         std::shared_ptr<ITexture> m_renderTarget;
-        float m_rightEyeOffset;
+        float m_leftEyeOffset{0.0f};
+        float m_rightEyeOffset{0.0f};
         mutable ComPtr<ID3D11DeviceContext> m_deferredContext;
     };
 
@@ -420,14 +441,15 @@ namespace {
 
                     m_configManager->setValue(menuEntry.configName, newValue, noCommitDelay);
 
+                    // When changing the upscaling, display the warning.
+                    const bool wasRestartNeeded = m_needRestart;
+                    m_needRestart = m_originalScalingValue != getCurrentScaling();
+
                     // When changing the font size, force re-alignment.
-                    if (menuEntry.configName == SettingMenuFontSize) {
+                    if (menuEntry.configName == SettingMenuFontSize || wasRestartNeeded != m_needRestart) {
                         m_menuEntriesTitleWidth = 0.0f;
                         m_menuEntriesRight = m_menuEntriesBottom = 0.0f;
                     }
-
-                    // When changing the upscaling, display the warning.
-                    m_needRestart = m_originalScalingValue != getCurrentScaling();
 
                     break;
                 }
@@ -459,12 +481,14 @@ namespace {
         void render(std::shared_ptr<ITexture> renderTarget, uint32_t eye) const override {
             assert(eye == 0 || eye == 1);
 
+            const float leftEyeOffset = 0.0f;
             const float rightEyeOffset = (float)m_configManager->getValue(SettingOverlayEyeOffset);
+            const float eyeOffset = eye ? rightEyeOffset : leftEyeOffset;
 
-            m_textRenderer->begin(renderTarget, rightEyeOffset);
+            m_textRenderer->begin(renderTarget, leftEyeOffset, rightEyeOffset);
 
-            const float leftAlign = (renderTarget->getInfo().width / 4.0f) + (eye * rightEyeOffset);
-            const float rightAlign = (2 * renderTarget->getInfo().width / 3.0f) + (eye * rightEyeOffset);
+            const float leftAlign = (renderTarget->getInfo().width / 4.0f) + eyeOffset;
+            const float rightAlign = (2 * renderTarget->getInfo().width / 3.0f) + eyeOffset;
             const float topAlign = renderTarget->getInfo().height / 3.0f;
 
             const float fontSizes[(int)MenuFontSize::MaxValue] = {
@@ -510,32 +534,35 @@ namespace {
                                            topAlign + 1.05f * fontSize,
                                            colorSelected);
             } else if (m_state == MenuState::Visible) {
-                if (m_menuEntriesRight != 0.0f && m_menuEntriesBottom != 0.0f) {
-                    m_textRenderer->clear(topAlign, leftAlign, m_menuEntriesBottom, m_menuEntriesRight);
+                const bool measure = m_menuEntriesRight == 0.0f;
+                if (!measure) {
+                    m_textRenderer->clear(topAlign, leftAlign, m_menuEntriesBottom, m_menuEntriesRight + eyeOffset);
                 }
 
                 float top = topAlign;
+                float left = leftAlign;
 
-                m_textRenderer->drawString(L"\x25C4 : CTRL+F1   \x25BC : CTRL+F2   \x25BA : CTRL+F3",
-                                           TextStyle::Normal,
-                                           fontSize,
-                                           leftAlign,
-                                           top,
-                                           colorNormal);
+                left += m_textRenderer->drawString(L"\x25C4 : CTRL+F1   \x25BC : CTRL+F2   \x25BA : CTRL+F3",
+                                                   TextStyle::Normal,
+                                                   fontSize,
+                                                   leftAlign,
+                                                   top,
+                                                   colorNormal,
+                                                   measure);
                 top += 1.05f * fontSize;
-                m_textRenderer->drawString(L"Use SHIFT to scroll faster",
-                                           TextStyle::Normal,
-                                           fontSize,
-                                           leftAlign,
-                                           top,
-                                           colorNormal);
+                m_textRenderer->drawString(
+                    L"Use SHIFT to scroll faster", TextStyle::Normal, fontSize, leftAlign, top, colorNormal, measure);
                 top += 1.5f * fontSize;
+
+                if (eye == 0) {
+                    m_menuEntriesRight = max(m_menuEntriesRight, left);
+                }
 
                 float menuEntriesTitleWidth = m_menuEntriesTitleWidth;
 
                 // Display each menu entry.
                 for (unsigned int i = 0; i < m_menuEntries.size(); i++) {
-                    float left = leftAlign;
+                    left = leftAlign;
                     const auto& menuEntry = m_menuEntries[i];
 
                     // Always account for entries, even invisible ones, when calculating the alignment.
@@ -565,8 +592,8 @@ namespace {
                     // Display the current value.
                     switch (menuEntry.type) {
                     case MenuEntryType::Slider:
-                        m_textRenderer->drawString(
-                            menuEntry.valueToString(value), entryStyle, fontSize, left, top, entryColor);
+                        left += m_textRenderer->drawString(
+                            menuEntry.valueToString(value), entryStyle, fontSize, left, top, entryColor, measure);
                         break;
 
                     case MenuEntryType::Choice:
@@ -576,8 +603,9 @@ namespace {
                             const auto valueStyle = j == value ? TextStyle::Selected : TextStyle::Normal;
                             const auto valueColor = j == value ? colorSelected : colorNormal;
 
-                            m_textRenderer->drawString(label, valueStyle, fontSize, left, top, valueColor);
-                            left += m_textRenderer->measureString(label, valueStyle, fontSize) + 20;
+                            left +=
+                                m_textRenderer->drawString(label, valueStyle, fontSize, left, top, valueColor, true) +
+                                20.0f;
                         }
                         break;
 
@@ -592,20 +620,20 @@ namespace {
 
                     case MenuEntryType::ExitButton:
                         if (duration > 1.0) {
-                            m_textRenderer->drawString(fmt::format("({}s)", (int)(std::ceil(timeout - duration))),
-                                                       entryStyle,
-                                                       fontSize,
-                                                       left,
-                                                       top,
-                                                       entryColor);
+                            left +=
+                                m_textRenderer->drawString(fmt::format("({}s)", (int)(std::ceil(timeout - duration))),
+                                                           entryStyle,
+                                                           fontSize,
+                                                           left,
+                                                           top,
+                                                           entryColor,
+                                                           measure);
                         }
                         break;
                     }
 
                     top += 1.05f * fontSize;
 
-                    // TODO: Cheap hack for now: we consider that the MenuEntryType::Choice are always going to be the
-                    // longest entries.
                     if (eye == 0) {
                         m_menuEntriesRight = max(m_menuEntriesRight, left);
                     }
@@ -616,19 +644,27 @@ namespace {
                     if (m_configManager->isSafeMode()) {
                         top += fontSize;
 
-                        std::wstring text =
-                            L"\x25CA  Running in safe mode, settings are cleared when restarting the VR "
-                            L"session \x25CA";
-                        m_textRenderer->drawString(text, TextStyle::Selected, fontSize, left, top, colorWarning);
-                        left += m_textRenderer->measureString(text, TextStyle::Selected, fontSize);
+                        left += m_textRenderer->drawString(
+                            L"\x25CA  Running in safe mode, settings are cleared when restarting the VR session \x25CA",
+                            TextStyle::Selected,
+                            fontSize,
+                            left,
+                            top,
+                            colorWarning,
+                            measure);
 
                         top += 1.05f * fontSize;
                     } else if (m_needRestart) {
                         top += fontSize;
 
-                        std::wstring text = L"\x25CA  Some settings require to restart the VR session \x25CA";
-                        m_textRenderer->drawString(text, TextStyle::Selected, fontSize, left, top, colorWarning);
-                        left += m_textRenderer->measureString(text, TextStyle::Selected, fontSize);
+                        left += m_textRenderer->drawString(
+                            L"\x25CA  Some settings require to restart the VR session \x25CA",
+                            TextStyle::Selected,
+                            fontSize,
+                            left,
+                            top,
+                            colorWarning,
+                            measure);
 
                         top += 1.05f * fontSize;
                     }

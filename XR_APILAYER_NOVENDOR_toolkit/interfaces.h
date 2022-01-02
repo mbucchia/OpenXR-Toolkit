@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -93,6 +93,7 @@ namespace toolkit {
             virtual void hardReset() = 0;
 
             virtual bool isSafeMode() const = 0;
+            virtual bool isExperimentalMode() const = 0;
 
             template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
             void setEnumDefault(const std::string& name, T value) {

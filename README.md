@@ -20,6 +20,8 @@ Once installed, use the _OpenXR Toolkit Companion app_ (found on the desktop or 
 
 Once installed, please run the desired OpenXR application and use Ctrl+F2 to enter the configuration menu.
 
+Please use the _Menu eye offset_ option to adjust the display of the menu until the menu appears correctly.
+
 ## Recovery
 
 If changing some settings render the application unusable, use Ctrl+F1+F2+F3 to hard reset all settings. 

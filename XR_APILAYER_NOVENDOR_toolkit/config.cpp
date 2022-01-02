@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -71,9 +71,11 @@ namespace {
     class ConfigManager : public IConfigManager {
       public:
         ConfigManager(const std::string& appName) : m_appName(appName) {
-            // Check for safe mode.
+            // Check for safe mode and experimental mode.
             m_safeMode =
                 RegGetDword(HKEY_LOCAL_MACHINE, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"safe_mode", 0);
+            m_experimentalMode =
+                RegGetDword(HKEY_LOCAL_MACHINE, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"enable_experimental", 0);
 
             std::string baseKey = RegPrefix + "\\" + appName;
             m_baseKey = std::wstring(baseKey.begin(), baseKey.end());
@@ -193,6 +195,10 @@ namespace {
             return m_safeMode;
         }
 
+        bool isExperimentalMode() const override {
+            return m_experimentalMode;
+        }
+
         void hardReset() override {
             RegDeleteKey(HKEY_CURRENT_USER, m_baseKey);
             for (auto& value : m_values) {
@@ -224,6 +230,7 @@ namespace {
         const std::string m_appName;
         std::wstring m_baseKey;
         bool m_safeMode;
+        bool m_experimentalMode;
 
         mutable std::map<std::string, ConfigValue> m_values;
     };
