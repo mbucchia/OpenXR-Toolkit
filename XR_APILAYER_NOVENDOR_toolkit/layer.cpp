@@ -436,7 +436,7 @@ namespace {
                                XrView* views) override {
             const XrResult result =
                 OpenXrApi::xrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
-            if (XR_SUCCEEDED(result) &&
+            if (XR_SUCCEEDED(result) && isVrSession(session) &&
                 viewLocateInfo->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
                 assert(*viewCountOutput == ViewCount);
 
@@ -482,7 +482,7 @@ namespace {
 
         XrResult xrBeginFrame(XrSession session, const XrFrameBeginInfo* frameBeginInfo) override {
             const XrResult result = OpenXrApi::xrBeginFrame(session, frameBeginInfo);
-            if (XR_SUCCEEDED(result) && m_graphicsDevice) {
+            if (XR_SUCCEEDED(result) && isVrSession(session) && m_graphicsDevice) {
                 m_performanceCounters.appCpuTimer->start();
                 m_stats.appGpuTimeUs += m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
                 m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
