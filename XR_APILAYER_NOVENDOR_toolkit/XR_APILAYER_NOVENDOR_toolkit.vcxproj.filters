@@ -27,6 +27,9 @@
     <Filter Include="Shader Files\PostProcess">
       <UniqueIdentifier>{b3914fc2-ccc0-4628-8e7b-2ad1558c2762}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shader Files\FSR">
+      <UniqueIdentifier>{207574d0-b8f5-4ade-b7eb-66a5aa987e51}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -61,6 +64,12 @@
     </ClInclude>
     <ClInclude Include="postprocess.h">
       <Filter>Header Files\PostProcess</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\FidelityFX-FSR\ffx-fsr\ffx_a.h">
+      <Filter>Shader Files\FSR</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h">
+      <Filter>Shader Files\FSR</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -100,6 +109,9 @@
     <ClCompile Include="utilities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="fsr.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="XR_APILAYER_NOVENDOR_toolkit.json" />
@@ -117,6 +129,9 @@
     </FxCompile>
     <FxCompile Include="NIS.hlsl">
       <Filter>Shader Files\NIS</Filter>
+    </FxCompile>
+    <FxCompile Include="FSR.hlsl">
+      <Filter>Shader Files\FSR</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

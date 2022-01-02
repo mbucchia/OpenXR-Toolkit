@@ -55,6 +55,15 @@ namespace toolkit {
                                                      uint32_t outputWidth,
                                                      uint32_t outputHeight);
 
+        std::pair<uint32_t, uint32_t>
+        GetFSRScaledResolution(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                               uint32_t outputWidth,
+                               uint32_t outputHeight);
+        std::shared_ptr<IUpscaler> CreateFSRUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                                                     std::shared_ptr<IDevice> graphicsDevice,
+                                                     uint32_t outputWidth,
+                                                     uint32_t outputHeight);
+
         std::shared_ptr<IImageProcessor>
         CreateImageProcessor(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                              std::shared_ptr<IDevice> graphicsDevice,

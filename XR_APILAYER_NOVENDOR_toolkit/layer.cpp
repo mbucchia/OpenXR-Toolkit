@@ -122,11 +122,15 @@ namespace {
                 uint32_t inputHeight = m_displayHeight;
 
                 switch (upscaleMode) {
+                case config::ScalingType::FSR: {
+                    std::tie(inputWidth, inputHeight) =
+                        graphics::GetFSRScaledResolution(m_configManager, m_displayWidth, m_displayHeight);
+                    break;
+                }
+
                 case config::ScalingType::NIS: {
-                    auto resolution =
+                    std::tie(inputWidth, inputHeight) =
                         graphics::GetNISScaledResolution(m_configManager, m_displayWidth, m_displayHeight);
-                    inputWidth = resolution.first;
-                    inputHeight = resolution.second;
                     break;
                 }
 
@@ -185,6 +189,11 @@ namespace {
                     auto upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
 
                     switch (upscaleMode) {
+                    case config::ScalingType::FSR:
+                        m_upscaler = graphics::CreateFSRUpscaler(
+                            m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
+                        break;
+
                     case config::ScalingType::NIS:
                         m_upscaler = graphics::CreateNISUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);

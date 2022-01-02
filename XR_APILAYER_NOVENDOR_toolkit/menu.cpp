@@ -258,7 +258,7 @@ namespace {
                                      0,
                                      (int)ScalingType::MaxValue - 1,
                                      [](int value) {
-                                         std::string labels[] = {"Off", "NIS"};
+                                         std::string labels[] = {"Off", "NIS", "FSR"};
                                          return labels[value];
                                      }});
             m_upscalingGroup.start = m_menuEntries.size();
