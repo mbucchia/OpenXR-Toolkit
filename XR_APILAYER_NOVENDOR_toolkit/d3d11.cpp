@@ -65,7 +65,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         const ComPtr<ID3D11PixelShader> m_pixelShader;
     };
 
-    // Wrap a computer shader resource. Obtained from D3D11Device.
+    // Wrap a compute shader resource. Obtained from D3D11Device.
     class D3D11ComputeShader : public IComputeShader {
       public:
         D3D11ComputeShader(std::shared_ptr<IDevice> device,
@@ -434,8 +434,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 
     class D3D11Device : public IDevice, public std::enable_shared_from_this<D3D11Device> {
       public:
-        D3D11Device(ID3D11Device* device) {
-            m_device = device;
+        D3D11Device(ID3D11Device* device) : m_device(device) {
             m_device->GetImmediateContext(&m_context);
 
             // Create common resources.
@@ -874,7 +873,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         }
 
       private:
-        ComPtr<ID3D11Device> m_device;
+        const ComPtr<ID3D11Device> m_device;
         ComPtr<ID3D11DeviceContext> m_context;
         std::string m_deviceName;
 
