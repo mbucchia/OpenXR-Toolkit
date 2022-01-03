@@ -266,6 +266,16 @@ namespace {
             // buffers.
             const bool useSwapchain = createInfo->usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
 
+            Log("Creating swapchain with dimensions=%ux%u, arraySize=%u, mipCount=%u, sampleCount=%u, format=%d, "
+                "usage=0x%x\n",
+                createInfo->width,
+                createInfo->height,
+                createInfo->arraySize,
+                createInfo->mipCount,
+                createInfo->sampleCount,
+                createInfo->format,
+                createInfo->usageFlags);
+
             XrSwapchainCreateInfo chainCreateInfo = *createInfo;
             if (useSwapchain) {
                 // TODO: Modify the swapchain to handle our processing chain (eg: change resolution and/or select usage
