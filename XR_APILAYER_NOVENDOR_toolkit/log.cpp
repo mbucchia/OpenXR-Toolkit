@@ -33,7 +33,7 @@ namespace toolkit::log {
 
             char buf[1024];
             size_t offset =
-                std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S %z: ", std::localtime(&now));
+                std::strftime(buf, sizeof(buf), "[OXRTK] %Y-%m-%d %H:%M:%S %z: ", std::localtime(&now));
             _vsnprintf_s(buf + offset, sizeof(buf) - offset, sizeof(buf) - offset, fmt, va);
             OutputDebugStringA(buf);
             if (logStream.is_open()) {
