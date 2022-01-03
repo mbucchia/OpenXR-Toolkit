@@ -36,12 +36,12 @@ namespace {
     constexpr unsigned int WriteDelay = 90; // 1-2s in good VR :)
 
     // https://docs.microsoft.com/en-us/archive/msdn-magazine/2017/may/c-use-modern-c-to-access-the-windows-registry
-    int RegGetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value, DWORD defaultValue) {
+    std::optional<int> RegGetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value) {
         DWORD data{};
         DWORD dataSize = sizeof(data);
         LONG retCode = ::RegGetValue(hKey, subKey.c_str(), value.c_str(), RRF_RT_REG_DWORD, nullptr, &data, &dataSize);
         if (retCode != ERROR_SUCCESS) {
-            return defaultValue;
+            return {};
         }
         return data;
     }
@@ -72,10 +72,12 @@ namespace {
       public:
         ConfigManager(const std::string& appName) : m_appName(appName) {
             // Check for safe mode and experimental mode.
-            m_safeMode =
-                RegGetDword(HKEY_LOCAL_MACHINE, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"safe_mode", 0);
-            m_experimentalMode =
-                RegGetDword(HKEY_LOCAL_MACHINE, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"enable_experimental", 0);
+            m_safeMode = RegGetDword(HKEY_LOCAL_MACHINE, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"safe_mode")
+                             .value_or(0);
+            m_experimentalMode = RegGetDword(HKEY_LOCAL_MACHINE,
+                                             std::wstring(RegPrefix.begin(), RegPrefix.end()),
+                                             L"enable_experimental")
+                                     .value_or(0);
 
             std::string baseKey = RegPrefix + "\\" + appName;
             m_baseKey = std::wstring(baseKey.begin(), baseKey.end());
@@ -218,8 +220,14 @@ namespace {
                 return;
             }
 
-            entry.value =
-                RegGetDword(HKEY_CURRENT_USER, m_baseKey, std::wstring(name.begin(), name.end()), entry.defaultValue);
+            auto value = RegGetDword(HKEY_CURRENT_USER, m_baseKey, std::wstring(name.begin(), name.end()));
+            if (!value) {
+                // Fallback to HKLM for global options.
+                value = RegGetDword(HKEY_LOCAL_MACHINE,
+                                    std::wstring(RegPrefix.begin(), RegPrefix.end()),
+                                    std::wstring(name.begin(), name.end()));
+            }
+            entry.value = value.value_or(entry.defaultValue);
             entry.changedSinceLastQuery = true;
         }
 

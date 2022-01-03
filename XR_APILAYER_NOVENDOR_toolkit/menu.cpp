@@ -120,7 +120,7 @@ namespace {
                 return;
             }
 
-            float clearColor[] = {0, 0, 0, 0};
+            float clearColor[] = {0, 0, 0, 1};
             D3D11_RECT rect;
             rect.top = (LONG)top;
             rect.left = (LONG)left;
@@ -304,7 +304,7 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingOverlayType,
                                      0,
-                                     (int)OverlayType::MaxValue - 1,
+                                     (int)OverlayType::MaxValue - m_configManager->isExperimentalMode() ? 1 : 2,
                                      [](int value) {
                                          std::string labels[] = {"Off", "FPS", "Detailed"};
                                          return labels[value];

@@ -49,6 +49,7 @@ using Microsoft::WRL::ComPtr;
 
 // Direct3D.
 #include <d3d11_1.h>
+#include <D3DX11tex.h>
 #include <d3d12.h>
 #include <d3dcompiler.h>
 

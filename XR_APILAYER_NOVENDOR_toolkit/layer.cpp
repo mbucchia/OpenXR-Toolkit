@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -66,6 +66,8 @@ namespace {
             // Needed to resolve the requested function pointers.
             OpenXrApi::xrCreateInstance(createInfo);
 
+            m_applicationName = createInfo->applicationInfo.applicationName;
+
             // Dump the OpenXR runtime information to help debugging customer issues.
             XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES};
             CHECK_XRCMD(xrGetInstanceProperties(GetXrInstance(), &instanceProperties));
@@ -118,7 +120,7 @@ namespace {
                 instance, systemId, viewConfigurationType, viewCapacityInput, viewCountOutput, views);
             if (XR_SUCCEEDED(result) && isVrSystem(systemId) && views) {
                 // Determine the application resolution.
-                auto upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
+                const auto upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
                 uint32_t inputWidth = m_displayWidth;
                 uint32_t inputHeight = m_displayHeight;
 
@@ -182,12 +184,15 @@ namespace {
 
                 if (m_graphicsDevice) {
                     // Initialize the other resources.
-                    auto upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
+                    m_upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
 
-                    switch (upscaleMode) {
+                    switch (m_upscaleMode) {
                     case config::ScalingType::NIS:
                         m_upscaler = graphics::CreateNISUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
+
+                        // Latch this value now.
+                        m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
                         break;
 
                     case config::ScalingType::None:
@@ -576,6 +581,20 @@ namespace {
             }
         }
 
+        void takeScreenshot(std::shared_ptr<graphics::ITexture> texture) const {
+            std::stringstream parameters;
+            if (m_upscaleMode == config::ScalingType::NIS) {
+                parameters << "NIS_" << m_upscalingFactor << "_" << m_configManager->getValue(config::SettingSharpness);
+            }
+            const std::time_t now = std::time(nullptr);
+            char datetime[1024];
+            std::strftime(datetime, sizeof(datetime), "%Y%m%d_%H%M%S_", std::localtime(&now));
+            const std::string screenshotFilename = m_applicationName + "_" + datetime + parameters.str() + ".dds";
+            std::string screenshotPath = (std::filesystem::path(getenv("LOCALAPPDATA")) / screenshotFilename).string();
+
+            texture->saveToFile(screenshotPath);
+        }
+
         XrResult xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo) override {
             if (!isVrSession(session) || !m_graphicsDevice) {
                 return OpenXrApi::xrEndFrame(session, frameEndInfo);
@@ -595,9 +614,15 @@ namespace {
             // Toggle to the next set of GPU timers.
             m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
 
-            // Handle menu stuff.
+            // Handle inputs.
+            bool requestScreenshot = false;
             if (m_menuHandler) {
                 m_menuHandler->handleInput();
+
+                const bool isF12Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F12);
+                requestScreenshot =
+                    m_configManager->getValue(config::SettingScreenshotEnabled) && !m_wasF12Pressed && isF12Pressed;
+                m_wasF12Pressed = isF12Pressed;
             }
 
             // Unbind all textures from the render targets.
@@ -756,6 +781,12 @@ namespace {
                 }
             }
 
+            // Whether the menu is available or not, we can still use that top-most texture for screenshot.
+            // TODO: The screenshot does not work with multi-layer applications.
+            if (textureForMenu[0] && requestScreenshot) {
+                takeScreenshot(textureForMenu[0]);
+            }
+
             m_performanceCounters.numFrames++;
 
             return OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
@@ -770,6 +801,7 @@ namespace {
             return session == m_vrSession;
         }
 
+        std::string m_applicationName;
         XrSystemId m_vrSystemId{XR_NULL_SYSTEM_ID};
         XrSession m_vrSession{XR_NULL_HANDLE};
         uint32_t m_displayWidth;
@@ -782,10 +814,14 @@ namespace {
         std::map<XrSwapchain, SwapchainState> m_swapchains;
 
         std::shared_ptr<graphics::IUpscaler> m_upscaler;
+        config::ScalingType m_upscaleMode{config::ScalingType::None};
+        uint32_t m_upscalingFactor{100};
+
         std::shared_ptr<graphics::IImageProcessor> m_preProcessor;
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
 
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
+        bool m_wasF12Pressed{false};
 
         struct {
             std::shared_ptr<utilities::ICpuTimer> appCpuTimer;

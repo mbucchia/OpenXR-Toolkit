@@ -225,6 +225,16 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             return getRenderTargetViewInternal(m_renderTargetSubView[slice], slice);
         }
 
+        void saveToFile(const std::string& path) const override {
+            const HRESULT hr =
+                D3DX11SaveTextureToFileA(m_device->getContext<D3D11>(), m_texture.Get(), D3DX11_IFF_DDS, path.c_str());
+            if (SUCCEEDED(hr)) {
+                Log("Screenshot saved to %s\n", path.c_str());
+            } else {
+                Log("Failed to take screenshot: %d\n", hr);
+            }
+        }
+
         void* getNativePtr() const override {
             return m_texture.Get();
         }
