@@ -59,6 +59,7 @@ namespace toolkit {
 
     namespace config {
 
+        const std::string SettingScreenshotEnabled = "enable_screenshot";
         const std::string SettingOverlayEyeOffset = "overlay_eye_offset";
         const std::string SettingOverlayType = "overlay";
         const std::string SettingMenuFontSize = "font_size";
@@ -242,6 +243,8 @@ namespace toolkit {
             virtual std::shared_ptr<IComputeShaderOutputView> getComputeShaderOutputView(uint32_t slice) const = 0;
             virtual std::shared_ptr<IRenderTargetView> getRenderTargetView() const = 0;
             virtual std::shared_ptr<IRenderTargetView> getRenderTargetView(uint32_t slice) const = 0;
+
+            virtual void saveToFile(const std::string& path) const = 0;
 
             virtual void* getNativePtr() const = 0;
 
