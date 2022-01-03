@@ -571,6 +571,11 @@ namespace {
             m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
 
             // Handle menu stuff.
+            // NOTE: shouldn't this be relocated at the beginning of updateConfiguration() instead?
+            //       otherwise some menu actions could be changing the configuration state after
+            //       the handlers have been updated() but before dispatching the handlers shaders 
+            //       to the GPU causing potential errors.
+             
             if (m_menuHandler) {
                 m_menuHandler->handleInput();
             }
