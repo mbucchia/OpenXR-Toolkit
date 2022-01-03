@@ -533,6 +533,12 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             case TextureFormat::R16G16B16A16_UNORM:
                 return (int64_t)DXGI_FORMAT_R16G16B16A16_UNORM;
 
+            case TextureFormat::R10G10B10A2_UNORM:
+                return (int64_t)DXGI_FORMAT_R10G10B10A2_UNORM;
+
+            case TextureFormat::R8G8B8A8_UNORM:
+                return (int64_t)DXGI_FORMAT_R8G8B8A8_UNORM;
+
             default:
                 throw new std::runtime_error("Unknown texture format");
             };
