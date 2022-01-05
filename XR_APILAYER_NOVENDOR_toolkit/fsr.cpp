@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright(c) 2021 Jean-Luc Dupiot - Reality XP
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -72,13 +72,12 @@ namespace {
                 initializeSharpen();
             }
 
-            m_configBuffer = m_device->createBuffer(sizeof(FSRConstants), "FSR Constants CB");
             update();
         }
 
         void update() override {
             if (m_configManager->hasChanged(SettingSharpness)) {
-                const auto sharpness = m_configManager->getValue(SettingSharpness) / 100.0f;
+                const auto sharpness = m_configManager->getValue(SettingSharpness) / 100.f;
                 const auto attenuation = 1.f - AClampF1(sharpness, 0, 1);
 
                 FSRConstants config = {};
@@ -91,24 +90,30 @@ namespace {
 
                 FsrRcasCon(config.Const4, static_cast<AF1>(attenuation));
 
-                // TODO: (hdr != NISHDRMode::None) ? 1 : 0;
-                config.Const4[3] = 0; 
-                
-                m_configBuffer->uploadData(&config, sizeof(config));
+                // implementation is using a shader compilation define for this
+                //config.Const4[3] = (hdr != NISHDRMode::None) ? 1 : 0;
+    
+                m_configBuffer = m_device->createBuffer(sizeof(config), "FSR Constants CB", &config, true);
             }
         }
 
         void upscale(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice = -1) override {
+            if (!m_intermediary) {
+                const auto& infos = output->getInfo();
+                initializeIntermediary(infos.width, infos.height, 0 /* infos.format */);
+            }
+
             if (!m_isSharpenOnly) {
                 m_device->setShader(m_shaderEASU);
                 m_device->setShaderInput(0, m_configBuffer);
                 m_device->setShaderInput(0, input, slice);
-                m_device->setShaderOutput(0, m_intermediary, -1);
+                m_device->setShaderOutput(0, m_intermediary);
                 m_device->dispatchShader();
             }
 
             m_device->setShader(m_shaderRCAS);
-            m_device->setShaderInput(0, m_intermediary);
+            m_device->setShaderInput(0, m_configBuffer);
+            m_device->setShaderInput(0, m_isSharpenOnly ? input : m_intermediary);
             m_device->setShaderOutput(0, output, slice);
             m_device->dispatchShader();
         }
@@ -145,19 +150,6 @@ namespace {
             m_shaderRCAS = m_device->createComputeShader(
                 shaderPath.string(), "mainCS", "FSR RCAS CS", threadGroups, defines.get(), shadersDir.string());
 
-            // create the intermediary texture between upscale and sharpen pass
-            XrSwapchainCreateInfo info;
-            ZeroMemory(&info, sizeof(info));
-            info.width = m_outputWidth;
-            info.height = m_outputHeight;
-            //info.format = m_device->getTextureFormat(TextureFormat::R16G16B16A16_UNORM);
-            info.format = m_device->getTextureFormat(TextureFormat::R10G10B10A2_UNORM);
-            info.arraySize = 1;
-            info.mipCount = 1;
-            info.sampleCount = 1;
-            info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
-            m_intermediary = m_device->createTexture(info, "FSR Intermediary TEX2D", 0, 0, nullptr);
-
             m_isSharpenOnly = false;
         }
 
@@ -167,6 +159,32 @@ namespace {
             // TODO
 
             //m_isSharpenOnly = true;
+        }
+
+        void initializeIntermediary(uint32_t width, uint32_t height, int64_t format) {
+            if (format == 0) {
+                // good balance between visuals and perf
+                format = m_device->getTextureFormat(TextureFormat::R16G16B16A16_UNORM);
+            }
+
+            Log("FSRUpscaler initializeIntermediary with %u, %u, %u\n", width, height, format);
+
+            if (m_device->isTextureFormatSRGB(format)) {
+                format = DXGI_FORMAT_R8G8B8A8_UNORM;
+                Log("  sRGB output format changed to: %u\n", format);
+            }
+
+            // create the intermediary texture between upscale and sharpen pass
+            XrSwapchainCreateInfo info;
+            ZeroMemory(&info, sizeof(info));
+            info.width = width;
+            info.height = height;
+            info.format = format;
+            info.arraySize = 1;
+            info.mipCount = 1;
+            info.sampleCount = 1;
+            info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+            m_intermediary = m_device->createTexture(info, "FSR Intermediary TEX2D", 0, 0, nullptr);
         }
 
         const std::shared_ptr<IConfigManager> m_configManager;
@@ -191,28 +209,21 @@ namespace toolkit::graphics {
     std::pair<uint32_t, uint32_t> GetFSRScaledResolution(std::shared_ptr<IConfigManager> configManager,
                                                          uint32_t outputWidth,
                                                          uint32_t outputHeight) {
-        uint32_t inputWidth = outputWidth;
-        uint32_t inputHeight = outputHeight;
 
         const int upscalingPercent = configManager->getValue(SettingScaling);
-        if (upscalingPercent > 100) {
-            inputWidth = (uint32_t)((100.0f / upscalingPercent) * outputWidth);
-            if (inputWidth % 2) {
-                inputWidth++;
-            }
-            inputHeight = (uint32_t)((100.0f / upscalingPercent) * outputHeight);
-            if (inputHeight % 2) {
-                inputHeight++;
-            }
-        
-        } else if (upscalingPercent < 100) {
-            
-            inputWidth = (uint32_t)(upscalingPercent * outputWidth) / 100u;
-            inputWidth += inputWidth & 1;
-        
-            inputHeight = (uint32_t)(upscalingPercent * outputHeight) / 100u;
-            inputHeight += inputHeight & 1;
-        }
+
+        uint32_t inputWidth = upscalingPercent >= 100 ?
+          (outputWidth * 100u) / upscalingPercent :
+          (outputWidth * upscalingPercent) / 100u ;
+
+
+        uint32_t inputHeight = upscalingPercent >= 100 ? 
+          (outputHeight * 100u) / upscalingPercent :
+          (outputHeight * upscalingPercent) / 100u ;
+
+        // enforce the dimensions to be multiple of 2x2 blocks for the shader
+        inputWidth += inputWidth & 1;
+        inputHeight += inputHeight & 1;
 
         return std::make_pair(inputWidth, inputHeight);
     }
