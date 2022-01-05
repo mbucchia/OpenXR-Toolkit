@@ -30,29 +30,30 @@ namespace {
     using namespace toolkit::utilities;
 
     class CpuTimer : public ICpuTimer {
+      using clock = std::chrono::high_resolution_clock;
+
       public:
         void start() override {
-            m_timeStart = std::chrono::high_resolution_clock::now();
+            m_timeStart = clock::now();
         }
 
         void stop() override {
-            m_duration = std::chrono::duration(std::chrono::high_resolution_clock::now() - m_timeStart).count() / 1000;
+            m_duration = clock::now() - m_timeStart;
         }
 
         uint64_t query(bool reset) const override {
-            const uint64_t duration = m_duration;
+            const auto duration =
+              std::chrono::duration_cast<std::chrono::microseconds>(m_duration);
 
-            if (reset) {
-                m_duration = 0;
-            }
+            if (reset)
+                m_duration = clock::duration::zero();
 
-            return duration;
+            return duration.count();
         }
 
       private:
-        std::chrono::time_point<std::chrono::high_resolution_clock> m_timeStart;
-
-        mutable uint64_t m_duration{0};
+        clock::time_point m_timeStart;
+        mutable clock::duration m_duration{0};
     };
 
 } // namespace

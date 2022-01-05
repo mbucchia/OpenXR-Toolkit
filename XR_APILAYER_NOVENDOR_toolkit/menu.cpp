@@ -580,7 +580,7 @@ namespace {
         int m_numSplashLeft;
         std::vector<MenuEntry> m_menuEntries;
         unsigned int m_selectedItem{0};
-        std::chrono::time_point<std::chrono::steady_clock> m_lastInput;
+        std::chrono::steady_clock::time_point m_lastInput;
         bool m_wasF1Pressed{false};
         bool m_wasF2Pressed{false};
         bool m_wasF3Pressed{false};

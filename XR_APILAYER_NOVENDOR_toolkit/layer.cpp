@@ -502,36 +502,27 @@ namespace {
 
         void updateStatisticsForFrame() {
             const auto now = std::chrono::steady_clock::now();
+            const auto numFrames = ++m_performanceCounters.numFrames;
 
-            m_frameTimestamps.push_back(now);
-
-            if (std::chrono::duration<double>(now - m_performanceCounters.lastWindowStart).count() > 1.0) {
-                // Update the FPS counter.
-                while (std::chrono::duration<double>(now - m_frameTimestamps.front()).count() > 1.0) {
-                    m_frameTimestamps.pop_front();
-                }
-                m_stats.fps = (float)m_frameTimestamps.size();
+            if ((now - m_performanceCounters.lastWindowStart) >= std::chrono::seconds(1)) {
+                m_performanceCounters.numFrames = 0;
+                m_performanceCounters.lastWindowStart = now;
 
                 // Push the last averaged statistics.
-                if (m_performanceCounters.numFrames) {
-                    m_stats.appCpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.appGpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.endFrameCpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.upscalerGpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.preProcessorGpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.postProcessorGpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.overlayCpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.overlayGpuTimeUs /= m_performanceCounters.numFrames;
-                }
+                m_stats.fps = static_cast<float>(numFrames);
+                m_stats.appCpuTimeUs /= numFrames;
+                m_stats.appGpuTimeUs /= numFrames;
+                m_stats.endFrameCpuTimeUs /= numFrames;
+                m_stats.upscalerGpuTimeUs /= numFrames;
+                m_stats.preProcessorGpuTimeUs /= numFrames;
+                m_stats.postProcessorGpuTimeUs /= numFrames;
+                m_stats.overlayCpuTimeUs /= numFrames;
+                m_stats.overlayGpuTimeUs /= numFrames;
+
                 m_menuHandler->updateStatistics(m_stats);
 
                 // Start from fresh!
-                m_stats.appCpuTimeUs = m_stats.appGpuTimeUs = m_stats.endFrameCpuTimeUs = 0;
-                m_stats.overlayCpuTimeUs = m_stats.overlayGpuTimeUs = 0;
-                m_stats.upscalerGpuTimeUs = m_stats.preProcessorGpuTimeUs = m_stats.postProcessorGpuTimeUs = 0;
-
-                m_performanceCounters.numFrames = 0;
-                m_performanceCounters.lastWindowStart = now;
+                memset(&m_stats, 0, sizeof(m_stats));
             }
         }
 
@@ -736,8 +727,6 @@ namespace {
                 }
             }
 
-            m_performanceCounters.numFrames++;
-
             return OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
         }
 
@@ -774,12 +763,11 @@ namespace {
             std::shared_ptr<graphics::IGpuTimer> overlayGpuTimer[GpuTimerLatency + 1];
 
             unsigned int gpuTimerIndex{0};
-            std::chrono::time_point<std::chrono::steady_clock> lastWindowStart;
+            std::chrono::steady_clock::time_point lastWindowStart;
             uint32_t numFrames{0};
         } m_performanceCounters;
 
         LayerStatistics m_stats{};
-        std::deque<std::chrono::time_point<std::chrono::steady_clock>> m_frameTimestamps;
     };
 
     std::unique_ptr<OpenXrLayer> g_instance = nullptr;
