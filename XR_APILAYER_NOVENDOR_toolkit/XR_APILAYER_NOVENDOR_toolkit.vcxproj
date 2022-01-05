@@ -192,6 +192,7 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     <ClCompile Include="framework\dispatch.gen.cpp" />
     <ClCompile Include="framework\entry.cpp" />
     <ClCompile Include="fsr.cpp" />
+    <ClCompile Include="hand2controller.cpp" />
     <ClCompile Include="layer.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="menu.cpp" />

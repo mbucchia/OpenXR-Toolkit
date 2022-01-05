@@ -275,15 +275,15 @@ namespace LAYER_NAMESPACE
 	protected:
 		OpenXrApi() = default;
 
-		XrInstance GetXrInstance() const
-		{
-			return m_instance;
-		}
-
 		PFN_xrGetInstanceProcAddr m_xrGetInstanceProcAddr{ nullptr };
 
 	public:
 		virtual ~OpenXrApi() = default;
+
+		XrInstance GetXrInstance() const
+		{
+			return m_instance;
+		}
 
 		void SetGetInstanceProcAddr(PFN_xrGetInstanceProcAddr pfn_xrGetInstanceProcAddr, XrInstance instance)
 		{

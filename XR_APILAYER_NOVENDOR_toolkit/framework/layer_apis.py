@@ -1,5 +1,3 @@
-# /1\  Need to Rebuild the project for the Pre-build step to invoke the generator  /1\
-
 # The list of OpenXR functions our layer will override.
 override_functions = [
     "xrGetSystem",
@@ -8,9 +6,22 @@ override_functions = [
     "xrDestroySession",
     "xrCreateSwapchain",
     "xrDestroySwapchain",
+    "xrSuggestInteractionProfileBindings",
+    "xrCreateAction",
+    "xrDestroyAction",
+    "xrCreateActionSpace",
+    "xrDestroySpace",
     "xrEnumerateSwapchainImages",
     "xrAcquireSwapchainImage",
+    "xrPollEvent",
+    "xrGetCurrentInteractionProfile",
     "xrLocateViews",
+    "xrLocateSpace",
+    "xrSyncActions",
+    "xrGetActionStateBoolean",
+    "xrGetActionStateFloat",
+    "xrGetActionStatePose",
+    "xrWaitFrame",
     "xrBeginFrame",
     "xrEndFrame"
 ]
@@ -20,5 +31,8 @@ override_functions = [
 requested_functions = [
     "xrGetInstanceProperties",
     "xrEnumerateViewConfigurationViews",
-    "xrEnumerateSwapchainImages"
+    "xrEnumerateSwapchainImages",
+    "xrCreateReferenceSpace",
+    "xrPathToString",
+    "xrStringToPath"
 ]

@@ -41,29 +41,86 @@ namespace LAYER_NAMESPACE {
                                       XrInstance* const instance) {
         DebugLog("--> xrCreateApiLayerInstance\n");
 
-        if (!apiLayerInfo ||
-            apiLayerInfo->structType != XR_LOADER_INTERFACE_STRUCT_API_LAYER_CREATE_INFO ||
+        if (!apiLayerInfo || apiLayerInfo->structType != XR_LOADER_INTERFACE_STRUCT_API_LAYER_CREATE_INFO ||
             apiLayerInfo->structVersion != XR_API_LAYER_CREATE_INFO_STRUCT_VERSION ||
             apiLayerInfo->structSize != sizeof(XrApiLayerCreateInfo) || !apiLayerInfo->nextInfo ||
             apiLayerInfo->nextInfo->structType != XR_LOADER_INTERFACE_STRUCT_API_LAYER_NEXT_INFO ||
             apiLayerInfo->nextInfo->structVersion != XR_API_LAYER_NEXT_INFO_STRUCT_VERSION ||
             apiLayerInfo->nextInfo->structSize != sizeof(XrApiLayerNextInfo) ||
-            apiLayerInfo->nextInfo->layerName != LayerName ||
-            !apiLayerInfo->nextInfo->nextGetInstanceProcAddr ||
+            apiLayerInfo->nextInfo->layerName != LayerName || !apiLayerInfo->nextInfo->nextGetInstanceProcAddr ||
             !apiLayerInfo->nextInfo->nextCreateApiLayerInstance) {
             Log("xrCreateApiLayerInstance validation failed\n");
             return XR_ERROR_INITIALIZATION_FAILED;
         }
 
+        // Check that the XR_EXT_hand_tracking extension is supported by the runtime and/or an upstream API layer.
+        // But first, we need to create a dummy instance in order to be able to perform these checks.
+        bool hasHandTrackingExt = false;
+        {
+            XrInstance dummyInstance = XR_NULL_HANDLE;
+            PFN_xrEnumerateInstanceExtensionProperties xrEnumerateInstanceExtensionProperties = nullptr;
+            PFN_xrDestroyInstance xrDestroyInstance = nullptr;
+
+            // Call the chain to create the dummy instance.
+            XrApiLayerCreateInfo chainApiLayerInfo = *apiLayerInfo;
+            chainApiLayerInfo.nextInfo = apiLayerInfo->nextInfo->next;
+
+            const XrResult result = apiLayerInfo->nextInfo->nextCreateApiLayerInstance(
+                instanceCreateInfo, &chainApiLayerInfo, &dummyInstance);
+            if (result == XR_SUCCESS) {
+                CHECK_XRCMD(apiLayerInfo->nextInfo->nextGetInstanceProcAddr(
+                    dummyInstance,
+                    "xrEnumerateInstanceExtensionProperties",
+                    reinterpret_cast<PFN_xrVoidFunction*>(&xrEnumerateInstanceExtensionProperties)));
+                CHECK_XRCMD(apiLayerInfo->nextInfo->nextGetInstanceProcAddr(
+                    dummyInstance, "xrDestroyInstance", reinterpret_cast<PFN_xrVoidFunction*>(&xrDestroyInstance)));
+            } else {
+                Log("Failed to create bootstrap instance: %d\n", result);
+            }
+
+            if (xrEnumerateInstanceExtensionProperties) {
+                uint32_t extensionsCount = 0;
+                CHECK_XRCMD(xrEnumerateInstanceExtensionProperties(nullptr, 0, &extensionsCount, nullptr));
+                std::vector<XrExtensionProperties> extensions(extensionsCount, {XR_TYPE_EXTENSION_PROPERTIES});
+                CHECK_XRCMD(xrEnumerateInstanceExtensionProperties(
+                    nullptr, extensionsCount, &extensionsCount, extensions.data()));
+                for (auto extension : extensions) {
+                    const std::string extensionName(extension.extensionName);
+
+                    if (extensionName == "XR_EXT_hand_tracking") {
+                        hasHandTrackingExt = true;
+                    }
+                }
+            }
+
+            if (xrDestroyInstance) {
+                xrDestroyInstance(dummyInstance);
+            }
+        }
+
+        // Add the XR_EXT_hand_tracking extension to the requested extensions when available.
+        XrInstanceCreateInfo chainInstanceCreateInfo = *instanceCreateInfo;
+        std::vector<const char*> newEnabledExtensionNames;
+        if (hasHandTrackingExt) {
+            newEnabledExtensionNames.resize(++chainInstanceCreateInfo.enabledExtensionCount);
+            chainInstanceCreateInfo.enabledExtensionNames = newEnabledExtensionNames.data();
+            memcpy(newEnabledExtensionNames.data(),
+                   instanceCreateInfo->enabledExtensionNames,
+                   instanceCreateInfo->enabledExtensionCount * sizeof(const char*));
+            newEnabledExtensionNames[chainInstanceCreateInfo.enabledExtensionCount - 1] = "XR_EXT_hand_tracking";
+        } else {
+            Log("XR_EXT_hand_tracking is not available from the OpenXR runtime or any upsteam API layer.\n");
+        }
+
         // Call the chain to create the instance.
         XrApiLayerCreateInfo chainApiLayerInfo = *apiLayerInfo;
         chainApiLayerInfo.nextInfo = apiLayerInfo->nextInfo->next;
-        XrResult result = apiLayerInfo->nextInfo->nextCreateApiLayerInstance(
-            instanceCreateInfo, &chainApiLayerInfo, instance);
+        XrResult result =
+            apiLayerInfo->nextInfo->nextCreateApiLayerInstance(&chainInstanceCreateInfo, &chainApiLayerInfo, instance);
         if (result == XR_SUCCESS) {
             // Create our layer.
-            LAYER_NAMESPACE::GetInstance()->SetGetInstanceProcAddr(
-                apiLayerInfo->nextInfo->nextGetInstanceProcAddr, *instance);
+            LAYER_NAMESPACE::GetInstance()->SetGetInstanceProcAddr(apiLayerInfo->nextInfo->nextGetInstanceProcAddr,
+                                                                   *instance);
 
             result = XR_ERROR_RUNTIME_FAILURE;
 
@@ -78,9 +135,7 @@ namespace LAYER_NAMESPACE {
             if (XR_FAILED(result)) {
                 PFN_xrDestroyInstance xrDestroyInstance = nullptr;
                 if (XR_SUCCEEDED(apiLayerInfo->nextInfo->nextGetInstanceProcAddr(
-                        *instance,
-                        "xrDestroyInstance",
-                        reinterpret_cast<PFN_xrVoidFunction*>(&xrDestroyInstance)))) {
+                        *instance, "xrDestroyInstance", reinterpret_cast<PFN_xrVoidFunction*>(&xrDestroyInstance)))) {
                     xrDestroyInstance(*instance);
                 }
             }
@@ -112,9 +167,7 @@ namespace LAYER_NAMESPACE {
     }
 
     // Forward the xrGetInstanceProcAddr() call to the dispatcher.
-    XrResult xrGetInstanceProcAddr(XrInstance instance,
-                                   const char* name,
-                                   PFN_xrVoidFunction* function) {
+    XrResult xrGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function) {
         try {
             return LAYER_NAMESPACE::GetInstance()->xrGetInstanceProcAddr(instance, name, function);
         } catch (std::runtime_error exc) {

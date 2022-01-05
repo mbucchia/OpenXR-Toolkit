@@ -39,6 +39,26 @@ namespace LAYER_NAMESPACE
 
 	// Auto-generated wrappers for the requested APIs.
 
+	XrResult xrPollEvent(XrInstance instance, XrEventDataBuffer* eventData)
+	{
+		DebugLog("--> xrPollEvent\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrPollEvent(instance, eventData);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrPollEvent %d\n", result);
+
+		return result;
+	}
+
 	XrResult xrGetSystem(XrInstance instance, const XrSystemGetInfo* getInfo, XrSystemId* systemId)
 	{
 		DebugLog("--> xrGetSystem\n");
@@ -95,6 +115,66 @@ namespace LAYER_NAMESPACE
 		}
 
 		DebugLog("<-- xrDestroySession %d\n", result);
+
+		return result;
+	}
+
+	XrResult xrCreateActionSpace(XrSession session, const XrActionSpaceCreateInfo* createInfo, XrSpace* space)
+	{
+		DebugLog("--> xrCreateActionSpace\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrCreateActionSpace(session, createInfo, space);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrCreateActionSpace %d\n", result);
+
+		return result;
+	}
+
+	XrResult xrLocateSpace(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation* location)
+	{
+		DebugLog("--> xrLocateSpace\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrLocateSpace(space, baseSpace, time, location);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrLocateSpace %d\n", result);
+
+		return result;
+	}
+
+	XrResult xrDestroySpace(XrSpace space)
+	{
+		DebugLog("--> xrDestroySpace\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrDestroySpace(space);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrDestroySpace %d\n", result);
 
 		return result;
 	}
@@ -199,6 +279,26 @@ namespace LAYER_NAMESPACE
 		return result;
 	}
 
+	XrResult xrWaitFrame(XrSession session, const XrFrameWaitInfo* frameWaitInfo, XrFrameState* frameState)
+	{
+		DebugLog("--> xrWaitFrame\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrWaitFrame(session, frameWaitInfo, frameState);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrWaitFrame %d\n", result);
+
+		return result;
+	}
+
 	XrResult xrBeginFrame(XrSession session, const XrFrameBeginInfo* frameBeginInfo)
 	{
 		DebugLog("--> xrBeginFrame\n");
@@ -259,6 +359,166 @@ namespace LAYER_NAMESPACE
 		return result;
 	}
 
+	XrResult xrCreateAction(XrActionSet actionSet, const XrActionCreateInfo* createInfo, XrAction* action)
+	{
+		DebugLog("--> xrCreateAction\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrCreateAction(actionSet, createInfo, action);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrCreateAction %d\n", result);
+
+		return result;
+	}
+
+	XrResult xrDestroyAction(XrAction action)
+	{
+		DebugLog("--> xrDestroyAction\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrDestroyAction(action);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrDestroyAction %d\n", result);
+
+		return result;
+	}
+
+	XrResult xrSuggestInteractionProfileBindings(XrInstance instance, const XrInteractionProfileSuggestedBinding* suggestedBindings)
+	{
+		DebugLog("--> xrSuggestInteractionProfileBindings\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrSuggestInteractionProfileBindings(instance, suggestedBindings);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrSuggestInteractionProfileBindings %d\n", result);
+
+		return result;
+	}
+
+	XrResult xrGetCurrentInteractionProfile(XrSession session, XrPath topLevelUserPath, XrInteractionProfileState* interactionProfile)
+	{
+		DebugLog("--> xrGetCurrentInteractionProfile\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrGetCurrentInteractionProfile(session, topLevelUserPath, interactionProfile);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrGetCurrentInteractionProfile %d\n", result);
+
+		return result;
+	}
+
+	XrResult xrGetActionStateBoolean(XrSession session, const XrActionStateGetInfo* getInfo, XrActionStateBoolean* state)
+	{
+		DebugLog("--> xrGetActionStateBoolean\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrGetActionStateBoolean(session, getInfo, state);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrGetActionStateBoolean %d\n", result);
+
+		return result;
+	}
+
+	XrResult xrGetActionStateFloat(XrSession session, const XrActionStateGetInfo* getInfo, XrActionStateFloat* state)
+	{
+		DebugLog("--> xrGetActionStateFloat\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrGetActionStateFloat(session, getInfo, state);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrGetActionStateFloat %d\n", result);
+
+		return result;
+	}
+
+	XrResult xrGetActionStatePose(XrSession session, const XrActionStateGetInfo* getInfo, XrActionStatePose* state)
+	{
+		DebugLog("--> xrGetActionStatePose\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrGetActionStatePose(session, getInfo, state);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrGetActionStatePose %d\n", result);
+
+		return result;
+	}
+
+	XrResult xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo)
+	{
+		DebugLog("--> xrSyncActions\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrSyncActions(session, syncInfo);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrSyncActions %d\n", result);
+
+		return result;
+	}
+
 
 	// Auto-generated dispatcher handler.
 	XrResult OpenXrApi::xrGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function)
@@ -274,6 +534,11 @@ namespace LAYER_NAMESPACE
 				m_xrDestroyInstance = reinterpret_cast<PFN_xrDestroyInstance>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrDestroyInstance);
 			}
+			else if (apiName == "xrPollEvent")
+			{
+				m_xrPollEvent = reinterpret_cast<PFN_xrPollEvent>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrPollEvent);
+			}
 			else if (apiName == "xrGetSystem")
 			{
 				m_xrGetSystem = reinterpret_cast<PFN_xrGetSystem>(*function);
@@ -288,6 +553,21 @@ namespace LAYER_NAMESPACE
 			{
 				m_xrDestroySession = reinterpret_cast<PFN_xrDestroySession>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrDestroySession);
+			}
+			else if (apiName == "xrCreateActionSpace")
+			{
+				m_xrCreateActionSpace = reinterpret_cast<PFN_xrCreateActionSpace>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrCreateActionSpace);
+			}
+			else if (apiName == "xrLocateSpace")
+			{
+				m_xrLocateSpace = reinterpret_cast<PFN_xrLocateSpace>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrLocateSpace);
+			}
+			else if (apiName == "xrDestroySpace")
+			{
+				m_xrDestroySpace = reinterpret_cast<PFN_xrDestroySpace>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrDestroySpace);
 			}
 			else if (apiName == "xrEnumerateViewConfigurationViews")
 			{
@@ -314,6 +594,11 @@ namespace LAYER_NAMESPACE
 				m_xrAcquireSwapchainImage = reinterpret_cast<PFN_xrAcquireSwapchainImage>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrAcquireSwapchainImage);
 			}
+			else if (apiName == "xrWaitFrame")
+			{
+				m_xrWaitFrame = reinterpret_cast<PFN_xrWaitFrame>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrWaitFrame);
+			}
 			else if (apiName == "xrBeginFrame")
 			{
 				m_xrBeginFrame = reinterpret_cast<PFN_xrBeginFrame>(*function);
@@ -329,6 +614,46 @@ namespace LAYER_NAMESPACE
 				m_xrLocateViews = reinterpret_cast<PFN_xrLocateViews>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrLocateViews);
 			}
+			else if (apiName == "xrCreateAction")
+			{
+				m_xrCreateAction = reinterpret_cast<PFN_xrCreateAction>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrCreateAction);
+			}
+			else if (apiName == "xrDestroyAction")
+			{
+				m_xrDestroyAction = reinterpret_cast<PFN_xrDestroyAction>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrDestroyAction);
+			}
+			else if (apiName == "xrSuggestInteractionProfileBindings")
+			{
+				m_xrSuggestInteractionProfileBindings = reinterpret_cast<PFN_xrSuggestInteractionProfileBindings>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrSuggestInteractionProfileBindings);
+			}
+			else if (apiName == "xrGetCurrentInteractionProfile")
+			{
+				m_xrGetCurrentInteractionProfile = reinterpret_cast<PFN_xrGetCurrentInteractionProfile>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrGetCurrentInteractionProfile);
+			}
+			else if (apiName == "xrGetActionStateBoolean")
+			{
+				m_xrGetActionStateBoolean = reinterpret_cast<PFN_xrGetActionStateBoolean>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrGetActionStateBoolean);
+			}
+			else if (apiName == "xrGetActionStateFloat")
+			{
+				m_xrGetActionStateFloat = reinterpret_cast<PFN_xrGetActionStateFloat>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrGetActionStateFloat);
+			}
+			else if (apiName == "xrGetActionStatePose")
+			{
+				m_xrGetActionStatePose = reinterpret_cast<PFN_xrGetActionStatePose>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrGetActionStatePose);
+			}
+			else if (apiName == "xrSyncActions")
+			{
+				m_xrSyncActions = reinterpret_cast<PFN_xrSyncActions>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrSyncActions);
+			}
 
 		}
 
@@ -342,6 +667,10 @@ namespace LAYER_NAMESPACE
 		{
 			throw new std::runtime_error("Failed to resolve xrGetInstanceProperties");
 		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrCreateReferenceSpace", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateReferenceSpace))))
+		{
+			throw new std::runtime_error("Failed to resolve xrCreateReferenceSpace");
+		}
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrEnumerateViewConfigurationViews", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrEnumerateViewConfigurationViews))))
 		{
 			throw new std::runtime_error("Failed to resolve xrEnumerateViewConfigurationViews");
@@ -349,6 +678,14 @@ namespace LAYER_NAMESPACE
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrEnumerateSwapchainImages", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrEnumerateSwapchainImages))))
 		{
 			throw new std::runtime_error("Failed to resolve xrEnumerateSwapchainImages");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrStringToPath", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrStringToPath))))
+		{
+			throw new std::runtime_error("Failed to resolve xrStringToPath");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrPathToString", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrPathToString))))
+		{
+			throw new std::runtime_error("Failed to resolve xrPathToString");
 		}
 		return XR_SUCCESS;
 	}

@@ -32,6 +32,7 @@ namespace toolkit {
         uint64_t preProcessorGpuTimeUs{0};
         uint64_t upscalerGpuTimeUs{0};
         uint64_t postProcessorGpuTimeUs{0};
+        uint64_t handsGpuTimeUs{0};
         uint64_t overlayCpuTimeUs{0};
         uint64_t overlayGpuTimeUs{0};
     };
@@ -69,6 +70,7 @@ namespace toolkit {
         const std::string SettingSharpness = "sharpness";
         const std::string SettingICD = "icd";
         const std::string SettingFOV = "fov";
+        const std::string SettingHandTrackingEnabled = "enable_hand_tracking";
 
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
@@ -436,6 +438,36 @@ namespace toolkit {
         };
 
     } // namespace graphics
+
+    namespace input {
+
+        struct IHandTracker {
+            virtual ~IHandTracker() = default;
+
+            virtual XrPath getInteractionProfile() const = 0;
+
+            virtual void registerAction(XrAction action, XrActionSet actionSet) = 0;
+            virtual void unregisterAction(XrAction action) = 0;
+            virtual void registerActionSpace(XrSpace space,
+                                             const std::string path,
+                                             const XrPosef& poseInActionSpace) = 0;
+            virtual void unregisterActionSpace(XrSpace space) = 0;
+
+            virtual void registerBindings(const XrInteractionProfileSuggestedBinding& bindings) = 0;
+
+            virtual const std::string getFullPath(XrAction action, XrPath subactionPath) = 0;
+
+            virtual void sync(XrTime frameTime) = 0;
+            virtual bool locate(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation& location) const = 0;
+            virtual void render(const XrPosef& pose,
+                                XrSpace baseSpace,
+                                std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
+
+            virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateBoolean& state) const = 0;
+            virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateFloat& state) const = 0;
+        };
+
+    } // namespace input
 
     namespace menu {
 

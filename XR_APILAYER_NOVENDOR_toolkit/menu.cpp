@@ -345,6 +345,15 @@ namespace {
                                      m_configManager->isExperimentalMode()});
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
+            // TODO: Only display if supported.
+            // TODO: Warn to restart the session on change.
+            m_menuEntries.push_back(
+                {"Hand Tracking", MenuEntryType::Choice, SettingHandTrackingEnabled, 0, 1, [](int value) {
+                     std::string labels[] = {"Off", "On"};
+                     return labels[value];
+                 }});
+            m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
+
             m_menuEntries.push_back({"Font size",
                                      MenuEntryType::Choice,
                                      SettingMenuFontSize,
@@ -685,6 +694,9 @@ namespace {
                     top += 1.05f * fontSize;
                     m_textRenderer->drawString(fmt::format("pst GPU: {}", m_stats.postProcessorGpuTimeUs),
                                                OVERLAY_COMMON);
+                    top += 1.05f * fontSize;
+
+                    m_textRenderer->drawString(fmt::format("hnd GPU: {}", m_stats.handsGpuTimeUs), OVERLAY_COMMON);
                     top += 1.05f * fontSize;
 
                     m_textRenderer->drawString(fmt::format("ovl CPU: {}", m_stats.overlayCpuTimeUs), OVERLAY_COMMON);
