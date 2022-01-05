@@ -605,13 +605,14 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 
         std::shared_ptr<IShaderBuffer> createBuffer(size_t size,
                                                     const std::optional<std::string>& debugName,
-                                                    const void* initialData) override {
+                                                    const void* initialData,
+                                                    bool immutable) override {
             D3D11_BUFFER_DESC desc;
             ZeroMemory(&desc, sizeof(desc));
             desc.ByteWidth = (UINT)size;
-            desc.Usage = D3D11_USAGE_DYNAMIC;
+            desc.Usage = (initialData && immutable) ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DYNAMIC;
             desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-            desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+            desc.CPUAccessFlags = immutable ? 0 : D3D11_CPU_ACCESS_WRITE;
 
             ComPtr<ID3D11Buffer> buffer;
             if (initialData) {

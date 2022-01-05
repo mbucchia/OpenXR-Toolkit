@@ -296,7 +296,8 @@ namespace toolkit {
                                                             const void* initialData = nullptr) = 0;
             virtual std::shared_ptr<IShaderBuffer> createBuffer(size_t size,
                                                                 const std::optional<std::string>& debugName,
-                                                                const void* initialData = nullptr) = 0;
+                                                                const void* initialData = nullptr,
+                                                                bool immutable = false) = 0;
             virtual std::shared_ptr<IQuadShader> createQuadShader(const std::string& shaderPath,
                                                                   const std::string& entryPoint,
                                                                   const std::optional<std::string>& debugName,
