@@ -138,6 +138,7 @@ namespace {
             defines.add("FSR_THREAD_GROUP_SIZE", 64);
             defines.add("SAMPLE_SLOW_FALLBACK", 1);
             defines.add("SAMPLE_BILINEAR", 0);
+            defines.add("SAMPLE_HDR_OUTPUT", 0);
 
             // EASU specific
             defines.add("SAMPLE_RCAS", 0);

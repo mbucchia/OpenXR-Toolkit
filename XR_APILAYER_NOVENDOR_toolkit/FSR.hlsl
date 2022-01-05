@@ -77,14 +77,16 @@ void CurrFilter(int2 pos)
   #if SAMPLE_SLOW_FALLBACK
     AF3 c;
     FsrEasuF(c, pos, Const0, Const1, Const2, Const3);
-    if (Const4.w == 1)
-        c *= c;
+    #if SAMPLE_HDR_OUTPUT
+      c *= c;
+    #endif
     OutputTexture[pos] = float4(c, 1);
   #else
     AH3 c;
     FsrEasuH(c, pos, Const0, Const1, Const2, Const3);
-    if (Const4.w == 1)
-        c *= c;
+    #if SAMPLE_HDR_OUTPUT
+      c *= c;
+    #endif
     OutputTexture[pos] = AH4(c, 1);
   #endif
 #endif
@@ -92,14 +94,16 @@ void CurrFilter(int2 pos)
   #if SAMPLE_SLOW_FALLBACK
     AF3 c;
     FsrRcasF(c.r, c.g, c.b, pos, Const4);
-    if (Const4.w == 1)
-        c *= c;
+    #if SAMPLE_HDR_OUTPUT
+      c *= c;
+    #endif
     OutputTexture[pos] = float4(c, 1);
   #else
     AH3 c;
     FsrRcasH(c.r, c.g, c.b, pos, Const4);
-    if (Const4.w == 1)
-        c *= c;
+    #if SAMPLE_HDR_OUTPUT
+      c *= c;
+    #endif
     OutputTexture[pos] = AH4(c, 1);
   #endif
 #endif
