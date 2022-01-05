@@ -453,13 +453,15 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             {
                 D3D11_SAMPLER_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
-                desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+                //desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+                desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
                 desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
                 desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
                 desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
                 desc.MaxAnisotropy = 1;
                 desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-                desc.MaxLOD = D3D11_FLOAT32_MAX;
+                desc.MinLOD = D3D11_MIP_LOD_BIAS_MIN;
+                desc.MaxLOD = D3D11_MIP_LOD_BIAS_MAX;
                 CHECK_HRCMD(m_device->CreateSamplerState(&desc, &m_linearClampSamplerCS));
             }
             {
@@ -550,7 +552,6 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
             case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
                 return true;
-
             default:
                 return false;
             };
