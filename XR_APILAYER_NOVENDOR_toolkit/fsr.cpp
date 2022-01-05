@@ -27,13 +27,6 @@
 #include "interfaces.h"
 #include "log.h"
 
-//#pragma warning(push)
-//#pragma warning(disable : 4305)
-#include <NIS_Config.h>
-//#pragma warning(pop)
-
-// https : // github.com/fholger/openvr_fsr/tree/fsr/src
-
 #define A_CPU
 #include <ffx_a.h>
 #include <ffx_fsr1.h>
@@ -188,10 +181,7 @@ namespace {
         std::shared_ptr<IComputeShader> m_shaderEASU;
         std::shared_ptr<IComputeShader> m_shaderRCAS;
         std::shared_ptr<IShaderBuffer> m_configBuffer;
-
         std::shared_ptr<ITexture> m_intermediary;
-        //CBV_SRV_UAV m_intermediaryUav;
-        //CBV_SRV_UAV m_intermediarySrv;
     };
 
 } // namespace
