@@ -359,8 +359,9 @@ namespace {
 
                                 // This also means we need a non-sRGB type.
                                 if (m_graphicsDevice->isTextureFormatSRGB(intermediateCreateInfo.format)) {
+                                    // good balance between visuals and perf
                                     intermediateCreateInfo.format =
-                                        m_graphicsDevice->getTextureFormat(graphics::TextureFormat::R16G16B16A16_UNORM);
+                                        m_graphicsDevice->getTextureFormat(graphics::TextureFormat::R10G10B10A2_UNORM);
                                 }
                             }
                             auto intermediateTexture = m_graphicsDevice->createTexture(
