@@ -234,6 +234,15 @@ namespace {
                     Log("Unsupported graphics runtime.\n");
                 }
 
+                if (m_configManager->getValue(config::SettingHandTrackingEnabled)) {
+                    m_handTracker = input::CreateHandTracker(*this, *session, m_configManager, m_graphicsDevice);
+                    m_sendInterationProfileEvent = true;
+
+                    for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
+                        m_performanceCounters.handsGpuTimer[i] = m_graphicsDeviceForMenu->createTimer();
+                    }
+                }
+
                 // Remember the XrSession to use.
                 m_vrSession = *session;
             }
@@ -244,12 +253,14 @@ namespace {
         XrResult xrDestroySession(XrSession session) override {
             const XrResult result = OpenXrApi::xrDestroySession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                m_handTracker.reset();
                 m_upscaler.reset();
                 m_preProcessor.reset();
                 m_postProcessor.reset();
                 for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
                     m_performanceCounters.appGpuTimer[i].reset();
                     m_performanceCounters.overlayGpuTimer[i].reset();
+                    m_performanceCounters.handsGpuTimer[i].reset();
                 }
                 m_performanceCounters.appCpuTimer.reset();
                 m_performanceCounters.endFrameCpuTimer.reset();
@@ -438,6 +449,61 @@ namespace {
             return result;
         }
 
+        XrResult xrSuggestInteractionProfileBindings(
+            XrInstance instance, const XrInteractionProfileSuggestedBinding* suggestedBindings) override {
+            const XrResult result = OpenXrApi::xrSuggestInteractionProfileBindings(instance, suggestedBindings);
+            if (XR_SUCCEEDED(result) && m_handTracker) {
+                m_handTracker->registerBindings(*suggestedBindings);
+            }
+
+            return result;
+        }
+
+        XrResult xrCreateAction(XrActionSet actionSet,
+                                const XrActionCreateInfo* createInfo,
+                                XrAction* action) override {
+            const XrResult result = OpenXrApi::xrCreateAction(actionSet, createInfo, action);
+            if (XR_SUCCEEDED(result) && m_handTracker) {
+                m_handTracker->registerAction(*action, actionSet);
+            }
+
+            return result;
+        }
+
+        XrResult xrDestroyAction(XrAction action) override {
+            const XrResult result = OpenXrApi::xrDestroyAction(action);
+            if (XR_SUCCEEDED(result) && m_handTracker) {
+                m_handTracker->unregisterAction(action);
+            }
+
+            return result;
+        }
+
+        XrResult xrCreateActionSpace(XrSession session,
+                                     const XrActionSpaceCreateInfo* createInfo,
+                                     XrSpace* space) override {
+            const XrResult result = OpenXrApi::xrCreateActionSpace(session, createInfo, space);
+            if (XR_SUCCEEDED(result) && m_handTracker && isVrSession(session)) {
+                // Keep track of the XrSpace for controllers, so we can override the behavior for them.
+                const std::string fullPath = m_handTracker->getFullPath(createInfo->action, createInfo->subactionPath);
+                if (fullPath == "/user/hand/right/input/grip/pose" || fullPath == "/user/hand/right/input/aim/pose" ||
+                    fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") {
+                    m_handTracker->registerActionSpace(*space, fullPath, createInfo->poseInActionSpace);
+                }
+            }
+
+            return result;
+        }
+
+        XrResult xrDestroySpace(XrSpace space) override {
+            const XrResult result = OpenXrApi::xrDestroySpace(space);
+            if (XR_SUCCEEDED(result) && m_handTracker) {
+                m_handTracker->unregisterActionSpace(space);
+            }
+
+            return result;
+        }
+
         XrResult xrEnumerateSwapchainImages(XrSwapchain swapchain,
                                             uint32_t imageCapacityInput,
                                             uint32_t* imageCountOutput,
@@ -477,6 +543,36 @@ namespace {
             }
 
             return result;
+        }
+
+        XrResult xrPollEvent(XrInstance instance, XrEventDataBuffer* eventData) override {
+            if (m_sendInterationProfileEvent && m_vrSession != XR_NULL_HANDLE) {
+                XrEventDataInteractionProfileChanged* const buffer =
+                    reinterpret_cast<XrEventDataInteractionProfileChanged*>(eventData);
+                buffer->type = XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED;
+                buffer->next = nullptr;
+                buffer->session = m_vrSession;
+
+                m_sendInterationProfileEvent = false;
+                return XR_SUCCESS;
+            }
+
+            return OpenXrApi::xrPollEvent(instance, eventData);
+        }
+
+        XrResult xrGetCurrentInteractionProfile(XrSession session,
+                                                XrPath topLevelUserPath,
+                                                XrInteractionProfileState* interactionProfile) override {
+            std::string path = topLevelUserPath != XR_NULL_PATH ? getPath(topLevelUserPath) : "";
+            if (m_handTracker && isVrSession(session) &&
+                (path.empty() || path == "/user/hand/left" || path == "/user/hand/right") &&
+                interactionProfile->type == XR_TYPE_INTERACTION_PROFILE_STATE) {
+                // Return our emulated interaction profile for the hands.
+                interactionProfile->interactionProfile = m_handTracker->getInteractionProfile();
+                return XR_SUCCESS;
+            }
+
+            return OpenXrApi::xrGetCurrentInteractionProfile(session, topLevelUserPath, interactionProfile);
         }
 
         XrResult xrLocateViews(XrSession session,
@@ -531,12 +627,89 @@ namespace {
             return result;
         }
 
+        XrResult xrLocateSpace(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation* location) override {
+            if (m_handTracker && location && m_handTracker->locate(space, baseSpace, time, *location)) {
+                return XR_SUCCESS;
+            }
+
+            return OpenXrApi::xrLocateSpace(space, baseSpace, time, location);
+        }
+
+        XrResult xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo) override {
+            const XrResult result = OpenXrApi::xrSyncActions(session, syncInfo);
+            if (XR_SUCCEEDED(result) && m_handTracker && isVrSession(session)) {
+                m_handTracker->sync(m_begunFrameTime);
+            }
+
+            return result;
+        }
+
+        XrResult xrGetActionStateBoolean(XrSession session,
+                                         const XrActionStateGetInfo* getInfo,
+                                         XrActionStateBoolean* state) override {
+            if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
+                state->type == XR_TYPE_ACTION_STATE_BOOLEAN) {
+                if (m_handTracker->getActionState(*getInfo, *state)) {
+                    return XR_SUCCESS;
+                }
+            }
+
+            return OpenXrApi::xrGetActionStateBoolean(session, getInfo, state);
+        }
+
+        XrResult xrGetActionStateFloat(XrSession session,
+                                       const XrActionStateGetInfo* getInfo,
+                                       XrActionStateFloat* state) override {
+            if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
+                state->type == XR_TYPE_ACTION_STATE_FLOAT) {
+                if (m_handTracker->getActionState(*getInfo, *state)) {
+                    return XR_SUCCESS;
+                }
+            }
+
+            return OpenXrApi::xrGetActionStateFloat(session, getInfo, state);
+        }
+
+        XrResult xrGetActionStatePose(XrSession session,
+                                      const XrActionStateGetInfo* getInfo,
+                                      XrActionStatePose* state) override {
+            if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO) {
+                const std::string fullPath = m_handTracker->getFullPath(getInfo->action, getInfo->subactionPath);
+                if ((fullPath == "/user/hand/right/input/grip/pose" || fullPath == "/user/hand/right/input/aim/pose" ||
+                     fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") &&
+                    state->type == XR_TYPE_ACTION_STATE_POSE) {
+                    state->isActive = XR_TRUE;
+                    return XR_SUCCESS;
+                }
+            }
+
+            return OpenXrApi::xrGetActionStatePose(session, getInfo, state);
+        }
+
+        XrResult xrWaitFrame(XrSession session,
+                             const XrFrameWaitInfo* frameWaitInfo,
+                             XrFrameState* frameState) override {
+            const XrResult result = OpenXrApi::xrWaitFrame(session, frameWaitInfo, frameState);
+            if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                // Record the predicted display time.
+                m_waitedFrameTime = frameState->predictedDisplayTime;
+            }
+
+            return result;
+        }
+
         XrResult xrBeginFrame(XrSession session, const XrFrameBeginInfo* frameBeginInfo) override {
             const XrResult result = OpenXrApi::xrBeginFrame(session, frameBeginInfo);
-            if (XR_SUCCEEDED(result) && isVrSession(session) && m_graphicsDevice) {
-                m_performanceCounters.appCpuTimer->start();
-                m_stats.appGpuTimeUs += m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
-                m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
+            if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                // Record the predicted display time.
+                m_begunFrameTime = m_waitedFrameTime;
+
+                if (m_graphicsDevice) {
+                    m_performanceCounters.appCpuTimer->start();
+                    m_stats.appGpuTimeUs +=
+                        m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
+                    m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
+                }
             }
 
             return result;
@@ -632,7 +805,9 @@ namespace {
             // Unbind all textures from the render targets.
             m_graphicsDevice->clearRenderTargets();
 
-            std::shared_ptr<graphics::ITexture> textureForMenu[ViewCount] = {};
+            std::shared_ptr<graphics::ITexture> textureForOverlay[ViewCount] = {};
+            XrPosef poseForOverlay[ViewCount];
+            XrSpace spaceForOverlay = XR_NULL_HANDLE;
 
             // Because the frame info is passed const, we are going to need to reconstruct a writable version of it to
             // patch the resolution.
@@ -732,7 +907,8 @@ namespace {
                             throw new std::runtime_error("Processing chain incomplete!");
                         }
 
-                        textureForMenu[eye] = swapchainImages.textureForMenu;
+                        textureForOverlay[eye] = swapchainImages.textureForMenu;
+                        poseForOverlay[eye] = view.pose;
 
                         // Patch the resolution.
                         correctedProjectionViews[eye].subImage.imageRect.extent.width = m_displayWidth;
@@ -750,6 +926,8 @@ namespace {
                         }
                     }
 
+                    spaceForOverlay = proj->space;
+
                     correctedProjectionLayer->views = correctedProjectionViews;
                     correctedLayers.push_back(
                         reinterpret_cast<const XrCompositionLayerBaseHeader*>(correctedProjectionLayer));
@@ -759,6 +937,21 @@ namespace {
             }
 
             chainFrameEndInfo.layers = correctedLayers.data();
+
+            // Render the hands in the top-most layer.
+            if (m_handTracker) {
+                m_stats.handsGpuTimeUs +=
+                    m_performanceCounters.handsGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
+
+                if (textureForOverlay[0]) {
+                    const bool useVPRT = textureForOverlay[1] == textureForOverlay[0];
+
+                    m_performanceCounters.handsGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
+                    m_handTracker->render(poseForOverlay[0], spaceForOverlay, textureForOverlay[0], useVPRT ? 0 : -1);
+                    m_handTracker->render(poseForOverlay[1], spaceForOverlay, textureForOverlay[1], useVPRT ? 0 : -1);
+                    m_performanceCounters.handsGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
+                }
+            }
 
             // We intentionally exclude the overlay from this timer, as it has its own separate timer.
             m_performanceCounters.endFrameCpuTimer->stop();
@@ -770,15 +963,15 @@ namespace {
                 m_stats.overlayGpuTimeUs +=
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
 
-                if (textureForMenu[0]) {
+                if (textureForOverlay[0]) {
                     // When using VPRT, we rely on the menu renderer to render both views at once. Otherwise we
                     // render each view one at a time.
                     m_performanceCounters.overlayCpuTimer->start();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
-                    m_menuHandler->render(textureForMenu[0], 0);
+                    m_menuHandler->render(textureForOverlay[0], 0);
                     static_assert(ViewCount == 2);
-                    if (textureForMenu[1] != textureForMenu[0]) {
-                        m_menuHandler->render(textureForMenu[1], 1);
+                    if (textureForOverlay[1] != textureForOverlay[0]) {
+                        m_menuHandler->render(textureForOverlay[1], 1);
                     }
                     m_performanceCounters.overlayCpuTimer->stop();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
@@ -787,13 +980,12 @@ namespace {
 
             // Whether the menu is available or not, we can still use that top-most texture for screenshot.
             // TODO: The screenshot does not work with multi-layer applications.
-
             const bool requestScreenshot =
                 utilities::UpdateKeyState(m_requestScreenShotKeyState, VK_CONTROL, VK_F12, false) &&
                 m_configManager->getValue(config::SettingScreenshotEnabled);
 
-            if (textureForMenu[0] && requestScreenshot) {
-                takeScreenshot(textureForMenu[0]);
+            if (textureForOverlay[0] && requestScreenshot) {
+                takeScreenshot(textureForOverlay[0]);
             }
 
             return OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
@@ -808,11 +1000,22 @@ namespace {
             return session == m_vrSession;
         }
 
+        const std::string getPath(XrPath path) {
+            char buf[XR_MAX_PATH_LENGTH];
+            uint32_t count;
+            CHECK_XRCMD(xrPathToString(GetXrInstance(), path, sizeof(buf), &count, buf));
+            return std::string(buf, count);
+        }
+
         std::string m_applicationName;
         XrSystemId m_vrSystemId{XR_NULL_SYSTEM_ID};
         XrSession m_vrSession{XR_NULL_HANDLE};
         uint32_t m_displayWidth{0};
         uint32_t m_displayHeight{0};
+
+        XrTime m_waitedFrameTime;
+        XrTime m_begunFrameTime;
+        bool m_sendInterationProfileEvent{false};
 
         std::shared_ptr<config::IConfigManager> m_configManager;
 
@@ -827,6 +1030,8 @@ namespace {
         std::shared_ptr<graphics::IImageProcessor> m_preProcessor;
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
 
+        std::shared_ptr<input::IHandTracker> m_handTracker;
+
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
         bool m_requestScreenShotKeyState{false};
 
@@ -836,6 +1041,7 @@ namespace {
             std::shared_ptr<utilities::ICpuTimer> endFrameCpuTimer;
             std::shared_ptr<utilities::ICpuTimer> overlayCpuTimer;
             std::shared_ptr<graphics::IGpuTimer> overlayGpuTimer[GpuTimerLatency + 1];
+            std::shared_ptr<graphics::IGpuTimer> handsGpuTimer[GpuTimerLatency + 1];
 
             unsigned int gpuTimerIndex{0};
             std::chrono::steady_clock::time_point lastWindowStart;

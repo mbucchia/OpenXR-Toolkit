@@ -38,15 +38,15 @@ namespace LAYER_NAMESPACE
 	protected:
 		OpenXrApi() = default;
 
-		XrInstance GetXrInstance() const
-		{
-			return m_instance;
-		}
-
 		PFN_xrGetInstanceProcAddr m_xrGetInstanceProcAddr{ nullptr };
 
 	public:
 		virtual ~OpenXrApi() = default;
+
+		XrInstance GetXrInstance() const
+		{
+			return m_instance;
+		}
 
 		void SetGetInstanceProcAddr(PFN_xrGetInstanceProcAddr pfn_xrGetInstanceProcAddr, XrInstance instance)
 		{
@@ -78,6 +78,14 @@ namespace LAYER_NAMESPACE
 		PFN_xrGetInstanceProperties m_xrGetInstanceProperties{ nullptr };
 
 	public:
+		virtual XrResult xrPollEvent(XrInstance instance, XrEventDataBuffer* eventData)
+		{
+			return m_xrPollEvent(instance, eventData);
+		}
+	private:
+		PFN_xrPollEvent m_xrPollEvent{ nullptr };
+
+	public:
 		virtual XrResult xrGetSystem(XrInstance instance, const XrSystemGetInfo* getInfo, XrSystemId* systemId)
 		{
 			return m_xrGetSystem(instance, getInfo, systemId);
@@ -100,6 +108,38 @@ namespace LAYER_NAMESPACE
 		}
 	private:
 		PFN_xrDestroySession m_xrDestroySession{ nullptr };
+
+	public:
+		virtual XrResult xrCreateReferenceSpace(XrSession session, const XrReferenceSpaceCreateInfo* createInfo, XrSpace* space)
+		{
+			return m_xrCreateReferenceSpace(session, createInfo, space);
+		}
+	private:
+		PFN_xrCreateReferenceSpace m_xrCreateReferenceSpace{ nullptr };
+
+	public:
+		virtual XrResult xrCreateActionSpace(XrSession session, const XrActionSpaceCreateInfo* createInfo, XrSpace* space)
+		{
+			return m_xrCreateActionSpace(session, createInfo, space);
+		}
+	private:
+		PFN_xrCreateActionSpace m_xrCreateActionSpace{ nullptr };
+
+	public:
+		virtual XrResult xrLocateSpace(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation* location)
+		{
+			return m_xrLocateSpace(space, baseSpace, time, location);
+		}
+	private:
+		PFN_xrLocateSpace m_xrLocateSpace{ nullptr };
+
+	public:
+		virtual XrResult xrDestroySpace(XrSpace space)
+		{
+			return m_xrDestroySpace(space);
+		}
+	private:
+		PFN_xrDestroySpace m_xrDestroySpace{ nullptr };
 
 	public:
 		virtual XrResult xrEnumerateViewConfigurationViews(XrInstance instance, XrSystemId systemId, XrViewConfigurationType viewConfigurationType, uint32_t viewCapacityInput, uint32_t* viewCountOutput, XrViewConfigurationView* views)
@@ -142,6 +182,14 @@ namespace LAYER_NAMESPACE
 		PFN_xrAcquireSwapchainImage m_xrAcquireSwapchainImage{ nullptr };
 
 	public:
+		virtual XrResult xrWaitFrame(XrSession session, const XrFrameWaitInfo* frameWaitInfo, XrFrameState* frameState)
+		{
+			return m_xrWaitFrame(session, frameWaitInfo, frameState);
+		}
+	private:
+		PFN_xrWaitFrame m_xrWaitFrame{ nullptr };
+
+	public:
 		virtual XrResult xrBeginFrame(XrSession session, const XrFrameBeginInfo* frameBeginInfo)
 		{
 			return m_xrBeginFrame(session, frameBeginInfo);
@@ -164,6 +212,86 @@ namespace LAYER_NAMESPACE
 		}
 	private:
 		PFN_xrLocateViews m_xrLocateViews{ nullptr };
+
+	public:
+		virtual XrResult xrStringToPath(XrInstance instance, const char* pathString, XrPath* path)
+		{
+			return m_xrStringToPath(instance, pathString, path);
+		}
+	private:
+		PFN_xrStringToPath m_xrStringToPath{ nullptr };
+
+	public:
+		virtual XrResult xrPathToString(XrInstance instance, XrPath path, uint32_t bufferCapacityInput, uint32_t* bufferCountOutput, char* buffer)
+		{
+			return m_xrPathToString(instance, path, bufferCapacityInput, bufferCountOutput, buffer);
+		}
+	private:
+		PFN_xrPathToString m_xrPathToString{ nullptr };
+
+	public:
+		virtual XrResult xrCreateAction(XrActionSet actionSet, const XrActionCreateInfo* createInfo, XrAction* action)
+		{
+			return m_xrCreateAction(actionSet, createInfo, action);
+		}
+	private:
+		PFN_xrCreateAction m_xrCreateAction{ nullptr };
+
+	public:
+		virtual XrResult xrDestroyAction(XrAction action)
+		{
+			return m_xrDestroyAction(action);
+		}
+	private:
+		PFN_xrDestroyAction m_xrDestroyAction{ nullptr };
+
+	public:
+		virtual XrResult xrSuggestInteractionProfileBindings(XrInstance instance, const XrInteractionProfileSuggestedBinding* suggestedBindings)
+		{
+			return m_xrSuggestInteractionProfileBindings(instance, suggestedBindings);
+		}
+	private:
+		PFN_xrSuggestInteractionProfileBindings m_xrSuggestInteractionProfileBindings{ nullptr };
+
+	public:
+		virtual XrResult xrGetCurrentInteractionProfile(XrSession session, XrPath topLevelUserPath, XrInteractionProfileState* interactionProfile)
+		{
+			return m_xrGetCurrentInteractionProfile(session, topLevelUserPath, interactionProfile);
+		}
+	private:
+		PFN_xrGetCurrentInteractionProfile m_xrGetCurrentInteractionProfile{ nullptr };
+
+	public:
+		virtual XrResult xrGetActionStateBoolean(XrSession session, const XrActionStateGetInfo* getInfo, XrActionStateBoolean* state)
+		{
+			return m_xrGetActionStateBoolean(session, getInfo, state);
+		}
+	private:
+		PFN_xrGetActionStateBoolean m_xrGetActionStateBoolean{ nullptr };
+
+	public:
+		virtual XrResult xrGetActionStateFloat(XrSession session, const XrActionStateGetInfo* getInfo, XrActionStateFloat* state)
+		{
+			return m_xrGetActionStateFloat(session, getInfo, state);
+		}
+	private:
+		PFN_xrGetActionStateFloat m_xrGetActionStateFloat{ nullptr };
+
+	public:
+		virtual XrResult xrGetActionStatePose(XrSession session, const XrActionStateGetInfo* getInfo, XrActionStatePose* state)
+		{
+			return m_xrGetActionStatePose(session, getInfo, state);
+		}
+	private:
+		PFN_xrGetActionStatePose m_xrGetActionStatePose{ nullptr };
+
+	public:
+		virtual XrResult xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo)
+		{
+			return m_xrSyncActions(session, syncInfo);
+		}
+	private:
+		PFN_xrSyncActions m_xrSyncActions{ nullptr };
 
 
 

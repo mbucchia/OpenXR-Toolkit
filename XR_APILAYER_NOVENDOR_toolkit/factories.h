@@ -27,6 +27,8 @@
 
 namespace toolkit {
 
+    class OpenXrApi;
+
     namespace utilities {
 
         std::shared_ptr<ICpuTimer> CreateCpuTimer();
@@ -68,6 +70,16 @@ namespace toolkit {
                              const std::string& shaderFile);
 
     } // namespace graphics
+
+    namespace input {
+
+        std::shared_ptr<input::IHandTracker>
+        CreateHandTracker(toolkit::OpenXrApi& openXR,
+                          XrSession session,
+                          std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                          std::shared_ptr<toolkit::graphics::IDevice> graphicsDevice);
+
+    } // namespace input
 
     namespace menu {
 
