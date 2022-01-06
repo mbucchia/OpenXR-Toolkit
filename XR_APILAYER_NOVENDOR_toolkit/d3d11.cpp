@@ -34,6 +34,42 @@ namespace {
     using namespace toolkit::graphics;
     using namespace toolkit::log;
 
+    struct ModelConstantBuffer {
+        DirectX::XMFLOAT4X4 Model;
+    };
+
+    struct ViewProjectionConstantBuffer {
+        DirectX::XMFLOAT4X4 ViewProjection;
+    };
+
+    const std::string MeshShaders = R"_(
+struct VSOutput {
+    float4 Pos : SV_POSITION;
+    float3 Color : COLOR0;
+};
+struct VSInput {
+    float3 Pos : POSITION;
+    float3 Color : COLOR0;
+};
+cbuffer ModelConstantBuffer : register(b0) {
+    float4x4 Model;
+};
+cbuffer ViewProjectionConstantBuffer : register(b1) {
+    float4x4 ViewProjection;
+};
+
+VSOutput vsMain(VSInput input) {
+    VSOutput output;
+    output.Pos = mul(mul(float4(input.Pos, 1), Model), ViewProjection);
+    output.Color = input.Color;
+    return output;
+}
+
+float4 psMain(VSOutput input) : SV_TARGET {
+    return float4(input.Color, 1);
+}
+)_";
+
     const std::string QuadVertexShader = R"_(
 void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out float2 texcoord : TEXCOORD0)
 {
@@ -149,7 +185,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         const ComPtr<ID3D11UnorderedAccessView> m_unorderedAccessView;
     };
 
-    // Wrap a render target view view. Obtained from D3D11Texture.
+    // Wrap a render target view. Obtained from D3D11Texture.
     class D3D11RenderTargetView : public IRenderTargetView {
       public:
         D3D11RenderTargetView(std::shared_ptr<IDevice> device, ComPtr<ID3D11RenderTargetView> renderTargetView)
@@ -171,6 +207,34 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
       private:
         const std::shared_ptr<IDevice> m_device;
         const ComPtr<ID3D11RenderTargetView> m_renderTargetView;
+    };
+
+    // Wrap a depth/stencil buffer view. Obtained from D3D11Texture.
+    class D3D11DepthStencilView : public IDepthStencilView {
+      public:
+        D3D11DepthStencilView(std::shared_ptr<IDevice> device, ComPtr<ID3D11DepthStencilView> depthStencilView)
+            : m_device(device), m_depthStencilView(depthStencilView) {
+        }
+
+        Api getApi() const override {
+            return Api::D3D11;
+        }
+
+        std::shared_ptr<IDevice> getDevice() const override {
+            return m_device;
+        }
+
+        void clearDepth(float value) override {
+            m_device->getContext<D3D11>()->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, value, 0);
+        }
+
+        void* getNativePtr() const override {
+            return m_depthStencilView.Get();
+        }
+
+      private:
+        const std::shared_ptr<IDevice> m_device;
+        const ComPtr<ID3D11DepthStencilView> m_depthStencilView;
     };
 
     // Wrap a texture resource. Obtained from D3D11Device.
@@ -224,6 +288,14 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 
         std::shared_ptr<IRenderTargetView> getRenderTargetView(uint32_t slice) const override {
             return getRenderTargetViewInternal(m_renderTargetSubView[slice], slice);
+        }
+
+        std::shared_ptr<IDepthStencilView> getDepthStencilView() const override {
+            return getDepthStencilViewInternal(m_depthStencilView, 0);
+        }
+
+        std::shared_ptr<IDepthStencilView> getDepthStencilView(uint32_t slice) const override {
+            return getDepthStencilViewInternal(m_depthStencilSubView[slice], slice);
         }
 
         void saveToFile(const std::string& path) const override {
@@ -320,6 +392,32 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             return renderTargetView;
         }
 
+        std::shared_ptr<D3D11DepthStencilView> getDepthStencilViewInternal(
+            std::shared_ptr<D3D11DepthStencilView>& depthStencilView, uint32_t slice = 0) const {
+            if (!depthStencilView) {
+                if (!(m_textureDesc.BindFlags & D3D11_BIND_DEPTH_STENCIL)) {
+                    throw new std::runtime_error("Texture was not created with D3D11_BIND_DEPTH_STENCIL");
+                }
+
+                auto device = m_device->getNative<D3D11>();
+
+                D3D11_DEPTH_STENCIL_VIEW_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.Format = (DXGI_FORMAT)m_info.format;
+                desc.ViewDimension =
+                    m_info.arraySize == 1 ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+                desc.Texture2DArray.ArraySize = 1;
+                desc.Texture2DArray.FirstArraySlice = slice;
+                desc.Texture2DArray.MipSlice = D3D11CalcSubresource(0, 0, m_info.mipCount);
+
+                ComPtr<ID3D11DepthStencilView> rtv;
+                CHECK_HRCMD(device->CreateDepthStencilView(m_texture.Get(), &desc, &rtv));
+
+                depthStencilView = std::make_shared<D3D11DepthStencilView>(m_device, rtv);
+            }
+            return depthStencilView;
+        }
+
         const std::shared_ptr<IDevice> m_device;
         const XrSwapchainCreateInfo m_info;
         const D3D11_TEXTURE2D_DESC m_textureDesc;
@@ -331,8 +429,11 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         mutable std::vector<std::shared_ptr<D3D11UnorderedAccessView>> m_unorderedAccessSubView;
         mutable std::shared_ptr<D3D11RenderTargetView> m_renderTargetView;
         mutable std::vector<std::shared_ptr<D3D11RenderTargetView>> m_renderTargetSubView;
+        mutable std::shared_ptr<D3D11DepthStencilView> m_depthStencilView;
+        mutable std::vector<std::shared_ptr<D3D11DepthStencilView>> m_depthStencilSubView;
     };
 
+    // Wrap a constant buffer. Obtained from D3D11Device.
     class D3D11Buffer : public IShaderBuffer {
       public:
         D3D11Buffer(std::shared_ptr<IDevice> device, D3D11_BUFFER_DESC bufferDesc, ComPtr<ID3D11Buffer> buffer)
@@ -368,6 +469,41 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         const std::shared_ptr<IDevice> m_device;
         const D3D11_BUFFER_DESC m_bufferDesc;
         const ComPtr<ID3D11Buffer> m_buffer;
+    };
+
+    // Wrap a vertex+indices buffers. Obtained from D3D11Device.
+    class D3D11SimpleMesh : public ISimpleMesh {
+      public:
+        D3D11SimpleMesh(std::shared_ptr<IDevice> device,
+                        ComPtr<ID3D11Buffer> vertexBuffer,
+                        size_t stride,
+                        ComPtr<ID3D11Buffer> indexBuffer,
+                        size_t numIndices)
+            : m_device(device), m_vertexBuffer(vertexBuffer), m_indexBuffer(indexBuffer) {
+            m_meshData.vertexBuffer = m_vertexBuffer.Get();
+            m_meshData.stride = (UINT)stride;
+            m_meshData.indexBuffer = m_indexBuffer.Get();
+            m_meshData.numIndices = (UINT)numIndices;
+        }
+
+        Api getApi() const override {
+            return Api::D3D11;
+        }
+
+        std::shared_ptr<IDevice> getDevice() const override {
+            return m_device;
+        }
+
+        void* getNativePtr() const override {
+            return reinterpret_cast<void*>(&m_meshData);
+        }
+
+      private:
+        const std::shared_ptr<IDevice> m_device;
+        const ComPtr<ID3D11Buffer> m_vertexBuffer;
+        const ComPtr<ID3D11Buffer> m_indexBuffer;
+
+        mutable struct D3D11::MeshData m_meshData;
     };
 
     class D3D11GpuTimer : public IGpuTimer {
@@ -486,6 +622,93 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             {
                 ComPtr<ID3DBlob> errors;
                 ComPtr<ID3DBlob> vsBytes;
+                HRESULT hr = D3DCompile(MeshShaders.c_str(),
+                                        MeshShaders.length(),
+                                        nullptr,
+                                        nullptr,
+                                        nullptr,
+                                        "vsMain",
+                                        "vs_5_0",
+                                        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
+                                        0,
+                                        &vsBytes,
+                                        &errors);
+                if (FAILED(hr)) {
+                    if (errors) {
+                        Log("%s", (char*)errors->GetBufferPointer());
+                    }
+                    CHECK_HRESULT(hr, "Failed to compile shader");
+                }
+                CHECK_HRCMD(m_device->CreateVertexShader(
+                    vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, &m_meshVertexShader));
+                {
+                    const std::string debugName = "SimpleMesh VS";
+                    m_meshVertexShader->SetPrivateData(
+                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
+                }
+
+                const D3D11_INPUT_ELEMENT_DESC vertexDesc[] = {
+                    {"POSITION",
+                     0,
+                     DXGI_FORMAT_R32G32B32_FLOAT,
+                     0,
+                     D3D11_APPEND_ALIGNED_ELEMENT,
+                     D3D11_INPUT_PER_VERTEX_DATA,
+                     0},
+                    {"COLOR",
+                     0,
+                     DXGI_FORMAT_R32G32B32_FLOAT,
+                     0,
+                     D3D11_APPEND_ALIGNED_ELEMENT,
+                     D3D11_INPUT_PER_VERTEX_DATA,
+                     0},
+                };
+
+                CHECK_HRCMD(m_device->CreateInputLayout(vertexDesc,
+                                                        (UINT)std::size(vertexDesc),
+                                                        vsBytes->GetBufferPointer(),
+                                                        vsBytes->GetBufferSize(),
+                                                        &m_meshInputLayout));
+            }
+            {
+                ComPtr<ID3DBlob> errors;
+                ComPtr<ID3DBlob> psBytes;
+                HRESULT hr = D3DCompile(MeshShaders.c_str(),
+                                        MeshShaders.length(),
+                                        nullptr,
+                                        nullptr,
+                                        nullptr,
+                                        "psMain",
+                                        "ps_5_0",
+                                        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
+                                        0,
+                                        &psBytes,
+                                        &errors);
+                if (FAILED(hr)) {
+                    if (errors) {
+                        Log("%s", (char*)errors->GetBufferPointer());
+                    }
+                    CHECK_HRESULT(hr, "Failed to compile shader");
+                }
+                CHECK_HRCMD(m_device->CreatePixelShader(
+                    psBytes->GetBufferPointer(), psBytes->GetBufferSize(), nullptr, &m_meshPixelShader));
+                {
+                    const std::string debugName = "SimpleMesh PS";
+                    m_meshPixelShader->SetPrivateData(
+                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
+                }
+            }
+            {
+                D3D11_DEPTH_STENCIL_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.DepthEnable = true;
+                desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+                desc.DepthFunc = D3D11_COMPARISON_GREATER;
+                CHECK_HRCMD(m_device->CreateDepthStencilState(&desc, &m_reversedZDepthNoStencilTest));
+            }
+            {
+                ComPtr<ID3DBlob> errors;
+                ComPtr<ID3DBlob> vsBytes;
                 HRESULT hr = D3DCompile(QuadVertexShader.c_str(),
                                         QuadVertexShader.length(),
                                         nullptr,
@@ -505,6 +728,11 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 }
                 CHECK_HRCMD(m_device->CreateVertexShader(
                     vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, &m_quadVertexShader));
+                {
+                    const std::string debugName = "Quad PS";
+                    m_quadVertexShader->SetPrivateData(
+                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
+                }
             }
 
             {
@@ -646,6 +874,37 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             return std::make_shared<D3D11Buffer>(shared_from_this(), desc, buffer);
         }
 
+        std::shared_ptr<ISimpleMesh> createSimpleMesh(std::vector<SimpleMeshVertex>& vertices,
+                                                      std::vector<uint16_t>& indices,
+                                                      const std::optional<std::string>& debugName) override {
+            D3D11_BUFFER_DESC desc;
+            ZeroMemory(&desc, sizeof(desc));
+            desc.Usage = D3D11_USAGE_IMMUTABLE;
+
+            D3D11_SUBRESOURCE_DATA data;
+            ZeroMemory(&data, sizeof(data));
+
+            desc.ByteWidth = (UINT)vertices.size() * sizeof (SimpleMeshVertex);
+            desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+            data.pSysMem = vertices.data();
+            ComPtr<ID3D11Buffer> vertexBuffer;
+            CHECK_HRCMD(m_device->CreateBuffer(&desc, &data, &vertexBuffer));
+
+            desc.ByteWidth = (UINT)indices.size() * sizeof(uint16_t);
+            desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+            data.pSysMem = indices.data();
+            ComPtr<ID3D11Buffer> indexBuffer;
+            CHECK_HRCMD(m_device->CreateBuffer(&desc, &data, &indexBuffer));
+
+            if (debugName) {
+                vertexBuffer->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName->size(), debugName->c_str());
+                indexBuffer->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName->size(), debugName->c_str());
+            }
+
+            return std::make_shared<D3D11SimpleMesh>(
+                shared_from_this(), vertexBuffer.Get(), sizeof(SimpleMeshVertex), indexBuffer.Get(), indices.size());
+        }
+
         std::shared_ptr<IQuadShader> createQuadShader(const std::string& shaderPath,
                                                       const std::string& entryPoint,
                                                       const std::optional<std::string>& debugName,
@@ -769,11 +1028,11 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                     throw new std::runtime_error("Only use slot 0 for IQuadShader");
                 }
                 if (slice == -1) {
-                    setRenderTargets({output});
+                    setRenderTargets({output}, nullptr);
                 } else {
                     std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> rtvs;
                     rtvs.push_back(std::make_pair(output, slice));
-                    setRenderTargets(rtvs);
+                    setRenderTargets(rtvs, nullptr);
                 }
 
                 D3D11_VIEWPORT viewport;
@@ -855,19 +1114,31 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             }
 
             m_context->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
+
+            m_currentDrawRenderTarget.reset();
+            m_currentDrawDepthBuffer.reset();
+            m_currentMesh.reset();
         }
 
-        void setRenderTargets(std::vector<std::shared_ptr<ITexture>> renderTargets) override {
+        void setRenderTargets(std::vector<std::shared_ptr<ITexture>> renderTargets,
+                              std::shared_ptr<ITexture> depthBuffer) override {
             std::vector<ID3D11RenderTargetView*> rtvs;
 
             for (auto renderTarget : renderTargets) {
                 rtvs.push_back(renderTarget->getRenderTargetView()->getNative<D3D11>());
             }
 
-            m_context->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
+            m_context->OMSetRenderTargets((UINT)rtvs.size(),
+                                          rtvs.data(),
+                                          depthBuffer ? depthBuffer->getDepthStencilView()->getNative<D3D11>()
+                                                      : nullptr);
+
+            m_currentDrawRenderTarget = renderTargets.size() > 0 ? renderTargets[0] : nullptr;
+            m_currentDrawDepthBuffer = depthBuffer;
         }
 
-        void setRenderTargets(std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargets) override {
+        void setRenderTargets(std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargets,
+                              std::shared_ptr<ITexture> depthBuffer) override {
             std::vector<ID3D11RenderTargetView*> rtvs;
 
             for (auto renderTarget : renderTargets) {
@@ -879,7 +1150,68 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                     rtvs.push_back(renderTarget.first->getRenderTargetView(slice)->getNative<D3D11>());
                 }
             }
-            m_context->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
+            m_context->OMSetRenderTargets((UINT)rtvs.size(),
+                                          rtvs.data(),
+                                          depthBuffer ? depthBuffer->getDepthStencilView()->getNative<D3D11>()
+                                                      : nullptr);
+
+            m_currentDrawRenderTarget = renderTargets.size() > 0 ? renderTargets[0].first : nullptr;
+            m_currentDrawDepthBuffer = depthBuffer;
+        }
+
+        void setViewProjection(XrPosef& eyePose, XrFovf& fov, float depthNear, float depthFar) override {
+            xr::math::NearFar nearFar{depthNear, depthFar};
+            const DirectX::XMMATRIX projection = xr::math::ComposeProjectionMatrix(fov, nearFar);
+            const DirectX::XMMATRIX view = xr::math::LoadInvertedXrPose(eyePose);
+
+            ViewProjectionConstantBuffer staging;
+            DirectX::XMStoreFloat4x4(&staging.ViewProjection, DirectX::XMMatrixTranspose(view * projection));
+            if (!m_meshViewProjectionBuffer) {
+                m_meshViewProjectionBuffer =
+                    createBuffer(sizeof(ViewProjectionConstantBuffer), "ViewProjection CB", nullptr, false);
+            }
+            m_meshViewProjectionBuffer->uploadData(&staging, sizeof(staging));
+
+            D3D11_VIEWPORT viewport;
+            ZeroMemory(&viewport, sizeof(viewport));
+            viewport.TopLeftX = 0.0f;
+            viewport.TopLeftY = 0.0f;
+            viewport.Width = (float)m_currentDrawRenderTarget->getInfo().width;
+            viewport.Height = (float)m_currentDrawRenderTarget->getInfo().height;
+            m_context->RSSetViewports(1, &viewport);
+            m_context->OMSetDepthStencilState(depthNear > depthFar ? m_reversedZDepthNoStencilTest.Get() : nullptr, 0);
+        }
+
+        void draw(std::shared_ptr<ISimpleMesh> mesh, XrPosef& pose, XrVector3f scaling) override {
+            auto meshData = mesh->getNative<D3D11>();
+
+            if (mesh != m_currentMesh) {
+                if (!m_meshModelBuffer) {
+                    m_meshModelBuffer = createBuffer(sizeof(ModelConstantBuffer), "Model CB", nullptr, false);
+                }
+                ID3D11Buffer* const constantBuffers[] = {m_meshModelBuffer->getNative<D3D11>(),
+                                                         m_meshViewProjectionBuffer->getNative<D3D11>()};
+                m_context->VSSetConstantBuffers(0, (UINT)std::size(constantBuffers), constantBuffers);
+                m_context->VSSetShader(m_meshVertexShader.Get(), nullptr, 0);
+                m_context->PSSetShader(m_meshPixelShader.Get(), nullptr, 0);
+                m_context->GSSetShader(nullptr, nullptr, 0);
+
+                const UINT strides[] = {meshData->stride};
+                const UINT offsets[] = {0};
+                ID3D11Buffer* vertexBuffers[] = {meshData->vertexBuffer};
+                m_context->IASetVertexBuffers(0, (UINT)std::size(vertexBuffers), vertexBuffers, strides, offsets);
+                m_context->IASetIndexBuffer(meshData->indexBuffer, DXGI_FORMAT_R16_UINT, 0);
+                m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                m_context->IASetInputLayout(m_meshInputLayout.Get());
+            }
+
+            ModelConstantBuffer model;
+            const DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixScaling(scaling.x, scaling.y, scaling.z);
+            DirectX::XMStoreFloat4x4(&model.Model,
+                                     DirectX::XMMatrixTranspose(scaleMatrix * xr::math::LoadXrPose(pose)));
+            m_meshModelBuffer->uploadData(&model, sizeof(model));
+
+            m_context->DrawIndexedInstanced(meshData->numIndices, 1, 0, 0, 0);
         }
 
         void* getNativePtr() const override {
@@ -900,7 +1232,16 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         ComPtr<ID3D11RasterizerState> m_quadRasterizer;
         ComPtr<ID3D11RasterizerState> m_quadRasterizerMSAA;
         ComPtr<ID3D11VertexShader> m_quadVertexShader;
+        ComPtr<ID3D11DepthStencilState> m_reversedZDepthNoStencilTest;
+        ComPtr<ID3D11VertexShader> m_meshVertexShader;
+        ComPtr<ID3D11PixelShader> m_meshPixelShader;
+        ComPtr<ID3D11InputLayout> m_meshInputLayout;
+        std::shared_ptr<IShaderBuffer> m_meshViewProjectionBuffer;
+        std::shared_ptr<IShaderBuffer> m_meshModelBuffer;
 
+        std::shared_ptr<ITexture> m_currentDrawRenderTarget;
+        std::shared_ptr<ITexture> m_currentDrawDepthBuffer;
+        std::shared_ptr<ISimpleMesh> m_currentMesh;
         mutable std::shared_ptr<IQuadShader> m_currentQuadShader;
         mutable std::shared_ptr<IComputeShader> m_currentComputeShader;
         mutable uint32_t m_currentShaderHighestSRV;
@@ -911,7 +1252,6 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 } // namespace
 
 namespace toolkit::graphics {
-
     std::shared_ptr<IDevice> WrapD3D11Device(ID3D11Device* device) {
         return std::make_shared<D3D11Device>(device);
     }

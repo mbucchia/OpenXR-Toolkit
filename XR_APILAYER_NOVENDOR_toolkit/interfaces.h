@@ -121,11 +121,19 @@ namespace toolkit {
             using Context = ID3D11DeviceContext*;
             using Texture = ID3D11Texture2D*;
             using Buffer = ID3D11Buffer*;
+            struct MeshData {
+                ID3D11Buffer* vertexBuffer;
+                UINT stride;
+                ID3D11Buffer* indexBuffer;
+                UINT numIndices;
+            };
+            using Mesh = MeshData*;
             using PixelShader = ID3D11PixelShader*;
             using ComputeShader = ID3D11ComputeShader*;
             using ShaderInputView = ID3D11ShaderResourceView*;
             using ComputeShaderOutputView = ID3D11UnorderedAccessView*;
             using RenderTargetView = ID3D11RenderTargetView*;
+            using DepthStencilView = ID3D11DepthStencilView*;
         };
 
         // A few handy texture formats.
@@ -228,6 +236,26 @@ namespace toolkit {
             }
         };
 
+        // The view of a texture as a depth buffer.
+        struct IDepthStencilView {
+            virtual ~IDepthStencilView() = default;
+
+            virtual Api getApi() const = 0;
+            virtual std::shared_ptr<IDevice> getDevice() const = 0;
+
+            virtual void clearDepth(float value) = 0;
+
+            virtual void* getNativePtr() const = 0;
+
+            template <typename ApiTraits>
+            typename ApiTraits::DepthStencilView getNative() const {
+                if (ApiTraits::Api != getApi()) {
+                    throw new std::runtime_error("Api mismatch");
+                }
+                return reinterpret_cast<typename ApiTraits::DepthStencilView>(getNativePtr());
+            }
+        };
+
         // A texture, plain and simple!
         struct ITexture {
             virtual ~ITexture() = default;
@@ -243,6 +271,8 @@ namespace toolkit {
             virtual std::shared_ptr<IComputeShaderOutputView> getComputeShaderOutputView(uint32_t slice) const = 0;
             virtual std::shared_ptr<IRenderTargetView> getRenderTargetView() const = 0;
             virtual std::shared_ptr<IRenderTargetView> getRenderTargetView(uint32_t slice) const = 0;
+            virtual std::shared_ptr<IDepthStencilView> getDepthStencilView() const = 0;
+            virtual std::shared_ptr<IDepthStencilView> getDepthStencilView(uint32_t slice) const = 0;
 
             virtual void saveToFile(const std::string& path) const = 0;
 
@@ -277,6 +307,29 @@ namespace toolkit {
             }
         };
 
+        struct SimpleMeshVertex {
+            XrVector3f Position;
+            XrVector3f Color;
+        };
+
+        // A simple (unskinned) mesh.
+        struct ISimpleMesh {
+            virtual ~ISimpleMesh() = default;
+
+            virtual Api getApi() const = 0;
+            virtual std::shared_ptr<IDevice> getDevice() const = 0;
+
+            virtual void* getNativePtr() const = 0;
+
+            template <typename ApiTraits>
+            typename ApiTraits::Mesh getNative() const {
+                if (ApiTraits::Api != getApi()) {
+                    throw new std::runtime_error("Api mismatch");
+                }
+                return reinterpret_cast<typename ApiTraits::Mesh>(getNativePtr());
+            }
+        };
+
         // A GPU asynchronous timer.
         struct IGpuTimer : public ITimer {
             virtual Api getApi() const = 0;
@@ -303,6 +356,9 @@ namespace toolkit {
                                                                 const std::optional<std::string>& debugName,
                                                                 const void* initialData = nullptr,
                                                                 bool immutable = false) = 0;
+            virtual std::shared_ptr<ISimpleMesh> createSimpleMesh(std::vector<SimpleMeshVertex>& vertices,
+                                                                  std::vector<uint16_t>& indices,
+                                                                  const std::optional<std::string>& debugName) = 0;
             virtual std::shared_ptr<IQuadShader> createQuadShader(const std::string& shaderPath,
                                                                   const std::string& entryPoint,
                                                                   const std::optional<std::string>& debugName,
@@ -329,8 +385,15 @@ namespace toolkit {
             virtual void dispatchShader(bool doNotClear = false) const = 0;
 
             virtual void clearRenderTargets() = 0;
-            virtual void setRenderTargets(std::vector<std::shared_ptr<ITexture>> renderTargets) = 0;
-            virtual void setRenderTargets(std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargets) = 0;
+            virtual void setRenderTargets(std::vector<std::shared_ptr<ITexture>> renderTargets,
+                                          std::shared_ptr<ITexture> depthBuffer = {}) = 0;
+            virtual void setRenderTargets(std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargets,
+                                          std::shared_ptr<ITexture> depthBuffer = {}) = 0;
+
+            virtual void setViewProjection(XrPosef& eyePose, XrFovf& fov, float depthNear, float depthFar) = 0;
+            virtual void draw(std::shared_ptr<ISimpleMesh> mesh,
+                              XrPosef& pose,
+                              XrVector3f scaling = {1.0f, 1.0f, 1.0f}) = 0;
 
             virtual void* getNativePtr() const = 0;
             virtual void* getContextPtr() const = 0;
