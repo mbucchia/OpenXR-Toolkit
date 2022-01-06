@@ -349,6 +349,9 @@ namespace toolkit {
             virtual int64_t getTextureFormat(TextureFormat format) const = 0;
             virtual bool isTextureFormatSRGB(int64_t format) const = 0;
 
+            virtual void saveContext(bool clear = true) = 0;
+            virtual void restoreContext() = 0;
+
             virtual std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
                                                             const std::optional<std::string>& debugName,
                                                             uint32_t rowPitch = 0,

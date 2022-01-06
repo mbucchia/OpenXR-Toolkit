@@ -583,6 +583,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
       public:
         D3D11Device(ID3D11Device* device) : m_device(device) {
             m_device->GetImmediateContext(&m_context);
+            m_currentContext = m_context;
 
             // Create common resources.
             {
@@ -798,6 +799,21 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             };
         }
 
+        void saveContext(bool clear) override {
+            CHECK_HRCMD(m_device->CreateDeferredContext(0, &m_currentContext));
+            if (clear) {
+                m_currentContext->ClearState();
+            }
+        }
+
+        void restoreContext() override {
+            ComPtr<ID3D11CommandList> commandList;
+            CHECK_HRCMD(m_currentContext->FinishCommandList(FALSE, &commandList));
+            m_context->ExecuteCommandList(commandList.Get(), TRUE);
+
+            m_currentContext = m_context;
+        }
+
         std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
                                                 const std::optional<std::string>& debugName,
                                                 uint32_t rowPitch = 0,
@@ -968,18 +984,18 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             m_currentShaderHighestSRV = m_currentShaderHighestUAV = m_currentShaderHighestRTV = 0;
 
             // Prepare to draw the quad.
-            m_context->OMSetBlendState(nullptr, nullptr, 0xffffffff);
-            m_context->OMSetDepthStencilState(nullptr, 0);
-            m_context->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
-            m_context->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
-            m_context->IASetInputLayout(nullptr);
-            m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-            m_context->VSSetShader(m_quadVertexShader.Get(), nullptr, 0);
+            m_currentContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
+            m_currentContext->OMSetDepthStencilState(nullptr, 0);
+            m_currentContext->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
+            m_currentContext->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
+            m_currentContext->IASetInputLayout(nullptr);
+            m_currentContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+            m_currentContext->VSSetShader(m_quadVertexShader.Get(), nullptr, 0);
 
             // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
             ID3D11SamplerState* samp[] = {m_linearClampSamplerPS.Get()};
-            m_context->PSSetSamplers(0, 1, samp);
-            m_context->PSSetShader(shader->getNative<D3D11>(), nullptr, 0);
+            m_currentContext->PSSetSamplers(0, 1, samp);
+            m_currentContext->PSSetShader(shader->getNative<D3D11>(), nullptr, 0);
 
             m_currentQuadShader = shader;
         }
@@ -991,9 +1007,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 
             // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
             ID3D11SamplerState* samp[] = {m_linearClampSamplerCS.Get()};
-            m_context->CSSetSamplers(0, 1, samp);
+            m_currentContext->CSSetSamplers(0, 1, samp);
 
-            m_context->CSSetShader(shader->getNative<D3D11>(), nullptr, 0);
+            m_currentContext->CSSetShader(shader->getNative<D3D11>(), nullptr, 0);
 
             m_currentComputeShader = shader;
         }
@@ -1002,9 +1018,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             ID3D11ShaderResourceView* srvs[] = {slice == -1 ? input->getShaderInputView()->getNative<D3D11>()
                                                             : input->getShaderInputView(slice)->getNative<D3D11>()};
             if (m_currentQuadShader) {
-                m_context->PSSetShaderResources(slot, 1, srvs);
+                m_currentContext->PSSetShaderResources(slot, 1, srvs);
             } else if (m_currentComputeShader) {
-                m_context->CSSetShaderResources(slot, 1, srvs);
+                m_currentContext->CSSetShaderResources(slot, 1, srvs);
             } else {
                 throw std::runtime_error("No shader is set");
             }
@@ -1014,9 +1030,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         void setShaderInput(uint32_t slot, std::shared_ptr<IShaderBuffer> input) override {
             ID3D11Buffer* cbs[] = {input->getNative<D3D11>()};
             if (m_currentQuadShader) {
-                m_context->PSSetConstantBuffers(slot, 1, cbs);
+                m_currentContext->PSSetConstantBuffers(slot, 1, cbs);
             } else if (m_currentComputeShader) {
-                m_context->CSSetConstantBuffers(slot, 1, cbs);
+                m_currentContext->CSSetConstantBuffers(slot, 1, cbs);
             } else {
                 throw std::runtime_error("No shader is set");
             }
@@ -1041,16 +1057,16 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 viewport.TopLeftY = 0.0f;
                 viewport.Width = (float)output->getInfo().width;
                 viewport.Height = (float)output->getInfo().height;
-                m_context->RSSetViewports(1, &viewport);
-                m_context->RSSetState(output->getInfo().sampleCount > 1 ? m_quadRasterizerMSAA.Get()
-                                                                        : m_quadRasterizer.Get());
+                m_currentContext->RSSetViewports(1, &viewport);
+                m_currentContext->RSSetState(output->getInfo().sampleCount > 1 ? m_quadRasterizerMSAA.Get()
+                                                                               : m_quadRasterizer.Get());
                 m_currentShaderHighestRTV = max(m_currentShaderHighestRTV, slot);
 
             } else if (m_currentComputeShader) {
                 ID3D11UnorderedAccessView* uavs[] = {
                     slice == -1 ? output->getComputeShaderOutputView()->getNative<D3D11>()
                                 : output->getComputeShaderOutputView(slice)->getNative<D3D11>()};
-                m_context->CSSetUnorderedAccessViews(slot, 1, uavs, nullptr);
+                m_currentContext->CSSetUnorderedAccessViews(slot, 1, uavs, nullptr);
                 m_currentShaderHighestUAV = max(m_currentShaderHighestUAV, slot);
             } else {
                 throw std::runtime_error("No shader is set");
@@ -1059,11 +1075,11 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 
         void dispatchShader(bool doNotClear) const override {
             if (m_currentQuadShader) {
-                m_context->Draw(3, 0);
+                m_currentContext->Draw(3, 0);
             } else if (m_currentComputeShader) {
-                m_context->Dispatch(m_currentComputeShader->getThreadGroups()[0],
-                                    m_currentComputeShader->getThreadGroups()[1],
-                                    m_currentComputeShader->getThreadGroups()[2]);
+                m_currentContext->Dispatch(m_currentComputeShader->getThreadGroups()[0],
+                                           m_currentComputeShader->getThreadGroups()[1],
+                                           m_currentComputeShader->getThreadGroups()[2]);
             } else {
                 throw std::runtime_error("No shader is set");
             }
@@ -1076,7 +1092,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                         rtvs.push_back(nullptr);
                     }
 
-                    m_context->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
+                    m_currentContext->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
                     m_currentShaderHighestRTV = 0;
                 }
                 {
@@ -1086,9 +1102,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                     }
 
                     if (m_currentQuadShader) {
-                        m_context->PSSetShaderResources(0, (UINT)srvs.size(), srvs.data());
+                        m_currentContext->PSSetShaderResources(0, (UINT)srvs.size(), srvs.data());
                     } else {
-                        m_context->CSSetShaderResources(0, (UINT)srvs.size(), srvs.data());
+                        m_currentContext->CSSetShaderResources(0, (UINT)srvs.size(), srvs.data());
                     }
                     m_currentShaderHighestSRV = 0;
                 }
@@ -1098,7 +1114,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                         uavs.push_back(nullptr);
                     }
 
-                    m_context->CSSetUnorderedAccessViews(0, (UINT)uavs.size(), uavs.data(), nullptr);
+                    m_currentContext->CSSetUnorderedAccessViews(0, (UINT)uavs.size(), uavs.data(), nullptr);
                     m_currentShaderHighestUAV = 0;
                 }
                 m_currentQuadShader.reset();
@@ -1113,7 +1129,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 rtvs.push_back(nullptr);
             }
 
-            m_context->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
+            m_currentContext->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
 
             m_currentDrawRenderTarget.reset();
             m_currentDrawDepthBuffer.reset();
@@ -1128,10 +1144,10 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 rtvs.push_back(renderTarget->getRenderTargetView()->getNative<D3D11>());
             }
 
-            m_context->OMSetRenderTargets((UINT)rtvs.size(),
-                                          rtvs.data(),
-                                          depthBuffer ? depthBuffer->getDepthStencilView()->getNative<D3D11>()
-                                                      : nullptr);
+            m_currentContext->OMSetRenderTargets((UINT)rtvs.size(),
+                                                 rtvs.data(),
+                                                 depthBuffer ? depthBuffer->getDepthStencilView()->getNative<D3D11>()
+                                                             : nullptr);
 
             m_currentDrawRenderTarget = renderTargets.size() > 0 ? renderTargets[0] : nullptr;
             m_currentDrawDepthBuffer = depthBuffer;
@@ -1150,10 +1166,10 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                     rtvs.push_back(renderTarget.first->getRenderTargetView(slice)->getNative<D3D11>());
                 }
             }
-            m_context->OMSetRenderTargets((UINT)rtvs.size(),
-                                          rtvs.data(),
-                                          depthBuffer ? depthBuffer->getDepthStencilView()->getNative<D3D11>()
-                                                      : nullptr);
+            m_currentContext->OMSetRenderTargets((UINT)rtvs.size(),
+                                                 rtvs.data(),
+                                                 depthBuffer ? depthBuffer->getDepthStencilView()->getNative<D3D11>()
+                                                             : nullptr);
 
             m_currentDrawRenderTarget = renderTargets.size() > 0 ? renderTargets[0].first : nullptr;
             m_currentDrawDepthBuffer = depthBuffer;
@@ -1178,8 +1194,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             viewport.TopLeftY = 0.0f;
             viewport.Width = (float)m_currentDrawRenderTarget->getInfo().width;
             viewport.Height = (float)m_currentDrawRenderTarget->getInfo().height;
-            m_context->RSSetViewports(1, &viewport);
-            m_context->OMSetDepthStencilState(depthNear > depthFar ? m_reversedZDepthNoStencilTest.Get() : nullptr, 0);
+            m_currentContext->RSSetViewports(1, &viewport);
+            m_currentContext->OMSetDepthStencilState(
+                depthNear > depthFar ? m_reversedZDepthNoStencilTest.Get() : nullptr, 0);
         }
 
         void draw(std::shared_ptr<ISimpleMesh> mesh, XrPosef& pose, XrVector3f scaling) override {
@@ -1191,18 +1208,19 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 }
                 ID3D11Buffer* const constantBuffers[] = {m_meshModelBuffer->getNative<D3D11>(),
                                                          m_meshViewProjectionBuffer->getNative<D3D11>()};
-                m_context->VSSetConstantBuffers(0, (UINT)std::size(constantBuffers), constantBuffers);
-                m_context->VSSetShader(m_meshVertexShader.Get(), nullptr, 0);
-                m_context->PSSetShader(m_meshPixelShader.Get(), nullptr, 0);
-                m_context->GSSetShader(nullptr, nullptr, 0);
+                m_currentContext->VSSetConstantBuffers(0, (UINT)std::size(constantBuffers), constantBuffers);
+                m_currentContext->VSSetShader(m_meshVertexShader.Get(), nullptr, 0);
+                m_currentContext->PSSetShader(m_meshPixelShader.Get(), nullptr, 0);
+                m_currentContext->GSSetShader(nullptr, nullptr, 0);
 
                 const UINT strides[] = {meshData->stride};
                 const UINT offsets[] = {0};
                 ID3D11Buffer* vertexBuffers[] = {meshData->vertexBuffer};
-                m_context->IASetVertexBuffers(0, (UINT)std::size(vertexBuffers), vertexBuffers, strides, offsets);
-                m_context->IASetIndexBuffer(meshData->indexBuffer, DXGI_FORMAT_R16_UINT, 0);
-                m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-                m_context->IASetInputLayout(m_meshInputLayout.Get());
+                m_currentContext->IASetVertexBuffers(
+                    0, (UINT)std::size(vertexBuffers), vertexBuffers, strides, offsets);
+                m_currentContext->IASetIndexBuffer(meshData->indexBuffer, DXGI_FORMAT_R16_UINT, 0);
+                m_currentContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                m_currentContext->IASetInputLayout(m_meshInputLayout.Get());
             }
 
             ModelConstantBuffer model;
@@ -1211,7 +1229,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                                      DirectX::XMMatrixTranspose(scaleMatrix * xr::math::LoadXrPose(pose)));
             m_meshModelBuffer->uploadData(&model, sizeof(model));
 
-            m_context->DrawIndexedInstanced(meshData->numIndices, 1, 0, 0, 0);
+            m_currentContext->DrawIndexedInstanced(meshData->numIndices, 1, 0, 0, 0);
         }
 
         void* getNativePtr() const override {
@@ -1219,12 +1237,13 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         }
 
         void* getContextPtr() const override {
-            return m_context.Get();
+            return m_currentContext.Get();
         }
 
       private:
         const ComPtr<ID3D11Device> m_device;
         ComPtr<ID3D11DeviceContext> m_context;
+        ComPtr<ID3D11DeviceContext> m_currentContext;
         std::string m_deviceName;
 
         ComPtr<ID3D11SamplerState> m_linearClampSamplerPS;
