@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -33,6 +33,7 @@ namespace {
     using namespace toolkit::graphics;
     using namespace toolkit::menu;
     using namespace toolkit::log;
+    using namespace toolkit::utilities;
 
     enum class TextStyle { Normal, Selected };
 
@@ -40,23 +41,29 @@ namespace {
     struct ITextRenderer {
         virtual ~ITextRenderer() = default;
 
-        virtual void begin(std::shared_ptr<ITexture> renderTarget) = 0;
+        virtual void begin(std::shared_ptr<ITexture> renderTarget,
+                           float leftEyeOffset = 0.0f,
+                           float rightEyeOffset = 0.0f) = 0;
         virtual void end() = 0;
 
-        virtual void drawString(std::wstring string,
-                                TextStyle style,
-                                float size,
-                                float x,
-                                float y,
-                                uint32_t color,
-                                bool alignRight = false) const = 0;
-        virtual void drawString(std::string string,
-                                TextStyle style,
-                                float size,
-                                float x,
-                                float y,
-                                uint32_t color,
-                                bool alignRight = false) const = 0;
+        virtual void clear(float top, float left, float bottom, float right) const = 0;
+
+        virtual float drawString(std::wstring string,
+                                 TextStyle style,
+                                 float size,
+                                 float x,
+                                 float y,
+                                 uint32_t color,
+                                 bool measure = false,
+                                 bool alignRight = false) const = 0;
+        virtual float drawString(std::string string,
+                                 TextStyle style,
+                                 float size,
+                                 float x,
+                                 float y,
+                                 uint32_t color,
+                                 bool measure = false,
+                                 bool alignRight = false) const = 0;
         virtual float measureString(std::wstring string, TextStyle style, float size) const = 0;
         virtual float measureString(std::string string, TextStyle style, float size) const = 0;
     };
@@ -85,8 +92,10 @@ namespace {
                 device->getNative<D3D11>(), dwriteFactory, &params, &m_fontSelected));
         }
 
-        void begin(std::shared_ptr<ITexture> renderTarget) override {
+        void begin(std::shared_ptr<ITexture> renderTarget, float leftEyeOffset, float rightEyeOffset) override {
             m_renderTarget = renderTarget;
+            m_leftEyeOffset = leftEyeOffset;
+            m_rightEyeOffset = rightEyeOffset;
         }
 
         void end() override {
@@ -103,13 +112,50 @@ namespace {
             }
         }
 
-        void drawString(std::wstring string,
-                        TextStyle style,
-                        float size,
-                        float x,
-                        float y,
-                        uint32_t color,
-                        bool alignRight = false) const override {
+        void clear(float top, float left, float bottom, float right) const override {
+            ComPtr<ID3D11DeviceContext1> d3d11Context;
+            if (FAILED(m_device->getContext<D3D11>()->QueryInterface(
+                    __uuidof(ID3D11DeviceContext1), reinterpret_cast<void**>(d3d11Context.GetAddressOf())))) {
+                // The app did not use a sufficient FEATURE_LEVEL. Nothing we can do.
+                return;
+            }
+
+            float clearColor[] = {0, 0, 0, 1};
+            D3D11_RECT rect;
+            rect.top = (LONG)top;
+            rect.left = (LONG)left;
+            rect.bottom = (LONG)bottom;
+            rect.right = (LONG)right;
+            if (!m_renderTarget->isArray()) {
+                d3d11Context->ClearView(
+                    m_renderTarget->getRenderTargetView()->getNative<D3D11>(), clearColor, &rect, 1);
+            } else {
+                // When VPRT is used, draw each eye.
+                {
+                    D3D11_RECT correctedRect = rect;
+                    correctedRect.left += (LONG)m_leftEyeOffset;
+                    correctedRect.right += (LONG)m_leftEyeOffset;
+                    d3d11Context->ClearView(
+                        m_renderTarget->getRenderTargetView(0)->getNative<D3D11>(), clearColor, &rect, 1);
+                }
+                {
+                    D3D11_RECT correctedRect = rect;
+                    correctedRect.left += (LONG)m_rightEyeOffset;
+                    correctedRect.right += (LONG)m_rightEyeOffset;
+                    d3d11Context->ClearView(
+                        m_renderTarget->getRenderTargetView(1)->getNative<D3D11>(), clearColor, &rect, 1);
+                }
+            }
+        }
+
+        float drawString(std::wstring string,
+                         TextStyle style,
+                         float size,
+                         float x,
+                         float y,
+                         uint32_t color,
+                         bool measure,
+                         bool alignRight) const override {
             // Upon first call for this frame, we create the deferred context.
             // This is needed because FW1_RESTORESTATE won't help us in the case of multiple consecutive draw calls.
             if (!m_deferredContext) {
@@ -147,25 +193,31 @@ namespace {
                     ID3D11RenderTargetView* rtvs[] = {m_renderTarget->getRenderTargetView(eye)->getNative<D3D11>()};
                     m_deferredContext->OMSetRenderTargets(1, rtvs, nullptr);
 
+                    const float eyeOffset = eye ? m_rightEyeOffset : m_leftEyeOffset;
+
                     font->DrawString(m_deferredContext.Get(),
                                      string.c_str(),
                                      size,
-                                     x,
+                                     x + eyeOffset,
                                      y,
                                      color,
                                      (alignRight ? FW1_RIGHT : FW1_LEFT) | FW1_NOFLUSH);
                 }
             }
+
+            return measure ? measureString(string, style, size) : 0.0f;
         }
 
-        void drawString(std::string string,
-                        TextStyle style,
-                        float size,
-                        float x,
-                        float y,
-                        uint32_t color,
-                        bool alignRight = false) const override {
-            drawString(std::wstring(string.begin(), string.end()), style, size, x, y, color, alignRight);
+        float drawString(std::string string,
+                         TextStyle style,
+                         float size,
+                         float x,
+                         float y,
+                         uint32_t color,
+                         bool measure,
+                         bool alignRight) const override {
+            return drawString(
+                std::wstring(string.begin(), string.end()), style, size, x, y, color, measure, alignRight);
         }
 
         float measureString(std::wstring string, TextStyle style, float size) const override {
@@ -192,6 +244,8 @@ namespace {
         ComPtr<IFW1FontWrapper> m_fontSelected;
 
         std::shared_ptr<ITexture> m_renderTarget;
+        float m_leftEyeOffset{0.0f};
+        float m_rightEyeOffset{0.0f};
         mutable ComPtr<ID3D11DeviceContext> m_deferredContext;
     };
 
@@ -199,6 +253,7 @@ namespace {
 
     constexpr uint32_t ColorDefault = 0xffffffff;
     constexpr uint32_t ColorSelected = 0xff0099ff;
+    constexpr uint32_t ColorWarning = 0xff0000ff;
 
     enum class MenuState { Splash, NotVisible, Visible };
     enum class MenuEntryType { Slider, Choice, Separator, RestoreDefaultsButton, ExitButton };
@@ -223,8 +278,12 @@ namespace {
     // The logic of our menus.
     class MenuHandler : public IMenuHandler {
       public:
-        MenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> device)
-            : m_configManager(configManager), m_device(device) {
+        MenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                    std::shared_ptr<IDevice> device,
+                    uint32_t displayWidth,
+                    uint32_t displayHeight)
+            : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
+              m_displayHeight(displayHeight) {
             if (m_device->getApi() == Api::D3D11) {
                 m_textRenderer = std::make_shared<D3D11TextRenderer>(device);
             } else {
@@ -245,7 +304,7 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingOverlayType,
                                      0,
-                                     (int)OverlayType::MaxValue - 1,
+                                     (int)OverlayType::MaxValue - m_configManager->isExperimentalMode() ? 1 : 2,
                                      [](int value) {
                                          std::string labels[] = {"Off", "FPS", "Detailed"};
                                          return labels[value];
@@ -262,10 +321,13 @@ namespace {
                                          return labels[value];
                                      }});
             m_upscalingGroup.start = m_menuEntries.size();
-            m_menuEntries.push_back({"Factor", MenuEntryType::Slider, SettingScaling, 100, 200, [](int value) {
-                                         // TODO: Display resolution.
-                                         return fmt::format("{}%", value);
+            m_menuEntries.push_back({"Factor", MenuEntryType::Slider, SettingScaling, 100, 200, [&](int value) {
+                                         // We don't even use value, the utility function below will query it.
+                                         const auto& resolution =
+                                             GetScaledResolution(m_configManager, m_displayWidth, m_displayHeight);
+                                         return fmt::format("{}% ({}x{})", value, resolution.first, resolution.second);
                                      }});
+            m_originalScalingValue = getCurrentScaling();
             m_menuEntries.push_back({"Sharpness", MenuEntryType::Slider, SettingSharpness, 0, 100, [](int value) {
                                          return fmt::format("{}%", value);
                                      }});
@@ -301,8 +363,19 @@ namespace {
                                          return labels[value];
                                      }});
             m_configManager->setEnumDefault(SettingMenuTimeout, MenuTimeout::Medium);
+            m_menuEntries.push_back(
+                {"Menu eye offset", MenuEntryType::Slider, SettingOverlayEyeOffset, -500, 500, [](int value) {
+                     return fmt::format("{}px", value);
+                 }});
+            m_configManager->setDefault(SettingOverlayEyeOffset, 0);
             m_menuEntries.push_back({"Restore defaults", MenuEntryType::RestoreDefaultsButton, BUTTON_OR_SEPARATOR});
             m_menuEntries.push_back({"Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
+        }
+
+        uint32_t getCurrentScaling() const {
+            return m_configManager->getEnumValue<ScalingType>(SettingScalingType) != ScalingType::None
+                       ? m_configManager->getValue(SettingScaling)
+                       : 0;
         }
 
         void handleInput() override {
@@ -314,12 +387,12 @@ namespace {
 
             m_wasF1Pressed = m_wasF1Pressed && !repeat;
             const bool isF1Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F1);
-            const bool menuControl = !m_wasF1Pressed && isF1Pressed;
+            const bool moveLeft = !m_wasF1Pressed && isF1Pressed;
             m_wasF1Pressed = isF1Pressed;
 
             m_wasF2Pressed = m_wasF2Pressed && !repeat;
             const bool isF2Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F2);
-            const bool moveLeft = !m_wasF2Pressed && isF2Pressed;
+            const bool menuControl = !m_wasF2Pressed && isF2Pressed;
             m_wasF2Pressed = isF2Pressed;
 
             m_wasF3Pressed = m_wasF3Pressed && !repeat;
@@ -360,11 +433,22 @@ namespace {
                     const int value = m_configManager->peekValue(menuEntry.configName);
                     const int newValue =
                         std::clamp(value + (moveLeft ? -1 : 1), menuEntry.minValue, menuEntry.maxValue);
-                    m_configManager->setValue(menuEntry.configName, newValue);
+
+                    // When changing the upscaling, people might immediately exit VR to test the change. Bypass the
+                    // commit delay.
+                    const bool noCommitDelay =
+                        menuEntry.configName == SettingScalingType || menuEntry.configName == SettingScaling;
+
+                    m_configManager->setValue(menuEntry.configName, newValue, noCommitDelay);
+
+                    // When changing the upscaling, display the warning.
+                    const bool wasRestartNeeded = m_needRestart;
+                    m_needRestart = m_originalScalingValue != getCurrentScaling();
 
                     // When changing the font size, force re-alignment.
-                    if (menuEntry.configName == SettingMenuFontSize) {
+                    if (menuEntry.configName == SettingMenuFontSize || wasRestartNeeded != m_needRestart) {
                         m_menuEntriesTitleWidth = 0.0f;
+                        m_menuEntriesRight = m_menuEntriesBottom = 0.0f;
                     }
 
                     break;
@@ -394,11 +478,17 @@ namespace {
                                   m_configManager->getEnumValue<ScalingType>(SettingScalingType) != ScalingType::None);
         }
 
-        void render(std::shared_ptr<ITexture> renderTarget) const override {
-            m_textRenderer->begin(renderTarget);
+        void render(std::shared_ptr<ITexture> renderTarget, uint32_t eye) const override {
+            assert(eye == 0 || eye == 1);
 
-            const float leftAlign = renderTarget->getInfo().width / 4.0f;
-            const float rightAlign = 2 * renderTarget->getInfo().width / 3.0f;
+            const float leftEyeOffset = 0.0f;
+            const float rightEyeOffset = (float)m_configManager->getValue(SettingOverlayEyeOffset);
+            const float eyeOffset = eye ? rightEyeOffset : leftEyeOffset;
+
+            m_textRenderer->begin(renderTarget, leftEyeOffset, rightEyeOffset);
+
+            const float leftAlign = (renderTarget->getInfo().width / 4.0f) + eyeOffset;
+            const float rightAlign = (2 * renderTarget->getInfo().width / 3.0f) + eyeOffset;
             const float topAlign = renderTarget->getInfo().height / 3.0f;
 
             const float fontSizes[(int)MenuFontSize::MaxValue] = {
@@ -419,6 +509,7 @@ namespace {
             const auto alpha = (unsigned int)(std::clamp(timeout - duration, 0.0, 1.0) * 255.0);
             const auto colorNormal = (ColorDefault & 0xffffff) | (alpha << 24);
             const auto colorSelected = (ColorSelected & 0xffffff) | (alpha << 24);
+            const auto colorWarning = (ColorWarning & 0xffffff) | (alpha << 24);
 
             // Leave upon timeout.
             if (duration >= timeout) {
@@ -427,7 +518,7 @@ namespace {
 
             if (m_state == MenuState::Splash) {
                 m_textRenderer->drawString(
-                    fmt::format("Press CTRL+F1 to bring up the menu ({}s)", (int)(std::ceil(timeout - duration))),
+                    fmt::format("Press CTRL+F2 to bring up the menu ({}s)", (int)(std::ceil(timeout - duration))),
                     TextStyle::Normal,
                     fontSize,
                     leftAlign,
@@ -443,21 +534,35 @@ namespace {
                                            topAlign + 1.05f * fontSize,
                                            colorSelected);
             } else if (m_state == MenuState::Visible) {
-                float top = topAlign;
+                const bool measure = m_menuEntriesRight == 0.0f;
+                if (!measure) {
+                    m_textRenderer->clear(topAlign, leftAlign, m_menuEntriesBottom, m_menuEntriesRight + eyeOffset);
+                }
 
-                m_textRenderer->drawString(L"\x2193 : CTRL+F1   \x2190 : CTRL+F2   \x2192 : CTRL+F3",
-                                           TextStyle::Normal,
-                                           fontSize,
-                                           leftAlign,
-                                           top,
-                                           colorNormal);
+                float top = topAlign;
+                float left = leftAlign;
+
+                left += m_textRenderer->drawString(L"\x25C4 : CTRL+F1   \x25BC : CTRL+F2   \x25BA : CTRL+F3",
+                                                   TextStyle::Normal,
+                                                   fontSize,
+                                                   leftAlign,
+                                                   top,
+                                                   colorNormal,
+                                                   measure);
+                top += 1.05f * fontSize;
+                m_textRenderer->drawString(
+                    L"Use SHIFT to scroll faster", TextStyle::Normal, fontSize, leftAlign, top, colorNormal, measure);
                 top += 1.5f * fontSize;
+
+                if (eye == 0) {
+                    m_menuEntriesRight = max(m_menuEntriesRight, left);
+                }
 
                 float menuEntriesTitleWidth = m_menuEntriesTitleWidth;
 
                 // Display each menu entry.
                 for (unsigned int i = 0; i < m_menuEntries.size(); i++) {
-                    float left = leftAlign;
+                    left = leftAlign;
                     const auto& menuEntry = m_menuEntries[i];
 
                     // Always account for entries, even invisible ones, when calculating the alignment.
@@ -487,8 +592,8 @@ namespace {
                     // Display the current value.
                     switch (menuEntry.type) {
                     case MenuEntryType::Slider:
-                        m_textRenderer->drawString(
-                            menuEntry.valueToString(value), entryStyle, fontSize, left, top, entryColor);
+                        left += m_textRenderer->drawString(
+                            menuEntry.valueToString(value), entryStyle, fontSize, left, top, entryColor, measure);
                         break;
 
                     case MenuEntryType::Choice:
@@ -498,8 +603,9 @@ namespace {
                             const auto valueStyle = j == value ? TextStyle::Selected : TextStyle::Normal;
                             const auto valueColor = j == value ? colorSelected : colorNormal;
 
-                            m_textRenderer->drawString(label, valueStyle, fontSize, left, top, valueColor);
-                            left += m_textRenderer->measureString(label, valueStyle, fontSize) + 20;
+                            left +=
+                                m_textRenderer->drawString(label, valueStyle, fontSize, left, top, valueColor, true) +
+                                20.0f;
                         }
                         break;
 
@@ -514,18 +620,60 @@ namespace {
 
                     case MenuEntryType::ExitButton:
                         if (duration > 1.0) {
-                            m_textRenderer->drawString(fmt::format("({}s)", (int)(std::ceil(timeout - duration))),
-                                                       entryStyle,
-                                                       fontSize,
-                                                       left,
-                                                       top,
-                                                       entryColor);
+                            left +=
+                                m_textRenderer->drawString(fmt::format("({}s)", (int)(std::ceil(timeout - duration))),
+                                                           entryStyle,
+                                                           fontSize,
+                                                           left,
+                                                           top,
+                                                           entryColor,
+                                                           measure);
                         }
                         break;
                     }
 
                     top += 1.05f * fontSize;
+
+                    if (eye == 0) {
+                        m_menuEntriesRight = max(m_menuEntriesRight, left);
+                    }
                 }
+
+                {
+                    float left = leftAlign;
+                    if (m_configManager->isSafeMode()) {
+                        top += fontSize;
+
+                        left += m_textRenderer->drawString(
+                            L"\x25CA  Running in safe mode, settings are cleared when restarting the VR session \x25CA",
+                            TextStyle::Selected,
+                            fontSize,
+                            left,
+                            top,
+                            colorWarning,
+                            measure);
+
+                        top += 1.05f * fontSize;
+                    } else if (m_needRestart) {
+                        top += fontSize;
+
+                        left += m_textRenderer->drawString(
+                            L"\x25CA  Some settings require to restart the VR session \x25CA",
+                            TextStyle::Selected,
+                            fontSize,
+                            left,
+                            top,
+                            colorWarning,
+                            measure);
+
+                        top += 1.05f * fontSize;
+                    }
+
+                    if (eye == 0) {
+                        m_menuEntriesRight = max(m_menuEntriesRight, left);
+                    }
+                }
+                m_menuEntriesBottom = top;
             }
 
             auto overlayType = m_configManager->getEnumValue<OverlayType>(SettingOverlayType);
@@ -574,6 +722,8 @@ namespace {
       private:
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
+        const uint32_t m_displayWidth;
+        const uint32_t m_displayHeight;
         std::shared_ptr<ITextRenderer> m_textRenderer;
         LayerStatistics m_stats{};
 
@@ -587,8 +737,13 @@ namespace {
 
         MenuGroup m_upscalingGroup;
 
+        uint32_t m_originalScalingValue{0};
+        bool m_needRestart{false};
+
         mutable MenuState m_state{MenuState::NotVisible};
         mutable float m_menuEntriesTitleWidth{0.0f};
+        mutable float m_menuEntriesRight{0.0f};
+        mutable float m_menuEntriesBottom{0.0f};
     };
 
 } // namespace
@@ -596,8 +751,10 @@ namespace {
 namespace toolkit::menu {
 
     std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                                                    std::shared_ptr<toolkit::graphics::IDevice> device) {
-        return std::make_shared<MenuHandler>(configManager, device);
+                                                    std::shared_ptr<toolkit::graphics::IDevice> device,
+                                                    uint32_t displayWidth,
+                                                    uint32_t displayHeight) {
+        return std::make_shared<MenuHandler>(configManager, device, displayWidth, displayHeight);
     }
 
 } // namespace toolkit::menu

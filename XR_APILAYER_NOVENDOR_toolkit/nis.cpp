@@ -44,6 +44,7 @@ namespace {
     using namespace toolkit::config;
     using namespace toolkit::graphics;
     using namespace toolkit::log;
+    using namespace toolkit::utilities;
 
     class NISUpscaler : public IUpscaler {
       public:
@@ -67,13 +68,13 @@ namespace {
                 gpuArch = NISGPUArchitecture::AMD_Generic;
             }
 
-            NISOptimizer opt(true, NISGPUArchitecture::NVIDIA_Generic);
+            NISOptimizer opt(true, gpuArch);
             m_blockWidth = opt.GetOptimalBlockWidth();
             m_blockHeight = opt.GetOptimalBlockHeight();
             m_threadGroupSize = opt.GetOptimalThreadGroupSize();
 
             // The upscaling factor is only read upon initialization of the session. It cannot be changed after.
-            auto resolution = GetNISScaledResolution(m_configManager, m_outputWidth, m_outputHeight);
+            auto resolution = GetScaledResolution(m_configManager, m_outputWidth, m_outputHeight);
             m_inputWidth = resolution.first;
             m_inputHeight = resolution.second;
             if (m_inputWidth != m_outputWidth || m_inputHeight != m_outputHeight) {
@@ -229,27 +230,6 @@ namespace {
 } // namespace
 
 namespace toolkit::graphics {
-
-    std::pair<uint32_t, uint32_t> GetNISScaledResolution(std::shared_ptr<IConfigManager> configManager,
-                                                         uint32_t outputWidth,
-                                                         uint32_t outputHeight) {
-        uint32_t inputWidth = outputWidth;
-        uint32_t inputHeight = outputHeight;
-
-        const int upscalingPercent = configManager->getValue(SettingScaling);
-        if (upscalingPercent > 100) {
-            inputWidth = (uint32_t)((100.0f / upscalingPercent) * outputWidth);
-            if (inputWidth % 2) {
-                inputWidth++;
-            }
-            inputHeight = (uint32_t)((100.0f / upscalingPercent) * outputHeight);
-            if (inputHeight % 2) {
-                inputHeight++;
-            }
-        }
-
-        return std::make_pair(inputWidth, inputHeight);
-    }
 
     std::shared_ptr<IUpscaler> CreateNISUpscaler(std::shared_ptr<IConfigManager> configManager,
                                                  std::shared_ptr<IDevice> graphicsDevice,

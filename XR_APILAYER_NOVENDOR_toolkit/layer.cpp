@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -45,6 +45,7 @@ namespace {
 
     struct SwapchainImages {
         std::vector<std::shared_ptr<graphics::ITexture>> chain;
+        std::shared_ptr<graphics::ITexture> textureForMenu;
 
         std::shared_ptr<graphics::IGpuTimer> upscalerGpuTimer[ViewCount];
         std::shared_ptr<graphics::IGpuTimer> preProcessorGpuTimer[ViewCount];
@@ -53,7 +54,7 @@ namespace {
 
     struct SwapchainState {
         std::vector<SwapchainImages> images;
-        uint32_t acquiredImageIndex;
+        uint32_t acquiredImageIndex{0};
     };
 
     class OpenXrLayer : public toolkit::OpenXrApi {
@@ -64,6 +65,8 @@ namespace {
         XrResult xrCreateInstance(const XrInstanceCreateInfo* createInfo) override {
             // Needed to resolve the requested function pointers.
             OpenXrApi::xrCreateInstance(createInfo);
+
+            m_applicationName = createInfo->applicationInfo.applicationName;
 
             // Dump the OpenXR runtime information to help debugging customer issues.
             XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES};
@@ -117,7 +120,7 @@ namespace {
                 instance, systemId, viewConfigurationType, viewCapacityInput, viewCountOutput, views);
             if (XR_SUCCEEDED(result) && isVrSystem(systemId) && views) {
                 // Determine the application resolution.
-                auto upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
+                const auto upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
                 uint32_t inputWidth = m_displayWidth;
                 uint32_t inputHeight = m_displayHeight;
 
@@ -130,7 +133,7 @@ namespace {
 
                 case config::ScalingType::NIS: {
                     std::tie(inputWidth, inputHeight) =
-                        graphics::GetNISScaledResolution(m_configManager, m_displayWidth, m_displayHeight);
+                        utilities::GetScaledResolution(m_configManager, m_displayWidth, m_displayHeight);
                     break;
                 }
 
@@ -177,7 +180,7 @@ namespace {
                     if (entry->type == XR_TYPE_GRAPHICS_BINDING_D3D11_KHR) {
                         const XrGraphicsBindingD3D11KHR* d3dBindings =
                             reinterpret_cast<const XrGraphicsBindingD3D11KHR*>(entry);
-                        m_graphicsDevice = graphics::WrapD3D11Device(d3dBindings->device);
+                        m_graphicsDevice = m_graphicsDeviceForMenu = graphics::WrapD3D11Device(d3dBindings->device);
                         break;
                     }
 
@@ -186,17 +189,23 @@ namespace {
 
                 if (m_graphicsDevice) {
                     // Initialize the other resources.
-                    auto upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
+                    m_upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
 
-                    switch (upscaleMode) {
+                    switch (m_upscaleMode) {
                     case config::ScalingType::FSR:
                         m_upscaler = graphics::CreateFSRUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
+
+                        // Latch this value now.
+                        m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
                         break;
 
                     case config::ScalingType::NIS:
                         m_upscaler = graphics::CreateNISUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
+
+                        // Latch this value now.
+                        m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
                         break;
 
                     case config::ScalingType::None:
@@ -216,12 +225,13 @@ namespace {
 
                     for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
                         m_performanceCounters.appGpuTimer[i] = m_graphicsDevice->createTimer();
-                        m_performanceCounters.overlayGpuTimer[i] = m_graphicsDevice->createTimer();
+                        m_performanceCounters.overlayGpuTimer[i] = m_graphicsDeviceForMenu->createTimer();
                     }
 
                     m_performanceCounters.lastWindowStart = std::chrono::steady_clock::now();
 
-                    m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice);
+                    m_menuHandler = menu::CreateMenuHandler(
+                        m_configManager, m_graphicsDeviceForMenu, m_displayWidth, m_displayHeight);
                 } else {
                     Log("Unsupported graphics runtime.\n");
                 }
@@ -236,10 +246,28 @@ namespace {
         XrResult xrDestroySession(XrSession session) override {
             const XrResult result = OpenXrApi::xrDestroySession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                m_upscaler.reset();
+                m_preProcessor.reset();
+                m_postProcessor.reset();
+                for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
+                    m_performanceCounters.appGpuTimer[i].reset();
+                    m_performanceCounters.overlayGpuTimer[i].reset();
+                }
+                m_performanceCounters.appCpuTimer.reset();
+                m_performanceCounters.endFrameCpuTimer.reset();
+                m_performanceCounters.overlayCpuTimer.reset();
                 m_swapchains.clear();
                 m_menuHandler.reset();
+                m_graphicsDeviceForMenu.reset();
                 m_graphicsDevice.reset();
                 m_vrSession = XR_NULL_HANDLE;
+                // A good check to ensure there are no resources leak is to confirm that the graphics device is
+                // destroyed _before_ we see this message.
+                // eg:
+                // 2022-01-01 17:15:35 -0800: D3D11Device is destructed
+                // 2022-01-01 17:15:35 -0800: Dession destroyed
+                // If the order is reversed, then it means that we are not cleaning up the resources properly.
+                DebugLog("Dession destroyed\n");
             }
 
             return result;
@@ -255,6 +283,16 @@ namespace {
             // TODO: Identify the swapchains of interest for our processing chain. For now, we only handle color
             // buffers.
             const bool useSwapchain = createInfo->usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+
+            Log("Creating swapchain with dimensions=%ux%u, arraySize=%u, mipCount=%u, sampleCount=%u, format=%d, "
+                "usage=0x%x\n",
+                createInfo->width,
+                createInfo->height,
+                createInfo->arraySize,
+                createInfo->mipCount,
+                createInfo->sampleCount,
+                createInfo->format,
+                createInfo->usageFlags);
 
             XrSwapchainCreateInfo chainCreateInfo = *createInfo;
             if (useSwapchain) {
@@ -302,84 +340,89 @@ namespace {
                         SwapchainImages images;
 
                         // Store the runtime images into the state (last entry in the processing chain).
-                        images.chain.push_back(
-                            graphics::WrapD3D11Texture(m_graphicsDevice,
-                                                       chainCreateInfo,
-                                                       d3dImages[i].texture,
-                                                       fmt::format("Runtime swapchain {} TEX2D", i)));
-
-                        // TODO: Create other entries in the chain based on the processing to do (scaling,
-                        // post-processing...).
-
-                        if (m_preProcessor) {
-                            // Create an intermediate texture with the same resolution as the input.
-                            XrSwapchainCreateInfo inputCreateInfo = *createInfo;
-                            inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                            if (m_upscaler) {
-                                // The upscaler requires to use as a shader input.
-                                inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                            }
-
-                            auto inputTexture = m_graphicsDevice->createTexture(
-                                inputCreateInfo, fmt::format("Postprocess input swapchain {} TEX2D", i));
-
-                            // We place the texture at the very front (app texture).
-                            images.chain.insert(images.chain.begin(), inputTexture);
-
-                            images.preProcessorGpuTimer[0] = m_graphicsDevice->createTimer();
-                            if (createInfo->arraySize > 1) {
-                                images.preProcessorGpuTimer[1] = m_graphicsDevice->createTimer();
-                            }
-                        }
-
-                        if (m_upscaler) {
-                            // Create an app texture with the lower resolution.
-                            XrSwapchainCreateInfo inputCreateInfo = *createInfo;
-                            inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                            auto inputTexture = m_graphicsDevice->createTexture(
-                                inputCreateInfo, fmt::format("App swapchain {} TEX2D", i));
-
-                            // We place the texture before the runtime texture, which means at the very front (app
-                            // texture) or after the pre-processor.
-                            images.chain.insert(images.chain.end() - 1, inputTexture);
-
-                            images.upscalerGpuTimer[0] = m_graphicsDevice->createTimer();
-                            if (createInfo->arraySize > 1) {
-                                images.upscalerGpuTimer[1] = m_graphicsDevice->createTimer();
-                            }
-                        }
-
-                        if (m_postProcessor) {
-                            // Create an intermediate texture with the same resolution as the output.
-                            XrSwapchainCreateInfo intermediateCreateInfo = chainCreateInfo;
-                            intermediateCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                            if (m_upscaler) {
-                                // The upscaler requires to use as an unordered access view.
-                                intermediateCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
-
-                                // This also means we need a non-sRGB type.
-                                if (m_graphicsDevice->isTextureFormatSRGB(intermediateCreateInfo.format)) {
-                                    // good balance between visuals and perf
-                                    intermediateCreateInfo.format =
-                                        m_graphicsDevice->getTextureFormat(graphics::TextureFormat::R10G10B10A2_UNORM);
-                                }
-                            }
-                            auto intermediateTexture = m_graphicsDevice->createTexture(
-                                intermediateCreateInfo, fmt::format("Postprocess input swapchain {} TEX2D", i));
-
-                            // We place the texture just before the runtime texture.
-                            images.chain.insert(images.chain.end() - 1, intermediateTexture);
-
-                            images.postProcessorGpuTimer[0] = m_graphicsDevice->createTimer();
-                            if (createInfo->arraySize > 1) {
-                                images.postProcessorGpuTimer[1] = m_graphicsDevice->createTimer();
-                            }
-                        }
+                        auto texture = graphics::WrapD3D11Texture(m_graphicsDevice,
+                                                                  chainCreateInfo,
+                                                                  d3dImages[i].texture,
+                                                                  fmt::format("Runtime swapchain {} TEX2D", i));
+                        images.chain.push_back(texture);
+                        images.textureForMenu = texture;
 
                         swapchainState.images.push_back(images);
                     }
                 } else {
                     throw new std::runtime_error("Unsupported graphics runtime");
+                }
+
+                for (uint32_t i = 0; i < imageCount; i++) {
+                    SwapchainImages& images = swapchainState.images[i];
+
+                    // TODO: Create other entries in the chain based on the processing to do (scaling,
+                    // post-processing...).
+
+                    if (m_preProcessor) {
+                        // Create an intermediate texture with the same resolution as the input.
+                        XrSwapchainCreateInfo inputCreateInfo = *createInfo;
+                        inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+                        if (m_upscaler) {
+                            // The upscaler requires to use as a shader input.
+                            inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+                        }
+
+                        auto inputTexture = m_graphicsDevice->createTexture(
+                            inputCreateInfo, fmt::format("Postprocess input swapchain {} TEX2D", i));
+
+                        // We place the texture at the very front (app texture).
+                        images.chain.insert(images.chain.begin(), inputTexture);
+
+                        images.preProcessorGpuTimer[0] = m_graphicsDevice->createTimer();
+                        if (createInfo->arraySize > 1) {
+                            images.preProcessorGpuTimer[1] = m_graphicsDevice->createTimer();
+                        }
+                    }
+
+                    if (m_upscaler) {
+                        // Create an app texture with the lower resolution.
+                        XrSwapchainCreateInfo inputCreateInfo = *createInfo;
+                        inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+                        auto inputTexture =
+                            m_graphicsDevice->createTexture(inputCreateInfo, fmt::format("App swapchain {} TEX2D", i));
+
+                        // We place the texture before the runtime texture, which means at the very front (app
+                        // texture) or after the pre-processor.
+                        images.chain.insert(images.chain.end() - 1, inputTexture);
+
+                        images.upscalerGpuTimer[0] = m_graphicsDevice->createTimer();
+                        if (createInfo->arraySize > 1) {
+                            images.upscalerGpuTimer[1] = m_graphicsDevice->createTimer();
+                        }
+                    }
+
+                    if (m_postProcessor) {
+                        // Create an intermediate texture with the same resolution as the output.
+                        XrSwapchainCreateInfo intermediateCreateInfo = chainCreateInfo;
+                        intermediateCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+                        if (m_upscaler) {
+                            // The upscaler requires to use as an unordered access view.
+                            intermediateCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+
+                            // This also means we need a non-sRGB type.
+                            if (m_graphicsDevice->isTextureFormatSRGB(intermediateCreateInfo.format)) {
+                                    // good balance between visuals and perf
+                                intermediateCreateInfo.format =
+                                        m_graphicsDevice->getTextureFormat(graphics::TextureFormat::R10G10B10A2_UNORM);
+                            }
+                        }
+                        auto intermediateTexture = m_graphicsDevice->createTexture(
+                            intermediateCreateInfo, fmt::format("Postprocess input swapchain {} TEX2D", i));
+
+                        // We place the texture just before the runtime texture.
+                        images.chain.insert(images.chain.end() - 1, intermediateTexture);
+
+                        images.postProcessorGpuTimer[0] = m_graphicsDevice->createTimer();
+                        if (createInfo->arraySize > 1) {
+                            images.postProcessorGpuTimer[1] = m_graphicsDevice->createTimer();
+                        }
+                    }
                 }
 
                 m_swapchains.insert_or_assign(*swapchain, swapchainState);
@@ -446,7 +489,7 @@ namespace {
                                XrView* views) override {
             const XrResult result =
                 OpenXrApi::xrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
-            if (XR_SUCCEEDED(result) &&
+            if (XR_SUCCEEDED(result) && isVrSession(session) &&
                 viewLocateInfo->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
                 assert(*viewCountOutput == ViewCount);
 
@@ -492,7 +535,7 @@ namespace {
 
         XrResult xrBeginFrame(XrSession session, const XrFrameBeginInfo* frameBeginInfo) override {
             const XrResult result = OpenXrApi::xrBeginFrame(session, frameBeginInfo);
-            if (XR_SUCCEEDED(result)) {
+            if (XR_SUCCEEDED(result) && isVrSession(session) && m_graphicsDevice) {
                 m_performanceCounters.appCpuTimer->start();
                 m_stats.appGpuTimeUs += m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
                 m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
@@ -543,6 +586,25 @@ namespace {
             }
         }
 
+        void takeScreenshot(std::shared_ptr<graphics::ITexture> texture) const {
+            std::stringstream parameters;
+            if (m_upscaleMode != config::ScalingType::None) {
+                // TODO: add a getUpscaleModeName() helper to keep enum and string in sync.
+                const auto upscaleName = 
+                    m_upscaleMode == config::ScalingType::NIS ? "NIS_" :
+                    m_upscaleMode == config::ScalingType::FSR ? "FSR_" : "SCL_";
+
+                parameters << upscaleName << m_upscalingFactor << "_" << m_configManager->getValue(config::SettingSharpness);
+            }
+            const std::time_t now = std::time(nullptr);
+            char datetime[1024];
+            std::strftime(datetime, sizeof(datetime), "%Y%m%d_%H%M%S_", std::localtime(&now));
+            const std::string screenshotFilename = m_applicationName + "_" + datetime + parameters.str() + ".dds";
+            std::string screenshotPath = (std::filesystem::path(getenv("LOCALAPPDATA")) / screenshotFilename).string();
+
+            texture->saveToFile(screenshotPath);
+        }
+
         XrResult xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo) override {
             if (!isVrSession(session) || !m_graphicsDevice) {
                 return OpenXrApi::xrEndFrame(session, frameEndInfo);
@@ -562,20 +624,26 @@ namespace {
             // Toggle to the next set of GPU timers.
             m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
 
-            // Handle menu stuff.
-            // NOTE: shouldn't this be relocated at the beginning of updateConfiguration() instead?
-            //       otherwise some menu actions could be changing the configuration state after
-            //       the handlers have been updated() but before dispatching the handlers shaders 
-            //       to the GPU causing potential errors.
-             
+            // Handle inputs.
+            bool requestScreenshot = false;
             if (m_menuHandler) {
+                // NOTE: shouldn't this be relocated at the beginning of updateConfiguration() instead?
+                //       otherwise some menu actions could be changing the configuration state after
+                //       the handlers have been updated() but before dispatching the handlers shaders 
+                //       to the GPU causing potential errors.
+            
                 m_menuHandler->handleInput();
+
+                const bool isF12Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F12);
+                requestScreenshot =
+                    m_configManager->getValue(config::SettingScreenshotEnabled) && !m_wasF12Pressed && isF12Pressed;
+                m_wasF12Pressed = isF12Pressed;
             }
 
             // Unbind all textures from the render targets.
             m_graphicsDevice->clearRenderTargets();
 
-            std::shared_ptr<graphics::ITexture> topLayer[ViewCount] = {};
+            std::shared_ptr<graphics::ITexture> textureForMenu[ViewCount] = {};
 
             // Because the frame info is passed const, we are going to need to reconstruct a writable version of it to
             // patch the resolution.
@@ -675,7 +743,7 @@ namespace {
                             throw new std::runtime_error("Processing chain incomplete!");
                         }
 
-                        topLayer[eye] = swapchainImages.chain[nextImage];
+                        textureForMenu[eye] = swapchainImages.textureForMenu;
 
                         // Patch the resolution.
                         correctedProjectionViews[eye].subImage.imageRect.extent.width = m_displayWidth;
@@ -713,19 +781,25 @@ namespace {
                 m_stats.overlayGpuTimeUs +=
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
 
-                if (topLayer[0]) {
+                if (textureForMenu[0]) {
                     // When using VPRT, we rely on the menu renderer to render both views at once. Otherwise we
                     // render each view one at a time.
                     m_performanceCounters.overlayCpuTimer->start();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
-                    m_menuHandler->render(topLayer[0]);
+                    m_menuHandler->render(textureForMenu[0], 0);
                     static_assert(ViewCount == 2);
-                    if (topLayer[1] != topLayer[0]) {
-                        m_menuHandler->render(topLayer[1]);
+                    if (textureForMenu[1] != textureForMenu[0]) {
+                        m_menuHandler->render(textureForMenu[1], 1);
                     }
                     m_performanceCounters.overlayCpuTimer->stop();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
                 }
+            }
+
+            // Whether the menu is available or not, we can still use that top-most texture for screenshot.
+            // TODO: The screenshot does not work with multi-layer applications.
+            if (textureForMenu[0] && requestScreenshot) {
+                takeScreenshot(textureForMenu[0]);
             }
 
             return OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
@@ -740,6 +814,7 @@ namespace {
             return session == m_vrSession;
         }
 
+        std::string m_applicationName;
         XrSystemId m_vrSystemId{XR_NULL_SYSTEM_ID};
         XrSession m_vrSession{XR_NULL_HANDLE};
         uint32_t m_displayWidth;
@@ -748,13 +823,18 @@ namespace {
         std::shared_ptr<config::IConfigManager> m_configManager;
 
         std::shared_ptr<graphics::IDevice> m_graphicsDevice;
+        std::shared_ptr<graphics::IDevice> m_graphicsDeviceForMenu;
         std::map<XrSwapchain, SwapchainState> m_swapchains;
 
         std::shared_ptr<graphics::IUpscaler> m_upscaler;
+        config::ScalingType m_upscaleMode{config::ScalingType::None};
+        uint32_t m_upscalingFactor{100};
+
         std::shared_ptr<graphics::IImageProcessor> m_preProcessor;
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
 
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
+        bool m_wasF12Pressed{false};
 
         struct {
             std::shared_ptr<utilities::ICpuTimer> appCpuTimer;

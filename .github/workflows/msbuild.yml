@@ -1,0 +1,55 @@
+name: MSBuild
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  SOLUTION_FILE_PATH: OpenXR-Toolkit.sln
+  BUILD_CONFIGURATION: Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v2
+    
+    - name: Checkout submodules
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: git submodule update --init --recursive
+
+    - name: Setup DevEnv
+      uses: seanmiddleditch/gha-setup-vsdevenv@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v2.3.1
+      with:
+        python-version: 3.8
+
+    - name: Restore NuGet packages
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: |
+        # Need to build vdproj. We must invoke this tool from inside its own folder.
+        $DisableOutOfProcBuild=$(vswhere -latest -find  **\DisableOutOfProcBuild.exe)
+        Push-Location $(Split-Path $DisableOutOfProcBuild)
+        & $DisableOutOfProcBuild
+        Pop-Location
+        
+        # Finally, we may build the project.
+        devenv.com ${{env.SOLUTION_FILE_PATH}} /Build ${{env.BUILD_CONFIGURATION}}
+
+    - name: Publish
+      uses: actions/upload-artifact@v2
+      with:
+        name: Setup
+        path: installer/output/OpenXR-Toolkit.msi

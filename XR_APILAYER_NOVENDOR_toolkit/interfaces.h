@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -37,6 +37,7 @@ namespace toolkit {
     };
 
     namespace {
+
         // A generic timer.
         struct ITimer {
             virtual ~ITimer() = default;
@@ -46,16 +47,20 @@ namespace toolkit {
 
             virtual uint64_t query(bool reset = true) const = 0;
         };
+
     } // namespace
 
     namespace utilities {
+
         // A CPU synchronous timer.
-        struct ICpuTimer : public ITimer {
-        };
-    }
+        struct ICpuTimer : public ITimer {};
+
+    } // namespace utilities
 
     namespace config {
 
+        const std::string SettingScreenshotEnabled = "enable_screenshot";
+        const std::string SettingOverlayEyeOffset = "overlay_eye_offset";
         const std::string SettingOverlayType = "overlay";
         const std::string SettingMenuFontSize = "font_size";
         const std::string SettingMenuTimeout = "menu_timeout";
@@ -81,12 +86,15 @@ namespace toolkit {
 
             virtual int getValue(const std::string& name) const = 0;
             virtual int peekValue(const std::string& name) const = 0;
-            virtual void setValue(const std::string& name, int value) = 0;
+            virtual void setValue(const std::string& name, int value, bool noCommitDelay = false) = 0;
             virtual bool hasChanged(const std::string& name) const = 0;
 
             virtual void resetToDefaults() = 0;
 
             virtual void hardReset() = 0;
+
+            virtual bool isSafeMode() const = 0;
+            virtual bool isExperimentalMode() const = 0;
 
             template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
             void setEnumDefault(const std::string& name, T value) {
@@ -241,6 +249,8 @@ namespace toolkit {
             virtual std::shared_ptr<IRenderTargetView> getRenderTargetView() const = 0;
             virtual std::shared_ptr<IRenderTargetView> getRenderTargetView(uint32_t slice) const = 0;
 
+            virtual void saveToFile(const std::string& path) const = 0;
+
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
@@ -376,7 +386,7 @@ namespace toolkit {
             virtual ~IMenuHandler() = default;
 
             virtual void handleInput() = 0;
-            virtual void render(std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
+            virtual void render(std::shared_ptr<graphics::ITexture> renderTarget, uint32_t eye = 0) const = 0;
             virtual void updateStatistics(const LayerStatistics& stats) = 0;
         };
 

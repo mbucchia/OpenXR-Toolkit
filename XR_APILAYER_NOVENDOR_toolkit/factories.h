@@ -30,7 +30,12 @@ namespace toolkit {
 
         std::shared_ptr<ICpuTimer> CreateCpuTimer();
 
-    }
+        std::pair<uint32_t, uint32_t>
+        GetScaledResolution(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                            uint32_t outputWidth,
+                            uint32_t outputHeight);
+
+    } // namespace utilities
 
     namespace config {
 
@@ -46,10 +51,6 @@ namespace toolkit {
                                                    ID3D11Texture2D* texture,
                                                    const std::optional<std::string>& debugName);
 
-        std::pair<uint32_t, uint32_t>
-        GetNISScaledResolution(std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                               uint32_t outputWidth,
-                               uint32_t outputHeight);
         std::shared_ptr<IUpscaler> CreateNISUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                                      std::shared_ptr<IDevice> graphicsDevice,
                                                      uint32_t outputWidth,
@@ -74,7 +75,9 @@ namespace toolkit {
     namespace menu {
 
         std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                                                        std::shared_ptr<toolkit::graphics::IDevice> device);
+                                                        std::shared_ptr<toolkit::graphics::IDevice> device,
+                                                        uint32_t displayWidth,
+                                                        uint32_t displayHeight);
 
     } // namespace menu
 
