@@ -121,21 +121,18 @@ namespace {
             if (XR_SUCCEEDED(result) && isVrSystem(systemId) && views) {
                 // Determine the application resolution.
                 const auto upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
+
                 uint32_t inputWidth = m_displayWidth;
                 uint32_t inputHeight = m_displayHeight;
 
                 switch (upscaleMode) {
-                case config::ScalingType::FSR: {
-                    std::tie(inputWidth, inputHeight) =
-                        graphics::GetFSRScaledResolution(m_configManager, m_displayWidth, m_displayHeight);
-                    break;
-                }
+                case config::ScalingType::FSR:
+                    [[fallthrough]];
 
-                case config::ScalingType::NIS: {
-                    std::tie(inputWidth, inputHeight) =
-                        utilities::GetScaledResolution(m_configManager, m_displayWidth, m_displayHeight);
+                case config::ScalingType::NIS:
+                    std::tie(inputWidth, inputHeight) = utilities::GetScaledDimensions(
+                        m_displayWidth, m_displayHeight, m_configManager->getValue(config::SettingScaling), 2);
                     break;
-                }
 
                 case config::ScalingType::None:
                     break;

@@ -31,9 +31,7 @@ namespace toolkit {
         std::shared_ptr<ICpuTimer> CreateCpuTimer();
 
         std::pair<uint32_t, uint32_t>
-        GetScaledResolution(std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                            uint32_t outputWidth,
-                            uint32_t outputHeight);
+        GetScaledDimensions(uint32_t outputWidth, uint32_t outputHeight, uint32_t scalePercent, uint32_t blockSize);
 
     } // namespace utilities
 
@@ -56,10 +54,6 @@ namespace toolkit {
                                                      uint32_t outputWidth,
                                                      uint32_t outputHeight);
 
-        std::pair<uint32_t, uint32_t>
-        GetFSRScaledResolution(std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                               uint32_t outputWidth,
-                               uint32_t outputHeight);
         std::shared_ptr<IUpscaler> CreateFSRUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                                      std::shared_ptr<IDevice> graphicsDevice,
                                                      uint32_t outputWidth,

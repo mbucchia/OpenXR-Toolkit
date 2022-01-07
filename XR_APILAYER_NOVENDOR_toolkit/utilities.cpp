@@ -66,22 +66,15 @@ namespace toolkit::utilities {
         return std::make_shared<CpuTimer>();
     }
 
-    std::pair<uint32_t, uint32_t> GetScaledResolution(std::shared_ptr<IConfigManager> configManager,
-                                                      uint32_t outputWidth,
-                                                      uint32_t outputHeight) {
-        uint32_t inputWidth = outputWidth;
-        uint32_t inputHeight = outputHeight;
+    std::pair<uint32_t, uint32_t>
+    GetScaledDimensions(uint32_t outputWidth, uint32_t outputHeight, uint32_t scalePercent, uint32_t blockSize) {
+        auto inputWidth = scalePercent >= 100 ? (outputWidth * 100u) / scalePercent : (outputWidth * scalePercent) / 100u;
+        auto inputHeight = scalePercent >= 100 ? (outputHeight * 100u) / scalePercent : (outputHeight * scalePercent) / 100u;
 
-        const int upscalingPercent = configManager->getValue(SettingScaling);
-        if (upscalingPercent > 100) {
-            inputWidth = (uint32_t)((100.0f / upscalingPercent) * outputWidth);
-            if (inputWidth % 2) {
-                inputWidth++;
-            }
-            inputHeight = (uint32_t)((100.0f / upscalingPercent) * outputHeight);
-            if (inputHeight % 2) {
-                inputHeight++;
-            }
+        // align both dimensions to blockSize
+        if (blockSize >= 2u) {
+            inputWidth = ((inputWidth + blockSize - 1u) / blockSize) * blockSize;
+            inputHeight = ((inputHeight + blockSize - 1u) / blockSize) * blockSize;
         }
 
         return std::make_pair(inputWidth, inputHeight);

@@ -323,8 +323,8 @@ namespace {
             m_upscalingGroup.start = m_menuEntries.size();
             m_menuEntries.push_back({"Factor", MenuEntryType::Slider, SettingScaling, 100, 200, [&](int value) {
                                          // We don't even use value, the utility function below will query it.
-                                         const auto& resolution =
-                                             GetScaledResolution(m_configManager, m_displayWidth, m_displayHeight);
+                                         const auto& resolution = GetScaledDimensions(
+                                             m_displayWidth, m_displayHeight, m_configManager->getValue(SettingScaling), 2);
                                          return fmt::format("{}% ({}x{})", value, resolution.first, resolution.second);
                                      }});
             m_originalScalingValue = getCurrentScaling();

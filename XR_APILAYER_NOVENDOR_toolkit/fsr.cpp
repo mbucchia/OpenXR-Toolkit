@@ -59,12 +59,12 @@ namespace {
                     std::shared_ptr<IDevice> graphicsDevice,
                     uint32_t outputWidth,
                     uint32_t outputHeight)
-            : m_configManager(configManager), m_device(graphicsDevice), m_outputWidth(outputWidth),
-              m_outputHeight(outputHeight) {
+            : m_configManager(configManager)
+            , m_device(graphicsDevice), m_outputWidth(outputWidth), m_outputHeight(outputHeight) {
 
             // The upscaling factor is only read upon initialization of the session. It cannot be changed after.
-            std::tie(m_inputWidth, m_inputHeight) = 
-              GetFSRScaledResolution(m_configManager, m_outputWidth, m_outputHeight);
+            std::tie(m_inputWidth, m_inputHeight) =
+                utilities::GetScaledDimensions(m_outputWidth, m_outputHeight, configManager->getValue(SettingScaling), 2);
 
             if (m_inputWidth != m_outputWidth || m_inputHeight != m_outputHeight) {
                 initializeScaler();
@@ -167,11 +167,11 @@ namespace {
                 format = m_device->getTextureFormat(TextureFormat::R16G16B16A16_UNORM);
             }
 
-            Log("FSRUpscaler initializeIntermediary with %u, %u, %u\n", width, height, format);
+            DebugLog("FSRUpscaler initializeIntermediary with %u, %u, %u\n", width, height, format);
 
             if (m_device->isTextureFormatSRGB(format)) {
                 format = DXGI_FORMAT_R8G8B8A8_UNORM;
-                Log("  sRGB output format changed to: %u\n", format);
+                DebugLog("  sRGB output format changed to: %u\n", format);
             }
 
             // create the intermediary texture between upscale and sharpen pass
@@ -205,28 +205,6 @@ namespace {
 } // namespace
 
 namespace toolkit::graphics {
-
-    std::pair<uint32_t, uint32_t> GetFSRScaledResolution(std::shared_ptr<IConfigManager> configManager,
-                                                         uint32_t outputWidth,
-                                                         uint32_t outputHeight) {
-
-        const int upscalingPercent = configManager->getValue(SettingScaling);
-
-        uint32_t inputWidth = upscalingPercent >= 100 ?
-          (outputWidth * 100u) / upscalingPercent :
-          (outputWidth * upscalingPercent) / 100u ;
-
-
-        uint32_t inputHeight = upscalingPercent >= 100 ? 
-          (outputHeight * 100u) / upscalingPercent :
-          (outputHeight * upscalingPercent) / 100u ;
-
-        // enforce the dimensions to be multiple of 2x2 blocks for the shader
-        inputWidth += inputWidth & 1;
-        inputHeight += inputHeight & 1;
-
-        return std::make_pair(inputWidth, inputHeight);
-    }
 
     std::shared_ptr<IUpscaler> CreateFSRUpscaler(std::shared_ptr<IConfigManager> configManager,
                                                  std::shared_ptr<IDevice> graphicsDevice,
