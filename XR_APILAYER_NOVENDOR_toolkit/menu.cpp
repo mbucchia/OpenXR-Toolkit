@@ -72,7 +72,7 @@ namespace {
     // A D3D11 text rendered based on FW1FontWrapper.
     class D3D11TextRenderer : public ITextRenderer {
       private:
-        const std::wstring FontFamily = L"Arial";
+        const std::wstring FontFamily = L"Segoe UI Symbol";
 
       public:
         D3D11TextRenderer(std::shared_ptr<IDevice> device) : m_device(device) {
@@ -525,7 +525,7 @@ namespace {
                 float top = topAlign;
                 float left = leftAlign;
 
-                left += m_textRenderer->drawString(L"\x25C4 : CTRL+F1   \x25BC : CTRL+F2   \x25BA : CTRL+F3",
+                left += m_textRenderer->drawString(L"\xE112 : CTRL+F1   \xE1FC : CTRL+F2   \xE111 : CTRL+F3",
                                                    TextStyle::Normal,
                                                    fontSize,
                                                    leftAlign,
@@ -628,7 +628,7 @@ namespace {
                         top += fontSize;
 
                         left += m_textRenderer->drawString(
-                            L"\x25CA  Running in safe mode, settings are cleared when restarting the VR session \x25CA",
+                            L"\x26A0  Running in safe mode, settings are cleared when restarting the VR session \x26A0",
                             TextStyle::Selected,
                             fontSize,
                             left,
@@ -641,7 +641,7 @@ namespace {
                         top += fontSize;
 
                         left += m_textRenderer->drawString(
-                            L"\x25CA  Some settings require to restart the VR session \x25CA",
+                            L"\x26A0  Some settings require to restart the VR session \x26A0",
                             TextStyle::Selected,
                             fontSize,
                             left,
