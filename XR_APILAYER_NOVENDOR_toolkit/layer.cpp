@@ -1,6 +1,7 @@
 // MIT License
 //
 // Copyright(c) 2021-2022 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -404,9 +405,9 @@ namespace {
 
                             // This also means we need a non-sRGB type.
                             if (m_graphicsDevice->isTextureFormatSRGB(intermediateCreateInfo.format)) {
-                                    // good balance between visuals and perf
+                                // good balance between visuals and perf
                                 intermediateCreateInfo.format =
-                                        m_graphicsDevice->getTextureFormat(graphics::TextureFormat::R10G10B10A2_UNORM);
+                                    m_graphicsDevice->getTextureFormat(graphics::TextureFormat::R10G10B10A2_UNORM);
                             }
                         }
                         auto intermediateTexture = m_graphicsDevice->createTexture(
@@ -587,11 +588,12 @@ namespace {
             std::stringstream parameters;
             if (m_upscaleMode != config::ScalingType::None) {
                 // TODO: add a getUpscaleModeName() helper to keep enum and string in sync.
-                const auto upscaleName = 
-                    m_upscaleMode == config::ScalingType::NIS ? "NIS_" :
-                    m_upscaleMode == config::ScalingType::FSR ? "FSR_" : "SCL_";
+                const auto upscaleName = m_upscaleMode == config::ScalingType::NIS   ? "NIS_"
+                                         : m_upscaleMode == config::ScalingType::FSR ? "FSR_"
+                                                                                     : "SCL_";
 
-                parameters << upscaleName << m_upscalingFactor << "_" << m_configManager->getValue(config::SettingSharpness);
+                parameters << upscaleName << m_upscalingFactor << "_"
+                           << m_configManager->getValue(config::SettingSharpness);
             }
             const std::time_t now = std::time(nullptr);
             char datetime[1024];
@@ -626,9 +628,9 @@ namespace {
             if (m_menuHandler) {
                 // NOTE: shouldn't this be relocated at the beginning of updateConfiguration() instead?
                 //       otherwise some menu actions could be changing the configuration state after
-                //       the handlers have been updated() but before dispatching the handlers shaders 
+                //       the handlers have been updated() but before dispatching the handlers shaders
                 //       to the GPU causing potential errors.
-            
+
                 m_menuHandler->handleInput();
 
                 const bool isF12Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F12);

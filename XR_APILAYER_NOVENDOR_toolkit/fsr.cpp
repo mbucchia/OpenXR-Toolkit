@@ -44,7 +44,6 @@ namespace {
     using namespace toolkit::graphics;
     using namespace toolkit::log;
 
-    
     struct FSRConstants {
         uint32_t Const0[4];
         uint32_t Const1[4];
@@ -59,12 +58,11 @@ namespace {
                     std::shared_ptr<IDevice> graphicsDevice,
                     uint32_t outputWidth,
                     uint32_t outputHeight)
-            : m_configManager(configManager)
-            , m_device(graphicsDevice), m_outputWidth(outputWidth), m_outputHeight(outputHeight) {
-
+            : m_configManager(configManager), m_device(graphicsDevice), m_outputWidth(outputWidth),
+              m_outputHeight(outputHeight) {
             // The upscaling factor is only read upon initialization of the session. It cannot be changed after.
-            std::tie(m_inputWidth, m_inputHeight) =
-                utilities::GetScaledDimensions(m_outputWidth, m_outputHeight, configManager->getValue(SettingScaling), 2);
+            std::tie(m_inputWidth, m_inputHeight) = utilities::GetScaledDimensions(
+                m_outputWidth, m_outputHeight, configManager->getValue(SettingScaling), 2);
 
             if (m_inputWidth != m_outputWidth || m_inputHeight != m_outputHeight) {
                 initializeScaler();
@@ -82,17 +80,23 @@ namespace {
 
                 FSRConstants config = {};
                 if (!m_isSharpenOnly) {
-                    FsrEasuCon(config.Const0, config.Const1, config.Const2, config.Const3,
-                               static_cast<AF1>(m_inputWidth ), static_cast<AF1>(m_inputHeight ),
-                               static_cast<AF1>(m_inputWidth ), static_cast<AF1>(m_inputHeight ),
-                               static_cast<AF1>(m_outputWidth), static_cast<AF1>(m_outputHeight));
+                    FsrEasuCon(config.Const0,
+                               config.Const1,
+                               config.Const2,
+                               config.Const3,
+                               static_cast<AF1>(m_inputWidth),
+                               static_cast<AF1>(m_inputHeight),
+                               static_cast<AF1>(m_inputWidth),
+                               static_cast<AF1>(m_inputHeight),
+                               static_cast<AF1>(m_outputWidth),
+                               static_cast<AF1>(m_outputHeight));
                 }
 
                 FsrRcasCon(config.Const4, static_cast<AF1>(attenuation));
 
                 // implementation is using a shader compilation define for this
-                //config.Const4[3] = (hdr != NISHDRMode::None) ? 1 : 0;
-    
+                // config.Const4[3] = (hdr != NISHDRMode::None) ? 1 : 0;
+
                 m_configBuffer = m_device->createBuffer(sizeof(config), "FSR Constants CB", &config, true);
             }
         }
@@ -126,10 +130,9 @@ namespace {
             // This value is the image region dimension that each thread group of the FSR shader operates on
             const auto threadGroupWorkRegionDim = 16u;
             const std::array<unsigned int, 3> threadGroups = {
-                (m_outputWidth  + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim, // dispatchX
+                (m_outputWidth + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim,  // dispatchX
                 (m_outputHeight + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim, // dispatchY
-                1 
-            };
+                1};
 
             // EASU/RCAS common
             utilities::shader::Defines defines;
@@ -158,7 +161,7 @@ namespace {
 
             // TODO
 
-            //m_isSharpenOnly = true;
+            // m_isSharpenOnly = true;
         }
 
         void initializeIntermediary(uint32_t width, uint32_t height, int64_t format) {

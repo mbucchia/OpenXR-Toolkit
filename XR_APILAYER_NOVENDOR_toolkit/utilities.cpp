@@ -1,6 +1,7 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -30,7 +31,7 @@ namespace {
     using namespace toolkit::utilities;
 
     class CpuTimer : public ICpuTimer {
-      using clock = std::chrono::high_resolution_clock;
+        using clock = std::chrono::high_resolution_clock;
 
       public:
         void start() override {
@@ -42,8 +43,7 @@ namespace {
         }
 
         uint64_t query(bool reset) const override {
-            const auto duration =
-              std::chrono::duration_cast<std::chrono::microseconds>(m_duration);
+            const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(m_duration);
 
             if (reset)
                 m_duration = clock::duration::zero();
@@ -68,8 +68,10 @@ namespace toolkit::utilities {
 
     std::pair<uint32_t, uint32_t>
     GetScaledDimensions(uint32_t outputWidth, uint32_t outputHeight, uint32_t scalePercent, uint32_t blockSize) {
-        auto inputWidth = scalePercent >= 100 ? (outputWidth * 100u) / scalePercent : (outputWidth * scalePercent) / 100u;
-        auto inputHeight = scalePercent >= 100 ? (outputHeight * 100u) / scalePercent : (outputHeight * scalePercent) / 100u;
+        auto inputWidth =
+            scalePercent >= 100 ? (outputWidth * 100u) / scalePercent : (outputWidth * scalePercent) / 100u;
+        auto inputHeight =
+            scalePercent >= 100 ? (outputHeight * 100u) / scalePercent : (outputHeight * scalePercent) / 100u;
 
         // align both dimensions to blockSize
         if (blockSize >= 2u) {

@@ -1,6 +1,7 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -462,7 +463,6 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             {
                 D3D11_SAMPLER_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
-                //desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
                 desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
                 desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
                 desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
