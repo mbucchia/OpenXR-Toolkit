@@ -46,7 +46,6 @@ namespace {
 
     struct SwapchainImages {
         std::vector<std::shared_ptr<graphics::ITexture>> chain;
-        std::shared_ptr<graphics::ITexture> textureForMenu;
 
         std::shared_ptr<graphics::IGpuTimer> upscalerGpuTimer[ViewCount];
         std::shared_ptr<graphics::IGpuTimer> preProcessorGpuTimer[ViewCount];
@@ -178,7 +177,7 @@ namespace {
                     if (entry->type == XR_TYPE_GRAPHICS_BINDING_D3D11_KHR) {
                         const XrGraphicsBindingD3D11KHR* d3dBindings =
                             reinterpret_cast<const XrGraphicsBindingD3D11KHR*>(entry);
-                        m_graphicsDevice = m_graphicsDeviceForMenu = graphics::WrapD3D11Device(d3dBindings->device);
+                        m_graphicsDevice = graphics::WrapD3D11Device(d3dBindings->device);
                         break;
                     }
 
@@ -223,13 +222,13 @@ namespace {
 
                     for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
                         m_performanceCounters.appGpuTimer[i] = m_graphicsDevice->createTimer();
-                        m_performanceCounters.overlayGpuTimer[i] = m_graphicsDeviceForMenu->createTimer();
+                        m_performanceCounters.overlayGpuTimer[i] = m_graphicsDevice->createTimer();
                     }
 
                     m_performanceCounters.lastWindowStart = std::chrono::steady_clock::now();
 
-                    m_menuHandler = menu::CreateMenuHandler(
-                        m_configManager, m_graphicsDeviceForMenu, m_displayWidth, m_displayHeight);
+                    m_menuHandler =
+                        menu::CreateMenuHandler(m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
                 } else {
                     Log("Unsupported graphics runtime.\n");
                 }
@@ -237,10 +236,6 @@ namespace {
                 if (m_configManager->getValue(config::SettingHandTrackingEnabled)) {
                     m_handTracker = input::CreateHandTracker(*this, *session, m_configManager, m_graphicsDevice);
                     m_sendInterationProfileEvent = true;
-
-                    for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
-                        m_performanceCounters.handsGpuTimer[i] = m_graphicsDeviceForMenu->createTimer();
-                    }
                 }
 
                 // Remember the XrSession to use.
@@ -260,14 +255,12 @@ namespace {
                 for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
                     m_performanceCounters.appGpuTimer[i].reset();
                     m_performanceCounters.overlayGpuTimer[i].reset();
-                    m_performanceCounters.handsGpuTimer[i].reset();
                 }
                 m_performanceCounters.appCpuTimer.reset();
                 m_performanceCounters.endFrameCpuTimer.reset();
                 m_performanceCounters.overlayCpuTimer.reset();
                 m_swapchains.clear();
                 m_menuHandler.reset();
-                m_graphicsDeviceForMenu.reset();
                 m_graphicsDevice.reset();
                 m_vrSession = XR_NULL_HANDLE;
                 // A good check to ensure there are no resources leak is to confirm that the graphics device is
@@ -354,7 +347,6 @@ namespace {
                                                                   d3dImages[i].texture,
                                                                   fmt::format("Runtime swapchain {} TEX2D", i));
                         images.chain.push_back(texture);
-                        images.textureForMenu = texture;
 
                         swapchainState.images.push_back(images);
                     }
@@ -806,7 +798,7 @@ namespace {
             m_graphicsDevice->clearRenderTargets();
 
             std::shared_ptr<graphics::ITexture> textureForOverlay[ViewCount] = {};
-            XrPosef poseForOverlay[ViewCount];
+            XrCompositionLayerProjectionView* viewsForOverlay = nullptr;
             XrSpace spaceForOverlay = XR_NULL_HANDLE;
 
             // Because the frame info is passed const, we are going to need to reconstruct a writable version of it to
@@ -907,8 +899,7 @@ namespace {
                             throw new std::runtime_error("Processing chain incomplete!");
                         }
 
-                        textureForOverlay[eye] = swapchainImages.textureForMenu;
-                        poseForOverlay[eye] = view.pose;
+                        textureForOverlay[eye] = swapchainImages.chain.back();
 
                         // Patch the resolution.
                         correctedProjectionViews[eye].subImage.imageRect.extent.width = m_displayWidth;
@@ -926,6 +917,7 @@ namespace {
                         }
                     }
 
+                    viewsForOverlay = correctedProjectionViews;
                     spaceForOverlay = proj->space;
 
                     correctedProjectionLayer->views = correctedProjectionViews;
@@ -938,41 +930,46 @@ namespace {
 
             chainFrameEndInfo.layers = correctedLayers.data();
 
-            // Render the hands in the top-most layer.
-            if (m_handTracker) {
-                m_stats.handsGpuTimeUs +=
-                    m_performanceCounters.handsGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
-
-                if (textureForOverlay[0]) {
-                    const bool useVPRT = textureForOverlay[1] == textureForOverlay[0];
-
-                    m_performanceCounters.handsGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
-                    m_handTracker->render(poseForOverlay[0], spaceForOverlay, textureForOverlay[0], useVPRT ? 0 : -1);
-                    m_handTracker->render(poseForOverlay[1], spaceForOverlay, textureForOverlay[1], useVPRT ? 0 : -1);
-                    m_performanceCounters.handsGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
-                }
-            }
-
             // We intentionally exclude the overlay from this timer, as it has its own separate timer.
             m_performanceCounters.endFrameCpuTimer->stop();
 
-            // Render the menu in the top-most layer.
-            if (m_menuHandler) {
-                // Update with the statistics from the last frame.
-                m_stats.overlayCpuTimeUs += m_performanceCounters.overlayCpuTimer->query();
-                m_stats.overlayGpuTimeUs +=
-                    m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
+            // Render our overlays.
+            if (textureForOverlay[0]) {
+                const bool useVPRT = textureForOverlay[1] == textureForOverlay[0];
 
-                if (textureForOverlay[0]) {
-                    // When using VPRT, we rely on the menu renderer to render both views at once. Otherwise we
-                    // render each view one at a time.
+                if (m_menuHandler || m_handTracker) {
+                    m_stats.overlayCpuTimeUs += m_performanceCounters.overlayCpuTimer->query();
+                    m_stats.overlayGpuTimeUs +=
+                        m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
+
                     m_performanceCounters.overlayCpuTimer->start();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
-                    m_menuHandler->render(textureForOverlay[0], 0);
-                    static_assert(ViewCount == 2);
-                    if (textureForOverlay[1] != textureForOverlay[0]) {
-                        m_menuHandler->render(textureForOverlay[1], 1);
+                    m_graphicsDevice->saveContext();
+                }
+
+                for (uint32_t eye = 0; eye < ViewCount; eye++) {
+                    if (!useVPRT) {
+                        m_graphicsDevice->setRenderTargets({textureForOverlay[eye]});
+                    } else {
+                        m_graphicsDevice->setRenderTargets({std::make_pair(textureForOverlay[eye], eye)});
                     }
+                    m_graphicsDevice->setViewProjection(
+                        viewsForOverlay[eye].pose, viewsForOverlay[eye].fov, 0.001f, 100.0f);
+
+                    // Render the hands.
+                    if (m_handTracker) {
+                        m_handTracker->render(viewsForOverlay[eye].pose, spaceForOverlay, textureForOverlay[eye]);
+                    }
+
+                    // Render the menu.
+                    if (m_menuHandler) {
+                        m_menuHandler->render(eye, viewsForOverlay[eye].pose, textureForOverlay[eye]);
+                        m_graphicsDevice->flushText();
+                    }
+                }
+
+                if (m_menuHandler || m_handTracker) {
+                    m_graphicsDevice->restoreContext();
                     m_performanceCounters.overlayCpuTimer->stop();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
                 }
@@ -1020,7 +1017,6 @@ namespace {
         std::shared_ptr<config::IConfigManager> m_configManager;
 
         std::shared_ptr<graphics::IDevice> m_graphicsDevice;
-        std::shared_ptr<graphics::IDevice> m_graphicsDeviceForMenu;
         std::map<XrSwapchain, SwapchainState> m_swapchains;
 
         std::shared_ptr<graphics::IUpscaler> m_upscaler;
@@ -1041,7 +1037,6 @@ namespace {
             std::shared_ptr<utilities::ICpuTimer> endFrameCpuTimer;
             std::shared_ptr<utilities::ICpuTimer> overlayCpuTimer;
             std::shared_ptr<graphics::IGpuTimer> overlayGpuTimer[GpuTimerLatency + 1];
-            std::shared_ptr<graphics::IGpuTimer> handsGpuTimer[GpuTimerLatency + 1];
 
             unsigned int gpuTimerIndex{0};
             std::chrono::steady_clock::time_point lastWindowStart;
