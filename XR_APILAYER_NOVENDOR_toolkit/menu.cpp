@@ -1,6 +1,7 @@
 // MIT License
 //
 // Copyright(c) 2021-2022 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -321,10 +322,11 @@ namespace {
                                          return labels[value];
                                      }});
             m_upscalingGroup.start = m_menuEntries.size();
+            m_originalScalingType = getCurrentScalingType();
             m_menuEntries.push_back({"Factor", MenuEntryType::Slider, SettingScaling, 100, 200, [&](int value) {
                                          // We don't even use value, the utility function below will query it.
-                                         const auto& resolution = GetScaledDimensions(
-                                             m_displayWidth, m_displayHeight, m_configManager->getValue(SettingScaling), 2);
+                                         const auto& resolution =
+                                             GetScaledDimensions(m_displayWidth, m_displayHeight, value, 2);
                                          return fmt::format("{}% ({}x{})", value, resolution.first, resolution.second);
                                      }});
             m_originalScalingValue = getCurrentScaling();
@@ -372,12 +374,6 @@ namespace {
             m_menuEntries.push_back({"Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
         }
 
-        uint32_t getCurrentScaling() const {
-            return m_configManager->getEnumValue<ScalingType>(SettingScalingType) != ScalingType::None
-                       ? m_configManager->getValue(SettingScaling)
-                       : 0;
-        }
-
         void handleInput() override {
             const auto now = std::chrono::steady_clock::now();
 
@@ -385,20 +381,9 @@ namespace {
             const double keyRepeat = GetAsyncKeyState(VK_SHIFT) ? KeyRepeat / 10 : KeyRepeat;
             const bool repeat = std::chrono::duration<double>(now - m_lastInput).count() > keyRepeat;
 
-            m_wasF1Pressed = m_wasF1Pressed && !repeat;
-            const bool isF1Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F1);
-            const bool moveLeft = !m_wasF1Pressed && isF1Pressed;
-            m_wasF1Pressed = isF1Pressed;
-
-            m_wasF2Pressed = m_wasF2Pressed && !repeat;
-            const bool isF2Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F2);
-            const bool menuControl = !m_wasF2Pressed && isF2Pressed;
-            m_wasF2Pressed = isF2Pressed;
-
-            m_wasF3Pressed = m_wasF3Pressed && !repeat;
-            const bool isF3Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F3);
-            const bool moveRight = !m_wasF3Pressed && isF3Pressed;
-            m_wasF3Pressed = isF3Pressed;
+            const bool moveLeft = UpdateKeyState(m_moveLeftKeyState, VK_CONTROL, VK_F1, repeat);
+            const bool moveRight = UpdateKeyState(m_moveRightKeyState, VK_CONTROL, VK_F3, repeat);
+            const bool menuControl = UpdateKeyState(m_menuControlKeyState, VK_CONTROL, VK_F2, repeat);
 
             if (menuControl) {
                 if (m_state != MenuState::Visible) {
@@ -442,8 +427,7 @@ namespace {
                     m_configManager->setValue(menuEntry.configName, newValue, noCommitDelay);
 
                     // When changing the upscaling, display the warning.
-                    const bool wasRestartNeeded = m_needRestart;
-                    m_needRestart = m_originalScalingValue != getCurrentScaling();
+                    const bool wasRestartNeeded = std::exchange(m_needRestart, checkNeedRestartCondition());
 
                     // When changing the font size, force re-alignment.
                     if (menuEntry.configName == SettingMenuFontSize || wasRestartNeeded != m_needRestart) {
@@ -474,8 +458,7 @@ namespace {
                 }
             };
 
-            updateGroupVisibility(m_upscalingGroup,
-                                  m_configManager->getEnumValue<ScalingType>(SettingScalingType) != ScalingType::None);
+            updateGroupVisibility(m_upscalingGroup, getCurrentScalingType() != ScalingType::None);
         }
 
         void render(std::shared_ptr<ITexture> renderTarget, uint32_t eye) const override {
@@ -720,6 +703,30 @@ namespace {
         }
 
       private:
+        static bool UpdateKeyState(bool& keyState, int vkModifier, int vkKey, bool isRepeat) {
+            const bool isPressed = GetAsyncKeyState(vkModifier) && GetAsyncKeyState(vkKey);
+            const bool wasPressed = std::exchange(keyState, isPressed);
+            return isPressed && (!wasPressed || isRepeat);
+        }
+
+        ScalingType getCurrentScalingType() const {
+            return m_configManager->getEnumValue<ScalingType>(SettingScalingType);
+        }
+
+        uint32_t getCurrentScaling() const {
+            return m_configManager->getValue(SettingScaling);
+        }
+
+        bool checkNeedRestartCondition() const {
+            if (m_originalScalingType != getCurrentScalingType())
+                return true;
+
+            if (m_originalScalingType != ScalingType::None)
+                return m_originalScalingValue != getCurrentScaling();
+
+            return false;
+        }
+
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
         const uint32_t m_displayWidth;
@@ -731,13 +738,14 @@ namespace {
         std::vector<MenuEntry> m_menuEntries;
         unsigned int m_selectedItem{0};
         std::chrono::steady_clock::time_point m_lastInput;
-        bool m_wasF1Pressed{false};
-        bool m_wasF2Pressed{false};
-        bool m_wasF3Pressed{false};
+        bool m_moveLeftKeyState{false};
+        bool m_moveRightKeyState{false};
+        bool m_menuControlKeyState{false};
 
         MenuGroup m_upscalingGroup;
 
         uint32_t m_originalScalingValue{0};
+        ScalingType m_originalScalingType{ScalingType::None};
         bool m_needRestart{false};
 
         mutable MenuState m_state{MenuState::NotVisible};
