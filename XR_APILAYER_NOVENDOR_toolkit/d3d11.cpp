@@ -78,6 +78,8 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 }
 )_";
 
+    const std::wstring FontFamily = L"Segoe UI Symbol";
+
     // Wrap a pixel shader resource. Obtained from D3D11Device.
     class D3D11QuadShader : public IQuadShader {
       public:
@@ -198,6 +200,23 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 
         std::shared_ptr<IDevice> getDevice() const override {
             return m_device;
+        }
+
+        void clear(float top, float left, float bottom, float right, XrColor4f& color) const override {
+            ComPtr<ID3D11DeviceContext1> d3d11Context;
+            if (FAILED(m_device->getContext<D3D11>()->QueryInterface(
+                    __uuidof(ID3D11DeviceContext1), reinterpret_cast<void**>(d3d11Context.GetAddressOf())))) {
+                // The app did not use a sufficient FEATURE_LEVEL. Nothing we can do.
+                return;
+            }
+
+            float clearColor[] = {color.r, color.g, color.b, color.a};
+            D3D11_RECT rect;
+            rect.top = (LONG)top;
+            rect.left = (LONG)left;
+            rect.bottom = (LONG)bottom;
+            rect.right = (LONG)right;
+            d3d11Context->ClearView(m_renderTargetView.Get(), clearColor, &rect, 1);
         }
 
         void* getNativePtr() const override {
@@ -735,6 +754,22 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                         WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
                 }
             }
+            {
+                CHECK_HRCMD(FW1CreateFactory(FW1_VERSION, &m_fontWrapperFactory));
+
+                CHECK_HRCMD(m_fontWrapperFactory->CreateFontWrapper(m_device.Get(), FontFamily.c_str(), &m_fontNormal));
+
+                IDWriteFactory* dwriteFactory = nullptr;
+                CHECK_HRCMD(m_fontNormal->GetDWriteFactory(&dwriteFactory));
+                FW1_FONTWRAPPERCREATEPARAMS params;
+                ZeroMemory(&params, sizeof(params));
+                params.DefaultFontParams.pszFontFamily = FontFamily.c_str();
+                params.DefaultFontParams.FontWeight = DWRITE_FONT_WEIGHT_BOLD;
+                params.DefaultFontParams.FontStretch = DWRITE_FONT_STRETCH_NORMAL;
+                params.DefaultFontParams.FontStyle = DWRITE_FONT_STYLE_NORMAL;
+                CHECK_HRCMD(
+                    m_fontWrapperFactory->CreateFontWrapper(m_device.Get(), dwriteFactory, &params, &m_fontBold));
+            }
 
             {
                 ComPtr<IDXGIDevice> dxgiDevice;
@@ -900,7 +935,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             D3D11_SUBRESOURCE_DATA data;
             ZeroMemory(&data, sizeof(data));
 
-            desc.ByteWidth = (UINT)vertices.size() * sizeof (SimpleMeshVertex);
+            desc.ByteWidth = (UINT)vertices.size() * sizeof(SimpleMeshVertex);
             desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
             data.pSysMem = vertices.data();
             ComPtr<ID3D11Buffer> vertexBuffer;
@@ -1046,9 +1081,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 if (slice == -1) {
                     setRenderTargets({output}, nullptr);
                 } else {
-                    std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> rtvs;
-                    rtvs.push_back(std::make_pair(output, slice));
-                    setRenderTargets(rtvs, nullptr);
+                    setRenderTargets({std::make_pair(output, slice)}, nullptr);
                 }
 
                 D3D11_VIEWPORT viewport;
@@ -1232,6 +1265,59 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             m_currentContext->DrawIndexedInstanced(meshData->numIndices, 1, 0, 0, 0);
         }
 
+        float drawString(std::wstring string,
+                         TextStyle style,
+                         float size,
+                         float x,
+                         float y,
+                         uint32_t color,
+                         bool measure,
+                         bool alignRight) override {
+            auto& font = style == TextStyle::Bold ? m_fontBold : m_fontNormal;
+
+            font->DrawString(m_currentContext.Get(),
+                             string.c_str(),
+                             size,
+                             x,
+                             y,
+                             color,
+                             (alignRight ? FW1_RIGHT : FW1_LEFT) | FW1_NOFLUSH);
+            return measure ? measureString(string, style, size) : 0.0f;
+        }
+
+        float drawString(std::string string,
+                         TextStyle style,
+                         float size,
+                         float x,
+                         float y,
+                         uint32_t color,
+                         bool measure,
+                         bool alignRight) override {
+            return drawString(
+                std::wstring(string.begin(), string.end()), style, size, x, y, color, measure, alignRight);
+        }
+
+        float measureString(std::wstring string, TextStyle style, float size) const override {
+            auto& font = style == TextStyle::Bold ? m_fontBold : m_fontNormal;
+
+            // XXX: This API is not very well documented - here is my guess on how to use the rect values...
+            FW1_RECTF inRect;
+            ZeroMemory(&inRect, sizeof(inRect));
+            inRect.Right = inRect.Bottom = 1000.0f;
+            const auto rect =
+                font->MeasureString(string.c_str(), FontFamily.c_str(), size, &inRect, FW1_LEFT | FW1_TOP);
+            return 1000.0f + rect.Right;
+        }
+
+        float measureString(std::string string, TextStyle style, float size) const override {
+            return measureString(std::wstring(string.begin(), string.end()), style, size);
+        }
+
+        void flushText() override {
+            m_fontNormal->Flush(m_currentContext.Get());
+            m_fontBold->Flush(m_currentContext.Get());
+        }
+
         void* getNativePtr() const override {
             return m_device.Get();
         }
@@ -1257,6 +1343,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         ComPtr<ID3D11InputLayout> m_meshInputLayout;
         std::shared_ptr<IShaderBuffer> m_meshViewProjectionBuffer;
         std::shared_ptr<IShaderBuffer> m_meshModelBuffer;
+        ComPtr<IFW1Factory> m_fontWrapperFactory;
+        ComPtr<IFW1FontWrapper> m_fontNormal;
+        ComPtr<IFW1FontWrapper> m_fontBold;
 
         std::shared_ptr<ITexture> m_currentDrawRenderTarget;
         std::shared_ptr<ITexture> m_currentDrawDepthBuffer;

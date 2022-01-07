@@ -32,7 +32,6 @@ namespace toolkit {
         uint64_t preProcessorGpuTimeUs{0};
         uint64_t upscalerGpuTimeUs{0};
         uint64_t postProcessorGpuTimeUs{0};
-        uint64_t handsGpuTimeUs{0};
         uint64_t overlayCpuTimeUs{0};
         uint64_t overlayGpuTimeUs{0};
     };
@@ -142,6 +141,8 @@ namespace toolkit {
         // TODO: Extend as we start needing more formats.
         enum class TextureFormat { R32G32B32A32_FLOAT, R16G16B16A16_UNORM, R10G10B10A2_UNORM, R8G8B8A8_UNORM };
 
+        enum class TextStyle { Normal, Bold };
+
         struct IDevice;
         struct ITexture;
 
@@ -226,6 +227,8 @@ namespace toolkit {
 
             virtual Api getApi() const = 0;
             virtual std::shared_ptr<IDevice> getDevice() const = 0;
+
+            virtual void clear(float top, float left, float bottom, float right, XrColor4f& color) const = 0;
 
             virtual void* getNativePtr() const = 0;
 
@@ -400,6 +403,26 @@ namespace toolkit {
                               XrPosef& pose,
                               XrVector3f scaling = {1.0f, 1.0f, 1.0f}) = 0;
 
+            virtual float drawString(std::wstring string,
+                                     TextStyle style,
+                                     float size,
+                                     float x,
+                                     float y,
+                                     uint32_t color,
+                                     bool measure = false,
+                                     bool alignRight = false) = 0;
+            virtual float drawString(std::string string,
+                                     TextStyle style,
+                                     float size,
+                                     float x,
+                                     float y,
+                                     uint32_t color,
+                                     bool measure = false,
+                                     bool alignRight = false) = 0;
+            virtual float measureString(std::wstring string, TextStyle style, float size) const = 0;
+            virtual float measureString(std::string string, TextStyle style, float size) const = 0;
+            virtual void flushText() = 0;
+
             virtual void* getNativePtr() const = 0;
             virtual void* getContextPtr() const = 0;
 
@@ -479,7 +502,9 @@ namespace toolkit {
             virtual ~IMenuHandler() = default;
 
             virtual void handleInput() = 0;
-            virtual void render(std::shared_ptr<graphics::ITexture> renderTarget, uint32_t eye = 0) const = 0;
+            virtual void render(uint32_t eye,
+                                const XrPosef& pose,
+                                std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
             virtual void updateStatistics(const LayerStatistics& stats) = 0;
         };
 
