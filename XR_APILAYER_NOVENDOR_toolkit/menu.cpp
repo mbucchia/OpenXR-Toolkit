@@ -304,7 +304,7 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingOverlayType,
                                      0,
-                                     (int)OverlayType::MaxValue - m_configManager->isExperimentalMode() ? 1 : 2,
+                                     (int)OverlayType::MaxValue - (m_configManager->isExperimentalMode() ? 1 : 2),
                                      [](int value) {
                                          std::string labels[] = {"Off", "FPS", "Detailed"};
                                          return labels[value];
@@ -339,8 +339,8 @@ namespace {
                                          return fmt::format("{}mm", value / 10.0f);
                                      }});
             m_menuEntries.push_back({"FOV", MenuEntryType::Slider, SettingFOV, 50, 150, [](int value) {
-                                         return fmt::format("{}%", value);
-                                     }});
+                                         return fmt::format("{}%", value); },
+                                     m_configManager->isExperimentalMode()});
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
             m_menuEntries.push_back({"Font size",
