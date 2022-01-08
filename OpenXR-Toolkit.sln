@@ -8,6 +8,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution Files", "{387062F2-BCA2-4776-A414-B6DE41FC9E12}"
 	ProjectSection(SolutionItems) = preProject
 		.clang-format = .clang-format
+		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		LICENSE = LICENSE
 		README.md = README.md
