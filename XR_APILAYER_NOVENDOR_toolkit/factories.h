@@ -86,7 +86,8 @@ namespace toolkit {
         std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                                         std::shared_ptr<toolkit::graphics::IDevice> device,
                                                         uint32_t displayWidth,
-                                                        uint32_t displayHeight);
+                                                        uint32_t displayHeight,
+                                                        bool isHandTrackingSupported);
 
     } // namespace menu
 

@@ -68,7 +68,8 @@ namespace {
         MenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                     std::shared_ptr<IDevice> device,
                     uint32_t displayWidth,
-                    uint32_t displayHeight)
+                    uint32_t displayHeight,
+                    bool isHandTrackingSupported)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
               m_displayHeight(displayHeight) {
             m_lastInput = std::chrono::steady_clock::now();
@@ -130,13 +131,17 @@ namespace {
                                      m_configManager->isExperimentalMode()});
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
-            // TODO: Only display if supported.
-            // TODO: Warn to restart the session on change.
-            m_menuEntries.push_back(
-                {"Hand Tracking", MenuEntryType::Choice, SettingHandTrackingEnabled, 0, 1, [](int value) {
-                     std::string labels[] = {"Off", "On"};
-                     return labels[value];
-                 }});
+            m_menuEntries.push_back({"Hand Tracking",
+                                     MenuEntryType::Choice,
+                                     SettingHandTrackingEnabled,
+                                     0,
+                                     1,
+                                     [](int value) {
+                                         std::string labels[] = {"Off", "On"};
+                                         return labels[value];
+                                     },
+                                     isHandTrackingSupported});
+            m_originalHandTrackingEnabled = m_configManager->getValue(SettingHandTrackingEnabled);
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
             m_menuEntries.push_back({"Font size",
@@ -220,7 +225,7 @@ namespace {
 
                     m_configManager->setValue(menuEntry.configName, newValue, noCommitDelay);
 
-                    // When changing the upscaling, display the warning.
+                    // When changing some settings, display the warning that the session must be restarted.
                     const bool wasRestartNeeded = std::exchange(m_needRestart, checkNeedRestartCondition());
 
                     // When changing the font size, force re-alignment.
@@ -499,11 +504,14 @@ namespace {
         }
 
         bool checkNeedRestartCondition() const {
-            if (m_originalScalingType != getCurrentScalingType())
+            if (m_originalHandTrackingEnabled != !!m_configManager->getValue(SettingHandTrackingEnabled) ||
+                m_originalScalingType != getCurrentScalingType()) {
                 return true;
+            }
 
-            if (m_originalScalingType != ScalingType::None)
+            if (m_originalScalingType != ScalingType::None) {
                 return m_originalScalingValue != getCurrentScaling();
+            }
 
             return false;
         }
@@ -526,6 +534,7 @@ namespace {
 
         uint32_t m_originalScalingValue{0};
         ScalingType m_originalScalingType{ScalingType::None};
+        bool m_originalHandTrackingEnabled{false};
         bool m_needRestart{false};
 
         mutable MenuState m_state{MenuState::NotVisible};
@@ -541,8 +550,10 @@ namespace toolkit::menu {
     std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                                     std::shared_ptr<toolkit::graphics::IDevice> device,
                                                     uint32_t displayWidth,
-                                                    uint32_t displayHeight) {
-        return std::make_shared<MenuHandler>(configManager, device, displayWidth, displayHeight);
+                                                    uint32_t displayHeight,
+                                                    bool isHandTrackingSupported) {
+        return std::make_shared<MenuHandler>(
+            configManager, device, displayWidth, displayHeight, isHandTrackingSupported);
     }
 
 } // namespace toolkit::menu

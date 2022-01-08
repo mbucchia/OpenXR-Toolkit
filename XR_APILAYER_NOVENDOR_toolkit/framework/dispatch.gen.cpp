@@ -667,6 +667,10 @@ namespace LAYER_NAMESPACE
 		{
 			throw new std::runtime_error("Failed to resolve xrGetInstanceProperties");
 		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrGetSystemProperties", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrGetSystemProperties))))
+		{
+			throw new std::runtime_error("Failed to resolve xrGetSystemProperties");
+		}
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrCreateReferenceSpace", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateReferenceSpace))))
 		{
 			throw new std::runtime_error("Failed to resolve xrCreateReferenceSpace");
