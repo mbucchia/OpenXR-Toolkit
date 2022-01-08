@@ -96,12 +96,20 @@ namespace {
                 m_displayWidth = views[0].recommendedImageRectWidth;
                 m_displayHeight = views[0].recommendedImageRectHeight;
 
-                // Set the default upscaling settings.
+                // Check for hand tracking support.
+                XrSystemHandTrackingPropertiesEXT handTrackingSystemProperties{
+                    XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT};
+                handTrackingSystemProperties.supportsHandTracking = false;
+                XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES, &handTrackingSystemProperties};
+                OpenXrApi::xrGetSystemProperties(instance, *systemId, &systemProperties);
+                m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
+
+                // Set the default settings.
                 m_configManager->setEnumDefault(config::SettingScalingType, config::ScalingType::None);
                 m_configManager->setDefault(config::SettingScaling, 100);
                 m_configManager->setDefault(config::SettingSharpness, 20);
-
                 m_configManager->setDefault(config::SettingFOV, 100);
+                m_configManager->setDefault(config::SettingHandTrackingEnabled, 0);
 
                 // Remember the XrSystemId to use.
                 m_vrSystemId = *systemId;
@@ -227,8 +235,8 @@ namespace {
 
                     m_performanceCounters.lastWindowStart = std::chrono::steady_clock::now();
 
-                    m_menuHandler =
-                        menu::CreateMenuHandler(m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
+                    m_menuHandler = menu::CreateMenuHandler(
+                        m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight, m_supportHandTracking);
                 } else {
                     Log("Unsupported graphics runtime.\n");
                 }
@@ -1009,6 +1017,7 @@ namespace {
         XrSession m_vrSession{XR_NULL_HANDLE};
         uint32_t m_displayWidth{0};
         uint32_t m_displayHeight{0};
+        bool m_supportHandTracking{false};
 
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;

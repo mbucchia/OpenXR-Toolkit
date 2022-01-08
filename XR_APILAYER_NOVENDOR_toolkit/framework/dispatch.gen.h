@@ -94,6 +94,14 @@ namespace LAYER_NAMESPACE
 		PFN_xrGetSystem m_xrGetSystem{ nullptr };
 
 	public:
+		virtual XrResult xrGetSystemProperties(XrInstance instance, XrSystemId systemId, XrSystemProperties* properties)
+		{
+			return m_xrGetSystemProperties(instance, systemId, properties);
+		}
+	private:
+		PFN_xrGetSystemProperties m_xrGetSystemProperties{ nullptr };
+
+	public:
 		virtual XrResult xrCreateSession(XrInstance instance, const XrSessionCreateInfo* createInfo, XrSession* session)
 		{
 			return m_xrCreateSession(instance, createInfo, session);

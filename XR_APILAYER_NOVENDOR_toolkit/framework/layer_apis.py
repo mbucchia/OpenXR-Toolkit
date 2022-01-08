@@ -30,6 +30,7 @@ override_functions = [
 # Might repeat entries from override_functions above.
 requested_functions = [
     "xrGetInstanceProperties",
+    "xrGetSystemProperties",
     "xrEnumerateViewConfigurationViews",
     "xrEnumerateSwapchainImages",
     "xrCreateReferenceSpace",
