@@ -34,6 +34,8 @@ namespace toolkit {
         std::pair<uint32_t, uint32_t>
         GetScaledDimensions(uint32_t outputWidth, uint32_t outputHeight, uint32_t scalePercent, uint32_t blockSize);
 
+        bool UpdateKeyState(bool& keyState, int vkModifier, int vkKey, bool isRepeat);
+
     } // namespace utilities
 
     namespace config {

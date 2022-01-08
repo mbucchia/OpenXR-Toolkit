@@ -703,12 +703,6 @@ namespace {
         }
 
       private:
-        static bool UpdateKeyState(bool& keyState, int vkModifier, int vkKey, bool isRepeat) {
-            const bool isPressed = GetAsyncKeyState(vkModifier) && GetAsyncKeyState(vkKey);
-            const bool wasPressed = std::exchange(keyState, isPressed);
-            return isPressed && (!wasPressed || isRepeat);
-        }
-
         ScalingType getCurrentScalingType() const {
             return m_configManager->getEnumValue<ScalingType>(SettingScalingType);
         }

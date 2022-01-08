@@ -82,4 +82,10 @@ namespace toolkit::utilities {
         return std::make_pair(inputWidth, inputHeight);
     }
 
+    bool UpdateKeyState(bool& keyState, int vkModifier, int vkKey, bool isRepeat) {
+        const bool isPressed = GetAsyncKeyState(vkModifier) && GetAsyncKeyState(vkKey);
+        const bool wasPressed = std::exchange(keyState, isPressed);
+        return isPressed && (!wasPressed || isRepeat);
+    }
+
 } // namespace toolkit::utilities

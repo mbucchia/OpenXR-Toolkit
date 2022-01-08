@@ -787,6 +787,11 @@ namespace {
 
             // Whether the menu is available or not, we can still use that top-most texture for screenshot.
             // TODO: The screenshot does not work with multi-layer applications.
+
+            const bool requestScreenshot =
+                utilities::UpdateKeyState(m_requestScreenShotKeyState, VK_CONTROL, VK_F12, false) &&
+                m_configManager->getValue(config::SettingScreenshotEnabled);
+
             if (textureForMenu[0] && requestScreenshot) {
                 takeScreenshot(textureForMenu[0]);
             }
@@ -823,7 +828,7 @@ namespace {
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
 
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
-        bool m_wasF12Pressed{false};
+        bool m_requestScreenShotKeyState{false};
 
         struct {
             std::shared_ptr<utilities::ICpuTimer> appCpuTimer;
