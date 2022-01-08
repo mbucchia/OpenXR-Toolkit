@@ -62,7 +62,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -78,7 +78,10 @@ copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
 md $(OutDir)\shaders
 copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
 type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-0.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
+copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_a.h $(OutDir)\shaders
+copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h $(OutDir)\shaders
 copy $(ProjectDir)\NIS.hlsl $(OutDir)\shaders
+copy $(ProjectDir)\FSR.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     </PostBuildEvent>
@@ -110,7 +113,7 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -128,7 +131,10 @@ copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
 md $(OutDir)\shaders
 copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
 type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-0.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
+copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_a.h $(OutDir)\shaders
+copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h $(OutDir)\shaders
 copy $(ProjectDir)\NIS.hlsl $(OutDir)\shaders
+copy $(ProjectDir)\FSR.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     </PostBuildEvent>
@@ -151,6 +157,14 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\external\FidelityFX-FSR\ffx-fsr\ffx_a.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\external\NVIDIAImageScaling\NIS\NIS_Config.h" />
     <ClInclude Include="..\external\NVIDIAImageScaling\NIS\NIS_Scaler.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -177,6 +191,7 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     <ClCompile Include="framework\dispatch.cpp" />
     <ClCompile Include="framework\dispatch.gen.cpp" />
     <ClCompile Include="framework\entry.cpp" />
+    <ClCompile Include="fsr.cpp" />
     <ClCompile Include="layer.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="menu.cpp" />
@@ -199,6 +214,10 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     </None>
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="FSR.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
     <FxCompile Include="NIS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>

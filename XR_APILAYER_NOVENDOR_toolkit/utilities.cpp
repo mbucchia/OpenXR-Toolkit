@@ -1,6 +1,7 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -30,29 +31,29 @@ namespace {
     using namespace toolkit::utilities;
 
     class CpuTimer : public ICpuTimer {
+        using clock = std::chrono::high_resolution_clock;
+
       public:
         void start() override {
-            m_timeStart = std::chrono::high_resolution_clock::now();
+            m_timeStart = clock::now();
         }
 
         void stop() override {
-            m_duration = std::chrono::duration(std::chrono::high_resolution_clock::now() - m_timeStart).count() / 1000;
+            m_duration = clock::now() - m_timeStart;
         }
 
         uint64_t query(bool reset) const override {
-            const uint64_t duration = m_duration;
+            const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(m_duration);
 
-            if (reset) {
-                m_duration = 0;
-            }
+            if (reset)
+                m_duration = clock::duration::zero();
 
-            return duration;
+            return duration.count();
         }
 
       private:
-        std::chrono::time_point<std::chrono::high_resolution_clock> m_timeStart;
-
-        mutable uint64_t m_duration{0};
+        clock::time_point m_timeStart;
+        mutable clock::duration m_duration{0};
     };
 
 } // namespace
@@ -65,25 +66,26 @@ namespace toolkit::utilities {
         return std::make_shared<CpuTimer>();
     }
 
-    std::pair<uint32_t, uint32_t> GetScaledResolution(std::shared_ptr<IConfigManager> configManager,
-                                                      uint32_t outputWidth,
-                                                      uint32_t outputHeight) {
-        uint32_t inputWidth = outputWidth;
-        uint32_t inputHeight = outputHeight;
+    std::pair<uint32_t, uint32_t>
+    GetScaledDimensions(uint32_t outputWidth, uint32_t outputHeight, uint32_t scalePercent, uint32_t blockSize) {
+        auto inputWidth =
+            scalePercent >= 100 ? (outputWidth * 100u) / scalePercent : (outputWidth * scalePercent) / 100u;
+        auto inputHeight =
+            scalePercent >= 100 ? (outputHeight * 100u) / scalePercent : (outputHeight * scalePercent) / 100u;
 
-        const int upscalingPercent = configManager->getValue(SettingScaling);
-        if (upscalingPercent > 100) {
-            inputWidth = (uint32_t)((100.0f / upscalingPercent) * outputWidth);
-            if (inputWidth % 2) {
-                inputWidth++;
-            }
-            inputHeight = (uint32_t)((100.0f / upscalingPercent) * outputHeight);
-            if (inputHeight % 2) {
-                inputHeight++;
-            }
+        // align both dimensions to blockSize
+        if (blockSize >= 2u) {
+            inputWidth = ((inputWidth + blockSize - 1u) / blockSize) * blockSize;
+            inputHeight = ((inputHeight + blockSize - 1u) / blockSize) * blockSize;
         }
 
         return std::make_pair(inputWidth, inputHeight);
+    }
+
+    bool UpdateKeyState(bool& keyState, int vkModifier, int vkKey, bool isRepeat) {
+        const bool isPressed = GetAsyncKeyState(vkModifier) && GetAsyncKeyState(vkKey);
+        const bool wasPressed = std::exchange(keyState, isPressed);
+        return isPressed && (!wasPressed || isRepeat);
     }
 
 } // namespace toolkit::utilities

@@ -1,6 +1,7 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -462,13 +463,14 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             {
                 D3D11_SAMPLER_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
-                desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+                desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
                 desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
                 desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
                 desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
                 desc.MaxAnisotropy = 1;
                 desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-                desc.MaxLOD = D3D11_FLOAT32_MAX;
+                desc.MinLOD = D3D11_MIP_LOD_BIAS_MIN;
+                desc.MaxLOD = D3D11_MIP_LOD_BIAS_MAX;
                 CHECK_HRCMD(m_device->CreateSamplerState(&desc, &m_linearClampSamplerCS));
             }
             {
@@ -546,6 +548,12 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             case TextureFormat::R16G16B16A16_UNORM:
                 return (int64_t)DXGI_FORMAT_R16G16B16A16_UNORM;
 
+            case TextureFormat::R10G10B10A2_UNORM:
+                return (int64_t)DXGI_FORMAT_R10G10B10A2_UNORM;
+
+            case TextureFormat::R8G8B8A8_UNORM:
+                return (int64_t)DXGI_FORMAT_R8G8B8A8_UNORM;
+
             default:
                 throw new std::runtime_error("Unknown texture format");
             };
@@ -557,7 +565,6 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
             case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
                 return true;
-
             default:
                 return false;
             };
@@ -612,13 +619,14 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
 
         std::shared_ptr<IShaderBuffer> createBuffer(size_t size,
                                                     const std::optional<std::string>& debugName,
-                                                    const void* initialData) override {
+                                                    const void* initialData,
+                                                    bool immutable) override {
             D3D11_BUFFER_DESC desc;
             ZeroMemory(&desc, sizeof(desc));
             desc.ByteWidth = (UINT)size;
-            desc.Usage = D3D11_USAGE_DYNAMIC;
+            desc.Usage = (initialData && immutable) ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DYNAMIC;
             desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-            desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+            desc.CPUAccessFlags = immutable ? 0 : D3D11_CPU_ACCESS_WRITE;
 
             ComPtr<ID3D11Buffer> buffer;
             if (initialData) {

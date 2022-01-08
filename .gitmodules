@@ -10,3 +10,6 @@
 [submodule "external/NVIDIAImageScaling"]
 	path = external/NVIDIAImageScaling
 	url = https://github.com/NVIDIAGameWorks/NVIDIAImageScaling/
+[submodule "external/FidelityFX-FSR"]
+	path = external/FidelityFX-FSR
+	url = https://github.com/GPUOpen-Effects/FidelityFX-FSR.git

@@ -73,7 +73,7 @@ namespace toolkit {
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
         enum class MenuTimeout { Small = 0, Medium, Large, MaxValue };
-        enum class ScalingType { None = 0, NIS, MaxValue };
+        enum class ScalingType { None = 0, NIS, FSR, MaxValue };
 
         struct IConfigManager {
             virtual ~IConfigManager() = default;
@@ -130,7 +130,7 @@ namespace toolkit {
 
         // A few handy texture formats.
         // TODO: Extend as we start needing more formats.
-        enum class TextureFormat { R32G32B32A32_FLOAT, R16G16B16A16_UNORM };
+        enum class TextureFormat { R32G32B32A32_FLOAT, R16G16B16A16_UNORM, R10G10B10A2_UNORM, R8G8B8A8_UNORM };
 
         struct IDevice;
         struct ITexture;
@@ -301,7 +301,8 @@ namespace toolkit {
                                                             const void* initialData = nullptr) = 0;
             virtual std::shared_ptr<IShaderBuffer> createBuffer(size_t size,
                                                                 const std::optional<std::string>& debugName,
-                                                                const void* initialData = nullptr) = 0;
+                                                                const void* initialData = nullptr,
+                                                                bool immutable = false) = 0;
             virtual std::shared_ptr<IQuadShader> createQuadShader(const std::string& shaderPath,
                                                                   const std::string& entryPoint,
                                                                   const std::optional<std::string>& debugName,

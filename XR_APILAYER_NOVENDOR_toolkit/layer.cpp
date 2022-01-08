@@ -1,6 +1,7 @@
 // MIT License
 //
 // Copyright(c) 2021-2022 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -121,16 +122,18 @@ namespace {
             if (XR_SUCCEEDED(result) && isVrSystem(systemId) && views) {
                 // Determine the application resolution.
                 const auto upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
+
                 uint32_t inputWidth = m_displayWidth;
                 uint32_t inputHeight = m_displayHeight;
 
                 switch (upscaleMode) {
-                case config::ScalingType::NIS: {
-                    auto resolution = utilities::GetScaledResolution(m_configManager, m_displayWidth, m_displayHeight);
-                    inputWidth = resolution.first;
-                    inputHeight = resolution.second;
+                case config::ScalingType::FSR:
+                    [[fallthrough]];
+
+                case config::ScalingType::NIS:
+                    std::tie(inputWidth, inputHeight) = utilities::GetScaledDimensions(
+                        m_displayWidth, m_displayHeight, m_configManager->getValue(config::SettingScaling), 2);
                     break;
-                }
 
                 case config::ScalingType::None:
                     break;
@@ -187,6 +190,14 @@ namespace {
                     m_upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
 
                     switch (m_upscaleMode) {
+                    case config::ScalingType::FSR:
+                        m_upscaler = graphics::CreateFSRUpscaler(
+                            m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
+
+                        // Latch this value now.
+                        m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
+                        break;
+
                     case config::ScalingType::NIS:
                         m_upscaler = graphics::CreateNISUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
@@ -394,8 +405,9 @@ namespace {
 
                             // This also means we need a non-sRGB type.
                             if (m_graphicsDevice->isTextureFormatSRGB(intermediateCreateInfo.format)) {
+                                // good balance between visuals and perf
                                 intermediateCreateInfo.format =
-                                    m_graphicsDevice->getTextureFormat(graphics::TextureFormat::R16G16B16A16_UNORM);
+                                    m_graphicsDevice->getTextureFormat(graphics::TextureFormat::R10G10B10A2_UNORM);
                             }
                         }
                         auto intermediateTexture = m_graphicsDevice->createTexture(
@@ -532,36 +544,27 @@ namespace {
 
         void updateStatisticsForFrame() {
             const auto now = std::chrono::steady_clock::now();
+            const auto numFrames = ++m_performanceCounters.numFrames;
 
-            m_frameTimestamps.push_back(now);
-
-            if (std::chrono::duration<double>(now - m_performanceCounters.lastWindowStart).count() > 1.0) {
-                // Update the FPS counter.
-                while (std::chrono::duration<double>(now - m_frameTimestamps.front()).count() > 1.0) {
-                    m_frameTimestamps.pop_front();
-                }
-                m_stats.fps = (float)m_frameTimestamps.size();
+            if ((now - m_performanceCounters.lastWindowStart) >= std::chrono::seconds(1)) {
+                m_performanceCounters.numFrames = 0;
+                m_performanceCounters.lastWindowStart = now;
 
                 // Push the last averaged statistics.
-                if (m_performanceCounters.numFrames) {
-                    m_stats.appCpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.appGpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.endFrameCpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.upscalerGpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.preProcessorGpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.postProcessorGpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.overlayCpuTimeUs /= m_performanceCounters.numFrames;
-                    m_stats.overlayGpuTimeUs /= m_performanceCounters.numFrames;
-                }
+                m_stats.fps = static_cast<float>(numFrames);
+                m_stats.appCpuTimeUs /= numFrames;
+                m_stats.appGpuTimeUs /= numFrames;
+                m_stats.endFrameCpuTimeUs /= numFrames;
+                m_stats.upscalerGpuTimeUs /= numFrames;
+                m_stats.preProcessorGpuTimeUs /= numFrames;
+                m_stats.postProcessorGpuTimeUs /= numFrames;
+                m_stats.overlayCpuTimeUs /= numFrames;
+                m_stats.overlayGpuTimeUs /= numFrames;
+
                 m_menuHandler->updateStatistics(m_stats);
 
                 // Start from fresh!
-                m_stats.appCpuTimeUs = m_stats.appGpuTimeUs = m_stats.endFrameCpuTimeUs = 0;
-                m_stats.overlayCpuTimeUs = m_stats.overlayGpuTimeUs = 0;
-                m_stats.upscalerGpuTimeUs = m_stats.preProcessorGpuTimeUs = m_stats.postProcessorGpuTimeUs = 0;
-
-                m_performanceCounters.numFrames = 0;
-                m_performanceCounters.lastWindowStart = now;
+                memset(&m_stats, 0, sizeof(m_stats));
             }
         }
 
@@ -583,8 +586,14 @@ namespace {
 
         void takeScreenshot(std::shared_ptr<graphics::ITexture> texture) const {
             std::stringstream parameters;
-            if (m_upscaleMode == config::ScalingType::NIS) {
-                parameters << "NIS_" << m_upscalingFactor << "_" << m_configManager->getValue(config::SettingSharpness);
+            if (m_upscaleMode != config::ScalingType::None) {
+                // TODO: add a getUpscaleModeName() helper to keep enum and string in sync.
+                const auto upscaleName = m_upscaleMode == config::ScalingType::NIS   ? "NIS_"
+                                         : m_upscaleMode == config::ScalingType::FSR ? "FSR_"
+                                                                                     : "SCL_";
+
+                parameters << upscaleName << m_upscalingFactor << "_"
+                           << m_configManager->getValue(config::SettingSharpness);
             }
             const std::time_t now = std::time(nullptr);
             char datetime[1024];
@@ -609,21 +618,16 @@ namespace {
             m_stats.endFrameCpuTimeUs += m_performanceCounters.endFrameCpuTimer->query();
             m_performanceCounters.endFrameCpuTimer->start();
 
-            updateConfiguration();
-
             // Toggle to the next set of GPU timers.
             m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
 
             // Handle inputs.
-            bool requestScreenshot = false;
             if (m_menuHandler) {
                 m_menuHandler->handleInput();
-
-                const bool isF12Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F12);
-                requestScreenshot =
-                    m_configManager->getValue(config::SettingScreenshotEnabled) && !m_wasF12Pressed && isF12Pressed;
-                m_wasF12Pressed = isF12Pressed;
             }
+
+            // Prepare the Shaders for rendering.
+            updateConfiguration();
 
             // Unbind all textures from the render targets.
             m_graphicsDevice->clearRenderTargets();
@@ -783,11 +787,14 @@ namespace {
 
             // Whether the menu is available or not, we can still use that top-most texture for screenshot.
             // TODO: The screenshot does not work with multi-layer applications.
+
+            const bool requestScreenshot =
+                utilities::UpdateKeyState(m_requestScreenShotKeyState, VK_CONTROL, VK_F12, false) &&
+                m_configManager->getValue(config::SettingScreenshotEnabled);
+
             if (textureForMenu[0] && requestScreenshot) {
                 takeScreenshot(textureForMenu[0]);
             }
-
-            m_performanceCounters.numFrames++;
 
             return OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
         }
@@ -804,8 +811,8 @@ namespace {
         std::string m_applicationName;
         XrSystemId m_vrSystemId{XR_NULL_SYSTEM_ID};
         XrSession m_vrSession{XR_NULL_HANDLE};
-        uint32_t m_displayWidth;
-        uint32_t m_displayHeight;
+        uint32_t m_displayWidth{0};
+        uint32_t m_displayHeight{0};
 
         std::shared_ptr<config::IConfigManager> m_configManager;
 
@@ -821,7 +828,7 @@ namespace {
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
 
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
-        bool m_wasF12Pressed{false};
+        bool m_requestScreenShotKeyState{false};
 
         struct {
             std::shared_ptr<utilities::ICpuTimer> appCpuTimer;
@@ -831,12 +838,11 @@ namespace {
             std::shared_ptr<graphics::IGpuTimer> overlayGpuTimer[GpuTimerLatency + 1];
 
             unsigned int gpuTimerIndex{0};
-            std::chrono::time_point<std::chrono::steady_clock> lastWindowStart;
+            std::chrono::steady_clock::time_point lastWindowStart;
             uint32_t numFrames{0};
         } m_performanceCounters;
 
         LayerStatistics m_stats{};
-        std::deque<std::chrono::time_point<std::chrono::steady_clock>> m_frameTimestamps;
     };
 
     std::unique_ptr<OpenXrLayer> g_instance = nullptr;

@@ -1,6 +1,7 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -74,9 +75,9 @@ namespace {
             m_threadGroupSize = opt.GetOptimalThreadGroupSize();
 
             // The upscaling factor is only read upon initialization of the session. It cannot be changed after.
-            auto resolution = GetScaledResolution(m_configManager, m_outputWidth, m_outputHeight);
-            m_inputWidth = resolution.first;
-            m_inputHeight = resolution.second;
+            std::tie(m_inputWidth, m_inputHeight) = utilities::GetScaledDimensions(
+                m_outputWidth, m_outputHeight, m_configManager->getValue(SettingScaling), 2);
+
             if (m_inputWidth != m_outputWidth || m_inputHeight != m_outputHeight) {
                 initializeScaler();
             } else {

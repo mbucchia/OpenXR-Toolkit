@@ -1,6 +1,7 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -31,9 +32,9 @@ namespace toolkit {
         std::shared_ptr<ICpuTimer> CreateCpuTimer();
 
         std::pair<uint32_t, uint32_t>
-        GetScaledResolution(std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                            uint32_t outputWidth,
-                            uint32_t outputHeight);
+        GetScaledDimensions(uint32_t outputWidth, uint32_t outputHeight, uint32_t scalePercent, uint32_t blockSize);
+
+        bool UpdateKeyState(bool& keyState, int vkModifier, int vkKey, bool isRepeat);
 
     } // namespace utilities
 
@@ -52,6 +53,11 @@ namespace toolkit {
                                                    const std::optional<std::string>& debugName);
 
         std::shared_ptr<IUpscaler> CreateNISUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                                                     std::shared_ptr<IDevice> graphicsDevice,
+                                                     uint32_t outputWidth,
+                                                     uint32_t outputHeight);
+
+        std::shared_ptr<IUpscaler> CreateFSRUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                                      std::shared_ptr<IDevice> graphicsDevice,
                                                      uint32_t outputWidth,
                                                      uint32_t outputHeight);

@@ -118,6 +118,14 @@ namespace toolkit::utilities::shader {
         void add(const std::string& define, const T& val) {
             m_definesVector.push_back({define, toStr(val)});
         }
+        template <typename T>
+        void set(const std::string& define, const T& val) {
+            auto it = std::find_if(m_definesVector.begin(), m_definesVector.end(), [&](const auto& entry) {
+                return entry.first == define;
+             });
+            if (it != m_definesVector.end())
+                it->second = toStr(val);
+        }
         D3D_SHADER_MACRO* get() {
             m_defines = std::make_unique<D3D_SHADER_MACRO[]>(m_definesVector.size() + 1);
             for (size_t i = 0; i < m_definesVector.size(); ++i)
