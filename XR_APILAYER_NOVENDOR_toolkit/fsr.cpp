@@ -94,8 +94,13 @@ namespace {
 
                 FsrRcasCon(config.Const4, static_cast<AF1>(attenuation));
 
-                // implementation is using a shader compilation define for this
-                // config.Const4[3] = (hdr != NISHDRMode::None) ? 1 : 0;
+                // TODO:
+                // The AMD FSR sample is using a value in the constant buffer to correct the output color accordingly.
+                // We're replacing the constant with a shader compilation define because the project code is not HDR
+                // aware yet, When we'll be supporting HDR, we might need to change the implementation back to something
+                // like:
+                //
+                // config.Const4[3] = hdr ? 1 : 0;
 
                 m_configBuffer = m_device->createBuffer(sizeof(config), "FSR Constants CB", &config, true);
             }
@@ -157,9 +162,12 @@ namespace {
         }
 
         void initializeSharpen() {
-            initializeScaler();
+            // TODO:
+            // AMD offers 2 libs: FSR and CAS. The former does both, the latter seems to be designed for the sharpen
+            // only case. Right now the code is using the "RCAS" half of FSR for the Sharpen only case but it is
+            // untested/unvalidated yet. m_isSharpenOnly = true;
 
-            // TODO
+            initializeScaler();
 
             // m_isSharpenOnly = true;
         }

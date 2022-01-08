@@ -618,26 +618,16 @@ namespace {
             m_stats.endFrameCpuTimeUs += m_performanceCounters.endFrameCpuTimer->query();
             m_performanceCounters.endFrameCpuTimer->start();
 
-            updateConfiguration();
-
             // Toggle to the next set of GPU timers.
             m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
 
             // Handle inputs.
-            bool requestScreenshot = false;
             if (m_menuHandler) {
-                // NOTE: shouldn't this be relocated at the beginning of updateConfiguration() instead?
-                //       otherwise some menu actions could be changing the configuration state after
-                //       the handlers have been updated() but before dispatching the handlers shaders
-                //       to the GPU causing potential errors.
-
                 m_menuHandler->handleInput();
-
-                const bool isF12Pressed = GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_F12);
-                requestScreenshot =
-                    m_configManager->getValue(config::SettingScreenshotEnabled) && !m_wasF12Pressed && isF12Pressed;
-                m_wasF12Pressed = isF12Pressed;
             }
+
+            // Prepare the Shaders for rendering.
+            updateConfiguration();
 
             // Unbind all textures from the render targets.
             m_graphicsDevice->clearRenderTargets();
@@ -816,8 +806,8 @@ namespace {
         std::string m_applicationName;
         XrSystemId m_vrSystemId{XR_NULL_SYSTEM_ID};
         XrSession m_vrSession{XR_NULL_HANDLE};
-        uint32_t m_displayWidth;
-        uint32_t m_displayHeight;
+        uint32_t m_displayWidth{0};
+        uint32_t m_displayHeight{0};
 
         std::shared_ptr<config::IConfigManager> m_configManager;
 
