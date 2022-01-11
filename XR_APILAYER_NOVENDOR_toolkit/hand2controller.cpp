@@ -27,6 +27,13 @@
 #include "layer.h"
 #include "log.h"
 
+namespace toolkit {
+
+    // The path where the DLL loads config files and stores logs.
+    extern std::string dllHome;
+
+} // namespace toolkit
+
 namespace {
 
     using namespace toolkit;
@@ -34,6 +41,8 @@ namespace {
     using namespace toolkit::graphics;
     using namespace toolkit::input;
     using namespace toolkit::log;
+
+    using namespace xr::math;
 
     constexpr XrVector3f Bright1{255 / 255.f, 219 / 255.f, 172 / 255.f};
 
@@ -73,6 +82,64 @@ namespace {
         targetVector.assign(sourceArray, sourceArray + N);
     }
 
+    static constexpr uint32_t HandCount = 2;
+
+    struct Config {
+        Config();
+
+        void ParseConfigurationStatement(const std::string& line, unsigned int lineNumber = 1);
+        bool LoadConfiguration(const std::string& configName);
+        void Dump();
+
+        std::string interactionProfile;
+        bool leftHandEnabled;
+        bool rightHandEnabled;
+
+        // The skin tone to use for rendering the hand, 0=bright to 2=dark.
+        int skinTone;
+
+        // The opacity (alpha channel) for the hand mesh.
+        float opacity;
+
+        // The index of the joint (see enum XrHandJointEXT) to use for the aim pose.
+        int aimJointIndex;
+
+        // The index of the joint (see enum XrHandJointEXT) to use for the grip pose.
+        int gripJointIndex;
+
+        // The threshold (between 0 and 1) when converting a float action into a boolean action and the action is
+        // true.
+        float clickThreshold;
+
+        // The transformation to apply to the aim and grip poses.
+        XrPosef transform[HandCount];
+
+        // The index of the 1st joint (see enum XrHandJointEXT) to use for 1st custom gesture.
+        int custom1Joint1Index;
+
+        // The index of the 2nd joint (see enum XrHandJointEXT) to use for 1st custom gesture.
+        int custom1Joint2Index;
+
+        // The target XrAction path for a given gesture, and the near/far threshold to map the float action too
+        // (near maps to 1, far maps to 0).
+#define DEFINE_ACTION(configName)                                                                                      \
+    std::string configName##Action[HandCount];                                                                         \
+    float configName##Near;                                                                                            \
+    float configName##Far;
+
+        DEFINE_ACTION(pinch);
+        DEFINE_ACTION(thumbPress);
+        DEFINE_ACTION(indexBend);
+        DEFINE_ACTION(fingerGun);
+        DEFINE_ACTION(squeeze);
+        DEFINE_ACTION(palmTap);
+        DEFINE_ACTION(wristTap);
+        DEFINE_ACTION(indexTipTap);
+        DEFINE_ACTION(custom1);
+
+#undef DEFINE_ACTION
+    };
+
     class HandTracker : public IHandTracker {
       public:
         HandTracker(OpenXrApi& openXR,
@@ -80,6 +147,32 @@ namespace {
                     std::shared_ptr<IConfigManager> configManager,
                     std::shared_ptr<IDevice> graphicsDevice)
             : m_openXR(openXR), m_configManager(configManager), m_graphicsDevice(graphicsDevice) {
+            // Open a socket for live configuration.
+            {
+                WSADATA wsaData;
+                WSAStartup(MAKEWORD(2, 2), &wsaData);
+                m_configSocket = socket(AF_INET, SOCK_DGRAM, 0);
+                if (m_configSocket != INVALID_SOCKET) {
+                    int one = 1;
+                    setsockopt(m_configSocket, SOL_SOCKET, SO_REUSEADDR, (const char*)&one, sizeof(one));
+                    u_long mode = 1; // 1 to enable non-blocking socket
+                    ioctlsocket(m_configSocket, FIONBIO, &mode);
+                }
+
+                struct sockaddr_in saddr;
+                saddr.sin_family = AF_INET;
+                saddr.sin_addr.s_addr = INADDR_ANY;
+                saddr.sin_port = htons(10001);
+                if (m_configSocket == INVALID_SOCKET ||
+                    bind(m_configSocket, (const struct sockaddr*)&saddr, sizeof(saddr))) {
+                    Log("Failed to create or bind configuration socket\n");
+                }
+            }
+
+            // Load file configuration.
+            m_config.LoadConfiguration(openXR.GetApplicationName());
+            m_config.Dump();
+
             CHECK_XRCMD(openXR.xrGetInstanceProcAddr(openXR.GetXrInstance(),
                                                      "xrCreateHandTrackerEXT",
                                                      reinterpret_cast<PFN_xrVoidFunction*>(&xrCreateHandTrackerEXT)));
@@ -110,6 +203,7 @@ namespace {
         ~HandTracker() override {
             xrDestroyHandTrackerEXT(m_handTracker[0]);
             xrDestroyHandTrackerEXT(m_handTracker[1]);
+            closesocket(m_configSocket);
         }
 
         XrPath getInteractionProfile() const {
@@ -136,6 +230,23 @@ namespace {
         }
 
         void sync(XrTime frameTime) override {
+            // Arbitrarily choose this place to handle configuration input.
+            if (m_configSocket != INVALID_SOCKET) {
+                struct sockaddr_in saddr;
+                while (true) {
+                    char buffer[100] = {};
+                    int slen = sizeof(saddr);
+                    const int len =
+                        recvfrom(m_configSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&saddr, &slen);
+                    if (len <= 0) {
+                        break;
+                    }
+
+                    std::string line(buffer);
+                    m_config.ParseConfigurationStatement(line);
+                }
+            }
+
             m_thisFrameTime = frameTime;
         }
 
@@ -183,6 +294,9 @@ namespace {
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_graphicsDevice;
 
+        Config m_config;
+        SOCKET m_configSocket{INVALID_SOCKET};
+
         XrHandTrackerEXT m_handTracker[2]{XR_NULL_HANDLE, XR_NULL_HANDLE};
         XrTime m_thisFrameTime{0};
         std::shared_ptr<ISimpleMesh> m_jointMesh;
@@ -192,6 +306,231 @@ namespace {
         PFN_xrDestroyHandTrackerEXT xrDestroyHandTrackerEXT{nullptr};
         PFN_xrLocateHandJointsEXT xrLocateHandJointsEXT{nullptr};
     };
+
+    Config::Config() {
+        interactionProfile = "/interaction_profiles/hp/mixed_reality_controller";
+        leftHandEnabled = true;
+        rightHandEnabled = true;
+        skinTone = 1; // Medium
+        opacity = 1.0f;
+        aimJointIndex = XR_HAND_JOINT_INDEX_INTERMEDIATE_EXT;
+        gripJointIndex = XR_HAND_JOINT_PALM_EXT;
+        clickThreshold = 0.75f;
+        transform[0] = transform[1] = Pose::Identity();
+        pinchAction[0] = pinchAction[1] = "/input/trigger/value";
+        pinchNear = 0.0f;
+        pinchFar = 0.05f;
+        thumbPressAction[0] = thumbPressAction[1] = "";
+        thumbPressNear = 0.0f;
+        thumbPressFar = 0.05f;
+        indexBendAction[0] = indexBendAction[1] = "";
+        indexBendNear = 0.045f;
+        indexBendFar = 0.07f;
+        fingerGunAction[0] = fingerGunAction[1] = "";
+        fingerGunNear = 0.01f;
+        fingerGunFar = 0.03f;
+        squeezeAction[0] = squeezeAction[1] = "/input/squeeze/value";
+        squeezeNear = 0.035f;
+        squeezeFar = 0.07f;
+        palmTapAction[0] = palmTapAction[1] = "";
+        palmTapNear = 0.02f;
+        palmTapFar = 0.06f;
+        wristTapAction[0] = "/input/menu/click";
+        wristTapAction[1] = "";
+        wristTapNear = 0.04f;
+        wristTapFar = 0.05f;
+        // This gesture only makes sense for one hand, but we leave it symmetrical for simplicity.
+        indexTipTapAction[0] = "/input/b/click";
+        indexTipTapAction[1] = "";
+        indexTipTapNear = 0.0f;
+        indexTipTapFar = 0.07f;
+        // Custom gesture is unconfigured.
+        custom1Action[0] = custom1Action[1] = "";
+        custom1Joint1Index = -1;
+        custom1Joint2Index = -1;
+        custom1Near = 0.0f;
+        custom1Far = 0.1f;
+    }
+
+    void Config::ParseConfigurationStatement(const std::string& line, unsigned int lineNumber) {
+        try {
+            const auto offset = line.find('=');
+            if (offset != std::string::npos) {
+                const std::string name = line.substr(0, offset);
+                const std::string value = line.substr(offset + 1);
+                std::string subName;
+                int side = -1;
+
+                if (line.substr(0, 5) == "left.") {
+                    side = 0;
+                    subName = name.substr(5);
+                } else if (line.substr(0, 6) == "right.") {
+                    side = 1;
+                    subName = name.substr(6);
+                }
+
+                if (name == "interaction_profile") {
+                    interactionProfile = value;
+                } else if (name == "skin_tone") {
+                    skinTone = std::stoi(value);
+                } else if (name == "opacity") {
+                    opacity = std::stof(value);
+                } else if (name == "aim_joint") {
+                    aimJointIndex = std::stoi(value);
+                } else if (name == "grip_joint") {
+                    gripJointIndex = std::stoi(value);
+                } else if (name == "custom1_joint1") {
+                    custom1Joint1Index = std::stoi(value);
+                } else if (name == "custom1_joint2") {
+                    custom1Joint2Index = std::stoi(value);
+                } else if (name == "click_threshold") {
+                    clickThreshold = std::stof(value);
+                } else if (side >= 0 && subName == "enabled") {
+                    const bool boolValue = value == "1" || value == "true";
+                    if (side == 0) {
+                        leftHandEnabled = boolValue;
+                    } else {
+                        rightHandEnabled = boolValue;
+                    }
+                } else if (side >= 0 && subName == "transform.vec") {
+                    std::stringstream ss(value);
+                    std::string component;
+                    std::getline(ss, component, ' ');
+                    transform[side].position.x = std::stof(component);
+                    std::getline(ss, component, ' ');
+                    transform[side].position.y = std::stof(component);
+                    std::getline(ss, component, ' ');
+                    transform[side].position.z = std::stof(component);
+                } else if (side >= 0 && subName == "transform.quat") {
+                    std::stringstream ss(value);
+                    std::string component;
+                    std::getline(ss, component, ' ');
+                    transform[side].orientation.x = std::stof(component);
+                    std::getline(ss, component, ' ');
+                    transform[side].orientation.y = std::stof(component);
+                    std::getline(ss, component, ' ');
+                    transform[side].orientation.z = std::stof(component);
+                    std::getline(ss, component, ' ');
+                    transform[side].orientation.w = std::stof(component);
+                } else if (side >= 0 && subName == "transform.euler") {
+                    // For UI use only.
+                }
+#define PARSE_ACTION(configString, configName)                                                                         \
+    else if (side >= 0 && subName == configString) {                                                                   \
+        configName##Action[side] = value;                                                                              \
+    }                                                                                                                  \
+    else if (name == configString ".near") {                                                                           \
+        configName##Near = std::stof(value);                                                                           \
+    }                                                                                                                  \
+    else if (name == configString ".far") {                                                                            \
+        configName##Far = std::stof(value);                                                                            \
+    }
+
+                PARSE_ACTION("pinch", pinch)
+                PARSE_ACTION("thumb_press", thumbPress)
+                PARSE_ACTION("index_bend", indexBend)
+                PARSE_ACTION("finger_gun", fingerGun)
+                PARSE_ACTION("squeeze", squeeze)
+                PARSE_ACTION("palm_tap", palmTap)
+                PARSE_ACTION("wrist_tap", wristTap)
+                PARSE_ACTION("index_tip_tap", indexTipTap)
+                PARSE_ACTION("custom1", custom1)
+
+#undef PARSE_ACTION
+                else {
+                    Log("L%u: Unrecognized option\n", lineNumber);
+                }
+            } else {
+                Log("L%u: Improperly formatted option\n", lineNumber);
+            }
+        } catch (...) {
+            Log("L%u: Parsing error\n", lineNumber);
+        }
+    }
+
+    bool Config::LoadConfiguration(const std::string& configName) {
+        std::ifstream configFile(std::filesystem::path(dllHome) / std::filesystem::path(configName + ".cfg"));
+        if (configFile.is_open()) {
+            Log("Loading config for \"%s\"\n", configName.c_str());
+
+            unsigned int lineNumber = 0;
+            std::string line;
+            while (std::getline(configFile, line)) {
+                lineNumber++;
+                ParseConfigurationStatement(line, lineNumber);
+            }
+            configFile.close();
+
+            return true;
+        }
+
+        Log("Could not load config for \"%s\"\n", configName.c_str());
+
+        return false;
+    }
+
+    void Config::Dump() {
+        Log("Emulating interaction profile: %s\n", interactionProfile.c_str());
+        Log("Using %s skin tone and %.3f opacity\n",
+            skinTone == 0   ? "bright"
+            : skinTone == 1 ? "medium"
+                            : "dark",
+            opacity);
+        if (leftHandEnabled) {
+            Log("Left transform: (%.3f, %.3f, %.3f) (%.3f, %.3f, %.3f, %.3f)\n",
+                transform[0].position.x,
+                transform[0].position.y,
+                transform[0].position.z,
+                transform[0].orientation.x,
+                transform[0].orientation.y,
+                transform[0].orientation.z,
+                transform[0].orientation.w);
+        }
+        if (rightHandEnabled) {
+            Log("Right transform: (%.3f, %.3f, %.3f) (%.3f, %.3f, %.3f, %.3f)\n",
+                transform[1].position.x,
+                transform[1].position.y,
+                transform[1].position.z,
+                transform[1].orientation.x,
+                transform[1].orientation.y,
+                transform[1].orientation.z,
+                transform[1].orientation.w);
+        }
+        if (leftHandEnabled || rightHandEnabled) {
+            Log("Grip pose uses joint: %d\n", gripJointIndex);
+            Log("Aim pose uses joint: %d\n", aimJointIndex);
+            Log("Click threshold: %.3f\n", clickThreshold);
+        }
+        if (custom1Joint1Index >= 0 && custom1Joint2Index >= 0) {
+            Log("Custom gesture uses joints: %d %d\n", custom1Joint1Index, custom1Joint2Index);
+        }
+        for (int side = 0; side <= 1; side++) {
+            if ((side == 0 && !leftHandEnabled) || (side == 1 && !rightHandEnabled)) {
+                continue;
+            }
+
+#define LOG_IF_SET(actionName, configName)                                                                             \
+    if (!configName##Action[side].empty()) {                                                                           \
+        Log("%s hand " #actionName " translates to: %s (near: %.3f, far: %.3f)\n",                                     \
+            side ? "Right" : "Left",                                                                                   \
+            configName##Action[side].c_str(),                                                                          \
+            configName##Near,                                                                                          \
+            configName##Far);                                                                                          \
+    }
+
+            LOG_IF_SET("pinch", pinch);
+            LOG_IF_SET("thumb press", thumbPress);
+            LOG_IF_SET("index bend", indexBend);
+            LOG_IF_SET("finger gun", fingerGun);
+            LOG_IF_SET("squeeze", squeeze);
+            LOG_IF_SET("palm tap", palmTap);
+            LOG_IF_SET("wrist tap", wristTap);
+            LOG_IF_SET("index tip tap", indexTipTap);
+            LOG_IF_SET("custom gesture", custom1);
+
+#undef LOG_IF_SET
+        }
+    }
 
 } // namespace
 

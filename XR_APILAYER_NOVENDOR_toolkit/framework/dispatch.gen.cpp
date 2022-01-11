@@ -691,6 +691,7 @@ namespace LAYER_NAMESPACE
 		{
 			throw new std::runtime_error("Failed to resolve xrPathToString");
 		}
+		m_applicationName = createInfo->applicationInfo.applicationName;
 		return XR_SUCCESS;
 	}
 

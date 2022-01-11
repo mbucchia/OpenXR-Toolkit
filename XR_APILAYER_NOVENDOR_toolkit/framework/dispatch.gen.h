@@ -34,6 +34,7 @@ namespace LAYER_NAMESPACE
 	{
 	private:
 		XrInstance m_instance{ XR_NULL_HANDLE };
+		std::string m_applicationName;
 
 	protected:
 		OpenXrApi() = default;
@@ -46,6 +47,11 @@ namespace LAYER_NAMESPACE
 		XrInstance GetXrInstance() const
 		{
 			return m_instance;
+		}
+
+		const std::string& GetApplicationName() const
+		{
+			return m_applicationName;
 		}
 
 		void SetGetInstanceProcAddr(PFN_xrGetInstanceProcAddr pfn_xrGetInstanceProcAddr, XrInstance instance)
