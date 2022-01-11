@@ -44,6 +44,8 @@
 #include <windows.h>
 #include <unknwn.h>
 #include <wrl.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 
 using Microsoft::WRL::ComPtr;
 
