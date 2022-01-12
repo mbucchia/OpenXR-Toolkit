@@ -955,6 +955,16 @@ namespace {
                     m_graphicsDevice->saveContext();
                 }
 
+                if (m_menuHandler && m_needCalibrateEyeOffsets) {
+                    m_menuHandler->calibrate(viewsForOverlay[0].pose,
+                                             viewsForOverlay[0].fov,
+                                             textureForOverlay[0]->getInfo(),
+                                             viewsForOverlay[1].pose,
+                                             viewsForOverlay[1].fov,
+                                             textureForOverlay[1]->getInfo());
+                    m_needCalibrateEyeOffsets = false;
+                }
+
                 for (uint32_t eye = 0; eye < ViewCount; eye++) {
                     if (!useVPRT) {
                         m_graphicsDevice->setRenderTargets({textureForOverlay[eye]});
@@ -1039,6 +1049,7 @@ namespace {
 
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
         bool m_requestScreenShotKeyState{false};
+        bool m_needCalibrateEyeOffsets{true};
 
         struct {
             std::shared_ptr<utilities::ICpuTimer> appCpuTimer;

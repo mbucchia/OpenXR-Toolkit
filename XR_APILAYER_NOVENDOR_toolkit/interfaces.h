@@ -502,6 +502,12 @@ namespace toolkit {
             virtual ~IMenuHandler() = default;
 
             virtual void handleInput() = 0;
+            virtual void calibrate(const XrPosef& poseLeft,
+                                   const XrFovf& fovLeft,
+                                   const XrSwapchainCreateInfo& leftImageInfo,
+                                   const XrPosef& poseRight,
+                                   const XrFovf& fovRight,
+                                   const XrSwapchainCreateInfo& rightImageInfo) = 0;
             virtual void render(uint32_t eye,
                                 const XrPosef& pose,
                                 std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
