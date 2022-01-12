@@ -77,7 +77,7 @@ copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
 copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
 md $(OutDir)\shaders
 copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
-type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-0.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
+type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-1.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_a.h $(OutDir)\shaders
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h $(OutDir)\shaders
 copy $(ProjectDir)\NIS.hlsl $(OutDir)\shaders
@@ -130,7 +130,7 @@ copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
 copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
 md $(OutDir)\shaders
 copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
-type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-0.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
+type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-1.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_a.h $(OutDir)\shaders
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h $(OutDir)\shaders
 copy $(ProjectDir)\NIS.hlsl $(OutDir)\shaders
@@ -205,7 +205,7 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     <ClCompile Include="utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-0.patch" />
+    <None Include="..\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-1.patch" />
     <None Include="framework\dispatch_generator.py" />
     <None Include="framework\layer_apis.py" />
     <None Include="packages.config" />

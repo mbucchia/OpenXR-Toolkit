@@ -125,7 +125,7 @@
       <Filter>Framework</Filter>
     </None>
     <None Include="packages.config" />
-    <None Include="..\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-0.patch">
+    <None Include="..\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-1.patch">
       <Filter>Header Files\NIS</Filter>
     </None>
   </ItemGroup>
