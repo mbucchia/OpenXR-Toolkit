@@ -398,9 +398,9 @@ namespace toolkit {
             virtual void setRenderTargets(std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargets,
                                           std::shared_ptr<ITexture> depthBuffer = {}) = 0;
 
-            virtual void setViewProjection(XrPosef& eyePose, XrFovf& fov, float depthNear, float depthFar) = 0;
+            virtual void setViewProjection(const XrPosef& eyePose, XrFovf& fov, float depthNear, float depthFar) = 0;
             virtual void draw(std::shared_ptr<ISimpleMesh> mesh,
-                              XrPosef& pose,
+                              const XrPosef& pose,
                               XrVector3f scaling = {1.0f, 1.0f, 1.0f}) = 0;
 
             virtual float drawString(std::wstring string,

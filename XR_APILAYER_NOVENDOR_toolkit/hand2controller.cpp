@@ -84,6 +84,17 @@ namespace {
 
     static constexpr uint32_t HandCount = 2;
 
+    static constexpr XrTime GracePeriod = 2000000; // 2ms
+
+    enum class Hand : uint32_t { Left, Right };
+    enum class PoseType { Grip, Aim };
+
+    struct ActionSpace {
+        Hand hand;
+        PoseType poseType;
+        XrPosef poseInActionSpace;
+    };
+
     struct Config {
         Config();
 
@@ -173,6 +184,9 @@ namespace {
             m_config.LoadConfiguration(openXR.GetApplicationName());
             m_config.Dump();
 
+            CHECK_HRCMD(openXR.xrStringToPath(
+                openXR.GetXrInstance(), m_config.interactionProfile.c_str(), &m_interactionProfile));
+
             CHECK_XRCMD(openXR.xrGetInstanceProcAddr(openXR.GetXrInstance(),
                                                      "xrCreateHandTrackerEXT",
                                                      reinterpret_cast<PFN_xrVoidFunction*>(&xrCreateHandTrackerEXT)));
@@ -193,6 +207,11 @@ namespace {
             CHECK_XRCMD(xrCreateHandTrackerEXT(session, &leftTrackerCreateInfo, &m_handTracker[0]));
             CHECK_XRCMD(xrCreateHandTrackerEXT(session, &rightTrackerCreateInfo, &m_handTracker[1]));
 
+            XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+            referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+            referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
+            CHECK_XRCMD(m_openXR.xrCreateReferenceSpace(session, &referenceSpaceCreateInfo, &m_referenceSpace));
+
             std::vector<SimpleMeshVertex> vertices;
             copyFromArray(vertices, c_cubeVertices);
             std::vector<uint16_t> indices;
@@ -201,13 +220,14 @@ namespace {
         }
 
         ~HandTracker() override {
+            m_openXR.xrDestroySpace(m_referenceSpace);
             xrDestroyHandTrackerEXT(m_handTracker[0]);
             xrDestroyHandTrackerEXT(m_handTracker[1]);
             closesocket(m_configSocket);
         }
 
         XrPath getInteractionProfile() const {
-            return XR_NULL_PATH;
+            return m_interactionProfile;
         }
 
         void registerAction(XrAction action, XrActionSet actionSet) override {
@@ -217,9 +237,31 @@ namespace {
         }
 
         void registerActionSpace(XrSpace space, const std::string path, const XrPosef& poseInActionSpace) override {
+            ActionSpace actionSpace;
+
+            if (path.find("/user/hand/left") == 0) {
+                actionSpace.hand = Hand::Left;
+            } else if (path.find("/user/hand/right") == 0) {
+                actionSpace.hand = Hand::Right;
+            } else {
+                assert(false);
+            }
+
+            if (path.find("/input/aim/pose") != std::string::npos) {
+                actionSpace.poseType = PoseType::Aim;
+            } else if (path.find("/input/grip/pose") != std::string::npos) {
+                actionSpace.poseType = PoseType::Grip;
+            } else {
+                assert(false);
+            }
+
+            actionSpace.poseInActionSpace = poseInActionSpace;
+
+            m_actionSpaces.insert_or_assign(space, actionSpace);
         }
 
         void unregisterActionSpace(XrSpace space) override {
+            m_actionSpaces.erase(space);
         }
 
         void registerBindings(const XrInteractionProfileSuggestedBinding& bindings) override {
@@ -247,36 +289,64 @@ namespace {
                 }
             }
 
+            // Delete outdated entries from the cache.
+            for (auto& spaceCache : m_cachedHandJointPoses) {
+                auto& cache = spaceCache.second;
+                for (uint32_t side = 0; side < HandCount; side++) {
+                    while (cache[side].size() > 0 && cache[side].front().first + GracePeriod < frameTime) {
+                        cache[side].pop_front();
+                    }
+                }
+            }
+
             m_thisFrameTime = frameTime;
         }
 
         bool locate(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation& location) const override {
-            return false;
+            const auto actionSpaceIt = m_actionSpaces.find(space);
+            if (actionSpaceIt == m_actionSpaces.cend()) {
+                return false;
+            }
+
+            const auto& actionSpace = actionSpaceIt->second;
+
+            if ((actionSpace.hand == Hand::Left && !m_config.leftHandEnabled) ||
+                (actionSpace.hand == Hand::Right && !m_config.rightHandEnabled)) {
+                return false;
+            }
+
+            const auto& jointPoses = getCachedHandJointPoses(actionSpace.hand, time, baseSpace);
+
+            const uint32_t side = actionSpace.hand == Hand::Left ? 0 : 1;
+            const uint32_t joint =
+                actionSpace.poseType == PoseType::Grip ? m_config.gripJointIndex : m_config.aimJointIndex;
+
+            // Translate the hand poses for the requested joint to a controller pose.
+            location.locationFlags = jointPoses[joint].locationFlags;
+            location.pose = Pose::Multiply(actionSpace.poseInActionSpace,
+                                           Pose::Multiply(m_config.transform[side], jointPoses[joint].pose));
+
+            return true;
         }
 
         void render(const XrPosef& pose,
                     XrSpace baseSpace,
                     std::shared_ptr<graphics::ITexture> renderTarget) const override {
-            for (uint32_t hand = 0; hand < 2; hand++) {
-                XrHandJointsLocateInfoEXT locateInfo{XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT};
-                locateInfo.baseSpace = baseSpace;
-                locateInfo.time = m_thisFrameTime;
+            // TODO: Support skin tone.
+            // TODO: Support opacity.
+            for (uint32_t hand = 0; hand < HandCount; hand++) {
+                const auto& jointPoses =
+                    getCachedHandJointPoses(hand ? Hand::Right : Hand::Left, m_thisFrameTime, baseSpace);
 
-                XrHandJointLocationEXT jointLocations[XR_HAND_JOINT_COUNT_EXT];
-                XrHandJointLocationsEXT locations{XR_TYPE_HAND_JOINT_LOCATIONS_EXT};
-                locations.jointCount = XR_HAND_JOINT_COUNT_EXT;
-                locations.jointLocations = jointLocations;
-
-                CHECK_XRCMD(xrLocateHandJointsEXT(m_handTracker[hand], &locateInfo, &locations));
                 for (uint32_t joint = 0; joint < XR_HAND_JOINT_COUNT_EXT; joint++) {
-                    if (!xr::math::Pose::IsPoseValid(locations.jointLocations[joint].locationFlags)) {
+                    if (!xr::math::Pose::IsPoseValid(jointPoses[joint].locationFlags)) {
                         continue;
                     }
 
-                    XrVector3f scaling{locations.jointLocations[joint].radius,
-                                       min(0.0025f, locations.jointLocations[joint].radius),
-                                       max(0.015f, locations.jointLocations[joint].radius)};
-                    m_graphicsDevice->draw(m_jointMesh, locations.jointLocations[joint].pose, scaling);
+                    XrVector3f scaling{jointPoses[joint].radius,
+                                       min(0.0025f, jointPoses[joint].radius),
+                                       max(0.015f, jointPoses[joint].radius)};
+                    m_graphicsDevice->draw(m_jointMesh, jointPoses[joint].pose, scaling);
                 }
             }
         }
@@ -290,16 +360,70 @@ namespace {
         }
 
       private:
-        const OpenXrApi& m_openXR;
+        const XrHandJointLocationEXT* getCachedHandJointPoses(Hand hand,
+                                                              XrTime time,
+                                                              std::optional<XrSpace> baseSpace) const {
+            const uint32_t side = hand == Hand::Left ? 0 : 1;
+
+            auto& cache = m_cachedHandJointPoses[baseSpace.value_or(m_referenceSpace)][side];
+
+            // Search for a entry in the cache.
+            int32_t closestIndex = -1;
+            auto insertIt = cache.begin();
+            XrTime closestTimeDelta = INT64_MAX;
+            for (uint32_t i = 0; i < cache.size(); i++) {
+                const auto t = cache[i].first;
+                const XrTime delta = std::abs(t - time);
+                if (t < time) {
+                    insertIt++;
+                }
+
+                if (delta < closestTimeDelta) {
+                    closestTimeDelta = delta;
+                    closestIndex = i;
+                } else {
+                    break;
+                }
+            }
+
+            if (closestIndex != -1 && closestTimeDelta < GracePeriod) {
+                return cache[closestIndex].second;
+            }
+
+            // Create a new entry.
+            {
+                XrHandJointsLocateInfoEXT locateInfo{XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT};
+                locateInfo.baseSpace = baseSpace.value_or(m_referenceSpace);
+                locateInfo.time = time;
+
+                CacheEntry entry;
+                XrHandJointLocationsEXT locations{XR_TYPE_HAND_JOINT_LOCATIONS_EXT};
+                locations.jointCount = XR_HAND_JOINT_COUNT_EXT;
+                locations.jointLocations = entry.second;
+                entry.first = time;
+
+                CHECK_HRCMD(xrLocateHandJointsEXT(m_handTracker[side], &locateInfo, &locations));
+                return cache.emplace(insertIt, entry)->second;
+            }
+        }
+
+        OpenXrApi& m_openXR;
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_graphicsDevice;
 
+        XrSpace m_referenceSpace{XR_NULL_HANDLE};
+        using CacheEntry = std::pair<XrTime, XrHandJointLocationEXT[XR_HAND_JOINT_COUNT_EXT]>;
+        mutable std::map<XrSpace, std::deque<CacheEntry>[2]> m_cachedHandJointPoses;
+
         Config m_config;
         SOCKET m_configSocket{INVALID_SOCKET};
+        XrPath m_interactionProfile{XR_NULL_PATH};
 
         XrHandTrackerEXT m_handTracker[2]{XR_NULL_HANDLE, XR_NULL_HANDLE};
         XrTime m_thisFrameTime{0};
         std::shared_ptr<ISimpleMesh> m_jointMesh;
+
+        std::map<XrSpace, ActionSpace> m_actionSpaces;
 
         // TODO: These should be auto-generated and accessible via OpenXrApi.
         PFN_xrCreateHandTrackerEXT xrCreateHandTrackerEXT{nullptr};
@@ -449,6 +573,7 @@ namespace {
     }
 
     bool Config::LoadConfiguration(const std::string& configName) {
+        // TODO: Look in %AppData% first.
         std::ifstream configFile(std::filesystem::path(dllHome) / std::filesystem::path(configName + ".cfg"));
         if (configFile.is_open()) {
             Log("Loading config for \"%s\"\n", configName.c_str());
@@ -504,7 +629,7 @@ namespace {
         if (custom1Joint1Index >= 0 && custom1Joint2Index >= 0) {
             Log("Custom gesture uses joints: %d %d\n", custom1Joint1Index, custom1Joint2Index);
         }
-        for (int side = 0; side <= 1; side++) {
+        for (int side = 0; side < HandCount; side++) {
             if ((side == 0 && !leftHandEnabled) || (side == 1 && !rightHandEnabled)) {
                 continue;
             }
