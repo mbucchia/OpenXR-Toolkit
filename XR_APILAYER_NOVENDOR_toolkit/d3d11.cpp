@@ -1208,7 +1208,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             m_currentDrawDepthBuffer = depthBuffer;
         }
 
-        void setViewProjection(XrPosef& eyePose, XrFovf& fov, float depthNear, float depthFar) override {
+        void setViewProjection(const XrPosef& eyePose, XrFovf& fov, float depthNear, float depthFar) override {
             xr::math::NearFar nearFar{depthNear, depthFar};
             const DirectX::XMMATRIX projection = xr::math::ComposeProjectionMatrix(fov, nearFar);
             const DirectX::XMMATRIX view = xr::math::LoadInvertedXrPose(eyePose);
@@ -1232,7 +1232,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 depthNear > depthFar ? m_reversedZDepthNoStencilTest.Get() : nullptr, 0);
         }
 
-        void draw(std::shared_ptr<ISimpleMesh> mesh, XrPosef& pose, XrVector3f scaling) override {
+        void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling) override {
             auto meshData = mesh->getNative<D3D11>();
 
             if (mesh != m_currentMesh) {
