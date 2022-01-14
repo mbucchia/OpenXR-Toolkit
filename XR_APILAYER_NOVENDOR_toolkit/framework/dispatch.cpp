@@ -58,9 +58,10 @@ namespace LAYER_NAMESPACE {
         const bool fastInitialization =
             std::string(instanceCreateInfo->applicationInfo.engineName) == "OpenXRDeveloperTools";
 
-        // Check that the XR_EXT_hand_tracking extension is supported by the runtime and/or an upstream API layer.
+        // Check that the extensions we need are supported by the runtime and/or an upstream API layer.
         // But first, we need to create a dummy instance in order to be able to perform these checks.
         bool hasHandTrackingExt = false;
+        bool hasConvertPerformanceCounterTimeExt = false;
         if (!fastInitialization) {
             XrInstance dummyInstance = XR_NULL_HANDLE;
             PFN_xrEnumerateInstanceExtensionProperties xrEnumerateInstanceExtensionProperties = nullptr;
@@ -71,7 +72,7 @@ namespace LAYER_NAMESPACE {
             strcpy_s(dummyCreateInfo.applicationInfo.applicationName, "OpenXR-Toolkit");
             strcpy_s(dummyCreateInfo.applicationInfo.engineName, "OpenXR-Toolkit");
             dummyCreateInfo.applicationInfo.applicationVersion = dummyCreateInfo.applicationInfo.engineVersion =
-                XR_MAKE_VERSION(VersionMajor, VersionMinor, VersionPatch);
+                (uint32_t)XR_MAKE_VERSION(VersionMajor, VersionMinor, VersionPatch);
 
             // Try to speed things up by requesting no extentions.
             dummyCreateInfo.enabledExtensionCount = dummyCreateInfo.enabledApiLayerCount = 0;
@@ -104,6 +105,8 @@ namespace LAYER_NAMESPACE {
 
                     if (extensionName == "XR_EXT_hand_tracking") {
                         hasHandTrackingExt = true;
+                    } else if (extensionName == "XR_KHR_win32_convert_performance_counter_time") {
+                        hasConvertPerformanceCounterTimeExt = true;
                     }
                 }
             }
@@ -113,19 +116,34 @@ namespace LAYER_NAMESPACE {
             }
         }
 
-        // Add the XR_EXT_hand_tracking extension to the requested extensions when available.
+        // Add the extra extensions to the list of requested extensions when available.
         XrInstanceCreateInfo chainInstanceCreateInfo = *instanceCreateInfo;
         std::vector<const char*> newEnabledExtensionNames;
         if (!fastInitialization) {
-            if (hasHandTrackingExt) {
-                newEnabledExtensionNames.resize(++chainInstanceCreateInfo.enabledExtensionCount);
+            if (hasHandTrackingExt || hasConvertPerformanceCounterTimeExt) {
+                if (hasHandTrackingExt) {
+                    chainInstanceCreateInfo.enabledExtensionCount++;
+                }
+                if (hasConvertPerformanceCounterTimeExt) {
+                    chainInstanceCreateInfo.enabledExtensionCount++;
+                }
+
+                newEnabledExtensionNames.resize(chainInstanceCreateInfo.enabledExtensionCount);
                 chainInstanceCreateInfo.enabledExtensionNames = newEnabledExtensionNames.data();
                 memcpy(newEnabledExtensionNames.data(),
                        instanceCreateInfo->enabledExtensionNames,
                        instanceCreateInfo->enabledExtensionCount * sizeof(const char*));
-                newEnabledExtensionNames[chainInstanceCreateInfo.enabledExtensionCount - 1] = "XR_EXT_hand_tracking";
-            } else {
-                Log("XR_EXT_hand_tracking is not available from the OpenXR runtime or any upsteam API layer.\n");
+                uint32_t nextExtensionSlot = instanceCreateInfo->enabledExtensionCount;
+
+                if (hasHandTrackingExt) {
+                    newEnabledExtensionNames[nextExtensionSlot++] = "XR_EXT_hand_tracking";
+                } else {
+                    Log("XR_EXT_hand_tracking is not available from the OpenXR runtime or any upsteam API "
+                        "layer.\n");
+                }
+                if (hasConvertPerformanceCounterTimeExt) {
+                    newEnabledExtensionNames[nextExtensionSlot++] = "XR_KHR_win32_convert_performance_counter_time";
+                }
             }
         }
 
