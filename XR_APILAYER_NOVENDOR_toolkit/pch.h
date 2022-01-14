@@ -37,6 +37,7 @@
 #include <memory>
 #include <map>
 #include <optional>
+#include <set>
 #include <vector>
 
 // Windows header files.

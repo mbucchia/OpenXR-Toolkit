@@ -95,6 +95,25 @@ namespace {
         XrPosef poseInActionSpace;
     };
 
+    struct SubAction {
+        Hand hand;
+        std::string path;
+
+        float floatValue{0.0f};
+        XrTime timeFloatValueChanged{0};
+        bool floatValueChanged{false};
+
+        bool boolValue{false};
+        XrTime timeBoolValueChanged{0};
+        bool boolValueChanged{false};
+    };
+
+    struct Action {
+        XrActionSet actionSet;
+
+        std::map<XrPath, SubAction> subActions;
+    };
+
     struct Config {
         Config();
 
@@ -231,9 +250,17 @@ namespace {
         }
 
         void registerAction(XrAction action, XrActionSet actionSet) override {
+            auto actionSetIt = m_actionSets.find(actionSet);
+            if (actionSetIt == m_actionSets.end()) {
+                actionSetIt = m_actionSets.insert_or_assign(actionSet, std::set<XrAction>()).first;
+            }
+            actionSetIt->second.insert(action);
         }
 
         void unregisterAction(XrAction action) override {
+            for (auto& actionSet : m_actionSets) {
+                actionSet.second.erase(action);
+            }
         }
 
         void registerActionSpace(XrSpace space, const std::string path, const XrPosef& poseInActionSpace) override {
@@ -265,13 +292,79 @@ namespace {
         }
 
         void registerBindings(const XrInteractionProfileSuggestedBinding& bindings) override {
+            if (bindings.interactionProfile == m_interactionProfile) {
+                Log("Binding to interaction profile: %s\n", getPath(m_interactionProfile));
+
+                // Clear any previous mappings.
+                m_actions.clear();
+
+                XrPath leftHand;
+                CHECK_HRCMD(m_openXR.xrStringToPath(m_openXR.GetXrInstance(), "/user/hand/left", &leftHand));
+                XrPath rightHand;
+                CHECK_HRCMD(m_openXR.xrStringToPath(m_openXR.GetXrInstance(), "/user/hand/right", &rightHand));
+
+                for (uint32_t i = 0; i < bindings.countSuggestedBindings; i++) {
+                    const std::string fullPath = getPath(bindings.suggestedBindings[i].binding);
+
+                    XrPath subActionPath;
+                    Hand hand;
+                    if (fullPath.find("/user/hand/left") == 0) {
+                        hand = Hand::Left;
+                        subActionPath = leftHand;
+                    } else if (fullPath.find("/user/hand/right") == 0) {
+                        hand = Hand::Right;
+                        subActionPath = rightHand;
+                    } else {
+                        // We ignore non-hand actions.
+                        continue;
+                    }
+
+                    const XrAction action = bindings.suggestedBindings[i].action;
+                    auto actionIt = m_actions.find(action);
+                    if (actionIt == m_actions.end()) {
+                        Action entry;
+
+                        for (auto& actionSet : m_actionSets) {
+                            if (actionSet.second.find(action) != actionSet.second.cend()) {
+                                entry.actionSet = actionSet.first;
+                                break;
+                            }
+                        }
+
+                        actionIt = m_actions.insert_or_assign(bindings.suggestedBindings[i].action, entry).first;
+                    }
+                    Action& entry = actionIt->second;
+
+                    SubAction subAction;
+                    subAction.hand = hand;
+                    subAction.path = fullPath;
+                    entry.subActions.insert_or_assign(subActionPath, subAction);
+                }
+            }
+        }
+
+        const std::string getPath(XrPath path) {
+            char buf[XR_MAX_PATH_LENGTH];
+            uint32_t count;
+            CHECK_XRCMD(m_openXR.xrPathToString(m_openXR.GetXrInstance(), path, sizeof(buf), &count, buf));
+            return std::string(buf, count);
         }
 
         const std::string getFullPath(XrAction action, XrPath subactionPath) override {
-            return {};
+            const auto& actionIt = m_actions.find(action);
+            if (actionIt == m_actions.cend()) {
+                return {};
+            }
+
+            const auto& subActionIt = actionIt->second.subActions.find(subactionPath);
+            if (subActionIt == actionIt->second.subActions.cend()) {
+                return {};
+            }
+
+            return subActionIt->second.path;
         }
 
-        void sync(XrTime frameTime) override {
+        void sync(XrTime frameTime, const XrActionsSyncInfo& syncInfo) override {
             // Arbitrarily choose this place to handle configuration input.
             if (m_configSocket != INVALID_SOCKET) {
                 struct sockaddr_in saddr;
@@ -297,6 +390,26 @@ namespace {
                         cache[side].pop_front();
                     }
                 }
+            }
+
+            // Gesture detection.
+            for (auto& action : m_actions) {
+                // Only sync actions for the specified action sets.
+                bool foundActionSet = false;
+                for (uint32_t i = 0; i < syncInfo.countActiveActionSets; i++) {
+                    if (action.second.actionSet == syncInfo.activeActionSets[i].actionSet) {
+                        // TODO: We ignore the subActionPath at this time. This is largely OK and mean we might be
+                        // non-compliant to some edge cases.
+                        foundActionSet = true;
+                        break;
+                    }
+                }
+
+                if (!foundActionSet) {
+                    continue;
+                }
+
+                // TODO: Implement gesture handling.
             }
 
             m_thisFrameTime = frameTime;
@@ -352,11 +465,45 @@ namespace {
         }
 
         bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateBoolean& state) const override {
-            return false;
+            const auto& actionIt = m_actions.find(getInfo.action);
+            if (actionIt == m_actions.cend()) {
+                return false;
+            }
+            const auto& action = actionIt->second;
+
+            const auto& subActionIt = action.subActions.find(getInfo.subactionPath);
+            if (subActionIt == action.subActions.cend()) {
+                return false;
+            }
+            const auto& subAction = subActionIt->second;
+
+            state.isActive = XR_TRUE;
+            state.currentState = subAction.boolValue;
+            state.changedSinceLastSync = subAction.boolValueChanged;
+            state.lastChangeTime = subAction.timeBoolValueChanged;
+
+            return true;
         }
 
         bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateFloat& state) const override {
-            return false;
+            const auto& actionIt = m_actions.find(getInfo.action);
+            if (actionIt == m_actions.cend()) {
+                return false;
+            }
+            const auto& action = actionIt->second;
+
+            const auto& subActionIt = action.subActions.find(getInfo.subactionPath);
+            if (subActionIt == action.subActions.cend()) {
+                return false;
+            }
+            const auto& subAction = subActionIt->second;
+
+            state.isActive = XR_TRUE;
+            state.currentState = subAction.floatValue;
+            state.changedSinceLastSync = subAction.floatValueChanged;
+            state.lastChangeTime = subAction.timeFloatValueChanged;
+
+            return true;
         }
 
       private:
@@ -424,6 +571,8 @@ namespace {
         std::shared_ptr<ISimpleMesh> m_jointMesh;
 
         std::map<XrSpace, ActionSpace> m_actionSpaces;
+        std::map<XrActionSet, std::set<XrAction>> m_actionSets;
+        std::map<XrAction, Action> m_actions;
 
         // TODO: These should be auto-generated and accessible via OpenXrApi.
         PFN_xrCreateHandTrackerEXT xrCreateHandTrackerEXT{nullptr};
