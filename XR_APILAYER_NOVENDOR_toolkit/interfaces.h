@@ -34,6 +34,8 @@ namespace toolkit {
         uint64_t postProcessorGpuTimeUs{0};
         uint64_t overlayCpuTimeUs{0};
         uint64_t overlayGpuTimeUs{0};
+
+        uint64_t predictionTimeUs{0};
     };
 
     namespace {
@@ -71,6 +73,7 @@ namespace toolkit {
         const std::string SettingFOV = "fov";
         const std::string SettingHandTrackingEnabled = "enable_hand_tracking";
         const std::string SettingHandVisibilityAndSkinTone = "hand_visibility";
+        const std::string SettingPredictionDampen = "prediction_dampen";
 
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };

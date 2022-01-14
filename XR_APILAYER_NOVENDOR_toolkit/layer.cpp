@@ -66,6 +66,12 @@ namespace {
             // Needed to resolve the requested function pointers.
             OpenXrApi::xrCreateInstance(createInfo);
 
+            // TODO: This should be auto-generated in the call above, but today our generator only looks at core spec.
+            // We may let this fail intentionally and check that the pointer is populated later.
+            xrGetInstanceProcAddr(GetXrInstance(),
+                                  "xrConvertWin32PerformanceCounterToTimeKHR",
+                                  reinterpret_cast<PFN_xrVoidFunction*>(&xrConvertWin32PerformanceCounterToTimeKHR));
+
             m_applicationName = createInfo->applicationInfo.applicationName;
 
             // Dump the OpenXR runtime information to help debugging customer issues.
@@ -126,6 +132,8 @@ namespace {
                 m_configManager->setDefault(config::SettingScaling, 100);
                 m_configManager->setDefault(config::SettingSharpness, 20);
                 m_configManager->setDefault(config::SettingFOV, 100);
+                m_configManager->setDefault(config::SettingHandTrackingEnabled, 0);
+                m_configManager->setDefault(config::SettingPredictionDampen, 100);
 
                 // Remember the XrSystemId to use.
                 m_vrSystemId = *systemId;
@@ -256,8 +264,12 @@ namespace {
 
                     m_performanceCounters.lastWindowStart = std::chrono::steady_clock::now();
 
-                    m_menuHandler = menu::CreateMenuHandler(
-                        m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight, m_supportHandTracking);
+                    m_menuHandler = menu::CreateMenuHandler(m_configManager,
+                                                            m_graphicsDevice,
+                                                            m_displayWidth,
+                                                            m_displayHeight,
+                                                            m_supportHandTracking,
+                                                            xrConvertWin32PerformanceCounterToTimeKHR != nullptr);
                 } else {
                     Log("Unsupported graphics runtime.\n");
                 }
@@ -737,6 +749,27 @@ namespace {
                              XrFrameState* frameState) override {
             const XrResult result = OpenXrApi::xrWaitFrame(session, frameWaitInfo, frameState);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                // Apply prediction dampening if possible and if needed.
+                if (xrConvertWin32PerformanceCounterToTimeKHR) {
+                    const int predictionDampen = m_configManager->getValue(config::SettingPredictionDampen);
+                    if (predictionDampen != 100) {
+                        // Find the current time.
+                        LARGE_INTEGER qpcTimeNow;
+                        QueryPerformanceCounter(&qpcTimeNow);
+
+                        XrTime xrTimeNow;
+                        CHECK_XRCMD(
+                            xrConvertWin32PerformanceCounterToTimeKHR(GetXrInstance(), &qpcTimeNow, &xrTimeNow));
+
+                        XrTime predictionAmount = frameState->predictedDisplayTime - xrTimeNow;
+                        if (predictionAmount > 0) {
+                            frameState->predictedDisplayTime = xrTimeNow + (predictionDampen * predictionAmount) / 100;
+                        }
+
+                        m_stats.predictionTimeUs += predictionAmount;
+                    }
+                }
+
                 // Record the predicted display time.
                 m_waitedFrameTime = frameState->predictedDisplayTime;
             }
@@ -779,6 +812,7 @@ namespace {
                 m_stats.postProcessorGpuTimeUs /= numFrames;
                 m_stats.overlayCpuTimeUs /= numFrames;
                 m_stats.overlayGpuTimeUs /= numFrames;
+                m_stats.predictionTimeUs /= numFrames;
 
                 m_menuHandler->updateStatistics(m_stats);
 
@@ -1130,6 +1164,9 @@ namespace {
         } m_performanceCounters;
 
         LayerStatistics m_stats{};
+
+        // TODO: These should be auto-generated and accessible via OpenXrApi.
+        PFN_xrConvertWin32PerformanceCounterToTimeKHR xrConvertWin32PerformanceCounterToTimeKHR{nullptr};
     };
 
     std::unique_ptr<OpenXrLayer> g_instance = nullptr;

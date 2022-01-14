@@ -71,7 +71,8 @@ namespace {
                     std::shared_ptr<IDevice> device,
                     uint32_t displayWidth,
                     uint32_t displayHeight,
-                    bool isHandTrackingSupported)
+                    bool isHandTrackingSupported,
+                    bool isPredictionDampeningSupported)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
               m_displayHeight(displayHeight) {
             m_lastInput = std::chrono::steady_clock::now();
@@ -131,6 +132,20 @@ namespace {
                                      150,
                                      [](int value) { return fmt::format("{}%", value); },
                                      m_configManager->isExperimentalMode()});
+            m_menuEntries.push_back({"Prediction dampening",
+                                     MenuEntryType::Slider,
+                                     SettingPredictionDampen,
+                                     0,
+                                     200,
+                                     [&](int value) {
+                                         if (value == 100) {
+                                             return fmt::format("{}%", value);
+                                         } else {
+                                             return fmt::format(
+                                                 "{}% (of {:.1f}ms)", value, m_stats.predictionTimeUs / 1000000.0f);
+                                         }
+                                     },
+                                     isPredictionDampeningSupported});
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
             m_menuEntries.push_back({"Hand Tracking",
@@ -606,9 +621,14 @@ namespace toolkit::menu {
                                                     std::shared_ptr<toolkit::graphics::IDevice> device,
                                                     uint32_t displayWidth,
                                                     uint32_t displayHeight,
-                                                    bool isHandTrackingSupported) {
-        return std::make_shared<MenuHandler>(
-            configManager, device, displayWidth, displayHeight, isHandTrackingSupported);
+                                                    bool isHandTrackingSupported,
+                                                    bool isPredictionDampeningSupported) {
+        return std::make_shared<MenuHandler>(configManager,
+                                             device,
+                                             displayWidth,
+                                             displayHeight,
+                                             isHandTrackingSupported,
+                                             isPredictionDampeningSupported);
     }
 
 } // namespace toolkit::menu

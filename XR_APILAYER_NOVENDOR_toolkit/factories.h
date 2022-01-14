@@ -91,7 +91,8 @@ namespace toolkit {
                                                         std::shared_ptr<toolkit::graphics::IDevice> device,
                                                         uint32_t displayWidth,
                                                         uint32_t displayHeight,
-                                                        bool isHandTrackingSupported);
+                                                        bool isHandTrackingSupported,
+                                                        bool isPredictionDampeningSupported);
 
     } // namespace menu
 
