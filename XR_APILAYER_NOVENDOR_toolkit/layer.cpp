@@ -638,7 +638,7 @@ namespace {
         XrResult xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo) override {
             const XrResult result = OpenXrApi::xrSyncActions(session, syncInfo);
             if (XR_SUCCEEDED(result) && m_handTracker && isVrSession(session)) {
-                m_handTracker->sync(m_begunFrameTime);
+                m_handTracker->sync(m_begunFrameTime, *syncInfo);
             }
 
             return result;
