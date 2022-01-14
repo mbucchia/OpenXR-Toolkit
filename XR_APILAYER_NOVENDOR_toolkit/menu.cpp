@@ -188,6 +188,10 @@ namespace {
             if (menuControl) {
                 if (m_state != MenuState::Visible) {
                     m_state = MenuState::Visible;
+
+                    m_needRestart = checkNeedRestartCondition();
+                    m_menuEntriesTitleWidth = 0.0f;
+                    m_menuEntriesRight = m_menuEntriesBottom = 0.0f;
                 } else {
                     do {
                         m_selectedItem = (m_selectedItem + 1) % m_menuEntries.size();
@@ -229,7 +233,7 @@ namespace {
                     // When changing some settings, display the warning that the session must be restarted.
                     const bool wasRestartNeeded = std::exchange(m_needRestart, checkNeedRestartCondition());
 
-                    // When changing the font size, force re-alignment.
+                    // When changing the font size or displaying the restart banner, force re-alignment/re-size.
                     if (menuEntry.configName == SettingMenuFontSize || wasRestartNeeded != m_needRestart) {
                         m_menuEntriesTitleWidth = 0.0f;
                         m_menuEntriesRight = m_menuEntriesBottom = 0.0f;
@@ -482,7 +486,7 @@ namespace {
                         m_menuEntriesRight = max(m_menuEntriesRight, left);
                     }
                 }
-                m_menuEntriesBottom = top;
+                m_menuEntriesBottom = top + fontSize * 0.2f;
             }
 
             auto overlayType = m_configManager->getEnumValue<OverlayType>(SettingOverlayType);
