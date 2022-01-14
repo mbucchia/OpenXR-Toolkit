@@ -183,6 +183,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_5BFEA47C2F4F46F59EDB41E996F98FA7"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_6841B6C7742568E1815BD414394243A1"
         "OwnerKey" = "8:_20878DF3273ADBA9186EF810226E99EB"
         "MsmSig" = "8:_UNDEFINED"
@@ -191,6 +197,12 @@
         {
         "MsmKey" = "8:_6841B6C7742568E1815BD414394243A1"
         "OwnerKey" = "8:_00D809233FF34FF99D00DD765FD6AF01"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_6F8E98326B15474F99139DFD0E98A4EA"
+        "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -269,6 +281,12 @@
         {
         "MsmKey" = "8:_B6A307B153E03F65BEA4D47FC96E5798"
         "OwnerKey" = "8:_00D809233FF34FF99D00DD765FD6AF01"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_B77019BD43D44E07BA0EA71A5CF3AEF6"
+        "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -942,6 +960,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5BFEA47C2F4F46F59EDB41E996F98FA7"
+            {
+            "SourcePath" = "8:..\\bin\\x64\\Release\\shaders\\ffx_fsr1.h"
+            "TargetName" = "8:ffx_fsr1.h"
+            "Tag" = "8:"
+            "Folder" = "8:_A3E4D480BBBE4121A0414DD516E4AF66"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_6841B6C7742568E1815BD414394243A1"
             {
             "AssemblyRegister" = "3:1"
@@ -971,6 +1009,26 @@
             "Register" = "3:1"
             "Exclude" = "11:FALSE"
             "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6F8E98326B15474F99139DFD0E98A4EA"
+            {
+            "SourcePath" = "8:..\\bin\\x64\\Release\\shaders\\ffx_a.h"
+            "TargetName" = "8:ffx_a.h"
+            "Tag" = "8:"
+            "Folder" = "8:_A3E4D480BBBE4121A0414DD516E4AF66"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_82ABE9AEB3CD48B61BA782EEF8213D4F"
@@ -1135,6 +1193,26 @@
             "Register" = "3:1"
             "Exclude" = "11:FALSE"
             "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B77019BD43D44E07BA0EA71A5CF3AEF6"
+            {
+            "SourcePath" = "8:..\\bin\\x64\\Release\\shaders\\FSR.hlsl"
+            "TargetName" = "8:FSR.hlsl"
+            "Tag" = "8:"
+            "Folder" = "8:_A3E4D480BBBE4121A0414DD516E4AF66"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_CBCD2ED73778E2E132337FC81538B7EB"
@@ -1429,7 +1507,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:OpenXR-Toolkit"
         "ProductCode" = "8:{FCAAACC4-9554-45C5-93C5-AB73A631C02C}"
-        "PackageCode" = "8:{FC39D908-A3B6-442A-AF63-EEEFC58B874C}"
+        "PackageCode" = "8:{C3C19500-4872-4D06-AA8B-0E9364713811}"
         "UpgradeCode" = "8:{DE3B4392-8473-4208-A77F-812E54E09AE6}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
@@ -2018,7 +2096,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_00D809233FF34FF99D00DD765FD6AF01"
             {
-            "SourcePath" = "8:..\\companion\\obj\\Release\\companion.exe"
+            "SourcePath" = "8:..\\companion\\obj\\Debug\\companion.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
@@ -2046,7 +2124,7 @@
             }
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_8CFC9D8C48E64F0EA8953A69C2898BDF"
             {
-            "SourcePath" = "8:..\\bin\\x64\\Release\\XR_APILAYER_NOVENDOR_toolkit.dll"
+            "SourcePath" = "8:..\\bin\\x64\\Debug\\XR_APILAYER_NOVENDOR_toolkit.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
