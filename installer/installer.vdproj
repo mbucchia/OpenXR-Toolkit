@@ -195,6 +195,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_65E7B6C9908546539D08611F863DAF19"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_6841B6C7742568E1815BD414394243A1"
         "OwnerKey" = "8:_20878DF3273ADBA9186EF810226E99EB"
         "MsmSig" = "8:_UNDEFINED"
@@ -990,6 +996,26 @@
             "TargetName" = "8:ffx_fsr1.h"
             "Tag" = "8:"
             "Folder" = "8:_A3E4D480BBBE4121A0414DD516E4AF66"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_65E7B6C9908546539D08611F863DAF19"
+            {
+            "SourcePath" = "8:..\\mappings\\FS2020.cfg"
+            "TargetName" = "8:FS2020.cfg"
+            "Tag" = "8:"
+            "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
