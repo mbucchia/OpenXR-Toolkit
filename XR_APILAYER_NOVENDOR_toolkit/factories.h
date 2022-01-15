@@ -74,10 +74,7 @@ namespace toolkit {
     namespace input {
 
         std::shared_ptr<input::IHandTracker>
-        CreateHandTracker(toolkit::OpenXrApi& openXR,
-                          XrSession session,
-                          std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                          std::shared_ptr<toolkit::graphics::IDevice> graphicsDevice);
+        CreateHandTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
 
     } // namespace input
 
