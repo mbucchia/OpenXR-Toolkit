@@ -351,8 +351,13 @@ namespace {
                 const bool measure = m_menuEntriesRight == 0.0f;
                 if (!measure) {
                     XrColor4f background({0.0f, 0.0f, 0.0f, 1.0f});
-                    renderTarget->getRenderTargetView()->clear(
-                        topAlign, leftAlign, m_menuEntriesBottom, m_menuEntriesRight + eyeOffset, background);
+                    std::shared_ptr<IRenderTargetView> rtv;
+                    if (!renderTarget->isArray()) {
+                        rtv = renderTarget->getRenderTargetView();
+                    } else {
+                        rtv = renderTarget->getRenderTargetView(eye);
+                    }
+                    rtv->clear(topAlign, leftAlign, m_menuEntriesBottom, m_menuEntriesRight + eyeOffset, background);
                 }
 
                 float top = topAlign;
