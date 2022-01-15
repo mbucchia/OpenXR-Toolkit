@@ -69,6 +69,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_39654BA253FE59F16BA74B77BAE1476E"
+        "OwnerKey" = "8:_70D7213426884A7CA6CFDC3348474B0D"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_3D61027B4363612CD161FAE9C654011C"
         "OwnerKey" = "8:_00D809233FF34FF99D00DD765FD6AF01"
         "MsmSig" = "8:_UNDEFINED"
@@ -207,6 +213,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_70D7213426884A7CA6CFDC3348474B0D"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_82ABE9AEB3CD48B61BA782EEF8213D4F"
         "OwnerKey" = "8:_00D809233FF34FF99D00DD765FD6AF01"
         "MsmSig" = "8:_UNDEFINED"
@@ -322,6 +334,12 @@
         "Entry"
         {
         "MsmKey" = "8:_D391D942BF746798E89628174F3525FF"
+        "OwnerKey" = "8:_70D7213426884A7CA6CFDC3348474B0D"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_D391D942BF746798E89628174F3525FF"
         "OwnerKey" = "8:_00D809233FF34FF99D00DD765FD6AF01"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -371,6 +389,12 @@
         {
         "MsmKey" = "8:_UNDEFINED"
         "OwnerKey" = "8:_00D809233FF34FF99D00DD765FD6AF01"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_UNDEFINED"
+        "OwnerKey" = "8:_70D7213426884A7CA6CFDC3348474B0D"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -719,7 +743,7 @@
             "SharedLegacy" = "11:FALSE"
             "PackageAs" = "3:1"
             "Register" = "3:1"
-            "Exclude" = "11:FALSE"
+            "Exclude" = "11:TRUE"
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
@@ -905,7 +929,7 @@
             "SharedLegacy" = "11:FALSE"
             "PackageAs" = "3:1"
             "Register" = "3:1"
-            "Exclude" = "11:FALSE"
+            "Exclude" = "11:TRUE"
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
@@ -1058,7 +1082,7 @@
             "SharedLegacy" = "11:FALSE"
             "PackageAs" = "3:1"
             "Register" = "3:1"
-            "Exclude" = "11:FALSE"
+            "Exclude" = "11:TRUE"
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
@@ -1395,7 +1419,7 @@
             "SharedLegacy" = "11:FALSE"
             "PackageAs" = "3:1"
             "Register" = "3:1"
-            "Exclude" = "11:FALSE"
+            "Exclude" = "11:TRUE"
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
@@ -1507,7 +1531,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:OpenXR-Toolkit"
         "ProductCode" = "8:{FCAAACC4-9554-45C5-93C5-AB73A631C02C}"
-        "PackageCode" = "8:{C3C19500-4872-4D06-AA8B-0E9364713811}"
+        "PackageCode" = "8:{D39DF691-1906-4D6B-A33D-F39322B49B65}"
         "UpgradeCode" = "8:{DE3B4392-8473-4208-A77F-812E54E09AE6}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
@@ -1700,6 +1724,20 @@
             "IconIndex" = "3:0"
             "Transitive" = "11:FALSE"
             "Target" = "8:_00D809233FF34FF99D00DD765FD6AF01"
+            "Folder" = "8:_6DDF7CE24F1348DE86D09E3D7539B8AB"
+            "WorkingFolder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
+            "Icon" = "8:"
+            "Feature" = "8:"
+            }
+            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_9D735EFF9D7448F9A313AFDF85C09528"
+            {
+            "Name" = "8:OpenXR Toolkit Hand-to-Controller Configuration Tool"
+            "Arguments" = "8:"
+            "Description" = "8:"
+            "ShowCmd" = "3:1"
+            "IconIndex" = "3:0"
+            "Transitive" = "11:FALSE"
+            "Target" = "8:_70D7213426884A7CA6CFDC3348474B0D"
             "Folder" = "8:_6DDF7CE24F1348DE86D09E3D7539B8AB"
             "WorkingFolder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
             "Icon" = "8:"
@@ -2096,7 +2134,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_00D809233FF34FF99D00DD765FD6AF01"
             {
-            "SourcePath" = "8:..\\companion\\obj\\Debug\\companion.exe"
+            "SourcePath" = "8:..\\companion\\obj\\Release\\companion.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
@@ -2122,9 +2160,37 @@
                 {
                 }
             }
+            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_70D7213426884A7CA6CFDC3348474B0D"
+            {
+            "SourcePath" = "8:..\\mappingstool\\obj\\Debug\\mappingtool.exe"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            "ProjectOutputGroupRegister" = "3:1"
+            "OutputConfiguration" = "8:"
+            "OutputGroupCanonicalName" = "8:Built"
+            "OutputProjectGuid" = "8:{F64486BA-421E-43A7-8E97-DC9981EA5C6F}"
+            "ShowKeyOutput" = "11:TRUE"
+                "ExcludeFilters"
+                {
+                }
+            }
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_8CFC9D8C48E64F0EA8953A69C2898BDF"
             {
-            "SourcePath" = "8:..\\bin\\x64\\Debug\\XR_APILAYER_NOVENDOR_toolkit.dll"
+            "SourcePath" = "8:..\\bin\\x64\\Release\\XR_APILAYER_NOVENDOR_toolkit.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
