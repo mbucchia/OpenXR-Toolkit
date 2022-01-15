@@ -53,20 +53,35 @@ namespace LAYER_NAMESPACE {
             return XR_ERROR_INITIALIZATION_FAILED;
         }
 
+        // Determine whether we are invoked from the OpenXR Developer Tools for Windows Mixed Reality.
+        // If we are, we will skip dummy instance create to avoid he XR_LIMIT_REACHED error.
+        const bool fastInitialization =
+            std::string(instanceCreateInfo->applicationInfo.engineName) == "OpenXRDeveloperTools";
+
         // Check that the XR_EXT_hand_tracking extension is supported by the runtime and/or an upstream API layer.
         // But first, we need to create a dummy instance in order to be able to perform these checks.
         bool hasHandTrackingExt = false;
-        {
+        if (!fastInitialization) {
             XrInstance dummyInstance = XR_NULL_HANDLE;
             PFN_xrEnumerateInstanceExtensionProperties xrEnumerateInstanceExtensionProperties = nullptr;
             PFN_xrDestroyInstance xrDestroyInstance = nullptr;
+
+            // We patch the application name for telemetry purposes.
+            XrInstanceCreateInfo dummyCreateInfo = *instanceCreateInfo;
+            strcpy_s(dummyCreateInfo.applicationInfo.applicationName, "OpenXR-Toolkit");
+            strcpy_s(dummyCreateInfo.applicationInfo.engineName, "OpenXR-Toolkit");
+            dummyCreateInfo.applicationInfo.applicationVersion = dummyCreateInfo.applicationInfo.engineVersion =
+                XR_MAKE_VERSION(VersionMajor, VersionMinor, VersionPatch);
+
+            // Try to speed things up by requesting no extentions.
+            dummyCreateInfo.enabledExtensionCount = dummyCreateInfo.enabledApiLayerCount = 0;
 
             // Call the chain to create the dummy instance.
             XrApiLayerCreateInfo chainApiLayerInfo = *apiLayerInfo;
             chainApiLayerInfo.nextInfo = apiLayerInfo->nextInfo->next;
 
             const XrResult result = apiLayerInfo->nextInfo->nextCreateApiLayerInstance(
-                instanceCreateInfo, &chainApiLayerInfo, &dummyInstance);
+                &dummyCreateInfo, &chainApiLayerInfo, &dummyInstance);
             if (result == XR_SUCCESS) {
                 CHECK_XRCMD(apiLayerInfo->nextInfo->nextGetInstanceProcAddr(
                     dummyInstance,
@@ -101,15 +116,17 @@ namespace LAYER_NAMESPACE {
         // Add the XR_EXT_hand_tracking extension to the requested extensions when available.
         XrInstanceCreateInfo chainInstanceCreateInfo = *instanceCreateInfo;
         std::vector<const char*> newEnabledExtensionNames;
-        if (hasHandTrackingExt) {
-            newEnabledExtensionNames.resize(++chainInstanceCreateInfo.enabledExtensionCount);
-            chainInstanceCreateInfo.enabledExtensionNames = newEnabledExtensionNames.data();
-            memcpy(newEnabledExtensionNames.data(),
-                   instanceCreateInfo->enabledExtensionNames,
-                   instanceCreateInfo->enabledExtensionCount * sizeof(const char*));
-            newEnabledExtensionNames[chainInstanceCreateInfo.enabledExtensionCount - 1] = "XR_EXT_hand_tracking";
-        } else {
-            Log("XR_EXT_hand_tracking is not available from the OpenXR runtime or any upsteam API layer.\n");
+        if (!fastInitialization) {
+            if (hasHandTrackingExt) {
+                newEnabledExtensionNames.resize(++chainInstanceCreateInfo.enabledExtensionCount);
+                chainInstanceCreateInfo.enabledExtensionNames = newEnabledExtensionNames.data();
+                memcpy(newEnabledExtensionNames.data(),
+                       instanceCreateInfo->enabledExtensionNames,
+                       instanceCreateInfo->enabledExtensionCount * sizeof(const char*));
+                newEnabledExtensionNames[chainInstanceCreateInfo.enabledExtensionCount - 1] = "XR_EXT_hand_tracking";
+            } else {
+                Log("XR_EXT_hand_tracking is not available from the OpenXR runtime or any upsteam API layer.\n");
+            }
         }
 
         // Call the chain to create the instance.
