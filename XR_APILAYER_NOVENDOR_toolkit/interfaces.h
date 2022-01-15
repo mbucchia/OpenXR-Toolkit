@@ -70,11 +70,13 @@ namespace toolkit {
         const std::string SettingICD = "icd";
         const std::string SettingFOV = "fov";
         const std::string SettingHandTrackingEnabled = "enable_hand_tracking";
+        const std::string SettingHandVisibilityAndSkinTone = "hand_visibility";
 
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
         enum class MenuTimeout { Small = 0, Medium, Large, MaxValue };
         enum class ScalingType { None = 0, NIS, FSR, MaxValue };
+        enum class HandTrackingEnabled { Off = 0, Both, Left, Right, MaxValue };
 
         struct IConfigManager {
             virtual ~IConfigManager() = default;

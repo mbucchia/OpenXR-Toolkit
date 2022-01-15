@@ -82,8 +82,10 @@ namespace {
 
             // We must initialize hand tracking early on, because the application can start creating actions etc
             // before creating the session.
-            m_configManager->setDefault(config::SettingHandTrackingEnabled, 0);
-            if (m_configManager->getValue(config::SettingHandTrackingEnabled)) {
+            m_configManager->setEnumDefault(config::SettingHandTrackingEnabled, config::HandTrackingEnabled::Off);
+            m_configManager->setDefault(config::SettingHandVisibilityAndSkinTone, 2); // Visible - Medium
+            if (m_configManager->getEnumValue<config::HandTrackingEnabled>(config::SettingHandTrackingEnabled) !=
+                config::HandTrackingEnabled::Off) {
                 m_handTracker = input::CreateHandTracker(*this, m_configManager);
                 m_sendInterationProfileEvent = true;
             }
