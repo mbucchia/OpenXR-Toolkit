@@ -80,6 +80,14 @@ namespace {
 
             m_configManager = config::CreateConfigManager(createInfo->applicationInfo.applicationName);
 
+            // We must initialize hand tracking early on, because the application can start creating actions etc
+            // before creating the session.
+            m_configManager->setDefault(config::SettingHandTrackingEnabled, 0);
+            if (m_configManager->getValue(config::SettingHandTrackingEnabled)) {
+                m_handTracker = input::CreateHandTracker(*this, m_configManager);
+                m_sendInterationProfileEvent = true;
+            }
+
             return XR_SUCCESS;
         }
 
@@ -104,12 +112,18 @@ namespace {
                 OpenXrApi::xrGetSystemProperties(instance, *systemId, &systemProperties);
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
 
+                // We had to initialize the hand tracker early on. If we find out now that hand tracking is not
+                // supported, then destroy it. This could happen if the option was set while a hand tracking device was
+                // connected, but later the hand tracking device was disconnected.
+                if (m_handTracker && !m_supportHandTracking) {
+                    m_handTracker.reset();
+                }
+
                 // Set the default settings.
                 m_configManager->setEnumDefault(config::SettingScalingType, config::ScalingType::None);
                 m_configManager->setDefault(config::SettingScaling, 100);
                 m_configManager->setDefault(config::SettingSharpness, 20);
                 m_configManager->setDefault(config::SettingFOV, 100);
-                m_configManager->setDefault(config::SettingHandTrackingEnabled, 0);
 
                 // Remember the XrSystemId to use.
                 m_vrSystemId = *systemId;
@@ -241,9 +255,8 @@ namespace {
                     Log("Unsupported graphics runtime.\n");
                 }
 
-                if (m_configManager->getValue(config::SettingHandTrackingEnabled)) {
-                    m_handTracker = input::CreateHandTracker(*this, *session, m_configManager, m_graphicsDevice);
-                    m_sendInterationProfileEvent = true;
+                if (m_handTracker) {
+                    m_handTracker->beginSession(*session, m_graphicsDevice);
                 }
 
                 // Remember the XrSession to use.
@@ -256,7 +269,9 @@ namespace {
         XrResult xrDestroySession(XrSession session) override {
             const XrResult result = OpenXrApi::xrDestroySession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
-                m_handTracker.reset();
+                if (m_handTracker) {
+                    m_handTracker->endSession();
+                }
                 m_upscaler.reset();
                 m_preProcessor.reset();
                 m_postProcessor.reset();
@@ -1019,7 +1034,7 @@ namespace {
             char buf[XR_MAX_PATH_LENGTH];
             uint32_t count;
             CHECK_XRCMD(xrPathToString(GetXrInstance(), path, sizeof(buf), &count, buf));
-            return std::string(buf, count);
+            return std::string(buf, count - 1);
         }
 
         std::string m_applicationName;

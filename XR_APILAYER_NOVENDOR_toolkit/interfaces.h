@@ -483,6 +483,10 @@ namespace toolkit {
 
             virtual const std::string getFullPath(XrAction action, XrPath subactionPath) = 0;
 
+            virtual void beginSession(XrSession session,
+                                      std::shared_ptr<toolkit::graphics::IDevice> graphicsDevice) = 0;
+            virtual void endSession() = 0;
+
             virtual void sync(XrTime frameTime, const XrActionsSyncInfo& syncInfo) = 0;
             virtual bool locate(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation& location) const = 0;
             virtual void render(const XrPosef& pose,

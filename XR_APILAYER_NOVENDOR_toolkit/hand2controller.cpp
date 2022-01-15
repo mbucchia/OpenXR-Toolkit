@@ -172,11 +172,8 @@ namespace {
 
     class HandTracker : public IHandTracker {
       public:
-        HandTracker(OpenXrApi& openXR,
-                    XrSession session,
-                    std::shared_ptr<IConfigManager> configManager,
-                    std::shared_ptr<IDevice> graphicsDevice)
-            : m_openXR(openXR), m_configManager(configManager), m_graphicsDevice(graphicsDevice) {
+        HandTracker(OpenXrApi& openXR, std::shared_ptr<IConfigManager> configManager)
+            : m_openXR(openXR), m_configManager(configManager) {
             // Open a socket for live configuration.
             {
                 WSADATA wsaData;
@@ -216,32 +213,11 @@ namespace {
                                                      "xrLocateHandJointsEXT",
                                                      reinterpret_cast<PFN_xrVoidFunction*>(&xrLocateHandJointsEXT)));
 
-            XrHandTrackerCreateInfoEXT leftTrackerCreateInfo{XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT};
-            leftTrackerCreateInfo.hand = XR_HAND_LEFT_EXT;
-            leftTrackerCreateInfo.handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT;
-            XrHandTrackerCreateInfoEXT rightTrackerCreateInfo{XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT};
-            rightTrackerCreateInfo.hand = XR_HAND_RIGHT_EXT;
-            rightTrackerCreateInfo.handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT;
-
-            CHECK_XRCMD(xrCreateHandTrackerEXT(session, &leftTrackerCreateInfo, &m_handTracker[0]));
-            CHECK_XRCMD(xrCreateHandTrackerEXT(session, &rightTrackerCreateInfo, &m_handTracker[1]));
-
-            XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
-            referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
-            referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
-            CHECK_XRCMD(m_openXR.xrCreateReferenceSpace(session, &referenceSpaceCreateInfo, &m_referenceSpace));
-
-            std::vector<SimpleMeshVertex> vertices;
-            copyFromArray(vertices, c_cubeVertices);
-            std::vector<uint16_t> indices;
-            copyFromArray(indices, c_cubeIndices);
-            m_jointMesh = m_graphicsDevice->createSimpleMesh(vertices, indices, "Joint Mesh");
+            // The remaining resources are created in beginSession().
         }
 
         ~HandTracker() override {
-            m_openXR.xrDestroySpace(m_referenceSpace);
-            xrDestroyHandTrackerEXT(m_handTracker[0]);
-            xrDestroyHandTrackerEXT(m_handTracker[1]);
+            endSession();
             closesocket(m_configSocket);
         }
 
@@ -347,7 +323,7 @@ namespace {
             char buf[XR_MAX_PATH_LENGTH];
             uint32_t count;
             CHECK_XRCMD(m_openXR.xrPathToString(m_openXR.GetXrInstance(), path, sizeof(buf), &count, buf));
-            return std::string(buf, count);
+            return std::string(buf, count - 1);
         }
 
         const std::string getFullPath(XrAction action, XrPath subactionPath) override {
@@ -362,6 +338,47 @@ namespace {
             }
 
             return subActionIt->second.path;
+        }
+
+        void beginSession(XrSession session, std::shared_ptr<toolkit::graphics::IDevice> graphicsDevice) override {
+            m_graphicsDevice = graphicsDevice;
+
+            XrHandTrackerCreateInfoEXT leftTrackerCreateInfo{XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT};
+            leftTrackerCreateInfo.hand = XR_HAND_LEFT_EXT;
+            leftTrackerCreateInfo.handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT;
+            XrHandTrackerCreateInfoEXT rightTrackerCreateInfo{XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT};
+            rightTrackerCreateInfo.hand = XR_HAND_RIGHT_EXT;
+            rightTrackerCreateInfo.handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT;
+
+            CHECK_XRCMD(xrCreateHandTrackerEXT(session, &leftTrackerCreateInfo, &m_handTracker[0]));
+            CHECK_XRCMD(xrCreateHandTrackerEXT(session, &rightTrackerCreateInfo, &m_handTracker[1]));
+
+            XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+            referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+            referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
+            CHECK_XRCMD(m_openXR.xrCreateReferenceSpace(session, &referenceSpaceCreateInfo, &m_referenceSpace));
+
+            std::vector<SimpleMeshVertex> vertices;
+            copyFromArray(vertices, c_cubeVertices);
+            std::vector<uint16_t> indices;
+            copyFromArray(indices, c_cubeIndices);
+            m_jointMesh = m_graphicsDevice->createSimpleMesh(vertices, indices, "Joint Mesh");
+        }
+
+        void endSession() override {
+            m_graphicsDevice.reset();
+            m_jointMesh.reset();
+
+            if (m_referenceSpace != XR_NULL_HANDLE) {
+                m_openXR.xrDestroySpace(m_referenceSpace);
+                m_referenceSpace = XR_NULL_HANDLE;
+            }
+            for (uint32_t i = 0; i < HandCount; i++) {
+                if (m_handTracker[i] != XR_NULL_HANDLE) {
+                    xrDestroyHandTrackerEXT(m_handTracker[i]);
+                    m_handTracker[i] = XR_NULL_HANDLE;
+                }
+            }
         }
 
         void sync(XrTime frameTime, const XrActionsSyncInfo& syncInfo) override {
@@ -556,7 +573,6 @@ namespace {
 
         OpenXrApi& m_openXR;
         const std::shared_ptr<IConfigManager> m_configManager;
-        const std::shared_ptr<IDevice> m_graphicsDevice;
 
         XrSpace m_referenceSpace{XR_NULL_HANDLE};
         using CacheEntry = std::pair<XrTime, XrHandJointLocationEXT[XR_HAND_JOINT_COUNT_EXT]>;
@@ -566,9 +582,11 @@ namespace {
         SOCKET m_configSocket{INVALID_SOCKET};
         XrPath m_interactionProfile{XR_NULL_PATH};
 
+        std::shared_ptr<IDevice> m_graphicsDevice;
+        std::shared_ptr<ISimpleMesh> m_jointMesh;
+
         XrHandTrackerEXT m_handTracker[2]{XR_NULL_HANDLE, XR_NULL_HANDLE};
         XrTime m_thisFrameTime{0};
-        std::shared_ptr<ISimpleMesh> m_jointMesh;
 
         std::map<XrSpace, ActionSpace> m_actionSpaces;
         std::map<XrActionSet, std::set<XrAction>> m_actionSets;
@@ -811,11 +829,8 @@ namespace {
 namespace toolkit::input {
 
     std::shared_ptr<input::IHandTracker>
-    CreateHandTracker(toolkit::OpenXrApi& openXR,
-                      XrSession session,
-                      std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                      std::shared_ptr<toolkit::graphics::IDevice> graphicsDevice) {
-        return std::make_shared<HandTracker>(openXR, session, configManager, graphicsDevice);
+    CreateHandTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager) {
+        return std::make_shared<HandTracker>(openXR, configManager);
     }
 
 } // namespace toolkit::input
