@@ -740,8 +740,14 @@ namespace {
     }
 
     bool Config::LoadConfiguration(const std::string& configName) {
-        // TODO: Look in %AppData% first.
-        std::ifstream configFile(std::filesystem::path(dllHome) / std::filesystem::path(configName + ".cfg"));
+        std::ifstream configFile;
+
+        // Look in %LocalAppData% first, then fallback to your installation folder.
+        configFile.open(std::filesystem::path(getenv("LOCALAPPDATA")) / std::filesystem::path(configName + ".cfg"));
+        if (!configFile.is_open()) {
+            configFile.open(std::filesystem::path(dllHome) / std::filesystem::path(configName + ".cfg"));
+        }
+
         if (configFile.is_open()) {
             Log("Loading config for \"%s\"\n", configName.c_str());
 
