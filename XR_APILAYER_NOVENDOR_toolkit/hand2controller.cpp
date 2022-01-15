@@ -107,6 +107,8 @@ namespace {
         Hand hand;
         std::string path;
 
+        bool synced{false};
+
         float floatValue{0.0f};
         XrTime timeFloatValueChanged{0};
         bool floatValueChanged{false};
@@ -215,6 +217,9 @@ namespace {
                                                      "xrLocateHandJointsEXT",
                                                      reinterpret_cast<PFN_xrVoidFunction*>(&xrLocateHandJointsEXT)));
 
+            CHECK_HRCMD(m_openXR.xrStringToPath(m_openXR.GetXrInstance(), "/user/hand/left", &m_leftHandSubaction));
+            CHECK_HRCMD(m_openXR.xrStringToPath(m_openXR.GetXrInstance(), "/user/hand/right", &m_rightHandSubaction));
+
             // The remaining resources are created in beginSession().
         }
 
@@ -276,11 +281,6 @@ namespace {
                 // Clear any previous mappings.
                 m_actions.clear();
 
-                XrPath leftHand;
-                CHECK_HRCMD(m_openXR.xrStringToPath(m_openXR.GetXrInstance(), "/user/hand/left", &leftHand));
-                XrPath rightHand;
-                CHECK_HRCMD(m_openXR.xrStringToPath(m_openXR.GetXrInstance(), "/user/hand/right", &rightHand));
-
                 for (uint32_t i = 0; i < bindings.countSuggestedBindings; i++) {
                     const std::string fullPath = getPath(bindings.suggestedBindings[i].binding);
 
@@ -288,10 +288,10 @@ namespace {
                     Hand hand;
                     if (fullPath.find("/user/hand/left") == 0) {
                         hand = Hand::Left;
-                        subActionPath = leftHand;
+                        subActionPath = m_leftHandSubaction;
                     } else if (fullPath.find("/user/hand/right") == 0) {
                         hand = Hand::Right;
-                        subActionPath = rightHand;
+                        subActionPath = m_rightHandSubaction;
                     } else {
                         // We ignore non-hand actions.
                         continue;
@@ -328,13 +328,13 @@ namespace {
             return std::string(buf, count - 1);
         }
 
-        const std::string getFullPath(XrAction action, XrPath subactionPath) override {
+        const std::string getFullPath(XrAction action, XrPath subActionPath) override {
             const auto& actionIt = m_actions.find(action);
             if (actionIt == m_actions.cend()) {
                 return {};
             }
 
-            const auto& subActionIt = actionIt->second.subActions.find(subactionPath);
+            const auto& subActionIt = actionIt->second.subActions.find(subActionPath);
             if (subActionIt == actionIt->second.subActions.cend()) {
                 return {};
             }
@@ -409,7 +409,7 @@ namespace {
             }
 
             // Delete outdated entries from the cache.
-            for (auto& spaceCache : m_cachedHandJointPoses) {
+            for (auto& spaceCache : m_cachedHandJointsPoses) {
                 auto& cache = spaceCache.second;
                 for (uint32_t side = 0; side < HandCount; side++) {
                     while (cache[side].size() > 0 && cache[side].front().first + GracePeriod < frameTime) {
@@ -426,9 +426,21 @@ namespace {
             m_rightHandEnabled = m_config.rightHandEnabled && (handTrackingEnabled == HandTrackingEnabled::Both ||
                                                                handTrackingEnabled == HandTrackingEnabled::Right);
 
-            // Gesture detection.
+            // Get joints poses.
+            const XrHandJointLocationEXT* leftHandJointsPoses = nullptr;
+            if (m_leftHandEnabled) {
+                leftHandJointsPoses = getCachedHandJointsPoses(
+                    Hand::Left, m_thisFrameTime, m_preferredBaseSpace.value_or(m_referenceSpace));
+            }
+            const XrHandJointLocationEXT* rightHandJointsPoses = nullptr;
+            if (m_rightHandEnabled) {
+                rightHandJointsPoses = getCachedHandJointsPoses(
+                    Hand::Right, m_thisFrameTime, m_preferredBaseSpace.value_or(m_referenceSpace));
+            }
+
+            // Only sync actions for the specified action sets.
+            std::set<XrAction> ignore;
             for (auto& action : m_actions) {
-                // Only sync actions for the specified action sets.
                 bool foundActionSet = false;
                 for (uint32_t i = 0; i < syncInfo.countActiveActionSets; i++) {
                     if (action.second.actionSet == syncInfo.activeActionSets[i].actionSet) {
@@ -440,11 +452,28 @@ namespace {
                 }
 
                 if (!foundActionSet) {
-                    continue;
+                    ignore.insert(action.first);
                 }
 
-                // TODO: Implement gesture handling.
+                for (auto& subAction : action.second.subActions) {
+                    subAction.second.synced = false;
+                }
             }
+
+            // Try to get the time.
+            XrTime now;
+#if 0
+            // TODO: Need to fix the source generator to properly expose that operation.
+            LARGE_INTEGER qpcTimeNow;
+            QueryPerformanceCounter(&qpcTimeNow);
+
+            XrTime xrTimeNow;
+            CHECK_XRCMD(xrConvertWin32PerformanceCounterToTimeKHR(GetXrInstance(), &qpcTimeNow, &xrTimeNow));
+#endif
+            now = m_thisFrameTime + 1;
+
+            // For each gesture, update the action value.
+            performGesturesDetection(leftHandJointsPoses, rightHandJointsPoses, ignore, now);
 
             m_thisFrameTime = frameTime;
         }
@@ -462,16 +491,16 @@ namespace {
                 return false;
             }
 
-            const auto& jointPoses = getCachedHandJointPoses(actionSpace.hand, time, baseSpace);
+            const auto& jointsPoses = getCachedHandJointsPoses(actionSpace.hand, time, baseSpace);
 
             const uint32_t side = actionSpace.hand == Hand::Left ? 0 : 1;
             const uint32_t joint =
                 actionSpace.poseType == PoseType::Grip ? m_config.gripJointIndex : m_config.aimJointIndex;
 
             // Translate the hand poses for the requested joint to a controller pose.
-            location.locationFlags = jointPoses[joint].locationFlags;
+            location.locationFlags = jointsPoses[joint].locationFlags;
             location.pose = Pose::Multiply(actionSpace.poseInActionSpace,
-                                           Pose::Multiply(m_config.transform[side], jointPoses[joint].pose));
+                                           Pose::Multiply(m_config.transform[side], jointsPoses[joint].pose));
 
             return true;
         }
@@ -490,20 +519,24 @@ namespace {
                     continue;
                 }
 
-                const auto& jointPoses =
-                    getCachedHandJointPoses(hand ? Hand::Right : Hand::Left, m_thisFrameTime, baseSpace);
+                const auto& jointsPoses =
+                    getCachedHandJointsPoses(hand ? Hand::Right : Hand::Left, m_thisFrameTime, baseSpace);
 
                 for (uint32_t joint = 0; joint < XR_HAND_JOINT_COUNT_EXT; joint++) {
-                    if (!xr::math::Pose::IsPoseValid(jointPoses[joint].locationFlags)) {
+                    if (!xr::math::Pose::IsPoseValid(jointsPoses[joint].locationFlags)) {
                         continue;
                     }
 
-                    XrVector3f scaling{jointPoses[joint].radius,
-                                       min(0.0025f, jointPoses[joint].radius),
-                                       max(0.015f, jointPoses[joint].radius)};
-                    m_graphicsDevice->draw(m_jointMesh[meshIndex], jointPoses[joint].pose, scaling);
+                    XrVector3f scaling{jointsPoses[joint].radius,
+                                       min(0.0025f, jointsPoses[joint].radius),
+                                       max(0.015f, jointsPoses[joint].radius)};
+                    m_graphicsDevice->draw(m_jointMesh[meshIndex], jointsPoses[joint].pose, scaling);
                 }
             }
+
+            // The sync() method only cares for relative hand joints poses. Try to force reuse of cached entries by
+            // making sync() query with the same base space.
+            m_preferredBaseSpace = baseSpace;
         }
 
         bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateBoolean& state) const override {
@@ -549,12 +582,12 @@ namespace {
         }
 
       private:
-        const XrHandJointLocationEXT* getCachedHandJointPoses(Hand hand,
-                                                              XrTime time,
-                                                              std::optional<XrSpace> baseSpace) const {
+        const XrHandJointLocationEXT* getCachedHandJointsPoses(Hand hand,
+                                                               XrTime time,
+                                                               std::optional<XrSpace> baseSpace) const {
             const uint32_t side = hand == Hand::Left ? 0 : 1;
 
-            auto& cache = m_cachedHandJointPoses[baseSpace.value_or(m_referenceSpace)][side];
+            auto& cache = m_cachedHandJointsPoses[baseSpace.value_or(m_referenceSpace)][side];
 
             // Search for a entry in the cache.
             int32_t closestIndex = -1;
@@ -596,12 +629,177 @@ namespace {
             }
         }
 
+        void performGesturesDetection(const XrHandJointLocationEXT* leftHandJointsPoses,
+                                      const XrHandJointLocationEXT* rightHandJointsPoses,
+                                      const std::set<XrAction>& ignore,
+                                      XrTime now) {
+#define ACTION_PARAMS(configName) m_config.configName##Action[side],
+
+            for (uint32_t side = 0; side < HandCount; side++) {
+                const Hand hand = (Hand)side;
+                const XrHandJointLocationEXT* jointsPoses =
+                    hand == Hand::Left ? leftHandJointsPoses : rightHandJointsPoses;
+                const XrHandJointLocationEXT* jointsPosesOtherHand =
+                    hand == Hand::Left ? rightHandJointsPoses : leftHandJointsPoses;
+
+#define ONE_HANDED_GESTURE(configName, joint1, joint2)                                                                 \
+    do {                                                                                                               \
+        if (!m_config.configName##Action[side].empty()) {                                                              \
+            recordActionValue(hand,                                                                                    \
+                              m_config.configName##Action[side],                                                       \
+                              ignore,                                                                                  \
+                              computeJointActionValue(jointsPoses,                                                     \
+                                                      (joint1),                                                        \
+                                                      jointsPoses,                                                     \
+                                                      (joint2),                                                        \
+                                                      m_config.configName##Near,                                       \
+                                                      m_config.configName##Far),                                       \
+                              now);                                                                                    \
+        }                                                                                                              \
+    } while (false);
+
+                // Handle gestures made up from one hand.
+                ONE_HANDED_GESTURE(pinch, XR_HAND_JOINT_THUMB_TIP_EXT, XR_HAND_JOINT_INDEX_TIP_EXT);
+                ONE_HANDED_GESTURE(thumbPress, XR_HAND_JOINT_INDEX_INTERMEDIATE_EXT, XR_HAND_JOINT_THUMB_TIP_EXT);
+                ONE_HANDED_GESTURE(indexBend, XR_HAND_JOINT_INDEX_PROXIMAL_EXT, XR_HAND_JOINT_INDEX_TIP_EXT);
+                ONE_HANDED_GESTURE(fingerGun, XR_HAND_JOINT_THUMB_TIP_EXT, XR_HAND_JOINT_MIDDLE_INTERMEDIATE_EXT);
+
+                if (m_config.custom1Joint1Index >= 0 && m_config.custom1Joint2Index >= 0) {
+                    ONE_HANDED_GESTURE(custom1, m_config.custom1Joint1Index, m_config.custom1Joint2Index);
+                }
+
+#undef ONE_HANDED_GESTURE
+
+                // Squeeze requires to look at 3 fingers.
+                if (!m_config.squeezeAction[side].empty()) {
+                    float squeeze[3] = {computeJointActionValue(jointsPoses,
+                                                                XR_HAND_JOINT_MIDDLE_TIP_EXT,
+                                                                jointsPoses,
+                                                                XR_HAND_JOINT_MIDDLE_METACARPAL_EXT,
+                                                                m_config.squeezeNear,
+                                                                m_config.squeezeFar),
+                                        computeJointActionValue(jointsPoses,
+                                                                XR_HAND_JOINT_RING_TIP_EXT,
+                                                                jointsPoses,
+                                                                XR_HAND_JOINT_RING_METACARPAL_EXT,
+                                                                m_config.squeezeNear,
+                                                                m_config.squeezeFar),
+                                        computeJointActionValue(jointsPoses,
+                                                                XR_HAND_JOINT_LITTLE_TIP_EXT,
+                                                                jointsPoses,
+                                                                XR_HAND_JOINT_LITTLE_METACARPAL_EXT,
+                                                                m_config.squeezeNear,
+                                                                m_config.squeezeFar)};
+
+                    // Quickly bubble sort.
+                    if (squeeze[0] > squeeze[1]) {
+                        std::swap(squeeze[0], squeeze[1]);
+                    }
+                    if (squeeze[0] > squeeze[2]) {
+                        std::swap(squeeze[0], squeeze[2]);
+                    }
+                    if (squeeze[1] > squeeze[2]) {
+                        std::swap(squeeze[1], squeeze[2]);
+                    }
+
+                    // Ignore the lowest value, average the other ones.
+                    const float value = (squeeze[1] + squeeze[2]) / 2.f;
+                    recordActionValue(hand, m_config.squeezeAction[side], ignore, value, now);
+                }
+
+#define TWO_HANDED_GESTURE(configName, joint1, joint2)                                                                 \
+    do {                                                                                                               \
+        if (!m_config.configName##Action[side].empty()) {                                                              \
+            recordActionValue(hand,                                                                                    \
+                              m_config.configName##Action[side],                                                       \
+                              ignore,                                                                                  \
+                              computeJointActionValue(jointsPoses,                                                     \
+                                                      (joint1),                                                        \
+                                                      jointsPosesOtherHand,                                            \
+                                                      (joint2),                                                        \
+                                                      m_config.configName##Near,                                       \
+                                                      m_config.configName##Far),                                       \
+                              now);                                                                                    \
+        }                                                                                                              \
+    } while (false);
+
+                // Handle gestures made up using both hands.
+
+                TWO_HANDED_GESTURE(palmTap, XR_HAND_JOINT_PALM_EXT, XR_HAND_JOINT_INDEX_TIP_EXT);
+                TWO_HANDED_GESTURE(wristTap, XR_HAND_JOINT_WRIST_EXT, XR_HAND_JOINT_INDEX_TIP_EXT);
+                TWO_HANDED_GESTURE(indexTipTap, XR_HAND_JOINT_INDEX_TIP_EXT, XR_HAND_JOINT_INDEX_TIP_EXT);
+
+#undef TWO_HANDED_GESTURE
+            }
+        }
+
+        // Compute the scaled action value based on the distance between 2 joints.
+        float computeJointActionValue(const XrHandJointLocationEXT* joints1Poses,
+                                      uint32_t joint1,
+                                      const XrHandJointLocationEXT* joints2Poses,
+                                      uint32_t joint2,
+                                      float nearDistance,
+                                      float farDistance) {
+            if (Pose::IsPoseValid(joints1Poses[joint1].locationFlags) &&
+                Pose::IsPoseValid(joints2Poses[joint2].locationFlags)) {
+                // We ignore joints radius and assume the near/far distance are configured to account for them.
+                const float distance =
+                    max(Length(joints1Poses[joint1].pose.position - joints2Poses[joint2].pose.position), 0.f);
+
+                return 1.f -
+                       (std::clamp(distance, nearDistance, farDistance) - nearDistance) / (farDistance - nearDistance);
+            }
+            return NAN;
+        }
+
+        void recordActionValue(
+            Hand hand, const std::string& actionPath, const std::set<XrAction>& ignore, float value, XrTime now) {
+            assert(!actionPath.empty());
+
+            if (isnan(value)) {
+                return;
+            }
+
+            const XrPath subActionPath = hand == Hand::Left ? m_leftHandSubaction : m_rightHandSubaction;
+
+            for (auto& action : m_actions) {
+                if (ignore.find(action.first) != ignore.cend()) {
+                    continue;
+                }
+
+                auto& subAction = action.second.subActions[subActionPath];
+                const std::string& path = subAction.path;
+
+                // path.endswith(actionPath)
+                if (path.rfind(actionPath) == path.length() - actionPath.length()) {
+                    // If multiple gestures are bound to the same action, pick the highest value.
+                    const float newFloatValue = subAction.synced ? max(subAction.floatValue, value) : value;
+                    const bool newBoolValue = newFloatValue >= m_config.clickThreshold;
+
+                    if (std::abs(subAction.floatValue - newFloatValue) > FLT_EPSILON) {
+                        subAction.floatValue = newFloatValue;
+                        subAction.timeFloatValueChanged = now;
+                        subAction.floatValueChanged = true;
+                    }
+                    if (subAction.boolValue != newBoolValue) {
+                        subAction.boolValue = newBoolValue;
+                        subAction.timeBoolValueChanged = now;
+                        subAction.boolValueChanged = true;
+                    }
+                    subAction.synced = true;
+                }
+            }
+        }
+
         OpenXrApi& m_openXR;
         const std::shared_ptr<IConfigManager> m_configManager;
 
+        XrPath m_leftHandSubaction{XR_NULL_PATH};
+        XrPath m_rightHandSubaction{XR_NULL_PATH};
+
         XrSpace m_referenceSpace{XR_NULL_HANDLE};
         using CacheEntry = std::pair<XrTime, XrHandJointLocationEXT[XR_HAND_JOINT_COUNT_EXT]>;
-        mutable std::map<XrSpace, std::deque<CacheEntry>[2]> m_cachedHandJointPoses;
+        mutable std::map<XrSpace, std::deque<CacheEntry>[2]> m_cachedHandJointsPoses;
 
         Config m_config;
         SOCKET m_configSocket{INVALID_SOCKET};
@@ -620,6 +818,8 @@ namespace {
         std::map<XrSpace, ActionSpace> m_actionSpaces;
         std::map<XrActionSet, std::set<XrAction>> m_actionSets;
         std::map<XrAction, Action> m_actions;
+
+        mutable std::optional<XrSpace> m_preferredBaseSpace;
 
         // TODO: These should be auto-generated and accessible via OpenXrApi.
         PFN_xrCreateHandTrackerEXT xrCreateHandTrackerEXT{nullptr};
@@ -851,7 +1051,6 @@ namespace {
 } // namespace
 
 namespace toolkit::input {
-
     std::shared_ptr<input::IHandTracker>
     CreateHandTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager) {
         return std::make_shared<HandTracker>(openXR, configManager);
