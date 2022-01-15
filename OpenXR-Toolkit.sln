@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "companion", "companion\comp
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Setup", "installer\installer.vdproj", "{9D1EF86B-6B13-4C14-BBD7-E70CF7DD48DE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mappingtool", "mappingstool\mappingtool.csproj", "{F64486BA-421E-43A7-8E97-DC9981EA5C6F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -41,6 +43,10 @@ Global
 		{9D1EF86B-6B13-4C14-BBD7-E70CF7DD48DE}.Debug|x64.ActiveCfg = Debug
 		{9D1EF86B-6B13-4C14-BBD7-E70CF7DD48DE}.Release|x64.ActiveCfg = Release
 		{9D1EF86B-6B13-4C14-BBD7-E70CF7DD48DE}.Release|x64.Build.0 = Release
+		{F64486BA-421E-43A7-8E97-DC9981EA5C6F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F64486BA-421E-43A7-8E97-DC9981EA5C6F}.Debug|x64.Build.0 = Debug|Any CPU
+		{F64486BA-421E-43A7-8E97-DC9981EA5C6F}.Release|x64.ActiveCfg = Release|Any CPU
+		{F64486BA-421E-43A7-8E97-DC9981EA5C6F}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
