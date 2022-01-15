@@ -125,12 +125,6 @@ namespace {
         bool leftHandEnabled;
         bool rightHandEnabled;
 
-        // The skin tone to use for rendering the hand, 0=bright to 2=dark.
-        int skinTone;
-
-        // The opacity (alpha channel) for the hand mesh.
-        float opacity;
-
         // The index of the joint (see enum XrHandJointEXT) to use for the aim pose.
         int aimJointIndex;
 
@@ -602,8 +596,6 @@ namespace {
         interactionProfile = "/interaction_profiles/hp/mixed_reality_controller";
         leftHandEnabled = true;
         rightHandEnabled = true;
-        skinTone = 1; // Medium
-        opacity = 1.0f;
         aimJointIndex = XR_HAND_JOINT_INDEX_INTERMEDIATE_EXT;
         gripJointIndex = XR_HAND_JOINT_PALM_EXT;
         clickThreshold = 0.75f;
@@ -662,10 +654,6 @@ namespace {
 
                 if (name == "interaction_profile") {
                     interactionProfile = value;
-                } else if (name == "skin_tone") {
-                    skinTone = std::stoi(value);
-                } else if (name == "opacity") {
-                    opacity = std::stof(value);
                 } else if (name == "aim_joint") {
                     aimJointIndex = std::stoi(value);
                 } else if (name == "grip_joint") {
@@ -769,11 +757,6 @@ namespace {
 
     void Config::Dump() {
         Log("Emulating interaction profile: %s\n", interactionProfile.c_str());
-        Log("Using %s skin tone and %.3f opacity\n",
-            skinTone == 0   ? "bright"
-            : skinTone == 1 ? "medium"
-                            : "dark",
-            opacity);
         if (leftHandEnabled) {
             Log("Left transform: (%.3f, %.3f, %.3f) (%.3f, %.3f, %.3f, %.3f)\n",
                 transform[0].position.x,
