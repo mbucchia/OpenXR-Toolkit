@@ -27,6 +27,9 @@
 namespace toolkit {
 
     const std::string LayerName = "XR_APILAYER_NOVENDOR_toolkit";
+    const uint32_t VersionMajor = 0;
+    const uint32_t VersionMinor = 9;
+    const uint32_t VersionPatch = 3;
     const std::string VersionString = "Unreleased";
     const std::string RegPrefix = "SOFTWARE\\OpenXR_Toolkit";
 
