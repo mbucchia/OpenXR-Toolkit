@@ -137,13 +137,27 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingHandTrackingEnabled,
                                      0,
-                                     1,
+                                     (int)HandTrackingEnabled::MaxValue - 1,
                                      [](int value) {
-                                         std::string labels[] = {"Off", "On"};
+                                         std::string labels[] = {"Off", "Both", "Left", "Right"};
                                          return labels[value];
                                      },
                                      isHandTrackingSupported});
-            m_originalHandTrackingEnabled = m_configManager->getValue(SettingHandTrackingEnabled);
+            m_originalHandTrackingEnabled = isHandTrackingEnabled();
+            m_handTrackingGroup.start = m_menuEntries.size();
+            m_menuEntries.push_back(
+                {"Hand Visibility",
+                 MenuEntryType::Slider,
+                 SettingHandVisibilityAndSkinTone,
+                 0,
+                 4,
+                 [](int value) {
+                     std::string labels[] = {
+                         "Hidden", "Visible - Bright", "Visible - Medium", "Visible - Dark", "Visible - Darker"};
+                     return labels[value];
+                 },
+                 isHandTrackingSupported});
+            m_handTrackingGroup.end = m_menuEntries.size();
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
             m_menuEntries.push_back({"Font size",
@@ -263,6 +277,7 @@ namespace {
             };
 
             updateGroupVisibility(m_upscalingGroup, getCurrentScalingType() != ScalingType::None);
+            updateGroupVisibility(m_handTrackingGroup, isHandTrackingEnabled());
         }
 
         void calibrate(const XrPosef& poseLeft,
@@ -538,12 +553,17 @@ namespace {
             return m_configManager->getEnumValue<ScalingType>(SettingScalingType);
         }
 
+        bool isHandTrackingEnabled() const {
+            return m_configManager->getEnumValue<HandTrackingEnabled>(SettingHandTrackingEnabled) !=
+                   HandTrackingEnabled::Off;
+        }
+
         uint32_t getCurrentScaling() const {
             return m_configManager->getValue(SettingScaling);
         }
 
         bool checkNeedRestartCondition() const {
-            if (m_originalHandTrackingEnabled != !!m_configManager->getValue(SettingHandTrackingEnabled) ||
+            if (m_originalHandTrackingEnabled != isHandTrackingEnabled() ||
                 m_originalScalingType != getCurrentScalingType()) {
                 return true;
             }
@@ -570,6 +590,7 @@ namespace {
         bool m_menuControlKeyState{false};
 
         MenuGroup m_upscalingGroup;
+        MenuGroup m_handTrackingGroup;
 
         uint32_t m_originalScalingValue{0};
         ScalingType m_originalScalingType{ScalingType::None};

@@ -45,6 +45,9 @@ namespace {
     using namespace xr::math;
 
     constexpr XrVector3f Bright1{255 / 255.f, 219 / 255.f, 172 / 255.f};
+    constexpr XrVector3f Medium1{224 / 255.f, 172 / 255.f, 105 / 255.f};
+    constexpr XrVector3f Dark1{141 / 255.f, 85 / 255.f, 36 / 255.f};
+    constexpr XrVector3f Darker1{77 / 255.f, 42 / 255.f, 34 / 255.f};
 
     // Vertices for a 1x1x1 meter cube. (Left/Right, Top/Bottom, Front/Back)
     constexpr XrVector3f LBB{-0.5f, -0.5f, -0.5f};
@@ -59,14 +62,19 @@ namespace {
 #define CUBE_SIDE(V1, V2, V3, V4, V5, V6, COLOR)                                                                       \
     {V1, COLOR}, {V2, COLOR}, {V3, COLOR}, {V4, COLOR}, {V5, COLOR}, {V6, COLOR},
 
-    constexpr SimpleMeshVertex c_cubeVertices[] = {
-        CUBE_SIDE(LTB, LBF, LBB, LTB, LTF, LBF, Bright1) // -X
-        CUBE_SIDE(RTB, RBB, RBF, RTB, RBF, RTF, Bright1) // +X
-        CUBE_SIDE(LBB, LBF, RBF, LBB, RBF, RBB, Bright1) // -Y
-        CUBE_SIDE(LTB, RTB, RTF, LTB, RTF, LTF, Bright1) // +Y
-        CUBE_SIDE(LBB, RBB, RTB, LBB, RTB, LTB, Bright1) // -Z
-        CUBE_SIDE(LBF, LTF, RTF, LBF, RTF, RBF, Bright1) // +Z
-    };
+#define CUBE_VERTICES(Color)                                                                                           \
+    constexpr SimpleMeshVertex c_cube##Color##Vertices[] = {                                                           \
+        CUBE_SIDE(LTB, LBF, LBB, LTB, LTF, LBF, Color##1) CUBE_SIDE(RTB, RBB, RBF, RTB, RBF, RTF, Color##1)            \
+            CUBE_SIDE(LBB, LBF, RBF, LBB, RBF, RBB, Color##1) CUBE_SIDE(LTB, RTB, RTF, LTB, RTF, LTF, Color##1)        \
+                CUBE_SIDE(LBB, RBB, RTB, LBB, RTB, LTB, Color##1) CUBE_SIDE(LBF, LTF, RTF, LBF, RTF, RBF, Color##1)};
+
+    CUBE_VERTICES(Bright);
+    CUBE_VERTICES(Medium);
+    CUBE_VERTICES(Dark);
+    CUBE_VERTICES(Darker);
+
+#undef CUBE_VERTICES
+#undef CUBE_SIDE
 
     constexpr unsigned short c_cubeIndices[] = {
         0,  1,  2,  3,  4,  5,  // -X
@@ -352,16 +360,23 @@ namespace {
             referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
             CHECK_XRCMD(m_openXR.xrCreateReferenceSpace(session, &referenceSpaceCreateInfo, &m_referenceSpace));
 
-            std::vector<SimpleMeshVertex> vertices;
-            copyFromArray(vertices, c_cubeVertices);
             std::vector<uint16_t> indices;
             copyFromArray(indices, c_cubeIndices);
-            m_jointMesh = m_graphicsDevice->createSimpleMesh(vertices, indices, "Joint Mesh");
+            std::vector<SimpleMeshVertex> vertices;
+
+            copyFromArray(vertices, c_cubeBrightVertices);
+            m_jointMesh.push_back(m_graphicsDevice->createSimpleMesh(vertices, indices, "Joint Mesh"));
+            copyFromArray(vertices, c_cubeMediumVertices);
+            m_jointMesh.push_back(m_graphicsDevice->createSimpleMesh(vertices, indices, "Joint Mesh"));
+            copyFromArray(vertices, c_cubeDarkVertices);
+            m_jointMesh.push_back(m_graphicsDevice->createSimpleMesh(vertices, indices, "Joint Mesh"));
+            copyFromArray(vertices, c_cubeDarkerVertices);
+            m_jointMesh.push_back(m_graphicsDevice->createSimpleMesh(vertices, indices, "Joint Mesh"));
         }
 
         void endSession() override {
             m_graphicsDevice.reset();
-            m_jointMesh.reset();
+            m_jointMesh.clear();
 
             if (m_referenceSpace != XR_NULL_HANDLE) {
                 m_openXR.xrDestroySpace(m_referenceSpace);
@@ -403,6 +418,14 @@ namespace {
                 }
             }
 
+            // Inhibit one and or the other if request. The config file acts as a global override.
+            const auto handTrackingEnabled =
+                m_configManager->getEnumValue<HandTrackingEnabled>(SettingHandTrackingEnabled);
+            m_leftHandEnabled = m_config.leftHandEnabled && (handTrackingEnabled == HandTrackingEnabled::Both ||
+                                                             handTrackingEnabled == HandTrackingEnabled::Left);
+            m_rightHandEnabled = m_config.rightHandEnabled && (handTrackingEnabled == HandTrackingEnabled::Both ||
+                                                               handTrackingEnabled == HandTrackingEnabled::Right);
+
             // Gesture detection.
             for (auto& action : m_actions) {
                 // Only sync actions for the specified action sets.
@@ -434,8 +457,8 @@ namespace {
 
             const auto& actionSpace = actionSpaceIt->second;
 
-            if ((actionSpace.hand == Hand::Left && !m_config.leftHandEnabled) ||
-                (actionSpace.hand == Hand::Right && !m_config.rightHandEnabled)) {
+            if ((actionSpace.hand == Hand::Left && !m_leftHandEnabled) ||
+                (actionSpace.hand == Hand::Right && !m_rightHandEnabled)) {
                 return false;
             }
 
@@ -456,9 +479,17 @@ namespace {
         void render(const XrPosef& pose,
                     XrSpace baseSpace,
                     std::shared_ptr<graphics::ITexture> renderTarget) const override {
-            // TODO: Support skin tone.
             // TODO: Support opacity.
+            const int meshIndex = m_configManager->getValue(SettingHandVisibilityAndSkinTone) - 1;
+            if (meshIndex < 0) {
+                return;
+            }
+
             for (uint32_t hand = 0; hand < HandCount; hand++) {
+                if ((!m_leftHandEnabled && hand == 0) || (!m_rightHandEnabled && hand == 1)) {
+                    continue;
+                }
+
                 const auto& jointPoses =
                     getCachedHandJointPoses(hand ? Hand::Right : Hand::Left, m_thisFrameTime, baseSpace);
 
@@ -470,7 +501,7 @@ namespace {
                     XrVector3f scaling{jointPoses[joint].radius,
                                        min(0.0025f, jointPoses[joint].radius),
                                        max(0.015f, jointPoses[joint].radius)};
-                    m_graphicsDevice->draw(m_jointMesh, jointPoses[joint].pose, scaling);
+                    m_graphicsDevice->draw(m_jointMesh[meshIndex], jointPoses[joint].pose, scaling);
                 }
             }
         }
@@ -577,10 +608,14 @@ namespace {
         XrPath m_interactionProfile{XR_NULL_PATH};
 
         std::shared_ptr<IDevice> m_graphicsDevice;
-        std::shared_ptr<ISimpleMesh> m_jointMesh;
+        // One mesh for each color.
+        std::vector<std::shared_ptr<ISimpleMesh>> m_jointMesh;
 
         XrHandTrackerEXT m_handTracker[2]{XR_NULL_HANDLE, XR_NULL_HANDLE};
         XrTime m_thisFrameTime{0};
+
+        bool m_leftHandEnabled{true};
+        bool m_rightHandEnabled{true};
 
         std::map<XrSpace, ActionSpace> m_actionSpaces;
         std::map<XrActionSet, std::set<XrAction>> m_actionSets;
