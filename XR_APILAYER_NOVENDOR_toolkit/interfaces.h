@@ -324,7 +324,7 @@ namespace toolkit {
             virtual Api getApi() const = 0;
             virtual std::shared_ptr<IDevice> getDevice() const = 0;
 
-            virtual void uploadData(void* buffer, size_t count) = 0;
+            virtual void uploadData(const void* buffer, size_t count) = 0;
 
             virtual void* getNativePtr() const = 0;
 

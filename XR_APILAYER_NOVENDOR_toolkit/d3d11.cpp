@@ -23,6 +23,7 @@
 
 #include "pch.h"
 
+#include "d3dcommon.h"
 #include "shader_utilities.h"
 #include "factories.h"
 #include "interfaces.h"
@@ -32,58 +33,15 @@ namespace {
 
     using namespace toolkit;
     using namespace toolkit::graphics;
+    using namespace toolkit::graphics::d3dcommon;
     using namespace toolkit::log;
-
-    struct ModelConstantBuffer {
-        DirectX::XMFLOAT4X4 Model;
-    };
-
-    struct ViewProjectionConstantBuffer {
-        DirectX::XMFLOAT4X4 ViewProjection;
-    };
-
-    const std::string MeshShaders = R"_(
-struct VSOutput {
-    float4 Pos : SV_POSITION;
-    float3 Color : COLOR0;
-};
-struct VSInput {
-    float3 Pos : POSITION;
-    float3 Color : COLOR0;
-};
-cbuffer ModelConstantBuffer : register(b0) {
-    float4x4 Model;
-};
-cbuffer ViewProjectionConstantBuffer : register(b1) {
-    float4x4 ViewProjection;
-};
-
-VSOutput vsMain(VSInput input) {
-    VSOutput output;
-    output.Pos = mul(mul(float4(input.Pos, 1), Model), ViewProjection);
-    output.Color = input.Color;
-    return output;
-}
-
-float4 psMain(VSOutput input) : SV_TARGET {
-    return float4(input.Color, 1);
-}
-)_";
-
-    const std::string QuadVertexShader = R"_(
-void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out float2 texcoord : TEXCOORD0)
-{
-    texcoord = float2((id == 1) ? 2.0 : 0.0, (id == 2) ? 2.0 : 0.0);
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-}
-)_";
 
     const std::wstring FontFamily = L"Segoe UI Symbol";
 
     // Wrap a pixel shader resource. Obtained from D3D11Device.
     class D3D11QuadShader : public IQuadShader {
       public:
-        D3D11QuadShader(std::shared_ptr<IDevice> device, ComPtr<ID3D11PixelShader> pixelShader)
+        D3D11QuadShader(std::shared_ptr<IDevice> device, ID3D11PixelShader* pixelShader)
             : m_device(device), m_pixelShader(pixelShader) {
         }
 
@@ -108,7 +66,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
     class D3D11ComputeShader : public IComputeShader {
       public:
         D3D11ComputeShader(std::shared_ptr<IDevice> device,
-                           ComPtr<ID3D11ComputeShader> computeShader,
+                           ID3D11ComputeShader* computeShader,
                            const std::array<unsigned int, 3>& threadGroups)
             : m_device(device), m_computeShader(computeShader), m_threadGroups(threadGroups) {
         }
@@ -142,7 +100,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
     // Wrap a texture shader resource view. Obtained from D3D11Texture.
     class D3D11ShaderResourceView : public IShaderInputTextureView {
       public:
-        D3D11ShaderResourceView(std::shared_ptr<IDevice> device, ComPtr<ID3D11ShaderResourceView> shaderResourceView)
+        D3D11ShaderResourceView(std::shared_ptr<IDevice> device, ID3D11ShaderResourceView* shaderResourceView)
             : m_device(device), m_shaderResourceView(shaderResourceView) {
         }
 
@@ -166,7 +124,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
     // Wrap a texture unordered access view. Obtained from D3D11Texture.
     class D3D11UnorderedAccessView : public IComputeShaderOutputView {
       public:
-        D3D11UnorderedAccessView(std::shared_ptr<IDevice> device, ComPtr<ID3D11UnorderedAccessView> unorderedAccessView)
+        D3D11UnorderedAccessView(std::shared_ptr<IDevice> device, ID3D11UnorderedAccessView* unorderedAccessView)
             : m_device(device), m_unorderedAccessView(unorderedAccessView) {
         }
 
@@ -190,7 +148,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
     // Wrap a render target view. Obtained from D3D11Texture.
     class D3D11RenderTargetView : public IRenderTargetView {
       public:
-        D3D11RenderTargetView(std::shared_ptr<IDevice> device, ComPtr<ID3D11RenderTargetView> renderTargetView)
+        D3D11RenderTargetView(std::shared_ptr<IDevice> device, ID3D11RenderTargetView* renderTargetView)
             : m_device(device), m_renderTargetView(renderTargetView) {
         }
 
@@ -214,7 +172,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
     // Wrap a depth/stencil buffer view. Obtained from D3D11Texture.
     class D3D11DepthStencilView : public IDepthStencilView {
       public:
-        D3D11DepthStencilView(std::shared_ptr<IDevice> device, ComPtr<ID3D11DepthStencilView> depthStencilView)
+        D3D11DepthStencilView(std::shared_ptr<IDevice> device, ID3D11DepthStencilView* depthStencilView)
             : m_device(device), m_depthStencilView(depthStencilView) {
         }
 
@@ -241,7 +199,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
         D3D11Texture(std::shared_ptr<IDevice> device,
                      const XrSwapchainCreateInfo& info,
                      const D3D11_TEXTURE2D_DESC& textureDesc,
-                     ComPtr<ID3D11Texture2D> texture)
+                     ID3D11Texture2D* texture)
             : m_device(device), m_info(info), m_textureDesc(textureDesc), m_texture(texture) {
             m_shaderResourceSubView.resize(info.arraySize);
             m_unorderedAccessSubView.resize(info.arraySize);
@@ -333,7 +291,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 ComPtr<ID3D11ShaderResourceView> srv;
                 CHECK_HRCMD(device->CreateShaderResourceView(m_texture.Get(), &desc, &srv));
 
-                shaderResourceView = std::make_shared<D3D11ShaderResourceView>(m_device, srv);
+                shaderResourceView = std::make_shared<D3D11ShaderResourceView>(m_device, srv.Get());
             }
             return shaderResourceView;
         }
@@ -359,7 +317,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 ComPtr<ID3D11UnorderedAccessView> uav;
                 CHECK_HRCMD(device->CreateUnorderedAccessView(m_texture.Get(), &desc, &uav));
 
-                unorderedAccessView = std::make_shared<D3D11UnorderedAccessView>(m_device, uav);
+                unorderedAccessView = std::make_shared<D3D11UnorderedAccessView>(m_device, uav.Get());
             }
             return unorderedAccessView;
         }
@@ -385,7 +343,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 ComPtr<ID3D11RenderTargetView> rtv;
                 CHECK_HRCMD(device->CreateRenderTargetView(m_texture.Get(), &desc, &rtv));
 
-                renderTargetView = std::make_shared<D3D11RenderTargetView>(m_device, rtv);
+                renderTargetView = std::make_shared<D3D11RenderTargetView>(m_device, rtv.Get());
             }
             return renderTargetView;
         }
@@ -411,7 +369,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 ComPtr<ID3D11DepthStencilView> rtv;
                 CHECK_HRCMD(device->CreateDepthStencilView(m_texture.Get(), &desc, &rtv));
 
-                depthStencilView = std::make_shared<D3D11DepthStencilView>(m_device, rtv);
+                depthStencilView = std::make_shared<D3D11DepthStencilView>(m_device, rtv.Get());
             }
             return depthStencilView;
         }
@@ -434,7 +392,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
     // Wrap a constant buffer. Obtained from D3D11Device.
     class D3D11Buffer : public IShaderBuffer {
       public:
-        D3D11Buffer(std::shared_ptr<IDevice> device, D3D11_BUFFER_DESC bufferDesc, ComPtr<ID3D11Buffer> buffer)
+        D3D11Buffer(std::shared_ptr<IDevice> device, D3D11_BUFFER_DESC bufferDesc, ID3D11Buffer* buffer)
             : m_device(device), m_bufferDesc(bufferDesc), m_buffer(buffer) {
         }
 
@@ -446,7 +404,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             return m_device;
         }
 
-        void uploadData(void* buffer, size_t count) override {
+        void uploadData(const void* buffer, size_t count) override {
             if (m_bufferDesc.ByteWidth != count) {
                 throw new std::runtime_error("Upload size mismatch");
             }
@@ -473,9 +431,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
     class D3D11SimpleMesh : public ISimpleMesh {
       public:
         D3D11SimpleMesh(std::shared_ptr<IDevice> device,
-                        ComPtr<ID3D11Buffer> vertexBuffer,
+                        ID3D11Buffer* vertexBuffer,
                         size_t stride,
-                        ComPtr<ID3D11Buffer> indexBuffer,
+                        ID3D11Buffer* indexBuffer,
                         size_t numIndices)
             : m_device(device), m_vertexBuffer(vertexBuffer), m_indexBuffer(indexBuffer) {
             m_meshData.vertexBuffer = m_vertexBuffer.Get();
@@ -599,8 +557,10 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                                std::back_inserter(m_deviceName),
                                [](wchar_t c) { return (char)c; });
 
-                // Log the adapter name to help debugging customer issues.
-                Log("Using Direct3D 11 on adapter: %s\n", m_deviceName.c_str());
+                if (!textOnly) {
+                    // Log the adapter name to help debugging customer issues.
+                    Log("Using Direct3D 11 on adapter: %s\n", m_deviceName.c_str());
+                }
             }
 
             // Create common resources.
@@ -727,7 +687,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 texture->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName->size(), debugName->c_str());
             }
 
-            return std::make_shared<D3D11Texture>(shared_from_this(), info, desc, texture);
+            return std::make_shared<D3D11Texture>(shared_from_this(), info, desc, texture.Get());
         }
 
         std::shared_ptr<IShaderBuffer> createBuffer(size_t size,
@@ -756,7 +716,7 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                 buffer->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName->size(), debugName->c_str());
             }
 
-            return std::make_shared<D3D11Buffer>(shared_from_this(), desc, buffer);
+            return std::make_shared<D3D11Buffer>(shared_from_this(), desc, buffer.Get());
         }
 
         std::shared_ptr<ISimpleMesh> createSimpleMesh(std::vector<SimpleMeshVertex>& vertices,
@@ -798,11 +758,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             ComPtr<ID3DBlob> psBytes;
             if (!includePath.empty()) {
                 utilities::shader::IncludeHeader includes({includePath});
-                utilities::shader::CompileShader(
-                    m_device.Get(), shaderPath, entryPoint, &psBytes, defines, &includes, "ps_5_0");
+                utilities::shader::CompileShader(shaderPath, entryPoint, &psBytes, defines, &includes, "ps_5_0");
             } else {
-                utilities::shader::CompileShader(
-                    m_device.Get(), shaderPath, entryPoint, &psBytes, defines, nullptr, "ps_5_0");
+                utilities::shader::CompileShader(shaderPath, entryPoint, &psBytes, defines, nullptr, "ps_5_0");
             }
 
             ComPtr<ID3D11PixelShader> compiledShader;
@@ -825,11 +783,9 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
             ComPtr<ID3DBlob> csBytes;
             if (!includePath.empty()) {
                 utilities::shader::IncludeHeader includes({includePath});
-                utilities::shader::CompileShader(
-                    m_device.Get(), shaderPath, entryPoint, &csBytes, defines, &includes, "cs_5_0");
+                utilities::shader::CompileShader(shaderPath, entryPoint, &csBytes, defines, &includes, "cs_5_0");
             } else {
-                utilities::shader::CompileShader(
-                    m_device.Get(), shaderPath, entryPoint, &csBytes, defines, nullptr, "cs_5_0");
+                utilities::shader::CompileShader(shaderPath, entryPoint, &csBytes, defines, nullptr, "cs_5_0");
             }
 
             ComPtr<ID3D11ComputeShader> compiledShader;
@@ -918,13 +874,6 @@ void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out flo
                     setRenderTargets({std::make_pair(output, slice)}, {});
                 }
 
-                D3D11_VIEWPORT viewport;
-                ZeroMemory(&viewport, sizeof(viewport));
-                viewport.TopLeftX = 0.0f;
-                viewport.TopLeftY = 0.0f;
-                viewport.Width = (float)output->getInfo().width;
-                viewport.Height = (float)output->getInfo().height;
-                m_currentContext->RSSetViewports(1, &viewport);
                 m_currentContext->RSSetState(output->getInfo().sampleCount > 1 ? m_quadRasterizerMSAA.Get()
                                                                                : m_quadRasterizer.Get());
                 m_currentShaderHighestRTV = max(m_currentShaderHighestRTV, slot);

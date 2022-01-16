@@ -71,6 +71,9 @@
     <ClInclude Include="..\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h">
       <Filter>Shader Files\FSR</Filter>
     </ClInclude>
+    <ClInclude Include="d3dcommon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
