@@ -164,6 +164,7 @@ namespace {
             m_shaderVPRT = m_device->createComputeShader(
                 shaderPath.string(), "main", "NISScaler VPRT CS", threadGroups, defines.get(), shadersDir.string());
 
+            // TODO: To support D3D12, we must query the alignment constraints from the graphics device.
             const int rowPitch = kFilterSize * 4;
             const int imageSize = rowPitch * kPhaseCount;
 

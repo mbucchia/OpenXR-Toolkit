@@ -242,11 +242,8 @@ namespace {
                         break;
                     }
 
-                    // XXX: Workaround: For now D3D12 support is extremely limited.
-                    if (m_graphicsDevice->getApi() != graphics::Api::D3D12) {
-                        m_postProcessor =
-                            graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
-                    }
+                    m_postProcessor =
+                        graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
 
                     m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.endFrameCpuTimer = utilities::CreateCpuTimer();
@@ -865,6 +862,10 @@ namespace {
 
             std::vector<XrCompositionLayerProjection> layerProjectionAllocator;
             std::vector<std::array<XrCompositionLayerProjectionView, 2>> layerProjectionViewsAllocator;
+
+            // We must reserve the underlying storage to keep our pointers stable.
+            layerProjectionAllocator.reserve(chainFrameEndInfo.layerCount);
+            layerProjectionViewsAllocator.reserve(chainFrameEndInfo.layerCount);
 
             // Apply the processing chain to all the (supported) layers.
             for (uint32_t i = 0; i < chainFrameEndInfo.layerCount; i++) {

@@ -28,9 +28,9 @@
 namespace toolkit::utilities::shader {
 
     using namespace toolkit::log;
+    using namespace toolkit::log;
 
-    inline void CompileShader(ID3D11Device* device,
-                              const std::string& fileName,
+    inline void CompileShader(const std::string& fileName,
                               const std::string& entryPoint,
                               ID3DBlob** blob,
                               const D3D_SHADER_MACRO* defines = nullptr,
