@@ -157,6 +157,18 @@ namespace LAYER_NAMESPACE {
             LAYER_NAMESPACE::GetInstance()->SetGetInstanceProcAddr(apiLayerInfo->nextInfo->nextGetInstanceProcAddr,
                                                                    *instance);
 
+            // Record the other layers being used here. This is useful when evaluating features based not just on
+            // XrInstanceCreateInfo.
+            std::vector<std::string> upstreamLayers;
+            // We skip the first entry (ourself).
+            XrApiLayerNextInfo* entry = apiLayerInfo->nextInfo->next;
+            while (entry) {
+                upstreamLayers.push_back(entry->layerName);
+                entry = entry->next;
+            }
+
+            LAYER_NAMESPACE::GetInstance()->SetUpstreamLayers(upstreamLayers);
+
             result = XR_ERROR_RUNTIME_FAILURE;
 
             // Forward the xrCreateInstance() call to the layer.

@@ -74,7 +74,7 @@ namespace {
                     bool isHandTrackingSupported,
                     bool isPredictionDampeningSupported)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
-              m_displayHeight(displayHeight) {
+              m_displayHeight(displayHeight), m_isHandTrackingSupported(isHandTrackingSupported) {
             m_lastInput = std::chrono::steady_clock::now();
 
             // We display the hint for menu hotkeys for the first few runs.
@@ -173,7 +173,9 @@ namespace {
                  },
                  isHandTrackingSupported});
             m_handTrackingGroup.end = m_menuEntries.size();
-            m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
+            if (isHandTrackingSupported) {
+                m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
+            }
 
             m_menuEntries.push_back({"Font size",
                                      MenuEntryType::Choice,
@@ -564,8 +566,8 @@ namespace {
         }
 
         bool isHandTrackingEnabled() const {
-            return m_configManager->getEnumValue<HandTrackingEnabled>(SettingHandTrackingEnabled) !=
-                   HandTrackingEnabled::Off;
+            return m_isHandTrackingSupported && m_configManager->getEnumValue<HandTrackingEnabled>(
+                                                    SettingHandTrackingEnabled) != HandTrackingEnabled::Off;
         }
 
         uint32_t getCurrentScaling() const {
@@ -589,6 +591,7 @@ namespace {
         const std::shared_ptr<IDevice> m_device;
         const uint32_t m_displayWidth;
         const uint32_t m_displayHeight;
+        const bool m_isHandTrackingSupported;
         LayerStatistics m_stats{};
 
         int m_numSplashLeft;

@@ -77,12 +77,12 @@ namespace {
             // Dump the OpenXR runtime information to help debugging customer issues.
             XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES};
             CHECK_XRCMD(xrGetInstanceProperties(GetXrInstance(), &instanceProperties));
-            const std::string runtimeName(instanceProperties.runtimeName);
-            Log("Using OpenXR runtime %s, version %u.%u.%u\n",
-                runtimeName.c_str(),
-                XR_VERSION_MAJOR(instanceProperties.runtimeVersion),
-                XR_VERSION_MINOR(instanceProperties.runtimeVersion),
-                XR_VERSION_PATCH(instanceProperties.runtimeVersion));
+            m_runtimeName = fmt::format("{} {}.{}.{}",
+                                        instanceProperties.runtimeName,
+                                        XR_VERSION_MAJOR(instanceProperties.runtimeVersion),
+                                        XR_VERSION_MINOR(instanceProperties.runtimeVersion),
+                                        XR_VERSION_PATCH(instanceProperties.runtimeVersion));
+            Log("Using OpenXR runtime %s\n", m_runtimeName.c_str());
 
             m_configManager = config::CreateConfigManager(createInfo->applicationInfo.applicationName);
 
@@ -119,6 +119,21 @@ namespace {
                 XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES, &handTrackingSystemProperties};
                 OpenXrApi::xrGetSystemProperties(instance, *systemId, &systemProperties);
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
+
+                // Workaround: the WMR runtime supports something called the XR_MSFT_hand_interaction, which will
+                // (falsely) advertise hand tracking support (in reality hand tracking API support from the controller's
+                // input). Check for the Ultraleap layer in this case.
+                if (m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos) {
+                    bool hasUltraleapLayer = false;
+                    for (const auto& layer : GetUpstreamLayers()) {
+                        if (layer == "XR_APILAYER_ULTRALEAP_hand_tracking") {
+                            hasUltraleapLayer = true;
+                        }
+                    }
+                    if (!hasUltraleapLayer) {
+                        m_supportHandTracking = false;
+                    }
+                }
 
                 // We had to initialize the hand tracker early on. If we find out now that hand tracking is not
                 // supported, then destroy it. This could happen if the option was set while a hand tracking device was
@@ -1136,6 +1151,7 @@ namespace {
         }
 
         std::string m_applicationName;
+        std::string m_runtimeName;
         XrSystemId m_vrSystemId{XR_NULL_SYSTEM_ID};
         XrSession m_vrSession{XR_NULL_HANDLE};
         uint32_t m_displayWidth{0};
