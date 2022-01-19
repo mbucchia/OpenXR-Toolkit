@@ -968,14 +968,20 @@ namespace {
                         if (m_upscaler) {
                             nextImage++;
 
-                            m_stats.upscalerGpuTimeUs += swapchainImages.upscalerGpuTimer[gpuTimerIndex]->query();
-                            swapchainImages.upscalerGpuTimer[gpuTimerIndex]->start();
+                            // We allow to bypass scaling when the menu option is turned off. This is only for quick
+                            // comparison/testing, since we're still holding to all the underlying resources.
+                            if (m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType) !=
+                                config::ScalingType::None) {
+                                m_stats.upscalerGpuTimeUs += swapchainImages.upscalerGpuTimer[gpuTimerIndex]->query();
+                                swapchainImages.upscalerGpuTimer[gpuTimerIndex]->start();
 
-                            m_upscaler->upscale(
-                                swapchainImages.chain[lastImage], swapchainImages.chain[nextImage], useVPRT ? eye : -1);
-                            swapchainImages.upscalerGpuTimer[gpuTimerIndex]->stop();
+                                m_upscaler->upscale(swapchainImages.chain[lastImage],
+                                                    swapchainImages.chain[nextImage],
+                                                    useVPRT ? eye : -1);
+                                swapchainImages.upscalerGpuTimer[gpuTimerIndex]->stop();
 
-                            lastImage++;
+                                lastImage++;
+                            }
                         }
 
                         // Perform post-processing.
