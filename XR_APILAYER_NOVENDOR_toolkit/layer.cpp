@@ -131,6 +131,7 @@ namespace {
                         }
                     }
                     if (!hasUltraleapLayer) {
+                        Log("Ignoring XR_MSFT_hand_interaction for %s\n", m_runtimeName.c_str());
                         m_supportHandTracking = false;
                     }
                 }
@@ -138,7 +139,7 @@ namespace {
                 // We had to initialize the hand tracker early on. If we find out now that hand tracking is not
                 // supported, then destroy it. This could happen if the option was set while a hand tracking device was
                 // connected, but later the hand tracking device was disconnected.
-                if (m_handTracker && !m_supportHandTracking) {
+                if (!m_supportHandTracking) {
                     m_handTracker.reset();
                 }
 
@@ -147,7 +148,6 @@ namespace {
                 m_configManager->setDefault(config::SettingScaling, 100);
                 m_configManager->setDefault(config::SettingSharpness, 20);
                 m_configManager->setDefault(config::SettingFOV, 100);
-                m_configManager->setDefault(config::SettingHandTrackingEnabled, 0);
                 m_configManager->setDefault(config::SettingPredictionDampen, 100);
 
                 // Remember the XrSystemId to use.
@@ -1147,7 +1147,9 @@ namespace {
             char buf[XR_MAX_PATH_LENGTH];
             uint32_t count;
             CHECK_XRCMD(xrPathToString(GetXrInstance(), path, sizeof(buf), &count, buf));
-            return std::string(buf, count - 1);
+            std::string str;
+            str.assign(buf, count - 1);
+            return str;
         }
 
         std::string m_applicationName;

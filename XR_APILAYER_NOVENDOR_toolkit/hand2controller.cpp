@@ -246,7 +246,7 @@ namespace {
             }
         }
 
-        void registerActionSpace(XrSpace space, const std::string path, const XrPosef& poseInActionSpace) override {
+        void registerActionSpace(XrSpace space, const std::string& path, const XrPosef& poseInActionSpace) override {
             ActionSpace actionSpace;
 
             if (path.find("/user/hand/left") == 0) {
@@ -267,6 +267,7 @@ namespace {
 
             actionSpace.poseInActionSpace = poseInActionSpace;
 
+            DebugLog("Simulating action space %s\n", path.c_str());
             m_actionSpaces.insert_or_assign(space, actionSpace);
         }
 
@@ -276,7 +277,7 @@ namespace {
 
         void registerBindings(const XrInteractionProfileSuggestedBinding& bindings) override {
             if (bindings.interactionProfile == m_interactionProfile) {
-                Log("Binding to interaction profile: %s\n", getPath(m_interactionProfile));
+                Log("Binding to interaction profile: %s\n", getPath(m_interactionProfile).c_str());
 
                 // Clear any previous mappings.
                 m_actions.clear();
@@ -316,16 +317,10 @@ namespace {
                     SubAction subAction;
                     subAction.hand = hand;
                     subAction.path = fullPath;
+                    DebugLog("Simulating action path %s\n", fullPath.c_str());
                     entry.subActions.insert_or_assign(subActionPath, subAction);
                 }
             }
-        }
-
-        const std::string getPath(XrPath path) {
-            char buf[XR_MAX_PATH_LENGTH];
-            uint32_t count;
-            CHECK_XRCMD(m_openXR.xrPathToString(m_openXR.GetXrInstance(), path, sizeof(buf), &count, buf));
-            return std::string(buf, count - 1);
         }
 
         const std::string getFullPath(XrAction action, XrPath subActionPath) override {
@@ -582,6 +577,15 @@ namespace {
         }
 
       private:
+        const std::string getPath(XrPath path) {
+            char buf[XR_MAX_PATH_LENGTH];
+            uint32_t count;
+            CHECK_XRCMD(m_openXR.xrPathToString(m_openXR.GetXrInstance(), path, sizeof(buf), &count, buf));
+            std::string str;
+            str.assign(buf, count - 1);
+            return str;
+        }
+
         const XrHandJointLocationEXT* getCachedHandJointsPoses(Hand hand,
                                                                XrTime time,
                                                                std::optional<XrSpace> baseSpace) const {
