@@ -70,6 +70,9 @@ namespace {
                 initializeSharpen();
             }
 
+            // TODO: Consider making immutable and create a new buffer in update(). For now, our D3D12 implementation
+            // does not do heap descriptor recycling.
+            m_configBuffer = m_device->createBuffer(sizeof(FSRConstants), "FSR Constants CB");
             update();
         }
 
@@ -102,7 +105,7 @@ namespace {
                 //
                 // config.Const4[3] = hdr ? 1 : 0;
 
-                m_configBuffer = m_device->createBuffer(sizeof(config), "FSR Constants CB", &config, true);
+                m_configBuffer->uploadData(&config, sizeof(config));
             }
         }
 
