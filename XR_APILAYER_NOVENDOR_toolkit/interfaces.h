@@ -509,7 +509,7 @@ namespace toolkit {
             virtual void registerAction(XrAction action, XrActionSet actionSet) = 0;
             virtual void unregisterAction(XrAction action) = 0;
             virtual void registerActionSpace(XrSpace space,
-                                             const std::string path,
+                                             const std::string& path,
                                              const XrPosef& poseInActionSpace) = 0;
             virtual void unregisterActionSpace(XrSpace space) = 0;
 
