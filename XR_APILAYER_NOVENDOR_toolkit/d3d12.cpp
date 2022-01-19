@@ -28,8 +28,6 @@
 #include "interfaces.h"
 #include "log.h"
 
-#define Align(value, pad_to) (((value) + (pad_to)-1) & ~((pad_to)-1))
-
 namespace {
 
     using namespace toolkit;
@@ -788,7 +786,16 @@ namespace {
         }
 
         ~D3D12Device() override {
-            DebugLog("D3D12Device is destructed\n");
+            Log("D3D12Device destroyed\n");
+        }
+
+        void shutdown() override {
+            // Clear all references that could hold a cyclic reference themselves.
+            m_currentComputeShader.reset();
+            m_currentQuadShader.reset();
+            m_currentDrawRenderTarget.reset();
+            m_currentDrawDepthBuffer.reset();
+            m_currentTextRenderTarget.reset();
         }
 
         Api getApi() const override {
@@ -924,7 +931,7 @@ namespace {
                 {
                     D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
                     ZeroMemory(&footprint, sizeof(footprint));
-                    footprint.Footprint.Width = desc.Width;
+                    footprint.Footprint.Width = (UINT)desc.Width;
                     footprint.Footprint.Height = desc.Height;
                     footprint.Footprint.Depth = 1;
                     footprint.Footprint.RowPitch = Align(rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
@@ -1262,18 +1269,22 @@ namespace {
                     rtvs.push_back(*renderTarget.first->getRenderTargetView(slice)->getNative<D3D12>());
                 }
 
-                barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(renderTarget.first->getNative<D3D12>(),
-                                                                        D3D12_RESOURCE_STATE_COMMON,
-                                                                        D3D12_RESOURCE_STATE_RENDER_TARGET));
+                // We assume that the resource is always in the expected state.
+                // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(renderTarget.first->getNative<D3D12>(),
+                //                                                         D3D12_RESOURCE_STATE_COMMON,
+                //                                                         D3D12_RESOURCE_STATE_RENDER_TARGET));
             }
 
             if (depthBuffer.first) {
-                barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(depthBuffer.first->getNative<D3D12>(),
-                                                                        D3D12_RESOURCE_STATE_COMMON,
-                                                                        D3D12_RESOURCE_STATE_DEPTH_WRITE));
+                // We assume that the resource is always in the expected state.
+                // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(depthBuffer.first->getNative<D3D12>(),
+                //                                                         D3D12_RESOURCE_STATE_COMMON,
+                //                                                         D3D12_RESOURCE_STATE_DEPTH_WRITE));
             }
 
-            m_context->ResourceBarrier((UINT)barriers.size(), barriers.data());
+            if (barriers.size()) {
+                m_context->ResourceBarrier((UINT)barriers.size(), barriers.data());
+            }
             m_context->OMSetRenderTargets(
                 (UINT)rtvs.size(),
                 rtvs.data(),
@@ -1423,6 +1434,14 @@ namespace {
             }
             m_currentTextRenderTarget.reset();
             m_isRenderingText = false;
+        }
+
+        uint32_t getBufferAlignmentConstraint() const override {
+            return D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+        }
+
+        uint32_t getTextureAlignmentConstraint() const override {
+            return D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
         }
 
         void* getNativePtr() const override {

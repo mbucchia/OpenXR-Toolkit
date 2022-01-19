@@ -22,6 +22,8 @@
 
 #pragma once
 
+#define Align(value, pad_to) (((value) + (pad_to)-1) & ~((pad_to)-1))
+
 // Standard library.
 #include <array>
 #include <chrono>
