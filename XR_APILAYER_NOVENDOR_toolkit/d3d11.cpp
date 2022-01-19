@@ -572,7 +572,19 @@ namespace {
         }
 
         ~D3D11Device() override {
-            DebugLog("D3D11Device is destructed\n");
+            Log("D3D11Device destroyed\n");
+        }
+
+        void shutdown() override {
+            // Clear all references that could hold a cyclic reference themselves.
+            m_currentComputeShader.reset();
+            m_currentQuadShader.reset();
+            m_currentDrawRenderTarget.reset();
+            m_currentDrawDepthBuffer.reset();
+            m_currentMesh.reset();
+
+            m_meshModelBuffer.reset();
+            m_meshViewProjectionBuffer.reset();
         }
 
         Api getApi() const override {
@@ -1148,6 +1160,14 @@ namespace {
             m_fontNormal->Flush(m_currentContext.Get());
             m_fontBold->Flush(m_currentContext.Get());
             m_currentContext->Flush();
+        }
+
+        uint32_t getBufferAlignmentConstraint() const override {
+            return 16;
+        }
+
+        uint32_t getTextureAlignmentConstraint() const override {
+            return 16;
         }
 
         void* getNativePtr() const override {

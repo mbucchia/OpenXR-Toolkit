@@ -288,6 +288,11 @@ namespace {
         XrResult xrDestroySession(XrSession session) override {
             const XrResult result = OpenXrApi::xrDestroySession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                // Wait for any pending operation to complete.
+                if (m_graphicsDevice) {
+                    m_graphicsDevice->flushContext(true);
+                }
+
                 if (m_handTracker) {
                     m_handTracker->endSession();
                 }
@@ -303,15 +308,17 @@ namespace {
                 m_performanceCounters.overlayCpuTimer.reset();
                 m_swapchains.clear();
                 m_menuHandler.reset();
+                m_graphicsDevice->shutdown();
                 m_graphicsDevice.reset();
                 m_vrSession = XR_NULL_HANDLE;
                 // A good check to ensure there are no resources leak is to confirm that the graphics device is
                 // destroyed _before_ we see this message.
                 // eg:
-                // 2022-01-01 17:15:35 -0800: D3D11Device is destructed
+                // 2022-01-01 17:15:35 -0800: D3D11Device destroyed
                 // 2022-01-01 17:15:35 -0800: Session destroyed
-                // If the order is reversed, then it means that we are not cleaning up the resources properly.
-                DebugLog("Session destroyed\n");
+                // If the order is reversed or the Device is destructed missing, then it means that we are not cleaning
+                // up the resources properly.
+                Log("Session destroyed\n");
             }
 
             return result;

@@ -457,6 +457,11 @@ namespace toolkit {
             virtual void beginText() = 0;
             virtual void flushText() = 0;
 
+            virtual void shutdown() = 0;
+
+            virtual uint32_t getBufferAlignmentConstraint() const = 0;
+            virtual uint32_t getTextureAlignmentConstraint() const = 0;
+
             virtual void* getNativePtr() const = 0;
             virtual void* getContextPtr() const = 0;
 
