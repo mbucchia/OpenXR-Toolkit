@@ -164,9 +164,9 @@ namespace {
             m_shaderVPRT = m_device->createComputeShader(
                 shaderPath.string(), "main", "NISScaler VPRT CS", threadGroups, defines.get(), shadersDir.string());
 
-            // TODO: To support D3D12, we must query the alignment constraints from the graphics device.
             const int rowPitch = kFilterSize * 4;
-            const int imageSize = rowPitch * kPhaseCount;
+            const int rowPitchAligned = Align(rowPitch, m_device->getTextureAlignmentConstraint());
+            const int coefSize = rowPitchAligned * kPhaseCount;
 
             XrSwapchainCreateInfo info;
             ZeroMemory(&info, sizeof(info));
@@ -177,9 +177,18 @@ namespace {
             info.mipCount = 1;
             info.sampleCount = 1;
             info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-            m_coefScale =
-                m_device->createTexture(info, "NIS Scale Coefficients TEX2D", rowPitch, imageSize, &coef_scale);
-            m_coefUSM = m_device->createTexture(info, "NIS USM Coefficients TEX2D", rowPitch, imageSize, &coef_usm);
+            {
+                std::vector<uint32_t> m_coefAligned;
+                createAlignedCoefficients((uint32_t*)coef_scale, m_coefAligned, rowPitchAligned);
+                m_coefScale = m_device->createTexture(
+                    info, "NIS Scale Coefficients TEX2D", rowPitchAligned, coefSize, (void*)m_coefAligned.data());
+            }
+            {
+                std::vector<uint32_t> m_coefAligned;
+                createAlignedCoefficients((uint32_t*)coef_usm, m_coefAligned, rowPitchAligned);
+                m_coefUSM = m_device->createTexture(
+                    info, "NIS USM Coefficients TEX2D", rowPitch, coefSize, (void*)m_coefAligned.data());
+            }
 
             m_isSharpenOnly = false;
         }
@@ -209,6 +218,19 @@ namespace {
 
             // Sharpen does not use the coefficient inputs.
             m_isSharpenOnly = true;
+        }
+
+        // Taken directly from /NVIDIAImageScaling/samples/DX12/src/NVScaler.cpp.
+        template <typename T>
+        void createAlignedCoefficients(const T* data, std::vector<T>& coef, uint32_t rowPitchAligned) {
+            const int rowElements = rowPitchAligned / sizeof(T);
+            const int coefSize = rowElements * kPhaseCount;
+            coef.resize(coefSize);
+            for (uint32_t y = 0; y < kPhaseCount; ++y) {
+                for (uint32_t x = 0; x < kFilterSize; ++x) {
+                    coef[x + y * uint64_t(rowElements)] = data[x + y * kFilterSize];
+                }
+            }
         }
 
         const std::shared_ptr<IConfigManager> m_configManager;
