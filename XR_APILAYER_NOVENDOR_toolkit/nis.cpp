@@ -84,6 +84,8 @@ namespace {
                 initializeSharpen();
             }
 
+            // TODO: Consider making immutable and create a new buffer in update(). For now, our D3D12 implementation
+            // does not do heap descriptor recycling.
             m_configBuffer = m_device->createBuffer(sizeof(NISConfig), "NIS Configuration CB");
             update();
         }
