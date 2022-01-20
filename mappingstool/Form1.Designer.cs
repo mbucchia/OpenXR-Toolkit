@@ -252,6 +252,8 @@ namespace mappingtool
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.status = new System.Windows.Forms.ToolStripStatusLabel();
             this.tooltip = new System.Windows.Forms.ToolTip(this.components);
+            this.rightIndexTipTapAction = new System.Windows.Forms.ComboBox();
+            this.label27 = new System.Windows.Forms.Label();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.groupBox4.SuspendLayout();
@@ -1113,10 +1115,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/x/click (HP/Oculus)",
+            "/input/y/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1161,10 +1161,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/a/click (HP/Oculus)",
+            "/input/b/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1262,10 +1260,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/x/click (HP/Oculus)",
+            "/input/y/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1297,10 +1293,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/x/click (HP/Oculus)",
+            "/input/y/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1332,10 +1326,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/x/click (HP/Oculus)",
+            "/input/y/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1359,6 +1351,8 @@ namespace mappingtool
             // 
             // groupBox16
             // 
+            this.groupBox16.Controls.Add(this.rightIndexTipTapAction);
+            this.groupBox16.Controls.Add(this.label27);
             this.groupBox16.Controls.Add(this.rightPalmTapAction);
             this.groupBox16.Controls.Add(this.label41);
             this.groupBox16.Controls.Add(this.rightWristTapAction);
@@ -1382,10 +1376,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/a/click (HP/Oculus)",
+            "/input/b/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1417,10 +1409,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/a/click (HP/Oculus)",
+            "/input/b/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1478,10 +1468,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/x/click (HP/Oculus)",
+            "/input/y/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1526,10 +1514,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/a/click (HP/Oculus)",
+            "/input/b/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1593,10 +1579,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/x/click (HP/Oculus)",
+            "/input/y/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1628,10 +1612,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/x/click (HP/Oculus)",
+            "/input/y/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1663,10 +1645,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/x/click (HP/Oculus)",
+            "/input/y/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1698,10 +1678,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/x/click (HP/Oculus)",
+            "/input/y/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1752,10 +1730,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/a/click (HP/Oculus)",
+            "/input/b/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1787,10 +1763,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/a/click (HP/Oculus)",
+            "/input/b/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1822,10 +1796,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/a/click (HP/Oculus)",
+            "/input/b/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -1857,10 +1829,8 @@ namespace mappingtool
             "/input/trigger/value",
             "/input/squeeze/value (HP/Oculus only)",
             "/input/squeeze/click",
-            "/input/x/click (HP/Oculus left hand only)",
-            "/input/y/click (HP/Oculus left hand only)",
-            "/input/a/click (HP/Oculus right hand only)",
-            "/input/b/click (HP/Oculus right hand only)",
+            "/input/a/click (HP/Oculus)",
+            "/input/b/click (HP/Oculus)",
             "/input/thumbstick/click",
             "/input/system/click (Windows button)",
             "/input/trackpad/click (WMR 1st gen only)",
@@ -2857,6 +2827,39 @@ namespace mappingtool
             this.status.Name = "status";
             this.status.Size = new System.Drawing.Size(0, 15);
             // 
+            // rightIndexTipTapAction
+            // 
+            this.rightIndexTipTapAction.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.rightIndexTipTapAction.FormattingEnabled = true;
+            this.rightIndexTipTapAction.Items.AddRange(new object[] {
+            "",
+            "/input/menu/click",
+            "/input/trigger/value",
+            "/input/squeeze/value (HP/Oculus only)",
+            "/input/squeeze/click",
+            "/input/a/click (HP/Oculus)",
+            "/input/b/click (HP/Oculus)",
+            "/input/thumbstick/click",
+            "/input/system/click (Windows button)",
+            "/input/trackpad/click (WMR 1st gen only)",
+            "/input/select/click (simple_controller only)"});
+            this.rightIndexTipTapAction.Location = new System.Drawing.Point(130, 126);
+            this.rightIndexTipTapAction.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.rightIndexTipTapAction.Name = "rightIndexTipTapAction";
+            this.rightIndexTipTapAction.Size = new System.Drawing.Size(486, 28);
+            this.rightIndexTipTapAction.TabIndex = 8;
+            this.rightIndexTipTapAction.SelectedIndexChanged += new System.EventHandler(this.rightIndexTipTapAction_SelectedIndexChanged);
+            // 
+            // label27
+            // 
+            this.label27.AutoSize = true;
+            this.label27.Location = new System.Drawing.Point(12, 131);
+            this.label27.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.label27.Name = "label27";
+            this.label27.Size = new System.Drawing.Size(100, 20);
+            this.label27.TabIndex = 4;
+            this.label27.Text = "Index tip tap:";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
@@ -3154,6 +3157,8 @@ namespace mappingtool
         private System.Windows.Forms.Label label84;
         private System.Windows.Forms.TextBox fingerGunNearText;
         private System.Windows.Forms.TrackBar fingerGunNear;
+        private System.Windows.Forms.ComboBox rightIndexTipTapAction;
+        private System.Windows.Forms.Label label27;
     }
 }
 

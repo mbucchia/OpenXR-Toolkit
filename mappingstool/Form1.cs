@@ -87,7 +87,7 @@ namespace mappingtool
             leftSqueezeAction.SelectedIndex = 3; // /input/squeeze/value
             leftWristTapAction.SelectedIndex = 1; // /input/menu/click
             leftPalmTapAction.SelectedIndex = 0;
-            leftIndexTipTapAction.SelectedIndex = 8; // /input/b/click
+            leftIndexTipTapAction.SelectedIndex = 0;
             rightPinchAction.SelectedIndex = 2; // /input/trigger/value
             rightThumbPressAction.SelectedIndex = 0;
             rightIndexBendAction.SelectedIndex = 0;
@@ -95,6 +95,7 @@ namespace mappingtool
             rightSqueezeAction.SelectedIndex = 3; // /input/squeeze/value
             rightWristTapAction.SelectedIndex = 0;
             rightPalmTapAction.SelectedIndex = 0;
+            rightIndexTipTapAction.SelectedIndex = 8; // /input/b/click
             leftCustom1Action.SelectedIndex = 0;
             rightCustom1Action.SelectedIndex = 0;
             interactionProfile.SelectedIndex = 1; // HP Reverb
@@ -362,6 +363,11 @@ namespace mappingtool
         private void leftIndexTipTapAction_SelectedIndexChanged(object sender, EventArgs e)
         {
             UpdateAction("left.index_tip_tap", leftIndexTipTapAction.Text);
+        }
+
+        private void rightIndexTipTapAction_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            UpdateAction("right.index_tip_tap", rightIndexTipTapAction.Text);
         }
 
         private void rightWristTapAction_SelectedIndexChanged(object sender, EventArgs e)
@@ -682,6 +688,7 @@ namespace mappingtool
             rightSqueezeAction_SelectedIndexChanged(null, null);
             rightWristTapAction_SelectedIndexChanged(null, null);
             rightPalmTapAction_SelectedIndexChanged(null, null);
+            rightIndexTipTapAction_SelectedIndexChanged(null, null);
             rightCustom1Action_SelectedIndexChanged(null, null);
             interactionProfile_SelectedIndexChanged(null, null);
 
@@ -858,6 +865,9 @@ namespace mappingtool
                                 break;
                             case "right.palm_tap":
                                 SelectActionByName(rightPalmTapAction, value);
+                                break;
+                            case "right.index_tip_tap":
+                                SelectActionByName(rightIndexTipTapAction, value);
                                 break;
                             case "right.custom1":
                                 SelectActionByName(rightCustom1Action, value);

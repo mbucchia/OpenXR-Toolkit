@@ -34,6 +34,7 @@ namespace toolkit {
         uint64_t postProcessorGpuTimeUs{0};
         uint64_t overlayCpuTimeUs{0};
         uint64_t overlayGpuTimeUs{0};
+        uint64_t handTrackingCpuTimeUs{0};
 
         uint64_t predictionTimeUs{0};
     };
@@ -506,6 +507,18 @@ namespace toolkit {
 
     namespace input {
 
+        struct GesturesState {
+            float pinchValue[2]{NAN, NAN};
+            float thumbPressValue[2]{NAN, NAN};
+            float indexBendValue[2]{NAN, NAN};
+            float fingerGunValue[2]{NAN, NAN};
+            float squeezeValue[2]{NAN, NAN};
+            float wristTapValue[2]{NAN, NAN};
+            float palmTapValue[2]{NAN, NAN};
+            float indexTipTapValue[2]{NAN, NAN};
+            float custom1Value[2]{NAN, NAN};
+        };
+
         struct IHandTracker {
             virtual ~IHandTracker() = default;
 
@@ -534,6 +547,8 @@ namespace toolkit {
 
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateBoolean& state) const = 0;
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateFloat& state) const = 0;
+
+            virtual const GesturesState& getGesturesState() const = 0;
         };
 
     } // namespace input
@@ -555,6 +570,7 @@ namespace toolkit {
                                 const XrPosef& pose,
                                 std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
             virtual void updateStatistics(const LayerStatistics& stats) = 0;
+            virtual void updateGesturesState(const input::GesturesState& state) = 0;
         };
 
     } // namespace menu
