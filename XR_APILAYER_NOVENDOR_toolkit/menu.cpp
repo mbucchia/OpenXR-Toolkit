@@ -32,6 +32,7 @@ namespace {
     using namespace toolkit;
     using namespace toolkit::config;
     using namespace toolkit::graphics;
+    using namespace toolkit::input;
     using namespace toolkit::menu;
     using namespace toolkit::log;
     using namespace toolkit::utilities;
@@ -525,32 +526,53 @@ namespace {
             if (overlayType != OverlayType::None) {
                 float top = topAlign;
 
-#define OVERLAY_COMMON TextStyle::Normal, fontSize, rightAlign, top, ColorSelected, true
+#define OVERLAY_COMMON TextStyle::Normal, fontSize, rightAlign - 200, top, ColorSelected, true
 
                 m_device->drawString(fmt::format("FPS: {}", m_stats.fps), OVERLAY_COMMON);
                 top += 1.05f * fontSize;
 
-                // Advanced displasy.
+                // Advanced display.
                 if (overlayType == OverlayType::Advanced) {
-                    m_device->drawString(fmt::format("app CPU: {}", m_stats.appCpuTimeUs), OVERLAY_COMMON);
-                    top += 1.05f * fontSize;
-                    m_device->drawString(fmt::format("app GPU: {}", m_stats.appGpuTimeUs), OVERLAY_COMMON);
+#define TIMING_STAT(label, name)                                                                                       \
+    m_device->drawString(fmt::format(label ": {}", m_stats.name), OVERLAY_COMMON);                                     \
+    top += 1.05f * fontSize;
+
+                    TIMING_STAT("app CPU", appCpuTimeUs);
+                    TIMING_STAT("app GPU", appGpuTimeUs);
+                    TIMING_STAT("lay CPU", endFrameCpuTimeUs);
+                    TIMING_STAT("pre GPU", preProcessorGpuTimeUs);
+                    TIMING_STAT("scl GPU", upscalerGpuTimeUs);
+                    TIMING_STAT("pst GPU", postProcessorGpuTimeUs);
+                    TIMING_STAT("ovl CPU", overlayCpuTimeUs);
+                    TIMING_STAT("ovl GPU", overlayGpuTimeUs);
+                    if (m_isHandTrackingSupported) {
+                        TIMING_STAT("hnd CPU", handTrackingCpuTimeUs);
+                    }
+
+#undef TIMING_STAT
+
                     top += 1.05f * fontSize;
 
-                    m_device->drawString(fmt::format("lay CPU: {}", m_stats.endFrameCpuTimeUs), OVERLAY_COMMON);
-                    top += 1.05f * fontSize;
+#define GESTURE_STATE(label, name)                                                                                     \
+    m_device->drawString(                                                                                              \
+        fmt::format(label ": {:.2f}/{:.2f}", m_gesturesState.name##Value[0], m_gesturesState.name##Value[1]),          \
+        OVERLAY_COMMON);                                                                                               \
+    top += 1.05f * fontSize;
 
-                    m_device->drawString(fmt::format("pre GPU: {}", m_stats.preProcessorGpuTimeUs), OVERLAY_COMMON);
-                    top += 1.05f * fontSize;
-                    m_device->drawString(fmt::format("scl GPU: {}", m_stats.upscalerGpuTimeUs), OVERLAY_COMMON);
-                    top += 1.05f * fontSize;
-                    m_device->drawString(fmt::format("pst GPU: {}", m_stats.postProcessorGpuTimeUs), OVERLAY_COMMON);
-                    top += 1.05f * fontSize;
+                    if (m_isHandTrackingSupported && m_configManager->getEnumValue<HandTrackingEnabled>(
+                                                         SettingHandTrackingEnabled) != HandTrackingEnabled::Off) {
+                        GESTURE_STATE("pinch", pinch);
+                        GESTURE_STATE("thb.pr", thumbPress);
+                        GESTURE_STATE("indx.b", indexBend);
+                        GESTURE_STATE("f.gun", fingerGun);
+                        GESTURE_STATE("squze", squeeze);
+                        GESTURE_STATE("wrist", wristTap);
+                        GESTURE_STATE("palm", palmTap);
+                        GESTURE_STATE("tiptap", indexTipTap);
+                        GESTURE_STATE("cust1", custom1);
+                    }
 
-                    m_device->drawString(fmt::format("ovl CPU: {}", m_stats.overlayCpuTimeUs), OVERLAY_COMMON);
-                    top += 1.05f * fontSize;
-                    m_device->drawString(fmt::format("ovl GPU: {}", m_stats.overlayGpuTimeUs), OVERLAY_COMMON);
-                    top += 1.05f * fontSize;
+#undef GESTURE_STATE
                 }
 #undef OVERLAY_COMMON
             }
@@ -558,6 +580,10 @@ namespace {
 
         void updateStatistics(const LayerStatistics& stats) override {
             m_stats = stats;
+        }
+
+        void updateGesturesState(const GesturesState& state) override {
+            m_gesturesState = state;
         }
 
       private:
@@ -593,6 +619,7 @@ namespace {
         const uint32_t m_displayHeight;
         const bool m_isHandTrackingSupported;
         LayerStatistics m_stats{};
+        GesturesState m_gesturesState{};
 
         int m_numSplashLeft;
         std::vector<MenuEntry> m_menuEntries;

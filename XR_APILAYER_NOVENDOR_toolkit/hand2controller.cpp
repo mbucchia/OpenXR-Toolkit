@@ -576,6 +576,10 @@ namespace {
             return true;
         }
 
+        const GesturesState& getGesturesState() const override {
+            return m_gesturesState;
+        }
+
       private:
         const std::string getPath(XrPath path) {
             char buf[XR_MAX_PATH_LENGTH];
@@ -649,16 +653,10 @@ namespace {
 #define ONE_HANDED_GESTURE(configName, joint1, joint2)                                                                 \
     do {                                                                                                               \
         if (!m_config.configName##Action[side].empty()) {                                                              \
-            recordActionValue(hand,                                                                                    \
-                              m_config.configName##Action[side],                                                       \
-                              ignore,                                                                                  \
-                              computeJointActionValue(jointsPoses,                                                     \
-                                                      (joint1),                                                        \
-                                                      jointsPoses,                                                     \
-                                                      (joint2),                                                        \
-                                                      m_config.configName##Near,                                       \
-                                                      m_config.configName##Far),                                       \
-                              now);                                                                                    \
+            const auto value = computeJointActionValue(                                                                \
+                jointsPoses, (joint1), jointsPoses, (joint2), m_config.configName##Near, m_config.configName##Far);    \
+            m_gesturesState.configName##Value[side] = value;                                                           \
+            recordActionValue(hand, m_config.configName##Action[side], ignore, value, now);                            \
         }                                                                                                              \
     } while (false);
 
@@ -708,22 +706,21 @@ namespace {
 
                     // Ignore the lowest value, average the other ones.
                     const float value = (squeeze[1] + squeeze[2]) / 2.f;
+                    m_gesturesState.squeezeValue[side] = value;
                     recordActionValue(hand, m_config.squeezeAction[side], ignore, value, now);
                 }
 
 #define TWO_HANDED_GESTURE(configName, joint1, joint2)                                                                 \
     do {                                                                                                               \
         if (!m_config.configName##Action[side].empty()) {                                                              \
-            recordActionValue(hand,                                                                                    \
-                              m_config.configName##Action[side],                                                       \
-                              ignore,                                                                                  \
-                              computeJointActionValue(jointsPoses,                                                     \
-                                                      (joint1),                                                        \
-                                                      jointsPosesOtherHand,                                            \
-                                                      (joint2),                                                        \
-                                                      m_config.configName##Near,                                       \
-                                                      m_config.configName##Far),                                       \
-                              now);                                                                                    \
+            const auto value = computeJointActionValue(jointsPoses,                                                    \
+                                                       (joint1),                                                       \
+                                                       jointsPosesOtherHand,                                           \
+                                                       (joint2),                                                       \
+                                                       m_config.configName##Near,                                      \
+                                                       m_config.configName##Far);                                      \
+            m_gesturesState.configName##Value[side] = value;                                                           \
+            recordActionValue(hand, m_config.configName##Action[side], ignore, value, now);                            \
         }                                                                                                              \
     } while (false);
 
@@ -823,6 +820,8 @@ namespace {
         std::map<XrActionSet, std::set<XrAction>> m_actionSets;
         std::map<XrAction, Action> m_actions;
 
+        GesturesState m_gesturesState{};
+
         mutable std::optional<XrSpace> m_preferredBaseSpace;
 
         // TODO: These should be auto-generated and accessible via OpenXrApi.
@@ -861,9 +860,8 @@ namespace {
         wristTapAction[1] = "";
         wristTapNear = 0.04f;
         wristTapFar = 0.05f;
-        // This gesture only makes sense for one hand, but we leave it symmetrical for simplicity.
-        indexTipTapAction[0] = "/input/b/click";
-        indexTipTapAction[1] = "";
+        indexTipTapAction[0] = "";
+        indexTipTapAction[1] = "/input/b/click";
         indexTipTapNear = 0.0f;
         indexTipTapFar = 0.07f;
         // Custom gesture is unconfigured.
