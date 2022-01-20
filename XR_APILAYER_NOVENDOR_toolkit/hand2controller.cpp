@@ -282,6 +282,7 @@ namespace {
                 // Clear any previous mappings.
                 m_actions.clear();
 
+                bool hasSystemClick = false;
                 for (uint32_t i = 0; i < bindings.countSuggestedBindings; i++) {
                     const std::string fullPath = getPath(bindings.suggestedBindings[i].binding);
 
@@ -296,6 +297,13 @@ namespace {
                     } else {
                         // We ignore non-hand actions.
                         continue;
+                    }
+
+                    static std::string systemClickPath = "/input/system/click";
+                    // Keep track of the /input/system/click
+                    // path.endswith("/input/system/click")
+                    if (fullPath.rfind(systemClickPath) == fullPath.length() - systemClickPath.length()) {
+                        hasSystemClick = true;
                     }
 
                     const XrAction action = bindings.suggestedBindings[i].action;
@@ -319,6 +327,28 @@ namespace {
                     subAction.path = fullPath;
                     DebugLog("Simulating action path %s\n", fullPath.c_str());
                     entry.subActions.insert_or_assign(subActionPath, subAction);
+                }
+
+                // Dummy action to keep track of /input/system/click in case the application does not register it (which
+                // is likely in fact).
+                if (!hasSystemClick) {
+                    Action systemClick;
+
+                    systemClick.actionSet = XR_NULL_HANDLE;
+                    {
+                        SubAction subAction;
+                        subAction.hand = Hand::Left;
+                        subAction.path = "/user/hand/left/input/system/click";
+                        systemClick.subActions.insert_or_assign(m_leftHandSubaction, subAction);
+                    }
+                    {
+                        SubAction subAction;
+                        subAction.hand = Hand::Left;
+                        subAction.path = "/user/hand/right/input/system/click";
+                        systemClick.subActions.insert_or_assign(m_rightHandSubaction, subAction);
+                    }
+
+                    m_actions.insert_or_assign(XR_NULL_HANDLE, systemClick);
                 }
             }
         }
@@ -435,10 +465,12 @@ namespace {
 
             // Only sync actions for the specified action sets.
             std::set<XrAction> ignore;
+            const Action* systemClick = nullptr;
             for (auto& action : m_actions) {
                 bool foundActionSet = false;
                 for (uint32_t i = 0; i < syncInfo.countActiveActionSets; i++) {
-                    if (action.second.actionSet == syncInfo.activeActionSets[i].actionSet) {
+                    if (action.second.actionSet == XR_NULL_HANDLE ||
+                        action.second.actionSet == syncInfo.activeActionSets[i].actionSet) {
                         // TODO: We ignore the subActionPath at this time. This is largely OK and mean we might be
                         // non-compliant to some edge cases.
                         foundActionSet = true;
@@ -448,6 +480,15 @@ namespace {
 
                 if (!foundActionSet) {
                     ignore.insert(action.first);
+                }
+
+                const auto& subAction = *action.second.subActions.cbegin();
+                const auto& path = subAction.second.path;
+                static std::string systemClickPath = "/input/system/click";
+                // Keep track of the /input/system/click
+                // path.endswith("/input/system/click")
+                if (path.rfind(systemClickPath) == path.length() - systemClickPath.length()) {
+                    systemClick = &action.second;
                 }
 
                 for (auto& subAction : action.second.subActions) {
@@ -469,6 +510,28 @@ namespace {
 
             // For each gesture, update the action value.
             performGesturesDetection(leftHandJointsPoses, rightHandJointsPoses, ignore, now);
+
+            // Special handling for Windows key.
+            if (systemClick) {
+                bool didChange = false;
+                bool value = false;
+
+                for (auto& subAction : systemClick->subActions) {
+                    didChange = didChange || subAction.second.boolValueChanged;
+                    value = value || subAction.second.boolValue;
+                }
+
+                if (didChange && value) {
+                    INPUT input[2];
+                    ZeroMemory(&input, sizeof(INPUT));
+                    input[0].type = INPUT_KEYBOARD;
+                    input[0].ki.wVk = VK_LWIN;
+                    input[1].type = INPUT_KEYBOARD;
+                    input[1].ki.wVk = VK_LWIN;
+                    input[1].ki.dwFlags = KEYEVENTF_KEYUP;
+                    SendInput(2, input, sizeof(INPUT));
+                }
+            }
 
             m_thisFrameTime = frameTime;
         }
