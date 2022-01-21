@@ -570,6 +570,12 @@ namespace {
                         GESTURE_STATE("palm", palmTap);
                         GESTURE_STATE("tiptap", indexTipTap);
                         GESTURE_STATE("cust1", custom1);
+
+                        m_device->drawString(fmt::format("loss: {}/{}",
+                                                         m_gesturesState.numTrackingLosses[0] % 256,
+                                                         m_gesturesState.numTrackingLosses[1] % 256),
+                                             OVERLAY_COMMON);
+                        top += 1.05f * fontSize;
                     }
 
 #undef GESTURE_STATE

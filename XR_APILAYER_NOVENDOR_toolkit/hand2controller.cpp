@@ -696,6 +696,9 @@ namespace {
                 entry.first = time;
 
                 CHECK_HRCMD(xrLocateHandJointsEXT(m_handTracker[side], &locateInfo, &locations));
+                if (!Pose::IsPoseTracked(locations.jointLocations[XR_HAND_JOINT_PALM_EXT].locationFlags)) {
+                    m_gesturesState.numTrackingLosses[side]++;
+                }
                 return cache.emplace(insertIt, entry)->second;
             }
         }
@@ -883,9 +886,8 @@ namespace {
         std::map<XrActionSet, std::set<XrAction>> m_actionSets;
         std::map<XrAction, Action> m_actions;
 
-        GesturesState m_gesturesState{};
-
         mutable std::optional<XrSpace> m_preferredBaseSpace;
+        mutable GesturesState m_gesturesState{};
 
         // TODO: These should be auto-generated and accessible via OpenXrApi.
         PFN_xrCreateHandTrackerEXT xrCreateHandTrackerEXT{nullptr};
