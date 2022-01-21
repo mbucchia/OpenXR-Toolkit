@@ -646,7 +646,7 @@ namespace {
             m_currentContext = m_context;
         }
 
-        void flushContext(bool blocking) override {
+        void flushContext(bool blocking, bool isEndOfFrame = false) override {
             // Ensure we are not dropping an unfinished context.
             assert(m_currentContext == m_context);
 
@@ -1163,6 +1163,9 @@ namespace {
             m_fontNormal->Flush(m_currentContext.Get());
             m_fontBold->Flush(m_currentContext.Get());
             m_currentContext->Flush();
+        }
+
+        void resolveQueries() override {
         }
 
         uint32_t getBufferAlignmentConstraint() const override {

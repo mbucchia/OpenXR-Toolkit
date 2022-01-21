@@ -858,6 +858,11 @@ namespace {
                     m_stats.appGpuTimeUs +=
                         m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
                     m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
+
+                    // With D3D12, we want to make sure the query is enqueued now.
+                    if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
+                        m_graphicsDevice->flushContext();
+                    }
                 }
             }
 
@@ -948,6 +953,7 @@ namespace {
 
             // Toggle to the next set of GPU timers.
             m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
+            m_graphicsDevice->resolveQueries();
 
             // Handle inputs.
             if (m_menuHandler) {
@@ -1183,7 +1189,7 @@ namespace {
                 takeScreenshot(textureForOverlay[0]);
             }
 
-            m_graphicsDevice->flushContext();
+            m_graphicsDevice->flushContext(false, true);
 
             return OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
         }
