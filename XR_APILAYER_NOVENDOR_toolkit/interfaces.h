@@ -516,6 +516,8 @@ namespace toolkit {
             float palmTapValue[2]{NAN, NAN};
             float indexTipTapValue[2]{NAN, NAN};
             float custom1Value[2]{NAN, NAN};
+
+            uint32_t numTrackingLosses[2];
         };
 
         struct IHandTracker {
