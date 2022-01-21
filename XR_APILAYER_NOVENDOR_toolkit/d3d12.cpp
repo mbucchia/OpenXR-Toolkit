@@ -35,6 +35,7 @@ namespace {
     using namespace toolkit::graphics::d3dcommon;
     using namespace toolkit::log;
 
+    constexpr size_t MaxGpuTimers = 32;
     constexpr size_t MaxModelBuffers = 128;
 
     struct D3D12Heap {
@@ -672,7 +673,13 @@ namespace {
 
     class D3D12GpuTimer : public IGpuTimer {
       public:
-        D3D12GpuTimer(std::shared_ptr<IDevice> device) : m_device(device) {
+        D3D12GpuTimer(std::shared_ptr<IDevice> device,
+                      ID3D12QueryHeap* queryHeap,
+                      std::function<uint64_t(UINT, UINT)> queryTimestampDelta,
+                      UINT startIndex,
+                      UINT stopIndex)
+            : m_device(device), m_queryHeap(queryHeap), m_queryTimestampDelta(queryTimestampDelta),
+              m_startIndex(startIndex), m_stopIndex(stopIndex) {
         }
 
         Api getApi() const override {
@@ -684,27 +691,31 @@ namespace {
         }
 
         void start() override {
-            // TODO: Implement this.
+            m_device->getContext<D3D12>()->EndQuery(m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, m_startIndex);
         }
 
         void stop() override {
-            // TODO: Implement this.
+            m_device->getContext<D3D12>()->EndQuery(m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, m_stopIndex);
         }
 
         uint64_t query(bool reset) const override {
-            // TODO: Implement this.
-            return 0;
+            return m_queryTimestampDelta(m_startIndex, m_stopIndex);
         }
 
       private:
         const std::shared_ptr<IDevice> m_device;
+        const ComPtr<ID3D12QueryHeap> m_queryHeap;
+        const std::function<uint64_t(UINT, UINT)> m_queryTimestampDelta;
+        const UINT m_startIndex;
+        const UINT m_stopIndex;
     };
 
     class D3D12Device : public IDevice, public std::enable_shared_from_this<D3D12Device> {
       private:
         // OpenXR will not allow more than 2 frames in-flight, so 2 would be sufficient, however we might split the
-        // processing in two due to text rendering, so multiply this number by 2.
-        static constexpr size_t NumInflightContexts = 4;
+        // processing in two due to text rendering, so multiply this number by 2. Oh and also we have the app GPU
+        // timer, so multiply again by 2.
+        static constexpr size_t NumInflightContexts = 8;
 
       public:
         D3D12Device(ID3D12Device* device, ID3D12CommandQueue* queue) : m_device(device), m_queue(queue) {
@@ -742,15 +753,27 @@ namespace {
             {
                 D3D12_QUERY_HEAP_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
-                desc.Count = 16;
-                desc.NodeMask = 1;
+                desc.Count = MaxGpuTimers * 2;
+                desc.NodeMask = 0;
                 desc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
                 m_device->CreateQueryHeap(&desc, IID_PPV_ARGS(&m_queryHeap));
                 m_queryHeap->SetName(L"Timestamp Query Heap");
 
-                uint64_t gpuFrequency;
-                m_queue->GetTimestampFrequency(&gpuFrequency);
-                m_gpuTickDelta = 1.0 / gpuFrequency;
+                m_queue->GetTimestampFrequency(&m_gpuTickFrequency);
+
+                {
+                    const auto& heapType = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
+                    const auto readbackDesc = CD3DX12_RESOURCE_DESC::Buffer(desc.Count * sizeof(uint64_t));
+                    CHECK_HRCMD(m_device->CreateCommittedResource(&heapType,
+                                                                  D3D12_HEAP_FLAG_NONE,
+                                                                  &readbackDesc,
+                                                                  D3D12_RESOURCE_STATE_COPY_DEST,
+                                                                  nullptr,
+                                                                  IID_PPV_ARGS(&m_queryReadbackBuffer)));
+                    m_queryReadbackBuffer->SetName(L"Query Readback Buffer");
+                }
+
+                ZeroMemory(m_queryBuffer, sizeof(m_queryBuffer));
             }
             {
                 for (uint32_t i = 0; i < NumInflightContexts; i++) {
@@ -804,7 +827,7 @@ namespace {
 
         void shutdown() override {
             // Log some statistics for sizing.
-            DebugLog("heap statistics: samp=%u/%u, rtv=%u/%u, dsv=%u/%u, rv=%u/%u\n",
+            DebugLog("heap statistics: samp=%u/%u, rtv=%u/%u, dsv=%u/%u, rv=%u/%u, query=%u/%u\n",
                      m_samplerHeap.heapOffset,
                      m_samplerHeap.heapSize,
                      m_rtvHeap.heapOffset,
@@ -812,7 +835,9 @@ namespace {
                      m_dsvHeap.heapOffset,
                      m_dsvHeap.heapSize,
                      m_rvHeap.heapOffset,
-                     m_rvHeap.heapSize);
+                     m_rvHeap.heapSize,
+                     m_nextGpuTimestampIndex,
+                     ARRAYSIZE(m_queryBuffer));
 
             // Clear all references that could hold a cyclic reference themselves.
             m_currentComputeShader.reset();
@@ -880,7 +905,17 @@ namespace {
             // the command queue.
         }
 
-        void flushContext(bool blocking) override {
+        void flushContext(bool blocking, bool isEndOfFrame = false) override {
+            if (isEndOfFrame) {
+                // Resolve the timers.
+                m_context->ResolveQueryData(m_queryHeap.Get(),
+                                            D3D12_QUERY_TYPE_TIMESTAMP,
+                                            0,
+                                            m_nextGpuTimestampIndex,
+                                            m_queryReadbackBuffer.Get(),
+                                            0);
+            }
+
             CHECK_HRCMD(m_context->Close());
 
             ID3D12CommandList* lists[] = {m_context.Get()};
@@ -1101,7 +1136,13 @@ namespace {
         }
 
         std::shared_ptr<IGpuTimer> createTimer() override {
-            return std::make_shared<D3D12GpuTimer>(shared_from_this());
+            assert(m_nextGpuTimestampIndex < ARRAYSIZE(m_queryBuffer));
+            return std::make_shared<D3D12GpuTimer>(
+                shared_from_this(),
+                m_queryHeap.Get(),
+                [&](UINT startIndex, UINT stopIndex) { return queryTimeStampDelta(startIndex, stopIndex); },
+                m_nextGpuTimestampIndex++,
+                m_nextGpuTimestampIndex++);
         }
 
         void setShader(std::shared_ptr<IQuadShader> shader) override {
@@ -1586,6 +1627,19 @@ namespace {
             m_isRenderingText = false;
         }
 
+        void resolveQueries() override {
+            if (m_nextGpuTimestampIndex == 0) {
+                return;
+            }
+
+            // Readback the previous set of timers. The queries are resolved in flushContext().
+            uint64_t* mappedBuffer;
+            D3D12_RANGE range{0, sizeof(uint64_t) * m_nextGpuTimestampIndex};
+            CHECK_HRCMD(m_queryReadbackBuffer->Map(0, &range, reinterpret_cast<void**>(&mappedBuffer)));
+            memcpy(m_queryBuffer, mappedBuffer, range.End);
+            m_queryReadbackBuffer->Unmap(0, nullptr);
+        }
+
         uint32_t getBufferAlignmentConstraint() const override {
             return D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
         }
@@ -1736,6 +1790,10 @@ namespace {
             }
         }
 
+        uint64_t queryTimeStampDelta(UINT startIndex, UINT stopIndex) const {
+            return ((m_queryBuffer[stopIndex] - m_queryBuffer[startIndex]) * 1000000) / m_gpuTickFrequency;
+        }
+
         ComPtr<ID3D12Device> m_device;
         ComPtr<ID3D12CommandQueue> m_queue;
         std::string m_deviceName;
@@ -1750,6 +1808,7 @@ namespace {
         D3D12Heap m_rvHeap;
         D3D12Heap m_samplerHeap;
         ComPtr<ID3D12QueryHeap> m_queryHeap;
+        ComPtr<ID3D12Resource> m_queryReadbackBuffer;
         ComPtr<ID3DBlob> m_quadVertexShaderBytes;
         D3D12_CPU_DESCRIPTOR_HANDLE m_linearClampSamplerPS;
         D3D12_CPU_DESCRIPTOR_HANDLE m_linearClampSamplerCS;
@@ -1765,7 +1824,9 @@ namespace {
         ComPtr<ID3D12Fence> m_fence;
         UINT64 m_fenceValue{0};
 
-        double m_gpuTickDelta{0};
+        UINT m_nextGpuTimestampIndex{0};
+        uint64_t m_queryBuffer[MaxGpuTimers * 2];
+        uint64_t m_gpuTickFrequency{0};
 
         std::shared_ptr<IDevice> m_textDevice;
         ComPtr<ID3D11On12Device> m_textInteropDevice;

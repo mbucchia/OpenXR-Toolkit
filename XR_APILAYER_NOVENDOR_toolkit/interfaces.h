@@ -381,7 +381,7 @@ namespace toolkit {
 
             virtual void saveContext(bool clear = true) = 0;
             virtual void restoreContext() = 0;
-            virtual void flushContext(bool blocking = false) = 0;
+            virtual void flushContext(bool blocking = false, bool isEndOfFrame = false) = 0;
 
             virtual std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
                                                             const std::optional<std::string>& debugName,
@@ -455,6 +455,8 @@ namespace toolkit {
             virtual float measureString(std::string string, TextStyle style, float size) const = 0;
             virtual void beginText() = 0;
             virtual void flushText() = 0;
+
+            virtual void resolveQueries() = 0;
 
             virtual void shutdown() = 0;
 
