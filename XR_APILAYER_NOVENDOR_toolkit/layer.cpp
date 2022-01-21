@@ -347,7 +347,7 @@ namespace {
                 return OpenXrApi::xrCreateSwapchain(session, createInfo, swapchain);
             }
 
-            // TODO: Identify the swapchains of interest for our processing chain. For now, we only handle color
+            // Identify the swapchains of interest for our processing chain. For now, we only handle color
             // buffers.
             const bool useSwapchain = createInfo->usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -363,7 +363,7 @@ namespace {
 
             XrSwapchainCreateInfo chainCreateInfo = *createInfo;
             if (useSwapchain) {
-                // TODO: Modify the swapchain to handle our processing chain (eg: change resolution and/or select usage
+                // Modify the swapchain to handle our processing chain (eg: change resolution and/or select usage
                 // XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT).
 
                 if (m_preProcessor) {
@@ -441,7 +441,7 @@ namespace {
                 for (uint32_t i = 0; i < imageCount; i++) {
                     SwapchainImages& images = swapchainState.images[i];
 
-                    // TODO: Create other entries in the chain based on the processing to do (scaling,
+                    // Create other entries in the chain based on the processing to do (scaling,
                     // post-processing...).
 
                     if (m_preProcessor) {
@@ -975,7 +975,8 @@ namespace {
                         uint32_t lastImage = 0;
                         uint32_t gpuTimerIndex = useVPRT ? eye : 0;
 
-                        // TODO: Insert processing below.
+                        // Insert processing below.
+                        //
                         // The pattern typically follows these steps:
                         // - Advanced to the right source and/or destination image;
                         // - Pull the previously measured timer value;

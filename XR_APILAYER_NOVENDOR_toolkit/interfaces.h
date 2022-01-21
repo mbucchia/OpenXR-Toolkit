@@ -170,7 +170,6 @@ namespace toolkit {
         };
 
         // A few handy texture formats.
-        // TODO: Extend as we start needing more formats.
         enum class TextureFormat { R32G32B32A32_FLOAT, R16G16B16A16_UNORM, R10G10B10A2_UNORM, R8G8B8A8_UNORM };
 
         enum class TextStyle { Normal, Bold };
