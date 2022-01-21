@@ -35,11 +35,13 @@ namespace {
     using namespace toolkit::graphics::d3dcommon;
     using namespace toolkit::log;
 
+    constexpr size_t MaxModelBuffers = 128;
+
     struct D3D12Heap {
-        void initialize(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type) {
+        void initialize(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT numDescriptors = 32) {
             D3D12_DESCRIPTOR_HEAP_DESC desc;
             ZeroMemory(&desc, sizeof(desc));
-            desc.NumDescriptors = 32;
+            heapSize = desc.NumDescriptors = numDescriptors;
             desc.Type = type;
             desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
             if (type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER || type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
@@ -53,6 +55,7 @@ namespace {
         }
 
         void allocate(D3D12_CPU_DESCRIPTOR_HANDLE& desc) {
+            assert((UINT)heapOffset < heapSize);
             desc = CD3DX12_CPU_DESCRIPTOR_HANDLE(heapStartCPU, heapOffset++, descSize);
         }
 
@@ -63,10 +66,11 @@ namespace {
             return CD3DX12_GPU_DESCRIPTOR_HANDLE(heapStartGPU, (INT)offset, descSize);
         }
 
+        UINT heapSize{0};
         ComPtr<ID3D12DescriptorHeap> heap;
         D3D12_CPU_DESCRIPTOR_HANDLE heapStartCPU;
         D3D12_GPU_DESCRIPTOR_HANDLE heapStartGPU;
-        INT heapOffset;
+        INT heapOffset{0};
         UINT descSize;
     };
 
@@ -186,6 +190,7 @@ namespace {
             D3D12Shader::resolve();
 
             // Initialize the pipeline state now.
+            // TODO: We must support the RTV format changing.
             auto device = m_device->getNative<D3D12>();
             m_psoDesc.RTVFormats[0] = (DXGI_FORMAT)m_outputInfo.format;
             m_psoDesc.NumRenderTargets = 1;
@@ -570,7 +575,7 @@ namespace {
 
             {
                 const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                    m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+                    m_buffer.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
                 context->ResourceBarrier(1, &barrier);
             }
             UpdateSubresources<1>(context, m_buffer.Get(), uploadBuffer, 0, 0, 1, &subresourceData);
@@ -632,9 +637,14 @@ namespace {
                         ID3D12Resource* indexBuffer,
                         size_t numIndices)
             : m_device(device), m_vertexBuffer(vertexBuffer), m_indexBuffer(indexBuffer) {
-            m_meshData.vertexBuffer = m_vertexBuffer.Get();
-            m_meshData.stride = (UINT)stride;
-            m_meshData.indexBuffer = m_indexBuffer.Get();
+            vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
+            vbView.StrideInBytes = (UINT)stride;
+            vbView.SizeInBytes = (UINT)vertexBuffer->GetDesc().Width;
+            m_meshData.vertexBuffer = &vbView;
+            ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
+            ibView.Format = DXGI_FORMAT_R16_UINT;
+            ibView.SizeInBytes = (UINT)indexBuffer->GetDesc().Width;
+            m_meshData.indexBuffer = &ibView;
             m_meshData.numIndices = (UINT)numIndices;
         }
 
@@ -655,6 +665,8 @@ namespace {
         const ComPtr<ID3D12Resource> m_vertexBuffer;
         const ComPtr<ID3D12Resource> m_indexBuffer;
 
+        D3D12_VERTEX_BUFFER_VIEW vbView;
+        D3D12_INDEX_BUFFER_VIEW ibView;
         mutable struct D3D12::MeshData m_meshData;
     };
 
@@ -725,7 +737,7 @@ namespace {
             // Initialize the command lists and heaps.
             m_rtvHeap.initialize(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
             m_dsvHeap.initialize(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-            m_rvHeap.initialize(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            m_rvHeap.initialize(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 32 + MaxModelBuffers);
             m_samplerHeap.initialize(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
             {
                 D3D12_QUERY_HEAP_DESC desc;
@@ -783,6 +795,7 @@ namespace {
             CHECK_HRCMD(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
 
             initializeShadingResources();
+            initializeMeshResources();
         }
 
         ~D3D12Device() override {
@@ -790,12 +803,31 @@ namespace {
         }
 
         void shutdown() override {
+            // Log some statistics for sizing.
+            DebugLog("heap statistics: samp=%u/%u, rtv=%u/%u, dsv=%u/%u, rv=%u/%u\n",
+                     m_samplerHeap.heapOffset,
+                     m_samplerHeap.heapSize,
+                     m_rtvHeap.heapOffset,
+                     m_rtvHeap.heapSize,
+                     m_dsvHeap.heapOffset,
+                     m_dsvHeap.heapSize,
+                     m_rvHeap.heapOffset,
+                     m_rvHeap.heapSize);
+
             // Clear all references that could hold a cyclic reference themselves.
             m_currentComputeShader.reset();
             m_currentQuadShader.reset();
             m_currentDrawRenderTarget.reset();
             m_currentDrawDepthBuffer.reset();
             m_currentTextRenderTarget.reset();
+
+            m_currentMesh.reset();
+            for (uint32_t i = 0; i < ARRAYSIZE(m_meshViewProjectionBuffer); i++) {
+                m_meshViewProjectionBuffer[i].reset();
+            }
+            for (uint32_t i = 0; i < ARRAYSIZE(m_meshModelBuffer); i++) {
+                m_meshModelBuffer[i].reset();
+            }
         }
 
         Api getApi() const override {
@@ -960,7 +992,8 @@ namespace {
                                                     const std::optional<std::string>& debugName,
                                                     const void* initialData,
                                                     bool immutable) override {
-            const auto desc = CD3DX12_RESOURCE_DESC::Buffer(size);
+            const auto desc =
+                CD3DX12_RESOURCE_DESC::Buffer(Align(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 
             ComPtr<ID3D12Resource> buffer;
             {
@@ -1003,8 +1036,17 @@ namespace {
         std::shared_ptr<ISimpleMesh> createSimpleMesh(std::vector<SimpleMeshVertex>& vertices,
                                                       std::vector<uint16_t>& indices,
                                                       const std::optional<std::string>& debugName) override {
-            // TODO: Implement this.
-            return {};
+            std::shared_ptr<IShaderBuffer> vertexBuffer =
+                createBuffer(vertices.size() * sizeof(SimpleMeshVertex), debugName, vertices.data(), true);
+
+            std::shared_ptr<IShaderBuffer> indexBuffer =
+                createBuffer(indices.size() * sizeof(uint16_t), debugName, indices.data(), true);
+
+            return std::make_shared<D3D12SimpleMesh>(shared_from_this(),
+                                                     vertexBuffer->getNative<D3D12>(),
+                                                     sizeof(SimpleMeshVertex),
+                                                     indexBuffer->getNative<D3D12>(),
+                                                     indices.size());
         }
 
         std::shared_ptr<IQuadShader> createQuadShader(const std::string& shaderPath,
@@ -1244,6 +1286,7 @@ namespace {
 
             m_currentDrawRenderTarget.reset();
             m_currentDrawDepthBuffer.reset();
+            m_currentMesh.reset();
         }
 
         void setRenderTargets(std::vector<std::shared_ptr<ITexture>> renderTargets,
@@ -1310,6 +1353,7 @@ namespace {
                 m_currentDrawRenderTarget.reset();
                 m_currentDrawDepthBuffer.reset();
             }
+            m_currentMesh.reset();
         }
 
         void clearColor(float top, float left, float bottom, float right, XrColor4f& color) const override {
@@ -1352,11 +1396,117 @@ namespace {
         }
 
         void setViewProjection(const XrPosef& eyePose, const XrFovf& fov, float depthNear, float depthFar) override {
-            // TODO: Implement this.
+            xr::math::NearFar nearFar{depthNear, depthFar};
+            const DirectX::XMMATRIX projection = xr::math::ComposeProjectionMatrix(fov, nearFar);
+            const DirectX::XMMATRIX view = xr::math::LoadInvertedXrPose(eyePose);
+
+            ViewProjectionConstantBuffer staging;
+            DirectX::XMStoreFloat4x4(&staging.ViewProjection, DirectX::XMMatrixTranspose(view * projection));
+
+            m_currentMeshViewProjectionBuffer++;
+            if (m_currentMeshViewProjectionBuffer >= ARRAYSIZE(m_meshViewProjectionBuffer)) {
+                m_currentMeshViewProjectionBuffer = 0;
+            }
+            if (!m_meshViewProjectionBuffer[m_currentMeshViewProjectionBuffer]) {
+                m_meshViewProjectionBuffer[m_currentMeshViewProjectionBuffer] =
+                    createBuffer(sizeof(ViewProjectionConstantBuffer), "ViewProjection CB", nullptr, false);
+            }
+            m_meshViewProjectionBuffer[m_currentMeshViewProjectionBuffer]->uploadData(&staging, sizeof(staging));
+
+            m_currentDrawDepthBufferIsInverted = depthNear > depthFar;
         }
 
         void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling) override {
-            // TODO: Implement this.
+            auto meshData = mesh->getNative<D3D12>();
+
+            if (mesh != m_currentMesh) {
+                // Lazily construct the pipeline state now that we know the format for the render target and whether
+                // depth is inverted.
+                // TODO: We must support the RTV format changing.
+                if (!m_meshRendererPipelineState) {
+                    D3D12_GRAPHICS_PIPELINE_STATE_DESC desc;
+                    ZeroMemory(&desc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
+                    desc.InputLayout = {m_meshRendererInputLayout.data(), (UINT)m_meshRendererInputLayout.size()};
+                    desc.pRootSignature = m_meshRendererRootSignature.Get();
+                    desc.VS = {reinterpret_cast<BYTE*>(m_meshRendererVertexShaderBytes->GetBufferPointer()),
+                               m_meshRendererVertexShaderBytes->GetBufferSize()};
+                    desc.PS = {reinterpret_cast<BYTE*>(m_meshRendererPixelShaderBytes->GetBufferPointer()),
+                               m_meshRendererPixelShaderBytes->GetBufferSize()};
+                    desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+                    desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+                    desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+                    if (m_currentDrawDepthBufferIsInverted) {
+                        desc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+                        desc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER;
+                    }
+                    desc.SampleMask = UINT_MAX;
+                    desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+                    desc.NumRenderTargets = 1;
+                    desc.RTVFormats[0] = (DXGI_FORMAT)m_currentDrawRenderTarget->getInfo().format;
+                    desc.SampleDesc.Count = m_currentDrawRenderTarget->getInfo().sampleCount;
+                    if (desc.SampleDesc.Count > 1) {
+                        D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS qualityLevels;
+                        qualityLevels.Format = desc.RTVFormats[0];
+                        qualityLevels.SampleCount = desc.SampleDesc.Count;
+                        qualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+                        CHECK_HRCMD(m_device->CheckFeatureSupport(
+                            D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &qualityLevels, sizeof(qualityLevels)));
+
+                        // Setup for highest quality multisampling if requested.
+                        desc.SampleDesc.Quality = qualityLevels.NumQualityLevels - 1;
+                        desc.RasterizerState.MultisampleEnable = true;
+                    }
+                    if (m_currentDrawDepthBuffer) {
+                        desc.DSVFormat = (DXGI_FORMAT)m_currentDrawDepthBuffer->getInfo().format;
+                    }
+                    CHECK_HRCMD(
+                        m_device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&m_meshRendererPipelineState)));
+                }
+
+                m_context->SetPipelineState(m_meshRendererPipelineState.Get());
+                m_context->SetGraphicsRootSignature(m_meshRendererRootSignature.Get());
+                m_context->IASetVertexBuffers(0, 1, meshData->vertexBuffer);
+                m_context->IASetIndexBuffer(meshData->indexBuffer);
+                m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+                ID3D12DescriptorHeap* heaps[] = {
+                    m_rvHeap.heap.Get(),
+                };
+                m_context->SetDescriptorHeaps(ARRAYSIZE(heaps), heaps);
+
+                {
+                    auto d3d12Buffer =
+                        dynamic_cast<D3D12Buffer*>(m_meshViewProjectionBuffer[m_currentMeshViewProjectionBuffer].get());
+                    const auto& handle = d3d12Buffer->getConstantBufferView();
+                    m_context->SetGraphicsRootDescriptorTable(1, m_rvHeap.getGPUHandle(handle));
+                }
+
+                m_currentMesh = mesh;
+            }
+
+            ModelConstantBuffer model;
+            const DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixScaling(scaling.x, scaling.y, scaling.z);
+            DirectX::XMStoreFloat4x4(&model.Model,
+                                     DirectX::XMMatrixTranspose(scaleMatrix * xr::math::LoadXrPose(pose)));
+
+            m_currentMeshModelBuffer++;
+            if (m_currentMeshModelBuffer >= ARRAYSIZE(m_meshModelBuffer)) {
+                m_currentMeshModelBuffer = 0;
+            }
+
+            if (!m_meshModelBuffer[m_currentMeshModelBuffer]) {
+                m_meshModelBuffer[m_currentMeshModelBuffer] =
+                    createBuffer(sizeof(ModelConstantBuffer), "Model CB", nullptr, false);
+            }
+            m_meshModelBuffer[m_currentMeshModelBuffer]->uploadData(&model, sizeof(model));
+
+            {
+                auto d3d12Buffer = dynamic_cast<D3D12Buffer*>(m_meshModelBuffer[m_currentMeshModelBuffer].get());
+                const auto& handle = d3d12Buffer->getConstantBufferView();
+                m_context->SetGraphicsRootDescriptorTable(0, m_rvHeap.getGPUHandle(handle));
+            }
+
+            m_context->DrawIndexedInstanced(meshData->numIndices, 1, 0, 0, 0);
         }
 
         float drawString(std::wstring string,
@@ -1503,6 +1653,89 @@ namespace {
             }
         }
 
+        // Initialize the calls needed for draw() and related calls.
+        void initializeMeshResources() {
+            {
+                ComPtr<ID3DBlob> errors;
+                const HRESULT hr = D3DCompile(MeshShaders.c_str(),
+                                              MeshShaders.length(),
+                                              nullptr,
+                                              nullptr,
+                                              nullptr,
+                                              "vsMain",
+                                              "vs_5_0",
+                                              D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
+                                              0,
+                                              &m_meshRendererVertexShaderBytes,
+                                              &errors);
+                if (FAILED(hr)) {
+                    if (errors) {
+                        Log("%s", (char*)errors->GetBufferPointer());
+                    }
+                    CHECK_HRESULT(hr, "Failed to compile shader");
+                }
+            }
+            {
+                ComPtr<ID3DBlob> errors;
+                const HRESULT hr = D3DCompile(MeshShaders.c_str(),
+                                              MeshShaders.length(),
+                                              nullptr,
+                                              nullptr,
+                                              nullptr,
+                                              "psMain",
+                                              "ps_5_0",
+                                              D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
+                                              0,
+                                              &m_meshRendererPixelShaderBytes,
+                                              &errors);
+                if (FAILED(hr)) {
+                    if (errors) {
+                        Log("%s", (char*)errors->GetBufferPointer());
+                    }
+                    CHECK_HRESULT(hr, "Failed to compile shader");
+                }
+            }
+            {
+                m_meshRendererInputLayout.push_back(
+                    {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
+                m_meshRendererInputLayout.push_back(
+                    {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
+            }
+            {
+                CD3DX12_ROOT_PARAMETER parametersDescriptors[2];
+                {
+                    const auto range = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+                    parametersDescriptors[0].InitAsDescriptorTable(1, &range);
+                }
+                {
+                    const auto range = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
+                    parametersDescriptors[1].InitAsDescriptorTable(1, &range);
+                }
+
+                CD3DX12_ROOT_SIGNATURE_DESC desc(ARRAYSIZE(parametersDescriptors),
+                                                 parametersDescriptors,
+                                                 0,
+                                                 nullptr,
+                                                 D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+                ComPtr<ID3DBlob> serializedRootSignature;
+                ComPtr<ID3DBlob> errors;
+                const HRESULT hr =
+                    D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &serializedRootSignature, &errors);
+                if (FAILED(hr)) {
+                    if (errors) {
+                        Log("%s", (char*)errors->GetBufferPointer());
+                    }
+                    CHECK_HRESULT(hr, "Failed to serialize root signature");
+                }
+
+                CHECK_HRCMD(m_device->CreateRootSignature(0,
+                                                          serializedRootSignature->GetBufferPointer(),
+                                                          serializedRootSignature->GetBufferSize(),
+                                                          IID_PPV_ARGS(&m_meshRendererRootSignature)));
+            }
+        }
+
         ComPtr<ID3D12Device> m_device;
         ComPtr<ID3D12CommandQueue> m_queue;
         std::string m_deviceName;
@@ -1520,6 +1753,15 @@ namespace {
         ComPtr<ID3DBlob> m_quadVertexShaderBytes;
         D3D12_CPU_DESCRIPTOR_HANDLE m_linearClampSamplerPS;
         D3D12_CPU_DESCRIPTOR_HANDLE m_linearClampSamplerCS;
+        std::shared_ptr<IShaderBuffer> m_meshViewProjectionBuffer[4];
+        uint32_t m_currentMeshViewProjectionBuffer{0};
+        std::shared_ptr<IShaderBuffer> m_meshModelBuffer[MaxModelBuffers];
+        uint32_t m_currentMeshModelBuffer{0};
+        ComPtr<ID3DBlob> m_meshRendererVertexShaderBytes;
+        std::vector<D3D12_INPUT_ELEMENT_DESC> m_meshRendererInputLayout;
+        ComPtr<ID3DBlob> m_meshRendererPixelShaderBytes;
+        ComPtr<ID3D12RootSignature> m_meshRendererRootSignature;
+        ComPtr<ID3D12PipelineState> m_meshRendererPipelineState;
         ComPtr<ID3D12Fence> m_fence;
         UINT64 m_fenceValue{0};
 
@@ -1534,7 +1776,9 @@ namespace {
         int32_t m_currentDrawRenderTargetSlice;
         std::shared_ptr<ITexture> m_currentDrawDepthBuffer;
         int32_t m_currentDrawDepthBufferSlice;
+        bool m_currentDrawDepthBufferIsInverted;
 
+        std::shared_ptr<ISimpleMesh> m_currentMesh;
         mutable std::shared_ptr<IQuadShader> m_currentQuadShader;
         mutable std::shared_ptr<IComputeShader> m_currentComputeShader;
         uint32_t m_currentRootSlot;
