@@ -1008,6 +1008,7 @@ namespace {
                 m_currentDrawRenderTarget.reset();
                 m_currentDrawDepthBuffer.reset();
             }
+            m_currentMesh.reset();
         }
 
         void clearColor(float top, float left, float bottom, float right, XrColor4f& color) const override {
@@ -1094,6 +1095,8 @@ namespace {
                 m_currentContext->IASetIndexBuffer(meshData->indexBuffer, DXGI_FORMAT_R16_UINT, 0);
                 m_currentContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
                 m_currentContext->IASetInputLayout(m_meshInputLayout.Get());
+
+                m_currentMesh = mesh;
             }
 
             ModelConstantBuffer model;

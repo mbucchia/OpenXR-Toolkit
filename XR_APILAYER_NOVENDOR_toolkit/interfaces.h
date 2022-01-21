@@ -152,9 +152,8 @@ namespace toolkit {
             using Texture = ID3D12Resource*;
             using Buffer = ID3D12Resource*;
             struct MeshData {
-                ID3D12Resource* vertexBuffer;
-                UINT stride;
-                ID3D12Resource* indexBuffer;
+                D3D12_VERTEX_BUFFER_VIEW* vertexBuffer;
+                D3D12_INDEX_BUFFER_VIEW* indexBuffer;
                 UINT numIndices;
             };
             using Mesh = MeshData*;

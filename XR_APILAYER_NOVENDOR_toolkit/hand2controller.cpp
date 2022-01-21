@@ -863,7 +863,7 @@ namespace {
 
         XrSpace m_referenceSpace{XR_NULL_HANDLE};
         using CacheEntry = std::pair<XrTime, XrHandJointLocationEXT[XR_HAND_JOINT_COUNT_EXT]>;
-        mutable std::map<XrSpace, std::deque<CacheEntry>[2]> m_cachedHandJointsPoses;
+        mutable std::map<XrSpace, std::deque<CacheEntry>[HandCount]> m_cachedHandJointsPoses;
 
         Config m_config;
         SOCKET m_configSocket{INVALID_SOCKET};
@@ -873,7 +873,7 @@ namespace {
         // One mesh for each color.
         std::vector<std::shared_ptr<ISimpleMesh>> m_jointMesh;
 
-        XrHandTrackerEXT m_handTracker[2]{XR_NULL_HANDLE, XR_NULL_HANDLE};
+        XrHandTrackerEXT m_handTracker[HandCount]{XR_NULL_HANDLE, XR_NULL_HANDLE};
         XrTime m_thisFrameTime{0};
 
         bool m_leftHandEnabled{true};
