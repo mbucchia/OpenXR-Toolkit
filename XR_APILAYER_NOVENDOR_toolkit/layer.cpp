@@ -403,6 +403,25 @@ namespace {
                         imageCount,
                         &imageCount,
                         reinterpret_cast<XrSwapchainImageBaseHeader*>(d3dImages.data())));
+
+                    // Dump the descriptor for the first texture returned by the runtime for debug purposes.
+                    {
+                        D3D11_TEXTURE2D_DESC desc;
+                        d3dImages[0].texture->GetDesc(&desc);
+                        Log("Swapchain image descriptor:\n");
+                        Log("  w=%u h=%u arraySize=%u format=%u\n",
+                            desc.Width,
+                            desc.Height,
+                            desc.ArraySize,
+                            desc.Format);
+                        Log("  mipCount=%u sampleCount=%u\n", desc.MipLevels, desc.SampleDesc.Count);
+                        Log("  usage=0x%x bindFlags=0x%x cpuFlags=0x%x misc=0x%p\n",
+                            desc.Usage,
+                            desc.BindFlags,
+                            desc.CPUAccessFlags,
+                            desc.MiscFlags);
+                    }
+
                     for (uint32_t i = 0; i < imageCount; i++) {
                         SwapchainImages images;
 
@@ -422,6 +441,20 @@ namespace {
                         imageCount,
                         &imageCount,
                         reinterpret_cast<XrSwapchainImageBaseHeader*>(d3dImages.data())));
+
+                    // Dump the descriptor for the first texture returned by the runtime for debug purposes.
+                    {
+                        const auto& desc = d3dImages[0].texture->GetDesc();
+                        Log("Swapchain image descriptor:\n");
+                        Log("  w=%u h=%u arraySize=%u format=%u\n",
+                            desc.Width,
+                            desc.Height,
+                            desc.DepthOrArraySize,
+                            desc.Format);
+                        Log("  mipCount=%u sampleCount=%u\n", desc.MipLevels, desc.SampleDesc.Count);
+                        Log("  flags=0x%x\n", desc.Flags);
+                    }
+
                     for (uint32_t i = 0; i < imageCount; i++) {
                         SwapchainImages images;
 
