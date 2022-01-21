@@ -566,7 +566,6 @@ namespace {
         void render(const XrPosef& pose,
                     XrSpace baseSpace,
                     std::shared_ptr<graphics::ITexture> renderTarget) const override {
-            // TODO: Support opacity.
             const int meshIndex = m_configManager->getValue(SettingHandVisibilityAndSkinTone) - 1;
             if (meshIndex < 0) {
                 return;

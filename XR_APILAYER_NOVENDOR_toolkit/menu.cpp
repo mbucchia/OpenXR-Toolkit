@@ -86,7 +86,8 @@ namespace {
                 m_configManager->setValue("first_run", firstRun + 1);
             }
 
-            // TODO: Add menu entries here.
+            // Add menu entries below.
+
             m_menuEntries.push_back({"Overlay",
                                      MenuEntryType::Choice,
                                      SettingOverlayType,
