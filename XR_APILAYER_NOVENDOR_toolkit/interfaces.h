@@ -37,6 +37,7 @@ namespace toolkit {
         uint64_t handTrackingCpuTimeUs{0};
 
         uint64_t predictionTimeUs{0};
+        float icd{0.0f};
     };
 
     namespace {
