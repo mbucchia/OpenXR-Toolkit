@@ -708,6 +708,10 @@ namespace {
                 const XrHandJointLocationEXT* jointsPosesOtherHand =
                     hand == Hand::Left ? rightHandJointsPoses : leftHandJointsPoses;
 
+                if (!jointsPoses) {
+                    continue;
+                }
+
 #define ONE_HANDED_GESTURE(configName, joint1, joint2)                                                                 \
     do {                                                                                                               \
         if (!m_config.configName##Action[side].empty()) {                                                              \
@@ -781,6 +785,10 @@ namespace {
             recordActionValue(hand, m_config.configName##Action[side], ignore, value, now);                            \
         }                                                                                                              \
     } while (false);
+
+                if (!jointsPosesOtherHand) {
+                    continue;
+                }
 
                 // Handle gestures made up using both hands.
 
