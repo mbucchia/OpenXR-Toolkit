@@ -25,14 +25,9 @@
 #include "shader_utilities.h"
 #include "factories.h"
 #include "interfaces.h"
+#include "layer.h"
 #include "log.h"
 #include "postprocess.h"
-
-namespace toolkit {
-
-    extern std::string dllHome;
-
-} // namespace toolkit
 
 namespace {
 
@@ -48,8 +43,8 @@ namespace {
                        std::shared_ptr<IDevice> graphicsDevice,
                        const std::string& shaderFile)
             : m_configManager(configManager), m_device(graphicsDevice) {
-            const auto shadersDir = std::filesystem::path(dllHome) / std::filesystem::path("shaders");
-            const auto shaderPath = shadersDir / std::filesystem::path(shaderFile);
+            const auto shadersDir = dllHome / "shaders";
+            const auto shaderPath = shadersDir / shaderFile;
             m_shader = m_device->createQuadShader(
                 shaderPath.string(), "main", "Post-process PS", nullptr, shadersDir.string());
 

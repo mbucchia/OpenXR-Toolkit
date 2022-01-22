@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal

@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Matthieu Bucchianeri
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -33,7 +33,10 @@
 
 namespace LAYER_NAMESPACE {
     // The path where the DLL loads config files and stores logs.
-    std::string dllHome;
+    std::filesystem::path dllHome;
+
+    // The path to store logs & others.
+    std::filesystem::path localAppData;
 
     namespace log {
         // The file logger.
@@ -54,27 +57,32 @@ XrResult __declspec(dllexport) XRAPI_CALL
     // Retrieve the path of the DLL.
     if (dllHome.empty()) {
         HMODULE module;
-        if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-                                   GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                                (LPCSTR)&dllHome,
                                &module)) {
             char path[_MAX_PATH];
             GetModuleFileNameA(module, path, sizeof(path));
-            dllHome = std::filesystem::path(path).parent_path().string();
+            dllHome = std::filesystem::path(path).parent_path();
         } else {
             // Falling back to loading config/writing logs to the current working directory.
             DebugLog("Failed to locate DLL\n");
         }
     }
 
+    // Create the necessary subfolders in LocalAppData (if they don't exist).
+    localAppData = std::filesystem::path(getenv("LOCALAPPDATA")) / "OpenXR-Toolkit";
+    CreateDirectoryA(localAppData.string().c_str(), nullptr);
+    CreateDirectoryA((localAppData / "logs").string().c_str(), nullptr);
+    CreateDirectoryA((localAppData / "screenshots").string().c_str(), nullptr);
+    CreateDirectoryA((localAppData / "configs").string().c_str(), nullptr);
+
     // Start logging to file.
     if (!logStream.is_open()) {
-        std::string logFile = (std::filesystem::path(getenv("LOCALAPPDATA")) /
-                               std::filesystem::path(LayerName + ".log"))
-                                  .string();
+        std::string logFile = (localAppData / "logs" / (LayerName + ".log")).string();
         logStream.open(logFile, std::ios_base::ate);
-        Log("dllHome is \"%s\"\n", dllHome.c_str());
     }
+
+    Log("dllHome is \"%s\"\n", dllHome.string().c_str());
 
     DebugLog("--> xrNegotiateLoaderApiLayerInterface\n");
 
@@ -83,8 +91,7 @@ XrResult __declspec(dllexport) XRAPI_CALL
         return XR_ERROR_INITIALIZATION_FAILED;
     }
 
-    if (!loaderInfo || !apiLayerRequest ||
-        loaderInfo->structType != XR_LOADER_INTERFACE_STRUCT_LOADER_INFO ||
+    if (!loaderInfo || !apiLayerRequest || loaderInfo->structType != XR_LOADER_INTERFACE_STRUCT_LOADER_INFO ||
         loaderInfo->structVersion != XR_LOADER_INFO_STRUCT_VERSION ||
         loaderInfo->structSize != sizeof(XrNegotiateLoaderInfo) ||
         apiLayerRequest->structType != XR_LOADER_INTERFACE_STRUCT_API_LAYER_REQUEST ||
@@ -93,8 +100,7 @@ XrResult __declspec(dllexport) XRAPI_CALL
         loaderInfo->minInterfaceVersion > XR_CURRENT_LOADER_API_LAYER_VERSION ||
         loaderInfo->maxInterfaceVersion < XR_CURRENT_LOADER_API_LAYER_VERSION ||
         loaderInfo->maxInterfaceVersion > XR_CURRENT_LOADER_API_LAYER_VERSION ||
-        loaderInfo->maxApiVersion < XR_CURRENT_API_VERSION ||
-        loaderInfo->minApiVersion > XR_CURRENT_API_VERSION) {
+        loaderInfo->maxApiVersion < XR_CURRENT_API_VERSION || loaderInfo->minApiVersion > XR_CURRENT_API_VERSION) {
         Log("xrNegotiateLoaderApiLayerInterface validation failed\n");
         return XR_ERROR_INITIALIZATION_FAILED;
     }
@@ -102,10 +108,8 @@ XrResult __declspec(dllexport) XRAPI_CALL
     // Setup our layer to intercept OpenXR calls.
     apiLayerRequest->layerInterfaceVersion = XR_CURRENT_LOADER_API_LAYER_VERSION;
     apiLayerRequest->layerApiVersion = XR_CURRENT_API_VERSION;
-    apiLayerRequest->getInstanceProcAddr =
-        reinterpret_cast<PFN_xrGetInstanceProcAddr>(xrGetInstanceProcAddr);
-    apiLayerRequest->createApiLayerInstance =
-        reinterpret_cast<PFN_xrCreateApiLayerInstance>(xrCreateApiLayerInstance);
+    apiLayerRequest->getInstanceProcAddr = reinterpret_cast<PFN_xrGetInstanceProcAddr>(xrGetInstanceProcAddr);
+    apiLayerRequest->createApiLayerInstance = reinterpret_cast<PFN_xrCreateApiLayerInstance>(xrCreateApiLayerInstance);
 
     DebugLog("<-- xrNegotiateLoaderApiLayerInterface\n");
 
