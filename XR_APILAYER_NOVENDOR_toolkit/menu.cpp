@@ -146,7 +146,7 @@ namespace {
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
             // The unit for ICD is tenth of millimeters.
-            m_menuEntries.push_back({"World Scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
+            m_menuEntries.push_back({"World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
                                          return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.0f, m_stats.icd * 1000);
                                      }});
             m_menuEntries.push_back({"FOV",
@@ -172,7 +172,7 @@ namespace {
                  isPredictionDampeningSupported});
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
-            m_menuEntries.push_back({"Hand Tracking",
+            m_menuEntries.push_back({"Hand tracking",
                                      MenuEntryType::Choice,
                                      SettingHandTrackingEnabled,
                                      0,
@@ -185,7 +185,7 @@ namespace {
             m_originalHandTrackingEnabled = isHandTrackingEnabled();
             m_handTrackingGroup.start = m_menuEntries.size();
             m_menuEntries.push_back(
-                {"Hand Visibility",
+                {"Hands visibility",
                  MenuEntryType::Slider,
                  SettingHandVisibilityAndSkinTone,
                  0,
@@ -196,6 +196,19 @@ namespace {
                      return labels[value];
                  },
                  isHandTrackingSupported});
+            m_menuEntries.push_back({"Hands timeout",
+                                     MenuEntryType::Slider,
+                                     SettingHandTimeout,
+                                     0,
+                                     60,
+                                     [](int value) -> std::string {
+                                         if (value == 0) {
+                                             return "Always on";
+                                         } else {
+                                             return fmt::format("{}s", value);
+                                         }
+                                     },
+                                     isHandTrackingSupported});
             m_handTrackingGroup.end = m_menuEntries.size();
             if (isHandTrackingSupported) {
                 m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
