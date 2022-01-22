@@ -1757,14 +1757,10 @@ namespace {
             }
             {
                 CD3DX12_ROOT_PARAMETER parametersDescriptors[2];
-                {
-                    const auto range = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
-                    parametersDescriptors[0].InitAsDescriptorTable(1, &range);
-                }
-                {
-                    const auto range = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
-                    parametersDescriptors[1].InitAsDescriptorTable(1, &range);
-                }
+                const auto rangeParam1 = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+                parametersDescriptors[0].InitAsDescriptorTable(1, &rangeParam1);
+                const auto rangeParam2 = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
+                parametersDescriptors[1].InitAsDescriptorTable(1, &rangeParam2);
 
                 CD3DX12_ROOT_SIGNATURE_DESC desc(ARRAYSIZE(parametersDescriptors),
                                                  parametersDescriptors,
