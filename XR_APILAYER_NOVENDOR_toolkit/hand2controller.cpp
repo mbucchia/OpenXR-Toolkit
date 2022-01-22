@@ -27,13 +27,6 @@
 #include "layer.h"
 #include "log.h"
 
-namespace toolkit {
-
-    // The path where the DLL loads config files and stores logs.
-    extern std::string dllHome;
-
-} // namespace toolkit
-
 namespace {
 
     using namespace toolkit;
@@ -1032,9 +1025,9 @@ namespace {
         std::ifstream configFile;
 
         // Look in %LocalAppData% first, then fallback to your installation folder.
-        configFile.open(std::filesystem::path(getenv("LOCALAPPDATA")) / std::filesystem::path(configName + ".cfg"));
+        configFile.open(localAppData / "configs" / (configName + ".cfg"));
         if (!configFile.is_open()) {
-            configFile.open(std::filesystem::path(dllHome) / std::filesystem::path(configName + ".cfg"));
+            configFile.open(dllHome / (configName + ".cfg"));
         }
 
         if (configFile.is_open()) {

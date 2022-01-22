@@ -26,18 +26,13 @@
 #include "shader_utilities.h"
 #include "factories.h"
 #include "interfaces.h"
+#include "layer.h"
 #include "log.h"
 
 #pragma warning(push)
 #pragma warning(disable : 4305)
 #include <NIS_Config.h>
 #pragma warning(pop)
-
-namespace toolkit {
-
-    extern std::string dllHome;
-
-} // namespace toolkit
 
 namespace {
 
@@ -144,8 +139,8 @@ namespace {
 
       private:
         void initializeScaler() {
-            const auto shadersDir = std::filesystem::path(dllHome) / std::filesystem::path("shaders");
-            const auto shaderPath = shadersDir / std::filesystem::path("NIS.hlsl");
+            const auto shadersDir = dllHome / "shaders";
+            const auto shaderPath = shadersDir / "NIS.hlsl";
 
             utilities::shader::Defines defines;
             defines.add("NIS_SCALER", true);
@@ -196,8 +191,8 @@ namespace {
         }
 
         void initializeSharpen() {
-            const auto shadersDir = std::filesystem::path(dllHome) / std::filesystem::path("shaders");
-            const auto shaderPath = shadersDir / std::filesystem::path("NIS.hlsl");
+            const auto shadersDir = dllHome / "shaders";
+            const auto shaderPath = shadersDir / "NIS.hlsl";
 
             utilities::shader::Defines defines;
             defines.add("NIS_SCALER", false);

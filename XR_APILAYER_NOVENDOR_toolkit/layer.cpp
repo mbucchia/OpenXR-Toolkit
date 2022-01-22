@@ -932,7 +932,7 @@ namespace {
             char datetime[1024];
             std::strftime(datetime, sizeof(datetime), "%Y%m%d_%H%M%S_", std::localtime(&now));
             const std::string screenshotFilename = m_applicationName + "_" + datetime + parameters.str() + ".dds";
-            std::string screenshotPath = (std::filesystem::path(getenv("LOCALAPPDATA")) / screenshotFilename).string();
+            std::string screenshotPath = (localAppData / "screenshots" / screenshotFilename).string();
 
             texture->saveToFile(screenshotPath);
         }

@@ -25,17 +25,12 @@
 #include "shader_utilities.h"
 #include "factories.h"
 #include "interfaces.h"
+#include "layer.h"
 #include "log.h"
 
 #define A_CPU
 #include <ffx_a.h>
 #include <ffx_fsr1.h>
-
-namespace toolkit {
-
-    extern std::string dllHome;
-
-} // namespace toolkit
 
 namespace {
 
@@ -132,8 +127,8 @@ namespace {
 
       private:
         void initializeScaler() {
-            const auto shadersDir = std::filesystem::path(dllHome) / std::filesystem::path("shaders");
-            const auto shaderPath = shadersDir / std::filesystem::path("FSR.hlsl");
+            const auto shadersDir = dllHome / "shaders";
+            const auto shaderPath = shadersDir / "FSR.hlsl";
 
             // This value is the image region dimension that each thread group of the FSR shader operates on
             const auto threadGroupWorkRegionDim = 16u;
