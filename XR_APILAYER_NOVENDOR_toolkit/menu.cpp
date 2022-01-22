@@ -86,6 +86,28 @@ namespace {
                 m_configManager->setValue("first_run", firstRun + 1);
             }
 
+            // Check what keys to use.
+            m_configManager->setDefault("ctrl_modifier", 1);
+            if (m_configManager->getValue("ctrl_modifier")) {
+                m_keyModifiers |= VK_CONTROL;
+                m_keyModifiersLabel += L"CTRL+";
+            }
+            m_configManager->setDefault("alt_modifier", 0);
+            if (m_configManager->getValue("alt_modifier")) {
+                m_keyModifiers |= VK_MENU;
+                m_keyModifiersLabel += L"ALT+";
+            }
+
+            m_configManager->setDefault("key_left", m_keyLeft);
+            m_configManager->setDefault("key_right", m_keyRight);
+            m_configManager->setDefault("key_menu", m_keyMenu);
+            m_keyLeft = m_configManager->getValue("key_left");
+            m_keyLeftLabel = keyToString(m_keyLeft);
+            m_keyRight = m_configManager->getValue("key_right");
+            m_keyRightLabel = keyToString(m_keyRight);
+            m_keyMenu = m_configManager->getValue("key_menu");
+            m_keyMenuLabel = keyToString(m_keyMenu);
+
             // Add menu entries below.
 
             m_menuEntries.push_back({"Overlay",
@@ -214,9 +236,9 @@ namespace {
             const double keyRepeat = GetAsyncKeyState(VK_SHIFT) ? KeyRepeat / 10 : KeyRepeat;
             const bool repeat = std::chrono::duration<double>(now - m_lastInput).count() > keyRepeat;
 
-            const bool moveLeft = UpdateKeyState(m_moveLeftKeyState, VK_CONTROL, VK_F1, repeat);
-            const bool moveRight = UpdateKeyState(m_moveRightKeyState, VK_CONTROL, VK_F3, repeat);
-            const bool menuControl = UpdateKeyState(m_menuControlKeyState, VK_CONTROL, VK_F2, repeat);
+            const bool moveLeft = UpdateKeyState(m_moveLeftKeyState, m_keyModifiers, m_keyLeft, repeat);
+            const bool moveRight = UpdateKeyState(m_moveRightKeyState, m_keyModifiers, m_keyRight, repeat);
+            const bool menuControl = UpdateKeyState(m_menuControlKeyState, m_keyModifiers, m_keyMenu, repeat);
 
             if (menuControl) {
                 if (m_state != MenuState::Visible) {
@@ -365,13 +387,15 @@ namespace {
             }
 
             if (m_state == MenuState::Splash) {
-                m_device->drawString(
-                    fmt::format("Press CTRL+F2 to bring up the menu ({}s)", (int)(std::ceil(timeout - duration))),
-                    TextStyle::Normal,
-                    fontSize,
-                    leftAlign,
-                    topAlign,
-                    colorSelected);
+                m_device->drawString(fmt::format(L"Press {}{} to bring up the menu ({}s)",
+                                                 m_keyModifiersLabel,
+                                                 m_keyMenuLabel,
+                                                 (int)(std::ceil(timeout - duration))),
+                                     TextStyle::Normal,
+                                     fontSize,
+                                     leftAlign,
+                                     topAlign,
+                                     colorSelected);
 
                 m_device->drawString(fmt::format("(this message will be displayed {} more time{})",
                                                  m_numSplashLeft,
@@ -392,7 +416,11 @@ namespace {
                 float top = topAlign;
                 float left = leftAlign;
 
-                left += m_device->drawString(L"\xE112 : CTRL+F1   \xE1FC : CTRL+F2   \xE111 : CTRL+F3",
+                left += m_device->drawString(fmt::format(L"\xE112 : {0}{1}   \xE1FC : {0}{2}   \xE111 : {0}{3}",
+                                                         m_keyModifiersLabel,
+                                                         m_keyLeftLabel,
+                                                         m_keyMenuLabel,
+                                                         m_keyRightLabel),
                                              TextStyle::Normal,
                                              fontSize,
                                              leftAlign,
@@ -594,6 +622,12 @@ namespace {
         }
 
       private:
+        std::wstring keyToString(int key) const {
+            wchar_t buf[16];
+            GetKeyNameTextW(MAKELPARAM(0, MapVirtualKeyA(key, MAPVK_VK_TO_VSC)), buf, ARRAYSIZE(buf));
+            return buf;
+        }
+
         ScalingType getCurrentScalingType() const {
             return m_configManager->getEnumValue<ScalingType>(SettingScalingType);
         }
@@ -627,6 +661,15 @@ namespace {
         const bool m_isHandTrackingSupported;
         LayerStatistics m_stats{};
         GesturesState m_gesturesState{};
+
+        int m_keyModifiers{0};
+        std::wstring m_keyModifiersLabel;
+        int m_keyLeft{VK_F1};
+        std::wstring m_keyLeftLabel;
+        int m_keyRight{VK_F3};
+        std::wstring m_keyRightLabel;
+        int m_keyMenu{VK_F2};
+        std::wstring m_keyMenuLabel;
 
         int m_numSplashLeft;
         std::vector<MenuEntry> m_menuEntries;

@@ -82,4 +82,4 @@ using Microsoft::WRL::ComPtr;
 #include "FW1FontWrapper.h"
 
 // FMT formatter.
-#include <fmt/core.h>
+#include <fmt/format.h>

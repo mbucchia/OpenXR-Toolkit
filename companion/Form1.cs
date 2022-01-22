@@ -35,6 +35,7 @@ using Silk.NET.Core.Native;
 using Silk.NET.OpenXR;
 using System.Reflection;
 using System.Diagnostics;
+using System.Windows.Input;
 
 namespace companion
 {
@@ -43,19 +44,32 @@ namespace companion
         // Must match config.cpp.
         private const string RegPrefix = "SOFTWARE\\OpenXR_Toolkit";
 
+        private List<Tuple<string, int>> VirtualKeys;
+
         public Form1()
         {
             InitializeComponent();
 
+            InitializeKeyList(leftKey);
+            InitializeKeyList(nextKey);
+            InitializeKeyList(rightKey);
+
             InitXr();
 
+            SuspendLayout();
             Microsoft.Win32.RegistryKey key = null;
             try
             {
                 key = Microsoft.Win32.Registry.LocalMachine.CreateSubKey(RegPrefix);
+                // Must match the defaults in the layer!
                 safemodeCheckbox.Checked = (int)key.GetValue("safe_mode", 0) == 1 ? true : false;
                 experimentalCheckbox.Checked = (int)key.GetValue("enable_experimental", 0) == 1 ? true : false;
                 screenshotCheckbox.Checked = (int)key.GetValue("enable_screenshot", 0) == 1 ? true : false;
+                ctrlModifierCheckbox.Checked = (int)key.GetValue("ctrl_modifier", 1) == 1 ? true : false;
+                altModifierCheckbox.Checked = (int)key.GetValue("alt_modifier", 0) == 1 ? true : false;
+                SelectKey(leftKey, (int)key.GetValue("key_left", KeyInterop.VirtualKeyFromKey(Key.F1)));
+                SelectKey(nextKey, (int)key.GetValue("key_menu", KeyInterop.VirtualKeyFromKey(Key.F2)));
+                SelectKey(rightKey, (int)key.GetValue("key_right", KeyInterop.VirtualKeyFromKey(Key.F3)));
             }
             catch (Exception)
             {
@@ -68,11 +82,78 @@ namespace companion
                     key.Close();
                 }
             }
+            ResumeLayout();
 
             loading = false;
         }
 
         private bool loading = true;
+
+        private void InitializeKeyList(ComboBox box)
+        {
+            if (VirtualKeys == null)
+            {
+                VirtualKeys = new();
+                Key[] allowed = new[] {
+                    Key.A, Key.Add,
+                    Key.B, Key.Back,
+                    Key.C,
+                    Key.D, Key.D0, Key.D1, Key.D2, Key.D3, Key.D4, Key.D5, Key.D6, Key.D7, Key.D8, Key.D9, Key.Delete, Key.Divide, Key.Down,
+                    Key.E, Key.End, Key.Enter, Key.Escape,
+                    Key.F, Key.F1, Key.F2, Key.F3, Key.F4, Key.F5, Key.F6, Key.F7, Key.F8, Key.F9, Key.F10, Key.F11,
+                    Key.G,
+                    Key.H, Key.Home,
+                    Key.I, Key.Insert,
+                    Key.J,
+                    Key.K,
+                    Key.L, Key.Left,
+                    Key.M, Key.Multiply,
+                    Key.N, Key.NumPad0, Key.NumPad1, Key.NumPad2, Key.NumPad3, Key.NumPad4, Key.NumPad5, Key.NumPad6, Key.NumPad7, Key.NumPad8, Key.NumPad9,
+                    Key.O,
+                    Key.P, Key.PageDown, Key.PageUp, Key.Pause, Key.PrintScreen,
+                    Key.Q,
+                    Key.R, Key.Right,
+                    Key.S, Key.Scroll, Key.Separator, Key.Space, Key.Subtract,
+                    Key.T, Key.Tab,
+                    Key.U, Key.Up,
+                    Key.V,
+                    Key.W,
+                    Key.Y,
+                    Key.Z };
+
+                foreach (var key in allowed)
+                {
+                    VirtualKeys.Add(new(key.ToString(), KeyInterop.VirtualKeyFromKey(key)));
+                }
+            }
+
+            foreach (var entry in VirtualKeys)
+            {
+                box.Items.Add(entry.Item1);
+            }
+        }
+
+        private void SelectKey(ComboBox box, int virtualKey)
+        {
+            string keyText = "";
+            foreach (var key in VirtualKeys)
+            {
+                if (key.Item2 == virtualKey)
+                {
+                    keyText = key.Item1;
+                    break;
+                }
+            }
+
+            foreach(var item in box.Items)
+            {
+                if ((string)item == keyText)
+                {
+                    box.SelectedItem = item;
+                    break;
+                }
+            }
+        }
 
         private unsafe void InitXr()
         {
@@ -131,9 +212,8 @@ namespace companion
                         disableCheckbox.Checked = false;
                         loading = false;
                     }
-                    safemodeCheckbox.Enabled = !disableCheckbox.Checked;
-                    experimentalCheckbox.Enabled = !disableCheckbox.Checked;
-                    screenshotCheckbox.Enabled = !disableCheckbox.Checked;
+                    safemodeCheckbox.Enabled = experimentalCheckbox.Enabled = screenshotCheckbox.Enabled = leftKey.Enabled = nextKey.Enabled = rightKey.Enabled =
+                        ctrlModifierCheckbox.Enabled = altModifierCheckbox.Enabled = !disableCheckbox.Checked;
                 }
                 else
                 {
@@ -227,7 +307,7 @@ namespace companion
             {
                 if (key != null)
                 {
-                    key.Close();                                
+                    key.Close();
                 }
             }
 
@@ -260,6 +340,72 @@ namespace companion
                 return;
             }
             WriteSetting("enable_screenshot", screenshotCheckbox.Checked ? 1 : 0);
+        }
+
+        private void leftKey_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (loading)
+            {
+                return;
+            }
+            foreach (var key in VirtualKeys)
+            {
+                if (key.Item1 == (string)leftKey.SelectedItem)
+                {
+                    WriteSetting("key_left", key.Item2);
+                    break;
+                }
+            }
+        }
+
+        private void nextKey_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (loading)
+            {
+                return;
+            }
+            foreach (var key in VirtualKeys)
+            {
+                if (key.Item1 == (string)nextKey.SelectedItem)
+                {
+                    WriteSetting("key_menu", key.Item2);
+                    break;
+                }
+            }
+        }
+
+        private void rightKey_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (loading)
+            {
+                return;
+            }
+            foreach (var key in VirtualKeys)
+            {
+                if (key.Item1 == (string)rightKey.SelectedItem)
+                {
+                    WriteSetting("key_right", key.Item2);
+                    break;
+                }
+            }
+        }
+
+        private void ctrlModifierCheckbox_CheckedChanged(object sender, EventArgs e)
+        {
+            if (loading)
+            {
+                return;
+            }
+            WriteSetting("ctrl_modifier", ctrlModifierCheckbox.Checked ? 1 : 0);
+        }
+
+        private void altModifierCheckbox_CheckedChanged(object sender, EventArgs e)
+        {
+            if (loading)
+            {
+                return;
+            }
+            WriteSetting("alt_modifier", altModifierCheckbox.Checked ? 1 : 0);
         }
 
         private void openLog_Click(object sender, EventArgs e)
