@@ -76,6 +76,7 @@ namespace toolkit {
         const std::string SettingHandTrackingEnabled = "enable_hand_tracking";
         const std::string SettingHandVisibilityAndSkinTone = "hand_visibility";
         const std::string SettingPredictionDampen = "prediction_dampen";
+        const std::string SettingBypassMsftHandInteractionCheck = "allow_msft_hand_interaction";
 
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };

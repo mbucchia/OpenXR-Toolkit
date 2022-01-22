@@ -120,10 +120,11 @@ namespace {
                 OpenXrApi::xrGetSystemProperties(instance, *systemId, &systemProperties);
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
 
-                // Workaround: the WMR runtime supports something called the XR_MSFT_hand_interaction, which will
-                // (falsely) advertise hand tracking support (in reality hand tracking API support from the controller's
-                // input). Check for the Ultraleap layer in this case.
-                if (m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos) {
+                // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
+                // will (falsely) advertise hand tracking support. Check for the Ultraleap layer in this case.
+                m_configManager->setDefault(config::SettingBypassMsftHandInteractionCheck, 0);
+                if (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck) &&
+                    m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos) {
                     bool hasUltraleapLayer = false;
                     for (const auto& layer : GetUpstreamLayers()) {
                         if (layer == "XR_APILAYER_ULTRALEAP_hand_tracking") {
