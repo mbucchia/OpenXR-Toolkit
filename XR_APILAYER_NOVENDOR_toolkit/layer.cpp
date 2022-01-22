@@ -90,6 +90,7 @@ namespace {
             // before creating the session.
             m_configManager->setEnumDefault(config::SettingHandTrackingEnabled, config::HandTrackingEnabled::Off);
             m_configManager->setDefault(config::SettingHandVisibilityAndSkinTone, 2); // Visible - Medium
+            m_configManager->setDefault(config::SettingHandTimeout, 1);
             if (m_configManager->getEnumValue<config::HandTrackingEnabled>(config::SettingHandTrackingEnabled) !=
                 config::HandTrackingEnabled::Off) {
                 m_handTracker = input::CreateHandTracker(*this, m_configManager);
@@ -801,11 +802,15 @@ namespace {
                                       XrActionStatePose* state) override {
             if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO) {
                 const std::string fullPath = m_handTracker->getFullPath(getInfo->action, getInfo->subactionPath);
-                if ((fullPath == "/user/hand/right/input/grip/pose" || fullPath == "/user/hand/right/input/aim/pose" ||
-                     fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") &&
-                    state->type == XR_TYPE_ACTION_STATE_POSE) {
-                    state->isActive = XR_TRUE;
-                    return XR_SUCCESS;
+                if (state->type == XR_TYPE_ACTION_STATE_POSE) {
+                    if (fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") {
+                        state->isActive = m_handTracker->isTrackedRecently(input::Hand::Left);
+                        return XR_SUCCESS;
+                    } else if (fullPath == "/user/hand/right/input/grip/pose" ||
+                               fullPath == "/user/hand/right/input/aim/pose") {
+                        state->isActive = m_handTracker->isTrackedRecently(input::Hand::Right);
+                        return XR_SUCCESS;
+                    }
                 }
             }
 

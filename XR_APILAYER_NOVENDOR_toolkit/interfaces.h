@@ -75,6 +75,7 @@ namespace toolkit {
         const std::string SettingFOV = "fov";
         const std::string SettingHandTrackingEnabled = "enable_hand_tracking";
         const std::string SettingHandVisibilityAndSkinTone = "hand_visibility";
+        const std::string SettingHandTimeout = "hand_timeout";
         const std::string SettingPredictionDampen = "prediction_dampen";
         const std::string SettingBypassMsftHandInteractionCheck = "allow_msft_hand_interaction";
 
@@ -509,6 +510,8 @@ namespace toolkit {
 
     namespace input {
 
+        enum class Hand : uint32_t { Left, Right };
+
         struct GesturesState {
             float pinchValue[2]{NAN, NAN};
             float thumbPressValue[2]{NAN, NAN};
@@ -551,6 +554,7 @@ namespace toolkit {
 
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateBoolean& state) const = 0;
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateFloat& state) const = 0;
+            virtual bool isTrackedRecently(Hand hand) const = 0;
 
             virtual const GesturesState& getGesturesState() const = 0;
         };

@@ -87,7 +87,6 @@ namespace {
 
     static constexpr XrTime GracePeriod = 2000000; // 2ms
 
-    enum class Hand : uint32_t { Left, Right };
     enum class PoseType { Grip, Aim };
 
     struct ActionSpace {
@@ -631,6 +630,15 @@ namespace {
             return true;
         }
 
+        bool isTrackedRecently(Hand hand) const override {
+            const uint32_t side = hand == Hand::Left ? 0 : 1;
+            const int64_t timeout = m_configManager->getValue(SettingHandTimeout);
+            if (timeout == 0) {
+                return true;
+            }
+            return m_lastTimestampWithPoseTracked[side] + (timeout * 1000000000) > m_thisFrameTime;
+        }
+
         const GesturesState& getGesturesState() const override {
             return m_gesturesState;
         }
@@ -688,7 +696,9 @@ namespace {
                 entry.first = time;
 
                 CHECK_HRCMD(xrLocateHandJointsEXT(m_handTracker[side], &locateInfo, &locations));
-                if (!Pose::IsPoseTracked(locations.jointLocations[XR_HAND_JOINT_PALM_EXT].locationFlags)) {
+                if (Pose::IsPoseTracked(locations.jointLocations[XR_HAND_JOINT_PALM_EXT].locationFlags)) {
+                    m_lastTimestampWithPoseTracked[side] = max(time, m_lastTimestampWithPoseTracked[side]);
+                } else {
                     m_gesturesState.numTrackingLosses[side]++;
                 }
                 return cache.emplace(insertIt, entry)->second;
@@ -887,6 +897,7 @@ namespace {
         std::map<XrAction, Action> m_actions;
 
         mutable std::optional<XrSpace> m_preferredBaseSpace;
+        mutable XrTime m_lastTimestampWithPoseTracked[HandCount]{0, 0};
         mutable GesturesState m_gesturesState{};
 
         // TODO: These should be auto-generated and accessible via OpenXrApi.
