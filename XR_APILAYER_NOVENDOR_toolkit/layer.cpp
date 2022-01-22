@@ -147,6 +147,7 @@ namespace {
                 m_configManager->setEnumDefault(config::SettingScalingType, config::ScalingType::None);
                 m_configManager->setDefault(config::SettingScaling, 100);
                 m_configManager->setDefault(config::SettingSharpness, 20);
+                m_configManager->setDefault(config::SettingICD, 1000);
                 m_configManager->setDefault(config::SettingFOV, 100);
                 m_configManager->setDefault(config::SettingPredictionDampen, 100);
 
@@ -704,28 +705,24 @@ namespace {
                 const auto vec = views[1].pose.position - views[0].pose.position;
                 const auto ipd = Length(vec);
 
-                // If it's the first time, initialize the ICD to be the same as IPD.
-                int icdInTenthmm = m_configManager->getValue(config::SettingICD);
-                if (icdInTenthmm == 0) {
-                    icdInTenthmm = (int)(ipd * 10000.0f);
-                    m_configManager->setValue(config::SettingICD, icdInTenthmm);
-                }
-                const float icd = icdInTenthmm / 10000.0f;
-
-                // Override the ICD if requested. We can't do a real epsilon-compare since we use this weird tenth of mm
-                // intermediate unit.
-                if (std::abs(ipd - icd) > 0.00005f) {
+                // Override the ICD if requested.
+                const int icdOverride = m_configManager->getValue(config::SettingICD);
+                if (icdOverride != 1000) {
+                    const float icd = (ipd * icdOverride) / 1000;
+                    m_stats.icd = icd;
                     const auto center = views[0].pose.position + vec / 2.0f;
                     const auto unit = Normalize(vec);
 
                     views[0].pose.position = center - unit * (icd / 2.0f);
                     views[1].pose.position = center + unit * (icd / 2.0f);
+                } else {
+                    m_stats.icd = ipd;
                 }
 
                 // Override the FOV if requested.
-                const int fov = m_configManager->getValue(config::SettingFOV);
-                if (fov != 100) {
-                    const float multiplier = fov / 100.0f;
+                const int fovOverride = m_configManager->getValue(config::SettingFOV);
+                if (fovOverride != 100) {
+                    const float multiplier = fovOverride / 100.0f;
 
                     views[0].fov.angleUp *= multiplier;
                     views[0].fov.angleDown *= multiplier;

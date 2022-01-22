@@ -124,8 +124,8 @@ namespace {
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
             // The unit for ICD is tenth of millimeters.
-            m_menuEntries.push_back({"ICD (World Scale)", MenuEntryType::Slider, SettingICD, 1, 10000, [](int value) {
-                                         return fmt::format("{}mm", value / 10.0f);
+            m_menuEntries.push_back({"World Scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
+                                         return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.0f, m_stats.icd * 1000);
                                      }});
             m_menuEntries.push_back({"FOV",
                                      MenuEntryType::Slider,
@@ -134,20 +134,20 @@ namespace {
                                      150,
                                      [](int value) { return fmt::format("{}%", value); },
                                      m_configManager->isExperimentalMode()});
-            m_menuEntries.push_back({"Prediction dampening",
-                                     MenuEntryType::Slider,
-                                     SettingPredictionDampen,
-                                     0,
-                                     200,
-                                     [&](int value) {
-                                         if (value == 100) {
-                                             return fmt::format("{}%", value);
-                                         } else {
-                                             return fmt::format(
-                                                 "{}% (of {:.1f}ms)", value, m_stats.predictionTimeUs / 1000000.0f);
-                                         }
-                                     },
-                                     isPredictionDampeningSupported});
+            m_menuEntries.push_back(
+                {"Prediction dampening",
+                 MenuEntryType::Slider,
+                 SettingPredictionDampen,
+                 0,
+                 200,
+                 [&](int value) {
+                     if (value == 100) {
+                         return fmt::format("{}%", value - 100);
+                     } else {
+                         return fmt::format("{}% (of {:.1f}ms)", value - 100, m_stats.predictionTimeUs / 1000000.0f);
+                     }
+                 },
+                 isPredictionDampeningSupported});
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
             m_menuEntries.push_back({"Hand Tracking",
