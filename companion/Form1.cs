@@ -34,6 +34,7 @@ using Silk.NET.Core;
 using Silk.NET.Core.Native;
 using Silk.NET.OpenXR;
 using System.Reflection;
+using System.Diagnostics;
 
 namespace companion
 {
@@ -259,6 +260,24 @@ namespace companion
                 return;
             }
             WriteSetting("enable_screenshot", screenshotCheckbox.Checked ? 1 : 0);
+        }
+
+        private void openLog_Click(object sender, EventArgs e)
+        {
+            var processInfo = new ProcessStartInfo();
+            processInfo.Verb = "Open";
+            processInfo.UseShellExecute = true;
+            processInfo.FileName = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\OpenXR-Toolkit\\logs\\XR_APILAYER_NOVENDOR_toolkit.log";
+            Process.Start(processInfo);
+        }
+
+        private void openScreenshots_Click(object sender, EventArgs e)
+        {
+            var processInfo = new ProcessStartInfo();
+            processInfo.Verb = "Open";
+            processInfo.UseShellExecute = true;
+            processInfo.FileName = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\OpenXR-Toolkit\\screenshots";
+            Process.Start(processInfo);
         }
     }
 }
