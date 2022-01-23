@@ -267,6 +267,7 @@ namespace {
                              !m_menuEntries[m_selectedItem].visible);
                 }
 
+                m_resetArmed = false;
                 m_lastInput = now;
             }
 
@@ -278,7 +279,16 @@ namespace {
                     break;
 
                 case MenuEntryType::RestoreDefaultsButton:
-                    m_configManager->resetToDefaults();
+                    if (m_resetArmed) {
+                        m_configManager->resetToDefaults();
+
+                        m_needRestart = checkNeedRestartCondition();
+                        m_menuEntriesTitleWidth = 0.0f;
+                        m_menuEntriesRight = m_menuEntriesBottom = 0.0f;
+                        m_resetArmed = false;
+                    } else {
+                        m_resetArmed = true;
+                    }
                     break;
 
                 case MenuEntryType::ExitButton:
@@ -455,12 +465,15 @@ namespace {
                 for (unsigned int i = 0; i < m_menuEntries.size(); i++) {
                     left = leftAlign;
                     const auto& menuEntry = m_menuEntries[i];
+                    const auto& title = (menuEntry.type == MenuEntryType::RestoreDefaultsButton && m_resetArmed)
+                                            ? "Confirm?"
+                                            : menuEntry.title;
 
                     // Always account for entries, even invisible ones, when calculating the alignment.
                     float entryWidth = 0.0f;
                     if (menuEntriesTitleWidth == 0.0f) {
                         // Worst case should be Selected (bold).
-                        entryWidth = m_device->measureString(menuEntry.title, TextStyle::Bold, fontSize) + 50;
+                        entryWidth = m_device->measureString(title, TextStyle::Bold, fontSize) + 50;
                         m_menuEntriesTitleWidth = max(m_menuEntriesTitleWidth, entryWidth);
                     }
 
@@ -471,7 +484,7 @@ namespace {
                     const auto entryStyle = i == m_selectedItem ? TextStyle::Bold : TextStyle::Normal;
                     const auto entryColor = i == m_selectedItem ? colorSelected : colorNormal;
 
-                    m_device->drawString(menuEntry.title, entryStyle, fontSize, left, top, entryColor);
+                    m_device->drawString(title, entryStyle, fontSize, left, top, entryColor);
                     if (menuEntriesTitleWidth == 0.0f) {
                         left += entryWidth;
                     } else {
@@ -691,6 +704,7 @@ namespace {
         bool m_moveLeftKeyState{false};
         bool m_moveRightKeyState{false};
         bool m_menuControlKeyState{false};
+        bool m_resetArmed{false};
 
         MenuGroup m_upscalingGroup;
         MenuGroup m_handTrackingGroup;
