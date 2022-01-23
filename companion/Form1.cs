@@ -292,7 +292,7 @@ namespace companion
 
                 if (disableCheckbox.Checked)
                 {
-                    key.DeleteValue(jsonPath);
+                    key.SetValue(jsonPath, 1);
                 }
                 else
                 {
