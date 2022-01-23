@@ -132,7 +132,7 @@ namespace {
                                      }});
             m_upscalingGroup.start = m_menuEntries.size();
             m_originalScalingType = getCurrentScalingType();
-            m_menuEntries.push_back({"Factor", MenuEntryType::Slider, SettingScaling, 100, 200, [&](int value) {
+            m_menuEntries.push_back({"Factor", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
                                          // We don't even use value, the utility function below will query it.
                                          const auto& resolution =
                                              GetScaledDimensions(m_displayWidth, m_displayHeight, value, 2);
