@@ -884,6 +884,11 @@ namespace {
                 m_stats.fps = static_cast<float>(numFrames);
                 m_stats.appCpuTimeUs /= numFrames;
                 m_stats.appGpuTimeUs /= numFrames;
+                // When CPU-bound, do not bother giving a (false) GPU time for D3D12
+                if (m_graphicsDevice->getApi() == graphics::Api::D3D12 &&
+                    m_stats.appCpuTimeUs + 500 > m_stats.appGpuTimeUs) {
+                    m_stats.appGpuTimeUs = 0;
+                }
                 m_stats.endFrameCpuTimeUs /= numFrames;
                 m_stats.upscalerGpuTimeUs /= numFrames;
                 m_stats.preProcessorGpuTimeUs /= numFrames;
