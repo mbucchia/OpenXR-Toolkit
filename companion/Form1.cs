@@ -46,6 +46,8 @@ namespace companion
 
         private List<Tuple<string, int>> VirtualKeys;
 
+        private bool loading = true;
+
         public Form1()
         {
             InitializeComponent();
@@ -86,8 +88,6 @@ namespace companion
 
             loading = false;
         }
-
-        private bool loading = true;
 
         private void InitializeKeyList(ComboBox box)
         {
@@ -214,13 +214,14 @@ namespace companion
 
                     tooltip.SetToolTip(layerActive, layersList);
 
+                    bool wasLoading = loading;
                     if (!found)
                     {
                         layerActive.Text = "OpenXR Toolkit layer is NOT active";
                         layerActive.ForeColor = Color.Red;
                         loading = true;
                         disableCheckbox.Checked = true;
-                        loading = false;
+                        loading = wasLoading;
                     }
                     else
                     {
@@ -228,7 +229,7 @@ namespace companion
                         layerActive.ForeColor = Color.Green;
                         loading = true;
                         disableCheckbox.Checked = false;
-                        loading = false;
+                        loading = wasLoading;
                     }
                     safemodeCheckbox.Enabled = experimentalCheckbox.Enabled = screenshotCheckbox.Enabled = leftKey.Enabled = nextKey.Enabled = rightKey.Enabled =
                         ctrlModifierCheckbox.Enabled = altModifierCheckbox.Enabled = !disableCheckbox.Checked;
@@ -366,6 +367,11 @@ namespace companion
             {
                 return;
             }
+            if (leftKey.SelectedItem == rightKey.SelectedItem || leftKey.SelectedItem == nextKey.SelectedItem)
+            {
+                MessageBox.Show("Please make the key assignments unique.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
             foreach (var key in VirtualKeys)
             {
                 if (key.Item1 == (string)leftKey.SelectedItem)
@@ -382,6 +388,11 @@ namespace companion
             {
                 return;
             }
+            if (nextKey.SelectedItem == leftKey.SelectedItem || nextKey.SelectedItem == rightKey.SelectedItem)
+            {
+                MessageBox.Show("Please make the key assignments unique.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
             foreach (var key in VirtualKeys)
             {
                 if (key.Item1 == (string)nextKey.SelectedItem)
@@ -396,6 +407,11 @@ namespace companion
         {
             if (loading)
             {
+                return;
+            }
+            if (rightKey.SelectedItem == leftKey.SelectedItem || rightKey.SelectedItem == nextKey.SelectedItem)
+            {
+                MessageBox.Show("Please make the key assignments unique.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             foreach (var key in VirtualKeys)
