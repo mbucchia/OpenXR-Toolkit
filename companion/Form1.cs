@@ -95,35 +95,53 @@ namespace companion
             {
                 VirtualKeys = new();
                 Key[] allowed = new[] {
-                    Key.A, Key.Add,
-                    Key.B, Key.Back,
-                    Key.C,
-                    Key.D, Key.D0, Key.D1, Key.D2, Key.D3, Key.D4, Key.D5, Key.D6, Key.D7, Key.D8, Key.D9, Key.Delete, Key.Divide, Key.Down,
-                    Key.E, Key.End, Key.Enter, Key.Escape,
-                    Key.F, Key.F1, Key.F2, Key.F3, Key.F4, Key.F5, Key.F6, Key.F7, Key.F8, Key.F9, Key.F10, Key.F11,
-                    Key.G,
-                    Key.H, Key.Home,
-                    Key.I, Key.Insert,
-                    Key.J,
-                    Key.K,
-                    Key.L, Key.Left,
-                    Key.M, Key.Multiply,
-                    Key.N, Key.NumPad0, Key.NumPad1, Key.NumPad2, Key.NumPad3, Key.NumPad4, Key.NumPad5, Key.NumPad6, Key.NumPad7, Key.NumPad8, Key.NumPad9,
-                    Key.O,
-                    Key.P, Key.PageDown, Key.PageUp, Key.Pause, Key.PrintScreen,
-                    Key.Q,
-                    Key.R, Key.Right,
-                    Key.S, Key.Scroll, Key.Separator, Key.Space, Key.Subtract,
-                    Key.T, Key.Tab,
-                    Key.U, Key.Up,
-                    Key.V,
-                    Key.W,
-                    Key.Y,
-                    Key.Z };
+                    Key.Escape, Key.F1, Key.F2, Key.F3, Key.F4, Key.F5, Key.F6, Key.F7, Key.F8, Key.F9, Key.F10, Key.F11, Key.PrintScreen, Key.Scroll, Key.Pause,
+                    Key.OemTilde, Key.D1, Key.D2, Key.D3, Key.D4, Key.D5, Key.D6, Key.D7, Key.D8, Key.D9, Key.D0, Key.OemMinus, Key.OemPlus, Key.Back, Key.Insert, Key.Home, Key.PageUp,
+                    Key.Tab, Key.Q, Key.W, Key.E, Key.R, Key.T, Key.Y, Key.U, Key.I, Key.O, Key.P, Key.OemOpenBrackets, Key.OemCloseBrackets, Key.OemPipe, Key.Delete, Key.End, Key.PageDown,
+                    Key.A, Key.S, Key.D, Key.F, Key.G, Key.H, Key.J, Key.K, Key.L, Key.OemSemicolon, Key.OemQuotes, Key.Enter,
+                    Key.Z, Key.X, Key.C, Key.V, Key.B, Key.N, Key.M, Key.OemComma, Key.OemPeriod, Key.Separator,
+                    Key.Space, Key.Left, Key.Up, Key.Down, Key.Right,
+                    Key.NumPad0, Key.NumPad1, Key.NumPad2, Key.NumPad3, Key.NumPad4, Key.NumPad5, Key.NumPad6, Key.NumPad7, Key.NumPad8, Key.NumPad9,
+                    Key.Divide, Key.Multiply, Key.Subtract, Key.Add
+                };
 
                 foreach (var key in allowed)
                 {
-                    VirtualKeys.Add(new(key.ToString(), KeyInterop.VirtualKeyFromKey(key)));
+                    var text = key switch
+                    {
+                        Key.Add => "NumPad+",
+                        Key.Back => "Backspace",
+                        Key.D0 => "0",
+                        Key.D1 => "1",
+                        Key.D2 => "2",
+                        Key.D3 => "3",
+                        Key.D4 => "4",
+                        Key.D5 => "5",
+                        Key.D6 => "6",
+                        Key.D7 => "7",
+                        Key.D8 => "8",
+                        Key.D9 => "9",
+                        Key.Divide => "NumPad/",
+                        Key.Multiply => "NumPad*",
+                        Key.OemBackslash => "\\",
+                        Key.OemCloseBrackets => "]",
+                        Key.OemComma => ",",
+                        Key.OemMinus => "-",
+                        Key.OemOpenBrackets => "[",
+                        Key.OemPeriod => ".",
+                        Key.OemPipe => "|",
+                        Key.OemPlus => "+",
+                        Key.OemQuestion => "?",
+                        Key.OemQuotes => "\"",
+                        Key.OemSemicolon => ";",
+                        Key.OemTilde => "~",
+                        Key.Scroll => "ScrLk",
+                        Key.Separator => "/",
+                        Key.Snapshot => "PrntScrn",
+                        Key.Subtract => "NumPad-",
+                        _ => key.ToString()
+                    };
+                    VirtualKeys.Add(new(text, KeyInterop.VirtualKeyFromKey(key)));
                 }
             }
 
@@ -259,7 +277,7 @@ namespace companion
 
         private void reportIssuesLink_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            string githubIssues = "https://github.com/mbucchia/OpenXR-Toolkit/issues";
+            string githubIssues = "https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aissue+is%3Aopen+label%3Abug";
 
             reportIssuesLink.LinkVisited = true;
             System.Diagnostics.Process.Start(githubIssues);
@@ -414,7 +432,14 @@ namespace companion
             processInfo.Verb = "Open";
             processInfo.UseShellExecute = true;
             processInfo.FileName = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\OpenXR-Toolkit\\logs\\XR_APILAYER_NOVENDOR_toolkit.log";
-            Process.Start(processInfo);
+            try
+            {
+                Process.Start(processInfo);
+            }
+            catch (Win32Exception)
+            {
+                MessageBox.Show("Failed to open the log file. Please check attempt to locate '" + processInfo.FileName + "' manually.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void openScreenshots_Click(object sender, EventArgs e)
@@ -423,7 +448,13 @@ namespace companion
             processInfo.Verb = "Open";
             processInfo.UseShellExecute = true;
             processInfo.FileName = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\OpenXR-Toolkit\\screenshots";
-            Process.Start(processInfo);
+            try
+            {
+                Process.Start(processInfo);
+            }
+            catch (Win32Exception)
+            {
+            }
         }
     }
 }
