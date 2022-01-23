@@ -179,18 +179,8 @@ namespace {
         }
 
         void resetToDefaults() override {
-            for (auto& value : m_values) {
-                // Make an exception for this special entry.
-                if (value.first == "first_run") {
-                    continue;
-                }
-
-                ConfigValue& entry = value.second;
-
-                entry.value = entry.defaultValue;
-                entry.changedSinceLastQuery = true;
-                entry.writeCountdown = WriteDelay;
-            }
+            // TODO: For now we do the same as a hard reset. Ideally, we wish to exclude `first_run' from this.
+            hardReset();
         }
 
         bool isSafeMode() const override {
