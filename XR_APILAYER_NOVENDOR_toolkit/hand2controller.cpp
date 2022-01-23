@@ -914,13 +914,13 @@ namespace {
         gripJointIndex = XR_HAND_JOINT_PALM_EXT;
         clickThreshold = 0.75f;
         transform[0] = transform[1] = Pose::Identity();
-        pinchAction[0] = pinchAction[1] = "/input/trigger/value";
+        pinchAction[0] = pinchAction[1] = "";
         pinchNear = 0.0f;
         pinchFar = 0.05f;
         thumbPressAction[0] = thumbPressAction[1] = "";
         thumbPressNear = 0.0f;
         thumbPressFar = 0.05f;
-        indexBendAction[0] = indexBendAction[1] = "";
+        indexBendAction[0] = indexBendAction[1] = "/input/trigger/value";
         indexBendNear = 0.045f;
         indexBendFar = 0.07f;
         fingerGunAction[0] = fingerGunAction[1] = "";

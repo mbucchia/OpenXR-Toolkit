@@ -136,6 +136,8 @@ namespace mappingtool
             this.leftWristTapAction = new System.Windows.Forms.ComboBox();
             this.label35 = new System.Windows.Forms.Label();
             this.groupBox16 = new System.Windows.Forms.GroupBox();
+            this.rightIndexTipTapAction = new System.Windows.Forms.ComboBox();
+            this.label27 = new System.Windows.Forms.Label();
             this.rightPalmTapAction = new System.Windows.Forms.ComboBox();
             this.label41 = new System.Windows.Forms.Label();
             this.rightWristTapAction = new System.Windows.Forms.ComboBox();
@@ -252,8 +254,6 @@ namespace mappingtool
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.status = new System.Windows.Forms.ToolStripStatusLabel();
             this.tooltip = new System.Windows.Forms.ToolTip(this.components);
-            this.rightIndexTipTapAction = new System.Windows.Forms.ComboBox();
-            this.label27 = new System.Windows.Forms.Label();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.groupBox4.SuspendLayout();
@@ -319,10 +319,10 @@ namespace mappingtool
             this.tabControl1.Controls.Add(this.tabPage2);
             this.tabControl1.Controls.Add(this.tabPage3);
             this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabControl1.Location = new System.Drawing.Point(0, 33);
+            this.tabControl1.Location = new System.Drawing.Point(0, 36);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(1536, 1095);
+            this.tabControl1.Size = new System.Drawing.Size(1536, 1092);
             this.tabControl1.TabIndex = 0;
             // 
             // tabPage1
@@ -1366,6 +1366,39 @@ namespace mappingtool
             this.groupBox16.TabStop = false;
             this.groupBox16.Text = "Right hand";
             // 
+            // rightIndexTipTapAction
+            // 
+            this.rightIndexTipTapAction.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.rightIndexTipTapAction.FormattingEnabled = true;
+            this.rightIndexTipTapAction.Items.AddRange(new object[] {
+            "",
+            "/input/menu/click",
+            "/input/trigger/value",
+            "/input/squeeze/value (HP/Oculus only)",
+            "/input/squeeze/click",
+            "/input/a/click (HP/Oculus)",
+            "/input/b/click (HP/Oculus)",
+            "/input/thumbstick/click",
+            "/input/system/click (Windows button)",
+            "/input/trackpad/click (WMR 1st gen only)",
+            "/input/select/click (simple_controller only)"});
+            this.rightIndexTipTapAction.Location = new System.Drawing.Point(130, 126);
+            this.rightIndexTipTapAction.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.rightIndexTipTapAction.Name = "rightIndexTipTapAction";
+            this.rightIndexTipTapAction.Size = new System.Drawing.Size(486, 28);
+            this.rightIndexTipTapAction.TabIndex = 8;
+            this.rightIndexTipTapAction.SelectedIndexChanged += new System.EventHandler(this.rightIndexTipTapAction_SelectedIndexChanged);
+            // 
+            // label27
+            // 
+            this.label27.AutoSize = true;
+            this.label27.Location = new System.Drawing.Point(12, 131);
+            this.label27.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.label27.Name = "label27";
+            this.label27.Size = new System.Drawing.Size(100, 20);
+            this.label27.TabIndex = 4;
+            this.label27.Text = "Index tip tap:";
+            // 
             // rightPalmTapAction
             // 
             this.rightPalmTapAction.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
@@ -1869,7 +1902,7 @@ namespace mappingtool
             this.tabPage3.Controls.Add(this.groupBox17);
             this.tabPage3.Location = new System.Drawing.Point(4, 29);
             this.tabPage3.Name = "tabPage3";
-            this.tabPage3.Size = new System.Drawing.Size(1528, 1062);
+            this.tabPage3.Size = new System.Drawing.Size(1528, 1059);
             this.tabPage3.TabIndex = 2;
             this.tabPage3.Text = "Gestures";
             this.tabPage3.UseVisualStyleBackColor = true;
@@ -2760,6 +2793,7 @@ namespace mappingtool
             // 
             // menuStrip1
             // 
+            this.menuStrip1.GripMargin = new System.Windows.Forms.Padding(2, 2, 0, 2);
             this.menuStrip1.ImageScalingSize = new System.Drawing.Size(24, 24);
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.loadMenuItem,
@@ -2768,14 +2802,14 @@ namespace mappingtool
             this.toolStripMenuItem1});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
-            this.menuStrip1.Size = new System.Drawing.Size(1536, 33);
+            this.menuStrip1.Size = new System.Drawing.Size(1536, 36);
             this.menuStrip1.TabIndex = 1;
             this.menuStrip1.Text = "menuStrip1";
             // 
             // loadMenuItem
             // 
             this.loadMenuItem.Name = "loadMenuItem";
-            this.loadMenuItem.Size = new System.Drawing.Size(67, 29);
+            this.loadMenuItem.Size = new System.Drawing.Size(67, 30);
             this.loadMenuItem.Text = "&Load";
             this.loadMenuItem.Click += new System.EventHandler(this.loadMenuItem_Click);
             // 
@@ -2783,14 +2817,14 @@ namespace mappingtool
             // 
             this.saveMenuItem.Name = "saveMenuItem";
             this.saveMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.S)));
-            this.saveMenuItem.Size = new System.Drawing.Size(65, 29);
+            this.saveMenuItem.Size = new System.Drawing.Size(65, 30);
             this.saveMenuItem.Text = "&Save";
             this.saveMenuItem.Click += new System.EventHandler(this.saveMenuItem_Click);
             // 
             // flushMenuItem
             // 
             this.flushMenuItem.Name = "flushMenuItem";
-            this.flushMenuItem.Size = new System.Drawing.Size(155, 29);
+            this.flushMenuItem.Size = new System.Drawing.Size(155, 30);
             this.flushMenuItem.Text = "&Push all settings";
             this.flushMenuItem.Click += new System.EventHandler(this.flushMenuItem_Click);
             // 
@@ -2799,7 +2833,7 @@ namespace mappingtool
             this.toolStripMenuItem1.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.restoreMenuItem});
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(155, 29);
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(155, 30);
             this.toolStripMenuItem1.Text = "Restore defaults";
             // 
             // restoreMenuItem
@@ -2826,39 +2860,6 @@ namespace mappingtool
             // 
             this.status.Name = "status";
             this.status.Size = new System.Drawing.Size(0, 15);
-            // 
-            // rightIndexTipTapAction
-            // 
-            this.rightIndexTipTapAction.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.rightIndexTipTapAction.FormattingEnabled = true;
-            this.rightIndexTipTapAction.Items.AddRange(new object[] {
-            "",
-            "/input/menu/click",
-            "/input/trigger/value",
-            "/input/squeeze/value (HP/Oculus only)",
-            "/input/squeeze/click",
-            "/input/a/click (HP/Oculus)",
-            "/input/b/click (HP/Oculus)",
-            "/input/thumbstick/click",
-            "/input/system/click (Windows button)",
-            "/input/trackpad/click (WMR 1st gen only)",
-            "/input/select/click (simple_controller only)"});
-            this.rightIndexTipTapAction.Location = new System.Drawing.Point(130, 126);
-            this.rightIndexTipTapAction.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.rightIndexTipTapAction.Name = "rightIndexTipTapAction";
-            this.rightIndexTipTapAction.Size = new System.Drawing.Size(486, 28);
-            this.rightIndexTipTapAction.TabIndex = 8;
-            this.rightIndexTipTapAction.SelectedIndexChanged += new System.EventHandler(this.rightIndexTipTapAction_SelectedIndexChanged);
-            // 
-            // label27
-            // 
-            this.label27.AutoSize = true;
-            this.label27.Location = new System.Drawing.Point(12, 131);
-            this.label27.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label27.Name = "label27";
-            this.label27.Size = new System.Drawing.Size(100, 20);
-            this.label27.TabIndex = 4;
-            this.label27.Text = "Index tip tap:";
             // 
             // Form1
             // 

@@ -49,7 +49,7 @@ namespace mappingtool
             m_initializing = true;
 
             // Set all the defaults.
-            // NOTE: Have to maintain parity with config::Reset() in dllmain.cpp.
+            // NOTE: Have to maintain parity with the layer (hand2controller.cpp).
 
             leftXOffset.Value = 0;
             leftXOffset_Scroll(null, null);
@@ -80,22 +80,22 @@ namespace mappingtool
             gripJoint.SelectedIndex = 0; // Palm
             aimJoint.SelectedIndex = 8; // Index intermediate
 
-            leftPinchAction.SelectedIndex = 2; // /input/trigger/value
+            leftPinchAction.SelectedIndex = 0;
             leftThumbPressAction.SelectedIndex = 0;
-            leftIndexBendAction.SelectedIndex = 0;
+            leftIndexBendAction.SelectedIndex = 2; // /input/trigger/value
             leftFingerGunAction.SelectedIndex = 0;
             leftSqueezeAction.SelectedIndex = 3; // /input/squeeze/value
             leftWristTapAction.SelectedIndex = 1; // /input/menu/click
             leftPalmTapAction.SelectedIndex = 0;
             leftIndexTipTapAction.SelectedIndex = 0;
-            rightPinchAction.SelectedIndex = 2; // /input/trigger/value
+            rightPinchAction.SelectedIndex = 0;
             rightThumbPressAction.SelectedIndex = 0;
-            rightIndexBendAction.SelectedIndex = 0;
+            rightIndexBendAction.SelectedIndex = 2; // /input/trigger/value
             rightFingerGunAction.SelectedIndex = 0;
             rightSqueezeAction.SelectedIndex = 3; // /input/squeeze/value
             rightWristTapAction.SelectedIndex = 0;
             rightPalmTapAction.SelectedIndex = 0;
-            rightIndexTipTapAction.SelectedIndex = 8; // /input/b/click
+            rightIndexTipTapAction.SelectedIndex = 6; // /input/b/click
             leftCustom1Action.SelectedIndex = 0;
             rightCustom1Action.SelectedIndex = 0;
             interactionProfile.SelectedIndex = 1; // HP Reverb
