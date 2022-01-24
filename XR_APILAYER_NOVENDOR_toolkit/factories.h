@@ -71,6 +71,11 @@ namespace toolkit {
                                                      uint32_t outputWidth,
                                                      uint32_t outputHeight);
 
+        bool IsDeviceSupportingFP16(std::shared_ptr<IDevice> device);
+
+        GpuArchitecture GetGpuArchitecture(UINT VendorId);
+        GpuArchitecture GetGpuArchitecture(std::shared_ptr<IDevice> device);
+
         std::shared_ptr<IImageProcessor>
         CreateImageProcessor(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                              std::shared_ptr<IDevice> graphicsDevice,

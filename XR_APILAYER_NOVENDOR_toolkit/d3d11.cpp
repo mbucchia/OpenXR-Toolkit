@@ -537,7 +537,8 @@ namespace {
 
     class D3D11Device : public IDevice, public std::enable_shared_from_this<D3D11Device> {
       public:
-        D3D11Device(ID3D11Device* device, bool textOnly = false) : m_device(device) {
+        D3D11Device(ID3D11Device* device, bool textOnly = false)
+            : m_device(device), m_gpuArchitecture(GpuArchitecture::Unknown) {
             m_device->GetImmediateContext(&m_context);
             m_currentContext = m_context;
 
@@ -556,6 +557,8 @@ namespace {
                                wadapterDescription.end(),
                                std::back_inserter(m_deviceName),
                                [](wchar_t c) { return (char)c; });
+
+                m_gpuArchitecture = graphics::GetGpuArchitecture(desc.VendorId);
 
                 if (!textOnly) {
                     // Log the adapter name to help debugging customer issues.
@@ -593,6 +596,10 @@ namespace {
 
         const std::string& getDeviceName() const override {
             return m_deviceName;
+        }
+
+        GpuArchitecture GetGpuArchitecture() const override {
+            return m_gpuArchitecture;
         }
 
         int64_t getTextureFormat(TextureFormat format) const override {
@@ -1363,6 +1370,7 @@ namespace {
         ComPtr<ID3D11DeviceContext> m_context;
         ComPtr<ID3D11DeviceContext> m_currentContext;
         std::string m_deviceName;
+        GpuArchitecture m_gpuArchitecture;
 
         ComPtr<ID3D11SamplerState> m_linearClampSamplerPS;
         ComPtr<ID3D11SamplerState> m_linearClampSamplerCS;
