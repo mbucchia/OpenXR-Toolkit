@@ -17,7 +17,7 @@ nav_order: 3
 
 In order to enable the detailed overlay, you must check the _Enable experimental settings_ box in the _OpenXR Toolkit Companion app_. The detailed overlay will then be unlocked from the in-headset menu.
 
-![The detailed overlay](site/detailed-overlay.jpg)
+![The detailed overlay](site/detailed-overlay.jpg)<br>
 *The detailed overlay*
 
 ## Detailed metrics

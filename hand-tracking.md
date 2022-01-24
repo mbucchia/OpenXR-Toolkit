@@ -17,6 +17,9 @@ nav_order: 2
 
 The OpenXR Toolkit does not add hand tracking capability to your headset, but instead it leverages hand tracking capabilities of some devices (such as the Leap Motion controller) and enable the hand tracking to act as VR controllers.
 
+![Hand tracking in Microsoft Flight Similator 2020](site/hand-tracking.jpg)<br>
+*Hand tracking in Microsoft Flight Similator 2020*
+
 Devices confirmed to work:
 
 * Ultraleap [Leap Motion Controller](https://www.ultraleap.com/product/leap-motion-controller/)
