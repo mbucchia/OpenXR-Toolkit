@@ -631,12 +631,12 @@ namespace {
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D11) {
                         XrSwapchainImageD3D11KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D11KHR*>(images);
                         for (uint32_t i = 0; i < *imageCountOutput; i++) {
-                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getNative<graphics::D3D11>();
+                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getAs<graphics::D3D11>();
                         }
                     } else if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                         XrSwapchainImageD3D12KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D12KHR*>(images);
                         for (uint32_t i = 0; i < *imageCountOutput; i++) {
-                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getNative<graphics::D3D12>();
+                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getAs<graphics::D3D12>();
                         }
                     } else {
                         throw new std::runtime_error("Unsupported graphics runtime");

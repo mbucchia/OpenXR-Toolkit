@@ -1087,8 +1087,8 @@ namespace {
                 if (!m_meshModelBuffer) {
                     m_meshModelBuffer = createBuffer(sizeof(ModelConstantBuffer), "Model CB", nullptr, false);
                 }
-                ID3D11Buffer* const constantBuffers[] = {m_meshModelBuffer->getNative<D3D11>(),
-                                                         m_meshViewProjectionBuffer->getNative<D3D11>()};
+                ID3D11Buffer* const constantBuffers[] = {m_meshModelBuffer->getAs<D3D11>(),
+                                                         m_meshViewProjectionBuffer->getAs<D3D11>()};
                 m_currentContext->VSSetConstantBuffers(0, (UINT)std::size(constantBuffers), constantBuffers);
                 m_currentContext->VSSetShader(m_meshVertexShader.Get(), nullptr, 0);
                 m_currentContext->PSSetShader(m_meshPixelShader.Get(), nullptr, 0);

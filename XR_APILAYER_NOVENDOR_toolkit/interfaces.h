@@ -323,6 +323,12 @@ namespace toolkit {
                 }
                 return reinterpret_cast<typename ApiTraits::Texture>(getNativePtr());
             }
+
+            template <typename ApiTraits>
+            typename ApiTraits::Texture getAs() const {
+                return ApiTraits::Api == getApi() ? reinterpret_cast<typename ApiTraits::Texture>(getNativePtr())
+                                                  : nullptr;
+            }
         };
 
         // A buffer to be used with shaders.
@@ -342,6 +348,12 @@ namespace toolkit {
                     throw new std::runtime_error("Api mismatch");
                 }
                 return reinterpret_cast<typename ApiTraits::Buffer>(getNativePtr());
+            }
+
+            template <typename ApiTraits>
+            typename ApiTraits::Buffer getAs() const {
+                return ApiTraits::Api == getApi() ? reinterpret_cast<typename ApiTraits::Buffer>(getNativePtr())
+                                                  : nullptr;
             }
         };
 
