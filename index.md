@@ -21,7 +21,7 @@ This software may be used with any brand of VR headset as long as the target app
 ## Limitations
 
 + This software was only extensively tested with Microsoft Flight Simulator 2020;
-+ See all [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
++ See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
 For future plans, see the [Roadmap](roadmap).
 
@@ -65,7 +65,7 @@ When changing the value for an option, hold Shift in addition to the Ctrl key in
 
 **Important: when starting an application for the first time, use the configuration menu to adjust the _Menu eye offset_ until the text appears correctly (eg: no "double vision")**:
 
-![On-screen eye offset](site/osd-eye-offset.png)
+![On-screen menu](site/osd-menu.jpg)
 
 ## Available options
 

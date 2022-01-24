@@ -26,3 +26,5 @@ The prediction dampening allows to reduce the jitter that can be observed when h
 **Note**: Screenshots currently only work with DX11 applications.
 
 In order to activate this feature, you must check the _Enable screenshot_ box in the _OpenXR Toolkit Companion app_. You may then press Ctrl+F12 to take a screenshot of the left-eye view that is rendered in the headset. Screenshots are saved under `%LocalAppData%\OpenXR-Toolkit\screenshots`. This folder may be opened from the _OpenXR Toolkit Companion app_ by clicking the _Open screenshots folder_ button.
+
+The screenshots are saved in the DDS format, which is a lossless format native to DirectX. Some tools might have issues opening DDS files, the tool that was confirmed to properly open them with the OpenXR Toolkit is [GIMP](https://www.gimp.org/).

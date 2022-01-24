@@ -20,6 +20,9 @@ While an application is running, you may at any point reset all the settings to 
 
 If an application fails to start due to some settings changes, you may use the  _OpenXR Toolkit Companion app_ (found on the desktop or Start menu) to _Enable safe mode_. In this mode, the settings for this application will not be loaded.
 
+![Enabling safe mode](site/safe-mode.png)
+*Enabling safe mode*
+
 You may then either:
 
 - Reset all the settings (see above) with the Ctrl+F1+F2+F3 key combination.
@@ -31,6 +34,18 @@ You may then either:
 In order to inspect the log file to try to understand issues with the toolkit, you may open the _OpenXR Toolkit Companion app_ (found on the desktop or Start menu) and click the _Open log file_ button. This will open the file located at `%LocalAppData%\OpenXR-Toolkit\logs`.
 
 Please note that certain applications may run in a security-sandbox environment. In this case, the log file may be located under the corresponding application subfolder in `%LocalAppData%\Packages`. You may search for a file named `XR_APILAYER_NOVENDOR_toolkit.log` if unsure of the exact location.
+
+![An example log file](site/log-file.png)
+*An example log file*
+
+## Confirming that the Ultraleap OpenXR layer is active
+
+To confirm that the Ultraleap OpenXR layer is active and loaded in the correct order, open the _OpenXR Toolkit Companion app_ (found on the desktop or Start menu) and hover the mouse cursor on the _OpenXR Toolkit layer is active_ label.
+
+![Listing the OpenXR layers](site/list-layers.png)
+*Listing the OpenXR layers*
+
+The `XR_APILAYER_ULTRALEAP_hand_tracking` layer **must** appear after the `XR_APILAYER_NOVENDOR_toolkit` layer. If this is not the case, you may re-install either one of the layers to correct the order.
 
 ## Asking for help
 
