@@ -35,7 +35,7 @@ There are two ways to specify the upscaling factor. The two methods are exactly 
 
 - A value above 100% represents the ratio "target display resolution _over_ application rendering resolution". The higher the value, the lower the application rendering resolution. For example, a value of 200% means that the application rendering resolution will be calculated to produce a target display resolution twice higher. If the target display resolution is 2200x2200 pixels, then the application will render at a resolution of 1100x1100 pixels.
 
-- A value below 100% represents the ratio "application rendering resolution _over_ target display resolution". This is how the upscaling factor was specified in the previous version of the NIS Scaler. Low lower the value, the lower the application rendering resolution. For example, a value of 50% means that the application rendering resolution will be half of the target display resolution. If the target display resolution is 2200x2200 pixels, then the application will render at a resolution of 1100x1100 pixels.
+- A value below 100% represents the ratio "application rendering resolution _over_ target display resolution". This is how the upscaling factor was specified in the previous version of the NIS Scaler. The lower the value, the lower the application rendering resolution. For example, a value of 50% means that the application rendering resolution will be half of the target display resolution. If the target display resolution is 2200x2200 pixels, then the application will render at a resolution of 1100x1100 pixels.
 
 Note that even with an upscaling factor set to 100% (no upscaling), some benefit can be seen from adjusting the sharpening.
 

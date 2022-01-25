@@ -6,7 +6,7 @@ nav_order: 8
 
 This software was created by Matthieu Bucchianeri and Jean-Luc Dupiot.
 
-Please note that this software is not affiliated with Microsoft nor with with Reality XP.
+Please note that this software is not affiliated with Microsoft nor with Reality XP.
 
 Logo and icons designed by RPthreenine.
 

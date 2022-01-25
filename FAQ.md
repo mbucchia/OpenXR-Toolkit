@@ -16,6 +16,10 @@ nav_order: 6
 
 OpenXR is a structured set of instructions and rules for developers to create applications (such as Flight Simulator 2020) that use virtual reality or augmented reality (or XR as the industry calls it) that run on modern devices (such as the HP Reverb or Oculus Quest).
 
+## Q: Why the OpenXR Toolkit?
+
+The goal of the OpenXR Toolkit is to bring innovative features to the community without waiting for platform software to add those features.
+
 ## Q: What headset does the OpenXR Toolkit work with?
 
 It should work with any VR headset thanks to OpenXR. We've seen success with Windows Mixed Reality (eg: HP Reverb), any headset going through the SteamVR runtime (Valve Index), Pimax, Oculus Quest...
@@ -34,7 +38,7 @@ It works with both, however DX12 support is considered experimental at this time
 
 This software only works with OpenXR applications, not OpenVR applications.
 
-Even with OpenXR applications, I cannot guarantee it will work, as I've only implemented the bare minimum for MSFS.
+Even with OpenXR applications, we cannot guarantee it will work, as I've only implemented the bare minimum for MSFS.
 
 ## Q: I used your previous NIS Scaler or Hand-To-Controller software.
 
