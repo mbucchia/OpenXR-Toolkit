@@ -40,8 +40,8 @@ namespace SetupCustomActions
             foreach (var value in existingValues)
             {
                 // Do not re-create keys for previous versions of our layer.
-                if (value.EndsWith("\\XR_APILAYER_NOVENDOR_nis_scaler") ||
-                    value.EndsWith("\\XR_APILAYER_NOVENDOR_hand_to_controller"))
+                if (value.EndsWith("\\XR_APILAYER_NOVENDOR_nis_scaler.json") ||
+                    value.EndsWith("\\XR_APILAYER_NOVENDOR_hand_to_controller.json"))
                 {
                     detectedOldSoftware = true;
                     continue;
