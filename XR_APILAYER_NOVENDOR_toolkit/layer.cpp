@@ -248,6 +248,9 @@ namespace {
                         m_upscaler = graphics::CreateFSRUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
 
+                        m_postProcessor =
+                            graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
+
                         // Latch this value now.
                         m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
                         break;
@@ -255,6 +258,9 @@ namespace {
                     case config::ScalingType::NIS:
                         m_upscaler = graphics::CreateNISUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
+
+                        m_postProcessor =
+                            graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
 
                         // Latch this value now.
                         m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
@@ -267,9 +273,6 @@ namespace {
                         throw new std::runtime_error("Unknown scaling type");
                         break;
                     }
-
-                    m_postProcessor =
-                        graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
 
                     m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.endFrameCpuTimer = utilities::CreateCpuTimer();
@@ -411,14 +414,14 @@ namespace {
                     {
                         D3D11_TEXTURE2D_DESC desc;
                         d3dImages[0].texture->GetDesc(&desc);
-                        Log("Swapchain image descriptor:\n");
+                        Log("Swapchain image descriptor (x%u):\n", imageCount);
                         Log("  w=%u h=%u arraySize=%u format=%u\n",
                             desc.Width,
                             desc.Height,
                             desc.ArraySize,
                             desc.Format);
                         Log("  mipCount=%u sampleCount=%u\n", desc.MipLevels, desc.SampleDesc.Count);
-                        Log("  usage=0x%x bindFlags=0x%x cpuFlags=0x%x misc=0x%p\n",
+                        Log("  usage=0x%x bindFlags=0x%x cpuFlags=0x%x misc=0x%x\n",
                             desc.Usage,
                             desc.BindFlags,
                             desc.CPUAccessFlags,
@@ -434,6 +437,10 @@ namespace {
                                                        chainCreateInfo,
                                                        d3dImages[i].texture,
                                                        fmt::format("Runtime swapchain {} TEX2D", i)));
+
+                        float rgba[] = {1, 0, 0, 0};
+                        m_graphicsDevice->getContext<graphics::D3D11>()->ClearRenderTargetView(
+                            images.chain[0]->getRenderTargetView()->getNative<graphics::D3D11>(), rgba);
 
                         swapchainState.images.push_back(images);
                     }
