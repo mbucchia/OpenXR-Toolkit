@@ -67,14 +67,8 @@ namespace LAYER_NAMESPACE {
             PFN_xrEnumerateInstanceExtensionProperties xrEnumerateInstanceExtensionProperties = nullptr;
             PFN_xrDestroyInstance xrDestroyInstance = nullptr;
 
-            // We patch the application name for telemetry purposes.
-            XrInstanceCreateInfo dummyCreateInfo = *instanceCreateInfo;
-            strcpy_s(dummyCreateInfo.applicationInfo.applicationName, "OpenXR-Toolkit");
-            strcpy_s(dummyCreateInfo.applicationInfo.engineName, "OpenXR-Toolkit");
-            dummyCreateInfo.applicationInfo.applicationVersion = dummyCreateInfo.applicationInfo.engineVersion =
-                (uint32_t)XR_MAKE_VERSION(VersionMajor, VersionMinor, VersionPatch);
-
             // Try to speed things up by requesting no extentions.
+            XrInstanceCreateInfo dummyCreateInfo = *instanceCreateInfo;
             dummyCreateInfo.enabledExtensionCount = dummyCreateInfo.enabledApiLayerCount = 0;
 
             // Call the chain to create the dummy instance.
