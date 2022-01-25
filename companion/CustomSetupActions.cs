@@ -62,7 +62,7 @@ namespace SetupCustomActions
             {
                 MessageBox.Show("An older version of this software was detected (OpenXR-NIS-Scaler or OpenXR-Hand-To-Controller). " +
                     "It was deactivated, however please uninstall it through 'Add or remove programs' to free up disk space.",
-                    "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
             }
 
             base.OnAfterInstall(savedState);
