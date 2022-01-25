@@ -33,9 +33,15 @@ For future plans, see the [Roadmap](roadmap).
 
 **Note: if you use the previous NIS Scaler or Hand-To-Controller layer before, please uninstall them now**.
 
-Run the `OpenXR-Toolkit.msi` program. You may be warned that this software is not signed. We are working on signing the software through a reputable organization, but in the meantime, you must bypass this warning ("Run anyway").
+Run the `OpenXR-Toolkit.msi` program.
 
 ![Installer file](site/installer-file.png)
+
+You may be warned that this software is not signed. We are working on signing the software through a reputable organization, but in the meantime, you must bypass this warning ("More info" then "Run anyway").
+
+![Warning not signed](site/unsigned1.png)
+
+![Warning not signed](site/unsigned2.png)
 
 Follow the instructions to complete the installation procedure.
 
