@@ -60,20 +60,18 @@ namespace companion
             // layerActive
             // 
             this.layerActive.AutoSize = true;
-            this.layerActive.Location = new System.Drawing.Point(23, 18);
-            this.layerActive.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.layerActive.Location = new System.Drawing.Point(34, 28);
             this.layerActive.Name = "layerActive";
-            this.layerActive.Size = new System.Drawing.Size(127, 13);
+            this.layerActive.Size = new System.Drawing.Size(188, 20);
             this.layerActive.TabIndex = 10;
             this.layerActive.Text = "Layer status is not known";
             // 
             // reportIssuesLink
             // 
             this.reportIssuesLink.AutoSize = true;
-            this.reportIssuesLink.Location = new System.Drawing.Point(7, 419);
-            this.reportIssuesLink.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.reportIssuesLink.Location = new System.Drawing.Point(10, 645);
             this.reportIssuesLink.Name = "reportIssuesLink";
-            this.reportIssuesLink.Size = new System.Drawing.Size(71, 13);
+            this.reportIssuesLink.Size = new System.Drawing.Size(107, 20);
             this.reportIssuesLink.TabIndex = 12;
             this.reportIssuesLink.TabStop = true;
             this.reportIssuesLink.Text = "Report issues";
@@ -82,9 +80,10 @@ namespace companion
             // screenshotCheckbox
             // 
             this.screenshotCheckbox.AutoSize = true;
-            this.screenshotCheckbox.Location = new System.Drawing.Point(25, 220);
+            this.screenshotCheckbox.Location = new System.Drawing.Point(38, 338);
+            this.screenshotCheckbox.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.screenshotCheckbox.Name = "screenshotCheckbox";
-            this.screenshotCheckbox.Size = new System.Drawing.Size(162, 17);
+            this.screenshotCheckbox.Size = new System.Drawing.Size(243, 24);
             this.screenshotCheckbox.TabIndex = 13;
             this.screenshotCheckbox.Text = "Enable screenshot (Ctrl+F12)";
             this.screenshotCheckbox.UseVisualStyleBackColor = true;
@@ -93,10 +92,9 @@ namespace companion
             // checkUpdatesLink
             // 
             this.checkUpdatesLink.AutoSize = true;
-            this.checkUpdatesLink.Location = new System.Drawing.Point(274, 419);
-            this.checkUpdatesLink.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.checkUpdatesLink.Location = new System.Drawing.Point(411, 645);
             this.checkUpdatesLink.Name = "checkUpdatesLink";
-            this.checkUpdatesLink.Size = new System.Drawing.Size(131, 13);
+            this.checkUpdatesLink.Size = new System.Drawing.Size(191, 20);
             this.checkUpdatesLink.TabIndex = 14;
             this.checkUpdatesLink.TabStop = true;
             this.checkUpdatesLink.Text = "Check for a newer version";
@@ -105,10 +103,9 @@ namespace companion
             // disableCheckbox
             // 
             this.disableCheckbox.AutoSize = true;
-            this.disableCheckbox.Location = new System.Drawing.Point(25, 49);
-            this.disableCheckbox.Margin = new System.Windows.Forms.Padding(2);
+            this.disableCheckbox.Location = new System.Drawing.Point(38, 75);
             this.disableCheckbox.Name = "disableCheckbox";
-            this.disableCheckbox.Size = new System.Drawing.Size(158, 17);
+            this.disableCheckbox.Size = new System.Drawing.Size(231, 24);
             this.disableCheckbox.TabIndex = 15;
             this.disableCheckbox.Text = "Disable the OpenXR Toolkit";
             this.disableCheckbox.UseVisualStyleBackColor = true;
@@ -117,10 +114,9 @@ namespace companion
             // safemodeCheckbox
             // 
             this.safemodeCheckbox.AutoSize = true;
-            this.safemodeCheckbox.Location = new System.Drawing.Point(25, 102);
-            this.safemodeCheckbox.Margin = new System.Windows.Forms.Padding(2);
+            this.safemodeCheckbox.Location = new System.Drawing.Point(38, 157);
             this.safemodeCheckbox.Name = "safemodeCheckbox";
-            this.safemodeCheckbox.Size = new System.Drawing.Size(111, 17);
+            this.safemodeCheckbox.Size = new System.Drawing.Size(164, 24);
             this.safemodeCheckbox.TabIndex = 16;
             this.safemodeCheckbox.Text = "Enable safe mode";
             this.safemodeCheckbox.UseVisualStyleBackColor = true;
@@ -129,20 +125,18 @@ namespace companion
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(41, 74);
-            this.label1.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label1.Location = new System.Drawing.Point(62, 114);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(297, 13);
+            this.label1.Size = new System.Drawing.Size(445, 20);
             this.label1.TabIndex = 17;
             this.label1.Text = "Completely disable the software without needing to uninstall it.";
             // 
             // experimentalCheckbox
             // 
             this.experimentalCheckbox.AutoSize = true;
-            this.experimentalCheckbox.Location = new System.Drawing.Point(25, 168);
-            this.experimentalCheckbox.Margin = new System.Windows.Forms.Padding(2);
+            this.experimentalCheckbox.Location = new System.Drawing.Point(38, 258);
             this.experimentalCheckbox.Name = "experimentalCheckbox";
-            this.experimentalCheckbox.Size = new System.Drawing.Size(160, 17);
+            this.experimentalCheckbox.Size = new System.Drawing.Size(239, 24);
             this.experimentalCheckbox.TabIndex = 18;
             this.experimentalCheckbox.Text = "Enable experimental settings";
             this.experimentalCheckbox.UseVisualStyleBackColor = true;
@@ -150,10 +144,9 @@ namespace companion
             // 
             // label2
             // 
-            this.label2.Location = new System.Drawing.Point(41, 127);
-            this.label2.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label2.Location = new System.Drawing.Point(62, 195);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(348, 26);
+            this.label2.Size = new System.Drawing.Size(522, 40);
             this.label2.TabIndex = 19;
             this.label2.Text = "Recover an application by ignoring all its settings upon next startup. When in sa" +
     "fe mode, press Ctrl+F1+F2+F3 to delete all settings.";
@@ -161,29 +154,26 @@ namespace companion
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(41, 192);
-            this.label3.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label3.Location = new System.Drawing.Point(62, 295);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(312, 13);
+            this.label3.Size = new System.Drawing.Size(470, 20);
             this.label3.TabIndex = 20;
             this.label3.Text = "Expose experimental features that may be unfinished or unstable.";
             // 
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(41, 245);
-            this.label4.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label4.Location = new System.Drawing.Point(62, 377);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(360, 13);
+            this.label4.Size = new System.Drawing.Size(537, 20);
             this.label4.TabIndex = 21;
             this.label4.Text = "Screenshots are stored in %LocalAppData%\\OpenXR-Toolkit\\screenshots.";
             // 
             // openLog
             // 
-            this.openLog.Location = new System.Drawing.Point(18, 373);
-            this.openLog.Margin = new System.Windows.Forms.Padding(2);
+            this.openLog.Location = new System.Drawing.Point(27, 574);
             this.openLog.Name = "openLog";
-            this.openLog.Size = new System.Drawing.Size(150, 31);
+            this.openLog.Size = new System.Drawing.Size(225, 48);
             this.openLog.TabIndex = 22;
             this.openLog.Text = "Open log file";
             this.openLog.UseVisualStyleBackColor = true;
@@ -191,10 +181,9 @@ namespace companion
             // 
             // openScreenshots
             // 
-            this.openScreenshots.Location = new System.Drawing.Point(187, 373);
-            this.openScreenshots.Margin = new System.Windows.Forms.Padding(2);
+            this.openScreenshots.Location = new System.Drawing.Point(280, 574);
             this.openScreenshots.Name = "openScreenshots";
-            this.openScreenshots.Size = new System.Drawing.Size(150, 31);
+            this.openScreenshots.Size = new System.Drawing.Size(225, 48);
             this.openScreenshots.TabIndex = 23;
             this.openScreenshots.Text = "Open screenshots folder";
             this.openScreenshots.UseVisualStyleBackColor = true;
@@ -204,9 +193,10 @@ namespace companion
             // 
             this.leftKey.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.leftKey.FormattingEnabled = true;
-            this.leftKey.Location = new System.Drawing.Point(154, 298);
+            this.leftKey.Location = new System.Drawing.Point(231, 458);
+            this.leftKey.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.leftKey.Name = "leftKey";
-            this.leftKey.Size = new System.Drawing.Size(75, 21);
+            this.leftKey.Size = new System.Drawing.Size(110, 28);
             this.leftKey.TabIndex = 24;
             this.leftKey.SelectedIndexChanged += new System.EventHandler(this.leftKey_SelectedIndexChanged);
             // 
@@ -214,9 +204,10 @@ namespace companion
             // 
             this.nextKey.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.nextKey.FormattingEnabled = true;
-            this.nextKey.Location = new System.Drawing.Point(234, 298);
+            this.nextKey.Location = new System.Drawing.Point(351, 458);
+            this.nextKey.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.nextKey.Name = "nextKey";
-            this.nextKey.Size = new System.Drawing.Size(75, 21);
+            this.nextKey.Size = new System.Drawing.Size(110, 28);
             this.nextKey.TabIndex = 25;
             this.nextKey.SelectedIndexChanged += new System.EventHandler(this.nextKey_SelectedIndexChanged);
             // 
@@ -224,36 +215,40 @@ namespace companion
             // 
             this.rightKey.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.rightKey.FormattingEnabled = true;
-            this.rightKey.Location = new System.Drawing.Point(314, 298);
+            this.rightKey.Location = new System.Drawing.Point(471, 458);
+            this.rightKey.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.rightKey.Name = "rightKey";
-            this.rightKey.Size = new System.Drawing.Size(75, 21);
+            this.rightKey.Size = new System.Drawing.Size(110, 28);
             this.rightKey.TabIndex = 26;
             this.rightKey.SelectedIndexChanged += new System.EventHandler(this.rightKey_SelectedIndexChanged);
             // 
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(22, 301);
+            this.label5.Location = new System.Drawing.Point(33, 463);
+            this.label5.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(125, 13);
+            this.label5.Size = new System.Drawing.Size(186, 20);
             this.label5.TabIndex = 27;
             this.label5.Text = "On-screen menu hotkeys";
             // 
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(93, 329);
+            this.label6.Location = new System.Drawing.Point(140, 506);
+            this.label6.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(49, 13);
+            this.label6.Size = new System.Drawing.Size(73, 20);
             this.label6.TabIndex = 28;
             this.label6.Text = "Modifiers";
             // 
             // ctrlModifierCheckbox
             // 
             this.ctrlModifierCheckbox.AutoSize = true;
-            this.ctrlModifierCheckbox.Location = new System.Drawing.Point(156, 329);
+            this.ctrlModifierCheckbox.Location = new System.Drawing.Point(234, 506);
+            this.ctrlModifierCheckbox.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.ctrlModifierCheckbox.Name = "ctrlModifierCheckbox";
-            this.ctrlModifierCheckbox.Size = new System.Drawing.Size(41, 17);
+            this.ctrlModifierCheckbox.Size = new System.Drawing.Size(59, 24);
             this.ctrlModifierCheckbox.TabIndex = 29;
             this.ctrlModifierCheckbox.Text = "Ctrl";
             this.ctrlModifierCheckbox.UseVisualStyleBackColor = true;
@@ -262,9 +257,10 @@ namespace companion
             // altModifierCheckbox
             // 
             this.altModifierCheckbox.AutoSize = true;
-            this.altModifierCheckbox.Location = new System.Drawing.Point(207, 329);
+            this.altModifierCheckbox.Location = new System.Drawing.Point(310, 506);
+            this.altModifierCheckbox.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.altModifierCheckbox.Name = "altModifierCheckbox";
-            this.altModifierCheckbox.Size = new System.Drawing.Size(38, 17);
+            this.altModifierCheckbox.Size = new System.Drawing.Size(54, 24);
             this.altModifierCheckbox.TabIndex = 30;
             this.altModifierCheckbox.Text = "Alt";
             this.altModifierCheckbox.UseVisualStyleBackColor = true;
@@ -273,35 +269,38 @@ namespace companion
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(179, 282);
+            this.label7.Location = new System.Drawing.Point(268, 434);
+            this.label7.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(21, 13);
+            this.label7.Size = new System.Drawing.Size(31, 20);
             this.label7.TabIndex = 32;
             this.label7.Text = "left";
             // 
             // label8
             // 
             this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(254, 282);
+            this.label8.Location = new System.Drawing.Point(381, 434);
+            this.label8.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(33, 13);
+            this.label8.Size = new System.Drawing.Size(47, 20);
             this.label8.TabIndex = 33;
             this.label8.Text = "down";
             // 
             // label9
             // 
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(339, 282);
+            this.label9.Location = new System.Drawing.Point(508, 434);
+            this.label9.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label9.Name = "label9";
-            this.label9.Size = new System.Drawing.Size(27, 13);
+            this.label9.Size = new System.Drawing.Size(40, 20);
             this.label9.TabIndex = 34;
             this.label9.Text = "right";
             // 
             // Form1
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(411, 438);
+            this.ClientSize = new System.Drawing.Size(616, 674);
             this.Controls.Add(this.label9);
             this.Controls.Add(this.label8);
             this.Controls.Add(this.label7);
@@ -327,6 +326,7 @@ namespace companion
             this.Controls.Add(this.layerActive);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.MaximizeBox = false;
             this.Name = "Form1";
             this.Text = "OpenXR Toolkit Companion app";
