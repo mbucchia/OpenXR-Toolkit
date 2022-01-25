@@ -11,6 +11,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution 
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		LICENSE = LICENSE
+		.github\workflows\msbuild.yml = .github\workflows\msbuild.yml
 		README.md = README.md
 	EndProjectSection
 EndProject
@@ -25,6 +26,11 @@ EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Setup", "installer\installer.vdproj", "{9D1EF86B-6B13-4C14-BBD7-E70CF7DD48DE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mappingtool", "mappingstool\mappingtool.csproj", "{F64486BA-421E-43A7-8E97-DC9981EA5C6F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GitHub", "GitHub", "{3F9F661B-0558-4FF0-862C-4D1920CC2782}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\msbuild.yml = .github\workflows\msbuild.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -53,6 +59,7 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{1E41057B-9167-4ED0-A3FA-6F2CA6B55922} = {387062F2-BCA2-4776-A414-B6DE41FC9E12}
+		{3F9F661B-0558-4FF0-862C-4D1920CC2782} = {387062F2-BCA2-4776-A414-B6DE41FC9E12}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {777B0DEC-4E36-4B64-BD29-1832B32A076B}

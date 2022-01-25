@@ -15,6 +15,7 @@ env:
 jobs:
   build:
     runs-on: windows-latest
+    environment: build-and-sign
 
     steps:
     - name: Checkout project
@@ -47,6 +48,13 @@ jobs:
         
         # Finally, we may build the project.
         devenv.com ${{env.SOLUTION_FILE_PATH}} /Build ${{env.BUILD_CONFIGURATION}}
+
+    - name: Signing
+      env:
+        PFX_PASSWORD: ${{ secrets.PFX_PASSWORD }}
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: |
+        & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f installer/selfsigncert.pfx /p "$env:PFX_PASSWORD" /v installer/output/OpenXR-Toolkit.msi
 
     - name: Publish
       uses: actions/upload-artifact@v2
