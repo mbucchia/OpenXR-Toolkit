@@ -17,8 +17,8 @@ nav_order: 2
 
 The OpenXR Toolkit does not add hand tracking capability to your headset, but instead it leverages hand tracking capabilities of some devices (such as the Leap Motion controller) and enable the hand tracking to act as VR controllers.
 
-![Hand tracking in Microsoft Flight Similator 2020](site/hand-tracking.jpg)<br>
-*Hand tracking in Microsoft Flight Similator 2020*
+![Hand tracking in Microsoft Flight Simulator 2020](site/hand-tracking.jpg)<br>
+*Hand tracking in Microsoft Flight Simulator 2020*
 
 Devices confirmed to work:
 
@@ -96,6 +96,11 @@ Some applications use the grip pose, some use the aim pose, and some use both. *
 
 When the OpenXR toolkit translates the hand poses into controller poses, it must choose from one of the 26 hand joints pose and optionally perform an additional translation and/or rotation for the resulting controller grip pose or aim pose to be usable.
 
+![Mapping tool Offsets tab](site/mappingtool-offsets.png)
+*The Offsets tab of the configuration tool*
+
+The configutation tool lets you choose which hand joint to use for the grip pose and aim pose, and allows you to apply and additional translation and/or rotation for the final pose.
+
 #### Defaults
 
 When no configuration file is provided, the palm of the hand is used when representing the grip, and the "intermediate" joint of the index finger (see hand joint poses above) is used to represent the aim. No additional translation/rotation is applied.
@@ -108,35 +113,35 @@ The following gestures are recognized and can be used to trigger the simulated i
 
 **Important: Some gestures may interfere with each other, and not all gestures should be bound to simulated inputs**. For example the  wrist tap and palm tap gestures are fairly similar, and mapping a distinct input to both of them can lead to false-triggering, or both inputs being simulated at the same time. Care must be taken to not "overload" the gesture bindings.
 
-##### Pinch (one-handed)
+**Pinch (one-handed)**
 
 Bringing the tip of the thumb and index together.
 
-##### Thumb press (one-handed)
+**Thumb press (one-handed)**
 
 Using the thumb to "press" onto the index finger. The target is the "intermediate" joint of the index finger (see hand joint poses above).
 
-##### Index bend (one-handed)
+**Index bend (one-handed)**
 
 Bending the index finger in a trigger-like motion.
 
-##### Finger gun (one-handed)
+**Finger gun (one-handed)**
 
 Using the thumb to "press" into the middle finger. The target is the "intermediate" joint of the middle finger (see hand joint poses above). This gesture allows the index finger to be extended (pointing forward).
 
-##### Squeeze (one-handed)
+**Squeeze (one-handed)**
 
 Bending the middle finger, ring finger and little finger in a trigger-like motion.
 
-##### Wrist tap (two-handed)
+**Wrist tap (two-handed)**
 
 Using the tip of the index finger from the opposite hand to press on the wrist.
 
-##### Palm tap (two-handed)
+**Palm tap (two-handed)**
 
 Using the tip of the index finger from the opposite hand to press on the center of the palm.
 
-##### Index tip tap (two-handed)
+**Index tip tap (two-handed)**
 
 Bring the tip of both index fingers together.
 
@@ -167,6 +172,11 @@ Each controller input is identified with an action path, which contains both a u
 - **/input/system/click**: Emulates pressing the Windows button.
 - **/input/trackpad/click**: The trackpad being pushed down. This action is only supported on first generation Windows Mixed Reality motion controllers.
 
+![Mapping tool Bindings tab](site/mappingtool-bindings.png)
+*The Bindings tab of the configuration tool*
+
+The configutation tool lets you choose the interaction profile (type of controller) to simulate and bind the gestures to corresponding simulated button inputs.
+
 #### Defaults
 
 When no configuration file is provided, an HP Reverb motion controller is simulated, with the following gestures bound:
@@ -191,5 +201,10 @@ Example: With a near distance of 10mm and a far distance of 60mm for pinching:
 Adjusting the near and far distances effectively allows to modify the sensitivity of each gesture.
 
 Another parameter, the "click threshold ", allows to modify the sensitivity of the click actions. As described earlier, click actions correspond to a button that is either pressed or not pressed. The click threshold determine the output value above which a gesture results in a click action being pressed. If the output value for a gesture is below the click threshold, then the button is reported not pressed. If the output value is greater or equal to the click threshold, the the button is reported pressed.
+
+![Mapping tool Bindings tab](site/mappingtool-gestures.png)
+*The Gestures tab of the configuration tool*
+
+The configutation tool lets you customize the near and far distance for each gesture, along with the click threshold.
 
 The [Detailed overlay](overlay) can be used to view the current output value for each gesture, and should be used to tune the near and far distances and the click threshold.

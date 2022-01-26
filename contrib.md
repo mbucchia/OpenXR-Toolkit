@@ -10,16 +10,11 @@ Please note that this software is not affiliated with Microsoft nor with Reality
 
 Logo and icons designed by RPthreenine.
 
-Special thanks:
+Special thanks to:
 - Roman Bershadsky ([Roman Design](https://flightsimulation.romandesign.ca/))
+- [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskytours)
 - HyperJet2018
 - BufordTX
-- [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskytours)
 - [2020FS'ers](https://www.youtube.com/channel/UCwCZlJ5_EOSzS9_gNvyWFTw)
-- CptStevil
-- NumberNumber481
-- themadmaker
-- RCFlyer51
-- Booms3220
-- CPSweatPants
-- (...we probably forgot some...)
+
+Thanks to our beta testers: CptStevil, NumberNumber481, themadmaker, RCFlyer51, Booms3220, CPSweatPants, Altsak, AmiableGalaxy9...

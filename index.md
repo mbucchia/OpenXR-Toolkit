@@ -21,6 +21,7 @@ This software may be used with any brand of VR headset as long as the target app
 ## Limitations
 
 + This software was only extensively tested with Microsoft Flight Simulator 2020;
++ The brand new Varjo Aero headset is not supported (we are working on it);
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
 For future plans, see the [Roadmap](roadmap).
@@ -30,6 +31,8 @@ For future plans, see the [Roadmap](roadmap).
 [Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases){: .btn .btn-blue }
 
 ...or expore [all versions](https://github.com/mbucchia/OpenXR-Toolkit/releases).
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/cDToBDj8b_U" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 **Note: if you use the previous NIS Scaler or Hand-To-Controller layer before, please uninstall them now**.
 
