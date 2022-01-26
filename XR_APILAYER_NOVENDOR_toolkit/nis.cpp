@@ -63,8 +63,8 @@ namespace {
             m_threadGroupSize = opt.GetOptimalThreadGroupSize();
 
             // The upscaling factor is only read upon initialization of the session. It cannot be changed after.
-            std::tie(m_inputWidth, m_inputHeight) = utilities::GetScaledDimensions(
-                m_outputWidth, m_outputHeight, m_configManager->getValue(SettingScaling), 2);
+            std::tie(m_inputWidth, m_inputHeight) =
+                config::GetScaledDimensions(m_configManager.get(), m_outputWidth, m_outputHeight, 2);
 
             if (m_inputWidth != m_outputWidth || m_inputHeight != m_outputHeight) {
                 initializeScaler();

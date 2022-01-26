@@ -56,8 +56,8 @@ namespace {
             : m_configManager(configManager), m_device(graphicsDevice), m_outputWidth(outputWidth),
               m_outputHeight(outputHeight) {
             // The upscaling factor is only read upon initialization of the session. It cannot be changed after.
-            std::tie(m_inputWidth, m_inputHeight) = utilities::GetScaledDimensions(
-                m_outputWidth, m_outputHeight, configManager->getValue(SettingScaling), 2);
+            std::tie(m_inputWidth, m_inputHeight) =
+                config::GetScaledDimensions(m_configManager.get(), m_outputWidth, m_outputHeight, 2);
 
             if (m_inputWidth != m_outputWidth || m_inputHeight != m_outputHeight) {
                 initializeScaler();

@@ -58,6 +58,12 @@ namespace {
         std::function<std::string(int)> valueToString;
 
         bool visible{true};
+
+        // Some settings might require exiting VR immediately to test the change. Bypass the commit delay when true.
+        bool noCommitDelay{false};
+
+        // Some entries are not attached to config values. Use a direct pointer in this case.
+        int* pValue{nullptr};
     };
 
     struct MenuGroup {
@@ -109,17 +115,23 @@ namespace {
             m_keyMenuLabel = keyToString(m_keyMenu);
 
             // Add menu entries below.
-
             m_menuEntries.push_back({"Overlay",
                                      MenuEntryType::Choice,
                                      SettingOverlayType,
                                      0,
                                      (int)OverlayType::MaxValue - (m_configManager->isExperimentalMode() ? 1 : 2),
                                      [](int value) {
-                                         std::string labels[] = {"Off", "FPS", "Detailed"};
-                                         return labels[value];
+                                         const std::string_view labels[] = {"Off", "FPS", "Detailed"};
+                                         return std::string(labels[value]);
                                      }});
             m_configManager->setEnumDefault(SettingOverlayType, OverlayType::None);
+
+            // Upscaling Settings
+            m_originalScalingType = getCurrentScalingType();
+            m_originalScalingValue = getCurrentScaling();
+            m_originalAnamorphicValue = getCurrentAnamorphic();
+            m_useAnamorphic = m_originalAnamorphicValue > 0 ? 1 : 0;
+
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
             m_menuEntries.push_back({"Upscaling",
                                      MenuEntryType::Choice,
@@ -127,24 +139,55 @@ namespace {
                                      0,
                                      (int)ScalingType::MaxValue - 1,
                                      [](int value) {
-                                         std::string labels[] = {"Off", "NIS", "FSR"};
-                                         return labels[value];
+                                         const std::string_view labels[] = {"Off", "NIS", "FSR"};
+                                         return std::string(labels[value]);
                                      }});
+            m_menuEntries.back().noCommitDelay = true;
+
+            // Scaling sub group.
+            m_menuEntries.push_back({"Anamorphic", MenuEntryType::Choice, "", 0, 1, [](int value) {
+                                         const std::string_view labels[] = {"Off", "On"};
+                                         return std::string(labels[value]);
+                                     }});
+            m_menuEntries.back().noCommitDelay = true;
+            m_menuEntries.back().pValue = &m_useAnamorphic;
+
             m_upscalingGroup.start = m_menuEntries.size();
-            m_originalScalingType = getCurrentScalingType();
             m_menuEntries.push_back({"Factor", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
                                          // We don't even use value, the utility function below will query it.
-                                         const auto& resolution =
-                                             GetScaledDimensions(m_displayWidth, m_displayHeight, value, 2);
-                                         return fmt::format("{}% ({}x{})", value, resolution.first, resolution.second);
+                                         return fmt::format("{}% ({}x{})",
+                                                            value,
+                                                            GetScaledInputSize(m_displayWidth, value, 2),
+                                                            GetScaledInputSize(m_displayHeight, value, 2));
                                      }});
-            m_originalScalingValue = getCurrentScaling();
+            m_menuEntries.back().noCommitDelay = true;
+
             m_menuEntries.push_back({"Sharpness", MenuEntryType::Slider, SettingSharpness, 0, 100, [](int value) {
                                          return fmt::format("{}%", value);
                                      }});
             m_upscalingGroup.end = m_menuEntries.size();
-            m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
+            // Anamorphic sub group.
+            m_anamorphicGroup.start = m_menuEntries.size();
+            m_menuEntries.push_back({"Width", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
+                                         return fmt::format(
+                                             "{}% ({} pixels)", value, GetScaledInputSize(m_displayWidth, value, 2));
+                                     }});
+            m_menuEntries.back().noCommitDelay = true;
+
+            m_menuEntries.push_back({"Height", MenuEntryType::Slider, SettingAnamorphic, 25, 400, [&](int value) {
+                                         return fmt::format(
+                                             "{}% ({} pixels)", value, GetScaledInputSize(m_displayHeight, value, 2));
+                                     }});
+            m_menuEntries.back().noCommitDelay = true;
+
+            m_menuEntries.push_back({"Sharpness", MenuEntryType::Slider, SettingSharpness, 0, 100, [](int value) {
+                                         return fmt::format("{}%", value);
+                                     }});
+            m_anamorphicGroup.end = m_menuEntries.size();
+
+            // View control group.
+            m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
             // The unit for ICD is tenth of millimeters.
             m_menuEntries.push_back({"World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
                                          return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.0f, m_stats.icd * 1000);
@@ -170,6 +213,8 @@ namespace {
                      }
                  },
                  isPredictionDampeningSupported});
+
+            // Controler tracking group.
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
             m_menuEntries.push_back({"Hand tracking",
@@ -178,8 +223,8 @@ namespace {
                                      0,
                                      (int)HandTrackingEnabled::MaxValue - 1,
                                      [](int value) {
-                                         std::string labels[] = {"Off", "Both", "Left", "Right"};
-                                         return labels[value];
+                                         const std::string_view labels[] = {"Off", "Both", "Left", "Right"};
+                                         return std::string(labels[value]);
                                      },
                                      isHandTrackingSupported});
             m_originalHandTrackingEnabled = isHandTrackingEnabled();
@@ -191,9 +236,9 @@ namespace {
                  0,
                  4,
                  [](int value) {
-                     std::string labels[] = {
+                     const std::string_view labels[] = {
                          "Hidden", "Visible - Bright", "Visible - Medium", "Visible - Dark", "Visible - Darker"};
-                     return labels[value];
+                     return std::string(labels[value]);
                  },
                  isHandTrackingSupported});
             m_menuEntries.push_back({"Hands timeout",
@@ -201,9 +246,9 @@ namespace {
                                      SettingHandTimeout,
                                      0,
                                      60,
-                                     [](int value) -> std::string {
+                                     [](int value) {
                                          if (value == 0) {
-                                             return "Always on";
+                                             return std::string("Always on");
                                          } else {
                                              return fmt::format("{}s", value);
                                          }
@@ -214,14 +259,15 @@ namespace {
                 m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
             }
 
+            // Menu presentation group.
             m_menuEntries.push_back({"Font size",
                                      MenuEntryType::Choice,
                                      SettingMenuFontSize,
                                      0,
                                      (int)MenuFontSize::MaxValue - 1,
                                      [](int value) {
-                                         std::string labels[] = {"Small", "Medium", "Large"};
-                                         return labels[value];
+                                         const std::string_view labels[] = {"Small", "Medium", "Large"};
+                                         return std::string(labels[value]);
                                      }});
             m_configManager->setEnumDefault(SettingMenuFontSize, MenuFontSize::Medium);
             m_menuEntries.push_back({"Menu timeout",
@@ -230,8 +276,8 @@ namespace {
                                      0,
                                      (int)MenuTimeout::MaxValue - 1,
                                      [](int value) {
-                                         std::string labels[] = {"Short", "Medium", "Long"};
-                                         return labels[value];
+                                         const std::string_view labels[] = {"Short", "Medium", "Long"};
+                                         return std::string(labels[value]);
                                      }});
             m_configManager->setEnumDefault(SettingMenuTimeout, MenuTimeout::Medium);
             m_menuEntries.push_back(
@@ -272,7 +318,7 @@ namespace {
             }
 
             if (m_state == MenuState::Visible && (moveLeft || moveRight)) {
-                const auto& menuEntry = m_menuEntries[m_selectedItem];
+                auto& menuEntry = m_menuEntries[m_selectedItem];
 
                 switch (menuEntry.type) {
                 case MenuEntryType::Separator:
@@ -297,16 +343,19 @@ namespace {
                     break;
 
                 default:
-                    const int value = m_configManager->peekValue(menuEntry.configName);
-                    const int newValue =
-                        std::clamp(value + (moveLeft ? -1 : 1), menuEntry.minValue, menuEntry.maxValue);
+                    setEntryValue(menuEntry, peekEntryValue(menuEntry) + (moveLeft ? -1 : 1));
 
-                    // When changing the upscaling, people might immediately exit VR to test the change. Bypass the
-                    // commit delay.
-                    const bool noCommitDelay =
-                        menuEntry.configName == SettingScalingType || menuEntry.configName == SettingScaling;
+                    // When changing anamorphic setting, toggle the config value sign.
+                    if (menuEntry.title == "Anamorphic") {
+                        auto value = m_configManager->getValue(SettingAnamorphic);
 
-                    m_configManager->setValue(menuEntry.configName, newValue, noCommitDelay);
+                        // Fail safe: ensure there is a valid condition tp toggle the sign of the value.
+                        // However in this case, since useAnamorphic is binary, we could also toggle the sign of the
+                        // value directly.
+
+                        if ((m_useAnamorphic != 0) ^ (value > 0))
+                            m_configManager->setValue(SettingAnamorphic, -value, true);
+                    }
 
                     // When changing some settings, display the warning that the session must be restarted.
                     const bool wasRestartNeeded = std::exchange(m_needRestart, checkNeedRestartCondition());
@@ -340,7 +389,10 @@ namespace {
                 }
             };
 
-            updateGroupVisibility(m_upscalingGroup, getCurrentScalingType() != ScalingType::None);
+            updateGroupVisibility(m_upscalingGroup,
+                                  getCurrentScalingType() != ScalingType::None && m_useAnamorphic == 0);
+            updateGroupVisibility(m_anamorphicGroup,
+                                  getCurrentScalingType() != ScalingType::None && m_useAnamorphic != 0);
             updateGroupVisibility(m_handTrackingGroup, isHandTrackingEnabled());
         }
 
@@ -491,7 +543,7 @@ namespace {
                         left += menuEntriesTitleWidth;
                     }
 
-                    const int value = m_configManager->peekValue(menuEntry.configName);
+                    const int value = peekEntryValue(menuEntry);
 
                     // Display the current value.
                     switch (menuEntry.type) {
@@ -614,8 +666,7 @@ namespace {
         OVERLAY_COMMON);                                                                                               \
     top += 1.05f * fontSize;
 
-                    if (m_isHandTrackingSupported && m_configManager->getEnumValue<HandTrackingEnabled>(
-                                                         SettingHandTrackingEnabled) != HandTrackingEnabled::Off) {
+                    if (isHandTrackingEnabled()) {
                         GESTURE_STATE("pinch", pinch);
                         GESTURE_STATE("thb.pr", thumbPress);
                         GESTURE_STATE("indx.b", indexBend);
@@ -648,14 +699,23 @@ namespace {
         }
 
       private:
+        int peekEntryValue(const MenuEntry& menuEntry) const {
+            return menuEntry.pValue ? *menuEntry.pValue : m_configManager->peekValue(menuEntry.configName);
+        }
+
+        void setEntryValue(MenuEntry& menuEntry, int newValue) {
+            newValue = std::clamp(newValue, menuEntry.minValue, menuEntry.maxValue);
+            if (!menuEntry.pValue) {
+                m_configManager->setValue(menuEntry.configName, newValue, menuEntry.noCommitDelay);
+            } else {
+                *menuEntry.pValue = newValue;
+            }
+        }
+
         std::wstring keyToString(int key) const {
             wchar_t buf[16];
             GetKeyNameTextW(MAKELPARAM(0, MapVirtualKeyA(key, MAPVK_VK_TO_VSC)), buf, ARRAYSIZE(buf));
             return buf;
-        }
-
-        ScalingType getCurrentScalingType() const {
-            return m_configManager->getEnumValue<ScalingType>(SettingScalingType);
         }
 
         bool isHandTrackingEnabled() const {
@@ -663,8 +723,16 @@ namespace {
                                                     SettingHandTrackingEnabled) != HandTrackingEnabled::Off;
         }
 
-        uint32_t getCurrentScaling() const {
+        int getCurrentScaling() const {
             return m_configManager->getValue(SettingScaling);
+        }
+
+        int getCurrentAnamorphic() const {
+            return m_configManager->getValue(SettingAnamorphic);
+        }
+
+        ScalingType getCurrentScalingType() const {
+            return m_configManager->getEnumValue<ScalingType>(SettingScalingType);
         }
 
         bool checkNeedRestartCondition() const {
@@ -674,7 +742,8 @@ namespace {
             }
 
             if (m_originalScalingType != ScalingType::None) {
-                return m_originalScalingValue != getCurrentScaling();
+                return m_originalScalingValue != getCurrentScaling() ||
+                       m_originalAnamorphicValue != getCurrentAnamorphic();
             }
 
             return false;
@@ -707,10 +776,14 @@ namespace {
         bool m_resetArmed{false};
 
         MenuGroup m_upscalingGroup;
+        MenuGroup m_anamorphicGroup;
         MenuGroup m_handTrackingGroup;
 
-        uint32_t m_originalScalingValue{0};
         ScalingType m_originalScalingType{ScalingType::None};
+        int m_originalScalingValue{0};
+        int m_originalAnamorphicValue{0};
+        int m_useAnamorphic{0};
+
         bool m_originalHandTrackingEnabled{false};
         bool m_needRestart{false};
 

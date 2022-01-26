@@ -70,6 +70,7 @@ namespace toolkit {
         const std::string SettingMenuTimeout = "menu_timeout";
         const std::string SettingScalingType = "scaling_type";
         const std::string SettingScaling = "scaling";
+        const std::string SettingAnamorphic = "anamorphic";
         const std::string SettingSharpness = "sharpness";
         const std::string SettingICD = "icd";
         const std::string SettingFOV = "fov";
