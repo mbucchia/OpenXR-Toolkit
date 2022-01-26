@@ -215,7 +215,7 @@ namespace {
             }
 
             m_menuEntries.push_back({"Font size",
-                                     MenuEntryType::Choice,
+                                     MenuEntryType::Slider,
                                      SettingMenuFontSize,
                                      0,
                                      (int)MenuFontSize::MaxValue - 1,
@@ -225,7 +225,7 @@ namespace {
                                      }});
             m_configManager->setEnumDefault(SettingMenuFontSize, MenuFontSize::Medium);
             m_menuEntries.push_back({"Menu timeout",
-                                     MenuEntryType::Choice,
+                                     MenuEntryType::Slider,
                                      SettingMenuTimeout,
                                      0,
                                      (int)MenuTimeout::MaxValue - 1,
@@ -380,7 +380,7 @@ namespace {
             const float rightEyeOffset = (float)m_configManager->getValue(SettingOverlayEyeOffset);
             const float eyeOffset = eye ? rightEyeOffset : leftEyeOffset;
 
-            const float leftAlign = (renderTarget->getInfo().width / 4.0f) + eyeOffset;
+            const float leftAlign = (2.0f * renderTarget->getInfo().width / 5.0f) + eyeOffset;
             const float rightAlign = (2 * renderTarget->getInfo().width / 3.0f) + eyeOffset;
             const float topAlign = renderTarget->getInfo().height / 3.0f;
 
@@ -391,7 +391,7 @@ namespace {
             };
             const float fontSize = fontSizes[m_configManager->getValue(SettingMenuFontSize)];
 
-            const double timeouts[(int)MenuTimeout::MaxValue] = {3.0, 10.0, 60.0};
+            const double timeouts[(int)MenuTimeout::MaxValue] = {3.0, 12.0, 60.0};
             const double timeout =
                 m_state == MenuState::Splash ? 10.0 : timeouts[m_configManager->getValue(SettingMenuTimeout)];
 
@@ -578,8 +578,8 @@ namespace {
             }
 
             auto overlayType = m_configManager->getEnumValue<OverlayType>(SettingOverlayType);
-            if (overlayType != OverlayType::None) {
-                float top = topAlign;
+            if (m_state != MenuState::Splash && overlayType != OverlayType::None) {
+                float top = m_state != MenuState::Visible ? topAlign : topAlign - 1.1f * fontSize;
 
 #define OVERLAY_COMMON TextStyle::Normal, fontSize, rightAlign - 200, top, ColorSelected, true
 
@@ -587,7 +587,7 @@ namespace {
                 top += 1.05f * fontSize;
 
                 // Advanced display.
-                if (overlayType == OverlayType::Advanced) {
+                if (m_state != MenuState::Visible && overlayType == OverlayType::Advanced) {
 #define TIMING_STAT(label, name)                                                                                       \
     m_device->drawString(fmt::format(label ": {}", m_stats.name), OVERLAY_COMMON);                                     \
     top += 1.05f * fontSize;
