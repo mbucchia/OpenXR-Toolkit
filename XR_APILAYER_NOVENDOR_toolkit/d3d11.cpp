@@ -650,7 +650,7 @@ namespace {
             // Ensure we are not dropping an unfinished context.
             assert(m_currentContext == m_context);
 
-            if (blocking) {
+            if (1 || blocking) {
                 m_currentContext->Flush();
             }
         }
