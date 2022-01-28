@@ -39,7 +39,7 @@ namespace {
 
     using namespace xr::math;
 
-    constexpr double KeyRepeat = 0.2;
+    constexpr auto KeyRepeatDelay = 200ms;
 
     constexpr uint32_t ColorDefault = 0xffffffff;
     constexpr uint32_t ColorSelected = 0xff0099ff;
@@ -246,12 +246,11 @@ namespace {
             const auto now = std::chrono::steady_clock::now();
 
             // Check whether this is a long press and the event needs to be repeated.
-            const double keyRepeat = GetAsyncKeyState(VK_SHIFT) ? KeyRepeat / 10 : KeyRepeat;
-            const bool repeat = std::chrono::duration<double>(now - m_lastInput).count() > keyRepeat;
-
-            const bool moveLeft = UpdateKeyState(m_moveLeftKeyState, m_keyModifiers, m_keyLeft, repeat);
-            const bool moveRight = UpdateKeyState(m_moveRightKeyState, m_keyModifiers, m_keyRight, repeat);
-            const bool menuControl = UpdateKeyState(m_menuControlKeyState, m_keyModifiers, m_keyMenu, repeat);
+            const bool acceleration = GetAsyncKeyState(VK_SHIFT) < 0;
+            const bool isRepeat = (now - m_lastInput) > (acceleration ? KeyRepeatDelay / 10 : KeyRepeatDelay);
+            const bool moveLeft = UpdateKeyState(m_moveLeftKeyState, m_keyModifiers, m_keyLeft, isRepeat);
+            const bool moveRight = UpdateKeyState(m_moveRightKeyState, m_keyModifiers, m_keyRight, isRepeat);
+            const bool menuControl = UpdateKeyState(m_menuControlKeyState, m_keyModifiers, m_keyMenu, false);
 
             if (menuControl) {
                 if (m_state != MenuState::Visible) {
@@ -262,7 +261,12 @@ namespace {
                     m_menuEntriesRight = m_menuEntriesBottom = 0.0f;
                 } else {
                     do {
-                        m_selectedItem = (m_selectedItem + 1) % m_menuEntries.size();
+                        static_assert(std::is_unsigned_v<decltype(m_selectedItem)>);
+
+                        m_selectedItem += acceleration ? -1 : 1;
+                        if (m_selectedItem >= m_menuEntries.size())
+                            m_selectedItem = acceleration ? m_menuEntries.size()-1 : 0;
+
                     } while (m_menuEntries[m_selectedItem].type == MenuEntryType::Separator ||
                              !m_menuEntries[m_selectedItem].visible);
                 }
@@ -350,8 +354,8 @@ namespace {
                        const XrPosef& poseRight,
                        const XrFovf& fovRight,
                        const XrSwapchainCreateInfo& rightImageInfo) override {
-            // Project a single point 1m in front of the head from both eyes to clip space and compute the offset. Seems
-            // to work well.
+            // Project a single point 1m in front of the head from both eyes to clip space and compute the offset.
+            // Seems to work well.
             const XrVector3f worldPos3 =
                 Pose::Multiply(poseLeft, Pose::Translation(XrVector3f{0.0f, 0.0f, 1.0f})).position;
             const XrVector4f worldPos4 = XrVector4f{worldPos3.x, worldPos3.y, worldPos3.z, 1.0f};
@@ -546,14 +550,14 @@ namespace {
                     if (m_configManager->isSafeMode()) {
                         top += fontSize;
 
-                        left += m_device->drawString(
-                            L"\x26A0  Running in safe mode, settings are cleared when restarting the VR session \x26A0",
-                            TextStyle::Bold,
-                            fontSize,
-                            left,
-                            top,
-                            colorWarning,
-                            measure);
+                        left += m_device->drawString(L"\x26A0  Running in safe mode, settings are cleared when "
+                                                     L"restarting the VR session \x26A0",
+                                                     TextStyle::Bold,
+                                                     fontSize,
+                                                     left,
+                                                     top,
+                                                     colorWarning,
+                                                     measure);
 
                         top += 1.05f * fontSize;
                     } else if (m_needRestart) {
@@ -699,7 +703,7 @@ namespace {
 
         int m_numSplashLeft;
         std::vector<MenuEntry> m_menuEntries;
-        unsigned int m_selectedItem{0};
+        size_t m_selectedItem{0};
         std::chrono::steady_clock::time_point m_lastInput;
         bool m_moveLeftKeyState{false};
         bool m_moveRightKeyState{false};
@@ -723,7 +727,6 @@ namespace {
 } // namespace
 
 namespace toolkit::menu {
-
     std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                                     std::shared_ptr<toolkit::graphics::IDevice> device,
                                                     uint32_t displayWidth,
