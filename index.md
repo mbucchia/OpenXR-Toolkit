@@ -14,6 +14,16 @@ DISCLAIMER: This software is distributed as-is, without any warranties or condit
 
 # Setup
 
+## Downloads
+
+**!!! Download link for the initial release will be live no earlier than January 29th !!!**
+
+[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/beta-2/OpenXR-Toolkit.msi){: .btn .btn-blue }
+
+**!!! Download link for the initial release will be live no earlier than January 29th !!!**
+
+...or expore [all versions](https://github.com/mbucchia/OpenXR-Toolkit/releases).
+
 ## Requirements
 
 This software may be used with any brand of VR headset as long as the target application is developed using OpenXR. This software may be used with any GPU compatible with DirectX 11 and above.
@@ -28,11 +38,9 @@ For future plans, see the [Roadmap](roadmap).
 
 ## Installation
 
-[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases){: .btn .btn-blue }
+Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskytours):
 
-...or expore [all versions](https://github.com/mbucchia/OpenXR-Toolkit/releases).
-
-<iframe width="560" height="315" src="https://www.youtube.com/embed/cDToBDj8b_U" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/XXXXXXX" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 **Note: if you use the previous NIS Scaler or Hand-To-Controller layer before, please uninstall them now**.
 
