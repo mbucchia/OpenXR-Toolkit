@@ -1590,7 +1590,7 @@
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:TRUE"
-        "ProductVersion" = "8:0.9.3"
+        "ProductVersion" = "8:0.0.0"
         "Manufacturer" = "8:mbucchia@gmail.com"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:https://mbucchia.github.io/OpenXR-Toolkit/"
