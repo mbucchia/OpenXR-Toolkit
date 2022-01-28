@@ -40,7 +40,7 @@ For future plans, see the [Roadmap](roadmap).
 
 Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskytours):
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/XXXXXXX" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/QelydCFe0aQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 **Note: if you use the previous NIS Scaler or Hand-To-Controller layer before, please uninstall them now**.
 
