@@ -1,6 +1,6 @@
 In order to make a release with number X.Y.Z:
 
-1) Create or update the branch `release/x.y.z`
+1) Create or update the branch `release/x.y`
 
 2) Update the definitions in `XR_APILAYER_NOVENDOR_toolkit/layer.h`:
 
