@@ -38,6 +38,233 @@ namespace {
 
     const std::wstring FontFamily = L"Segoe UI Symbol";
 
+    struct D3D11ContextState {
+        ComPtr<ID3D11InputLayout> inputLayout;
+        D3D11_PRIMITIVE_TOPOLOGY topology;
+        ComPtr<ID3D11Buffer> vertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+        UINT vertexBufferStrides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+        UINT vertexBufferOffsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+
+        ComPtr<ID3D11Buffer> indexBuffer;
+        DXGI_FORMAT indexBufferFormat;
+        UINT indexBufferOffset;
+
+        ComPtr<ID3D11RenderTargetView> renderTargets[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+        ComPtr<ID3D11DepthStencilView> depthStencil;
+        ComPtr<ID3D11DepthStencilState> depthStencilState;
+        UINT stencilRef;
+        ComPtr<ID3D11BlendState> blendState;
+        float blendFactor[4];
+        UINT blendMask;
+
+#define SHADER_STAGE_STATE(stage, programType)                                                                         \
+    ComPtr<programType> stage##Program;                                                                                \
+    ComPtr<ID3D11Buffer> stage##ConstantBuffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];                    \
+    ComPtr<ID3D11SamplerState> stage##Samplers[D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT];                                 \
+    ComPtr<ID3D11ShaderResourceView> stage##ShaderResources[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+
+        SHADER_STAGE_STATE(VS, ID3D11VertexShader);
+        SHADER_STAGE_STATE(PS, ID3D11PixelShader);
+        SHADER_STAGE_STATE(GS, ID3D11GeometryShader);
+        SHADER_STAGE_STATE(DS, ID3D11DomainShader);
+        SHADER_STAGE_STATE(HS, ID3D11HullShader);
+        SHADER_STAGE_STATE(CS, ID3D11ComputeShader);
+
+#undef SHADER_STAGE_STATE
+
+        ComPtr<ID3D11UnorderedAccessView> CSUnorderedResources[D3D11_1_UAV_SLOT_COUNT];
+
+        ComPtr<ID3D11RasterizerState> rasterizerState;
+        D3D11_VIEWPORT viewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+        UINT numViewports;
+        D3D11_RECT scissorRects[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+        UINT numScissorRects;
+
+        void save(ID3D11DeviceContext* context) {
+            context->IAGetInputLayout(&inputLayout);
+            context->IAGetPrimitiveTopology(&topology);
+            {
+                ID3D11Buffer* vbs[ARRAYSIZE(vertexBuffers)];
+                context->IAGetVertexBuffers(0, ARRAYSIZE(vbs), vbs, vertexBufferStrides, vertexBufferOffsets);
+                for (uint32_t i = 0; i < ARRAYSIZE(vbs); i++) {
+                    vertexBuffers[i] = vbs[i];
+                }
+            }
+            context->IAGetIndexBuffer(&indexBuffer, &indexBufferFormat, &indexBufferOffset);
+
+            {
+                ID3D11RenderTargetView* rtvs[ARRAYSIZE(renderTargets)];
+                context->OMGetRenderTargets(ARRAYSIZE(rtvs), rtvs, &depthStencil);
+                for (uint32_t i = 0; i < ARRAYSIZE(rtvs); i++) {
+                    renderTargets[i] = rtvs[i];
+                }
+            }
+            context->OMGetDepthStencilState(&depthStencilState, &stencilRef);
+            context->OMGetBlendState(&blendState, blendFactor, &blendMask);
+
+#define SHADER_STAGE_SAVE_CONTEXT(stage)                                                                               \
+    context->stage##GetShader(&stage##Program, nullptr, nullptr);                                                      \
+    {                                                                                                                  \
+        ID3D11Buffer* buffers[ARRAYSIZE(stage##ConstantBuffers)];                                                      \
+        context->stage##GetConstantBuffers(0, ARRAYSIZE(buffers), buffers);                                            \
+        for (uint32_t i = 0; i < ARRAYSIZE(buffers); i++) {                                                            \
+            stage##ConstantBuffers[i] = buffers[i];                                                                    \
+        }                                                                                                              \
+    }                                                                                                                  \
+    {                                                                                                                  \
+        ID3D11SamplerState* samp[ARRAYSIZE(stage##Samplers)];                                                          \
+        context->stage##GetSamplers(0, ARRAYSIZE(samp), samp);                                                         \
+        for (uint32_t i = 0; i < ARRAYSIZE(samp); i++) {                                                               \
+            stage##Samplers[i] = samp[i];                                                                              \
+        }                                                                                                              \
+    }                                                                                                                  \
+    {                                                                                                                  \
+        ID3D11ShaderResourceView* srvs[ARRAYSIZE(stage##ShaderResources)];                                             \
+        context->stage##GetShaderResources(0, ARRAYSIZE(srvs), srvs);                                                  \
+        for (uint32_t i = 0; i < ARRAYSIZE(srvs); i++) {                                                               \
+            stage##ShaderResources[i] = srvs[i];                                                                       \
+        }                                                                                                              \
+    }
+
+            SHADER_STAGE_SAVE_CONTEXT(VS);
+            SHADER_STAGE_SAVE_CONTEXT(PS);
+            SHADER_STAGE_SAVE_CONTEXT(GS);
+            SHADER_STAGE_SAVE_CONTEXT(DS);
+            SHADER_STAGE_SAVE_CONTEXT(HS);
+            SHADER_STAGE_SAVE_CONTEXT(CS);
+
+#undef SHADER_STAGE_SAVE_CONTEXT
+
+            {
+                ID3D11UnorderedAccessView* uavs[ARRAYSIZE(CSUnorderedResources)];
+                context->CSGetUnorderedAccessViews(0, ARRAYSIZE(uavs), uavs);
+                for (uint32_t i = 0; i < ARRAYSIZE(uavs); i++) {
+                    CSUnorderedResources[i] = uavs[i];
+                }
+            }
+
+            context->RSGetState(&rasterizerState);
+            numViewports = ARRAYSIZE(viewports);
+            context->RSGetViewports(&numViewports, viewports);
+            numScissorRects = ARRAYSIZE(scissorRects);
+            context->RSGetScissorRects(&numScissorRects, scissorRects);
+
+            m_isValid = true;
+        }
+
+        void restore(ID3D11DeviceContext* context) const {
+            context->IASetInputLayout(inputLayout.Get());
+            context->IASetPrimitiveTopology(topology);
+            {
+                ID3D11Buffer* vbs[ARRAYSIZE(vertexBuffers)];
+                for (uint32_t i = 0; i < ARRAYSIZE(vbs); i++) {
+                    vbs[i] = vertexBuffers[i].Get();
+                }
+                context->IASetVertexBuffers(0, ARRAYSIZE(vbs), vbs, vertexBufferStrides, vertexBufferOffsets);
+            }
+            context->IASetIndexBuffer(indexBuffer.Get(), indexBufferFormat, indexBufferOffset);
+
+            {
+                ID3D11RenderTargetView* rtvs[ARRAYSIZE(renderTargets)];
+                for (uint32_t i = 0; i < ARRAYSIZE(rtvs); i++) {
+                    rtvs[i] = renderTargets[i].Get();
+                }
+                context->OMSetRenderTargets(ARRAYSIZE(rtvs), rtvs, depthStencil.Get());
+            }
+            context->OMSetDepthStencilState(depthStencilState.Get(), stencilRef);
+            context->OMSetBlendState(blendState.Get(), blendFactor, blendMask);
+
+#define SHADER_STAGE_RESTORE_CONTEXT(stage)                                                                            \
+    context->stage##SetShader(stage##Program.Get(), nullptr, 0);                                                       \
+    {                                                                                                                  \
+        ID3D11Buffer* buffers[ARRAYSIZE(stage##ConstantBuffers)];                                                      \
+        for (uint32_t i = 0; i < ARRAYSIZE(buffers); i++) {                                                            \
+            buffers[i] = stage##ConstantBuffers[i].Get();                                                              \
+        }                                                                                                              \
+        context->stage##SetConstantBuffers(0, ARRAYSIZE(buffers), buffers);                                            \
+    }                                                                                                                  \
+    {                                                                                                                  \
+        ID3D11SamplerState* samp[ARRAYSIZE(stage##Samplers)];                                                          \
+        for (uint32_t i = 0; i < ARRAYSIZE(samp); i++) {                                                               \
+            samp[i] = stage##Samplers[i].Get();                                                                        \
+        }                                                                                                              \
+        context->stage##SetSamplers(0, ARRAYSIZE(samp), samp);                                                         \
+    }                                                                                                                  \
+    {                                                                                                                  \
+        ID3D11ShaderResourceView* srvs[ARRAYSIZE(stage##ShaderResources)];                                             \
+        for (uint32_t i = 0; i < ARRAYSIZE(srvs); i++) {                                                               \
+            srvs[i] = stage##ShaderResources[i].Get();                                                                 \
+        }                                                                                                              \
+        context->stage##SetShaderResources(0, ARRAYSIZE(srvs), srvs);                                                  \
+    }
+
+            SHADER_STAGE_RESTORE_CONTEXT(VS);
+            SHADER_STAGE_RESTORE_CONTEXT(PS);
+            SHADER_STAGE_RESTORE_CONTEXT(GS);
+            SHADER_STAGE_RESTORE_CONTEXT(DS);
+            SHADER_STAGE_RESTORE_CONTEXT(HS);
+            SHADER_STAGE_RESTORE_CONTEXT(CS);
+
+#undef SHADER_STAGE_RESTORE_CONTEXT
+
+            {
+                ID3D11UnorderedAccessView* uavs[ARRAYSIZE(CSUnorderedResources)];
+                for (uint32_t i = 0; i < ARRAYSIZE(uavs); i++) {
+                    uavs[i] = CSUnorderedResources[i].Get();
+                }
+                context->CSGetUnorderedAccessViews(0, ARRAYSIZE(uavs), uavs);
+            }
+
+            context->RSSetState(rasterizerState.Get());
+            context->RSSetViewports(numViewports, viewports);
+            context->RSSetScissorRects(numScissorRects, scissorRects);
+        }
+
+        void clear() {
+#define RESET_ARRAY(array)                                                                                             \
+    for (uint32_t i = 0; i < ARRAYSIZE(array); i++) {                                                                  \
+        array[i].Reset();                                                                                              \
+    }
+
+            inputLayout.Reset();
+            RESET_ARRAY(vertexBuffers);
+            indexBuffer.Reset();
+
+            RESET_ARRAY(renderTargets);
+            depthStencil.Reset();
+            depthStencilState.Reset();
+            blendState.Reset();
+
+#define SHADER_STAGE_STATE(stage)                                                                                      \
+    stage##Program.Reset();                                                                                            \
+    RESET_ARRAY(stage##ConstantBuffers);                                                                               \
+    RESET_ARRAY(stage##Samplers);                                                                                      \
+    RESET_ARRAY(stage##ShaderResources);
+
+            SHADER_STAGE_STATE(VS);
+            SHADER_STAGE_STATE(PS);
+            SHADER_STAGE_STATE(GS);
+            SHADER_STAGE_STATE(DS);
+            SHADER_STAGE_STATE(HS);
+            SHADER_STAGE_STATE(CS);
+
+            RESET_ARRAY(CSUnorderedResources);
+
+            rasterizerState.Reset();
+
+#undef RESET_ARRAY
+
+            m_isValid = false;
+        }
+
+        bool isValid() const {
+            return m_isValid;
+        }
+
+      private:
+        bool m_isValid{false};
+    };
+
     // Wrap a pixel shader resource. Obtained from D3D11Device.
     class D3D11QuadShader : public IQuadShader {
       public:
@@ -539,7 +766,6 @@ namespace {
       public:
         D3D11Device(ID3D11Device* device, bool textOnly = false) : m_device(device) {
             m_device->GetImmediateContext(&m_context);
-            m_currentContext = m_context;
 
             {
                 ComPtr<IDXGIDevice> dxgiDevice;
@@ -627,31 +853,25 @@ namespace {
 
         void saveContext(bool clear) override {
             // Ensure we are not dropping an unfinished context.
-            assert(m_currentContext == m_context);
+            assert(!m_state.isValid());
 
-            CHECK_HRCMD(m_device->CreateDeferredContext(0, &m_currentContext));
-            if (clear) {
-                m_currentContext->ClearState();
-            }
+            m_state.save(m_context.Get());
         }
 
         void restoreContext() override {
             // Ensure saveContext() was called.
-            assert(m_currentContext != m_context);
+            assert(m_state.isValid());
 
-            ComPtr<ID3D11CommandList> commandList;
-            CHECK_HRCMD(m_currentContext->FinishCommandList(FALSE, &commandList));
-            m_context->ExecuteCommandList(commandList.Get(), TRUE);
-
-            m_currentContext = m_context;
+            m_state.restore(m_context.Get());
+            m_state.clear();
         }
 
         void flushContext(bool blocking, bool isEndOfFrame = false) override {
             // Ensure we are not dropping an unfinished context.
-            assert(m_currentContext == m_context);
+            assert(!m_state.isValid());
 
             if (blocking) {
-                m_currentContext->Flush();
+                m_context->Flush();
             }
         }
 
@@ -821,18 +1041,18 @@ namespace {
             m_currentShaderHighestSRV = m_currentShaderHighestUAV = m_currentShaderHighestRTV = 0;
 
             // Prepare to draw the quad.
-            m_currentContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
-            m_currentContext->OMSetDepthStencilState(nullptr, 0);
-            m_currentContext->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
-            m_currentContext->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
-            m_currentContext->IASetInputLayout(nullptr);
-            m_currentContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-            m_currentContext->VSSetShader(m_quadVertexShader.Get(), nullptr, 0);
+            m_context->OMSetBlendState(nullptr, nullptr, 0xffffffff);
+            m_context->OMSetDepthStencilState(nullptr, 0);
+            m_context->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
+            m_context->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
+            m_context->IASetInputLayout(nullptr);
+            m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+            m_context->VSSetShader(m_quadVertexShader.Get(), nullptr, 0);
 
             // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
             ID3D11SamplerState* samp[] = {m_linearClampSamplerPS.Get()};
-            m_currentContext->PSSetSamplers(0, 1, samp);
-            m_currentContext->PSSetShader(shader->getNative<D3D11>(), nullptr, 0);
+            m_context->PSSetSamplers(0, 1, samp);
+            m_context->PSSetShader(shader->getNative<D3D11>(), nullptr, 0);
 
             m_currentQuadShader = shader;
         }
@@ -844,9 +1064,9 @@ namespace {
 
             // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
             ID3D11SamplerState* samp[] = {m_linearClampSamplerCS.Get()};
-            m_currentContext->CSSetSamplers(0, 1, samp);
+            m_context->CSSetSamplers(0, 1, samp);
 
-            m_currentContext->CSSetShader(shader->getNative<D3D11>(), nullptr, 0);
+            m_context->CSSetShader(shader->getNative<D3D11>(), nullptr, 0);
 
             m_currentComputeShader = shader;
         }
@@ -855,9 +1075,9 @@ namespace {
             ID3D11ShaderResourceView* srvs[] = {slice == -1 ? input->getShaderInputView()->getNative<D3D11>()
                                                             : input->getShaderInputView(slice)->getNative<D3D11>()};
             if (m_currentQuadShader) {
-                m_currentContext->PSSetShaderResources(slot, 1, srvs);
+                m_context->PSSetShaderResources(slot, 1, srvs);
             } else if (m_currentComputeShader) {
-                m_currentContext->CSSetShaderResources(slot, 1, srvs);
+                m_context->CSSetShaderResources(slot, 1, srvs);
             } else {
                 throw std::runtime_error("No shader is set");
             }
@@ -867,9 +1087,9 @@ namespace {
         void setShaderInput(uint32_t slot, std::shared_ptr<IShaderBuffer> input) override {
             ID3D11Buffer* cbs[] = {input->getNative<D3D11>()};
             if (m_currentQuadShader) {
-                m_currentContext->PSSetConstantBuffers(slot, 1, cbs);
+                m_context->PSSetConstantBuffers(slot, 1, cbs);
             } else if (m_currentComputeShader) {
-                m_currentContext->CSSetConstantBuffers(slot, 1, cbs);
+                m_context->CSSetConstantBuffers(slot, 1, cbs);
             } else {
                 throw std::runtime_error("No shader is set");
             }
@@ -886,15 +1106,15 @@ namespace {
                     setRenderTargets({std::make_pair(output, slice)}, {});
                 }
 
-                m_currentContext->RSSetState(output->getInfo().sampleCount > 1 ? m_quadRasterizerMSAA.Get()
-                                                                               : m_quadRasterizer.Get());
+                m_context->RSSetState(output->getInfo().sampleCount > 1 ? m_quadRasterizerMSAA.Get()
+                                                                        : m_quadRasterizer.Get());
                 m_currentShaderHighestRTV = max(m_currentShaderHighestRTV, slot);
 
             } else if (m_currentComputeShader) {
                 ID3D11UnorderedAccessView* uavs[] = {
                     slice == -1 ? output->getComputeShaderOutputView()->getNative<D3D11>()
                                 : output->getComputeShaderOutputView(slice)->getNative<D3D11>()};
-                m_currentContext->CSSetUnorderedAccessViews(slot, 1, uavs, nullptr);
+                m_context->CSSetUnorderedAccessViews(slot, 1, uavs, nullptr);
                 m_currentShaderHighestUAV = max(m_currentShaderHighestUAV, slot);
             } else {
                 throw std::runtime_error("No shader is set");
@@ -903,11 +1123,11 @@ namespace {
 
         void dispatchShader(bool doNotClear) const override {
             if (m_currentQuadShader) {
-                m_currentContext->Draw(3, 0);
+                m_context->Draw(3, 0);
             } else if (m_currentComputeShader) {
-                m_currentContext->Dispatch(m_currentComputeShader->getThreadGroups()[0],
-                                           m_currentComputeShader->getThreadGroups()[1],
-                                           m_currentComputeShader->getThreadGroups()[2]);
+                m_context->Dispatch(m_currentComputeShader->getThreadGroups()[0],
+                                    m_currentComputeShader->getThreadGroups()[1],
+                                    m_currentComputeShader->getThreadGroups()[2]);
             } else {
                 throw std::runtime_error("No shader is set");
             }
@@ -920,7 +1140,7 @@ namespace {
                         rtvs.push_back(nullptr);
                     }
 
-                    m_currentContext->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
+                    m_context->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
                     m_currentShaderHighestRTV = 0;
                 }
                 {
@@ -930,9 +1150,9 @@ namespace {
                     }
 
                     if (m_currentQuadShader) {
-                        m_currentContext->PSSetShaderResources(0, (UINT)srvs.size(), srvs.data());
+                        m_context->PSSetShaderResources(0, (UINT)srvs.size(), srvs.data());
                     } else {
-                        m_currentContext->CSSetShaderResources(0, (UINT)srvs.size(), srvs.data());
+                        m_context->CSSetShaderResources(0, (UINT)srvs.size(), srvs.data());
                     }
                     m_currentShaderHighestSRV = 0;
                 }
@@ -942,7 +1162,7 @@ namespace {
                         uavs.push_back(nullptr);
                     }
 
-                    m_currentContext->CSSetUnorderedAccessViews(0, (UINT)uavs.size(), uavs.data(), nullptr);
+                    m_context->CSSetUnorderedAccessViews(0, (UINT)uavs.size(), uavs.data(), nullptr);
                     m_currentShaderHighestUAV = 0;
                 }
                 m_currentQuadShader.reset();
@@ -957,7 +1177,7 @@ namespace {
                 rtvs.push_back(nullptr);
             }
 
-            m_currentContext->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
+            m_context->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
 
             m_currentDrawRenderTarget.reset();
             m_currentDrawDepthBuffer.reset();
@@ -986,7 +1206,7 @@ namespace {
                     rtvs.push_back(renderTarget.first->getRenderTargetView(slice)->getNative<D3D11>());
                 }
             }
-            m_currentContext->OMSetRenderTargets(
+            m_context->OMSetRenderTargets(
                 (UINT)rtvs.size(),
                 rtvs.data(),
                 depthBuffer.first ? depthBuffer.first->getDepthStencilView()->getNative<D3D11>() : nullptr);
@@ -1003,7 +1223,7 @@ namespace {
                 viewport.TopLeftY = 0.0f;
                 viewport.Width = (float)m_currentDrawRenderTarget->getInfo().width;
                 viewport.Height = (float)m_currentDrawRenderTarget->getInfo().height;
-                m_currentContext->RSSetViewports(1, &viewport);
+                m_context->RSSetViewports(1, &viewport);
             } else {
                 m_currentDrawRenderTarget.reset();
                 m_currentDrawDepthBuffer.reset();
@@ -1017,8 +1237,8 @@ namespace {
             }
 
             ComPtr<ID3D11DeviceContext1> d3d11Context;
-            if (FAILED(m_currentContext->QueryInterface(__uuidof(ID3D11DeviceContext1),
-                                                        reinterpret_cast<void**>(d3d11Context.GetAddressOf())))) {
+            if (FAILED(m_context->QueryInterface(__uuidof(ID3D11DeviceContext1),
+                                                 reinterpret_cast<void**>(d3d11Context.GetAddressOf())))) {
                 // The app did not use a sufficient FEATURE_LEVEL. Nothing we can do.
                 return;
             }
@@ -1053,7 +1273,7 @@ namespace {
                     m_currentDrawDepthBuffer->getDepthStencilView(m_currentDrawDepthBufferSlice)->getNative<D3D11>();
             }
 
-            m_currentContext->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, value, 0);
+            m_context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, value, 0);
         }
 
         void setViewProjection(const XrPosef& eyePose, const XrFovf& fov, float depthNear, float depthFar) override {
@@ -1069,8 +1289,7 @@ namespace {
             }
             m_meshViewProjectionBuffer->uploadData(&staging, sizeof(staging));
 
-            m_currentContext->OMSetDepthStencilState(
-                depthNear > depthFar ? m_reversedZDepthNoStencilTest.Get() : nullptr, 0);
+            m_context->OMSetDepthStencilState(depthNear > depthFar ? m_reversedZDepthNoStencilTest.Get() : nullptr, 0);
         }
 
         void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling) override {
@@ -1082,19 +1301,18 @@ namespace {
                 }
                 ID3D11Buffer* const constantBuffers[] = {m_meshModelBuffer->getNative<D3D11>(),
                                                          m_meshViewProjectionBuffer->getNative<D3D11>()};
-                m_currentContext->VSSetConstantBuffers(0, (UINT)std::size(constantBuffers), constantBuffers);
-                m_currentContext->VSSetShader(m_meshVertexShader.Get(), nullptr, 0);
-                m_currentContext->PSSetShader(m_meshPixelShader.Get(), nullptr, 0);
-                m_currentContext->GSSetShader(nullptr, nullptr, 0);
+                m_context->VSSetConstantBuffers(0, (UINT)std::size(constantBuffers), constantBuffers);
+                m_context->VSSetShader(m_meshVertexShader.Get(), nullptr, 0);
+                m_context->PSSetShader(m_meshPixelShader.Get(), nullptr, 0);
+                m_context->GSSetShader(nullptr, nullptr, 0);
 
                 const UINT strides[] = {meshData->stride};
                 const UINT offsets[] = {0};
                 ID3D11Buffer* vertexBuffers[] = {meshData->vertexBuffer};
-                m_currentContext->IASetVertexBuffers(
-                    0, (UINT)std::size(vertexBuffers), vertexBuffers, strides, offsets);
-                m_currentContext->IASetIndexBuffer(meshData->indexBuffer, DXGI_FORMAT_R16_UINT, 0);
-                m_currentContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-                m_currentContext->IASetInputLayout(m_meshInputLayout.Get());
+                m_context->IASetVertexBuffers(0, (UINT)std::size(vertexBuffers), vertexBuffers, strides, offsets);
+                m_context->IASetIndexBuffer(meshData->indexBuffer, DXGI_FORMAT_R16_UINT, 0);
+                m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                m_context->IASetInputLayout(m_meshInputLayout.Get());
 
                 m_currentMesh = mesh;
             }
@@ -1105,7 +1323,7 @@ namespace {
                                      DirectX::XMMatrixTranspose(scaleMatrix * xr::math::LoadXrPose(pose)));
             m_meshModelBuffer->uploadData(&model, sizeof(model));
 
-            m_currentContext->DrawIndexedInstanced(meshData->numIndices, 1, 0, 0, 0);
+            m_context->DrawIndexedInstanced(meshData->numIndices, 1, 0, 0, 0);
         }
 
         float drawString(std::wstring string,
@@ -1118,7 +1336,7 @@ namespace {
                          bool alignRight) override {
             auto& font = style == TextStyle::Bold ? m_fontBold : m_fontNormal;
 
-            font->DrawString(m_currentContext.Get(),
+            font->DrawString(m_context.Get(),
                              string.c_str(),
                              size,
                              x,
@@ -1160,9 +1378,9 @@ namespace {
         }
 
         void flushText() override {
-            m_fontNormal->Flush(m_currentContext.Get());
-            m_fontBold->Flush(m_currentContext.Get());
-            m_currentContext->Flush();
+            m_fontNormal->Flush(m_context.Get());
+            m_fontBold->Flush(m_context.Get());
+            m_context->Flush();
         }
 
         void resolveQueries() override {
@@ -1181,7 +1399,7 @@ namespace {
         }
 
         void* getContextPtr() const override {
-            return m_currentContext.Get();
+            return m_context.Get();
         }
 
       private:
@@ -1361,7 +1579,7 @@ namespace {
 
         const ComPtr<ID3D11Device> m_device;
         ComPtr<ID3D11DeviceContext> m_context;
-        ComPtr<ID3D11DeviceContext> m_currentContext;
+        D3D11ContextState m_state;
         std::string m_deviceName;
 
         ComPtr<ID3D11SamplerState> m_linearClampSamplerPS;
