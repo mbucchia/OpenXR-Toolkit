@@ -54,6 +54,10 @@ You may either start from the default configuration, or load one of the existing
 
 The configuration tool also supports live configuration, where every change made in the tool will immediately be applied to the currently running application. **Once satisfied with the configuration, do not forget to save the configuration file!**
 
+For the live configuration feature to work, you need to allow the OpenXR Toolkit through the local firewall when this screen is presented:
+
+![Allow network](site/allow-network.png)
+
 #### Naming of the configuration file
 
 The configuration file must use the OpenXR name for the application, **which is not the same as the Windows application name or shortcut name**. To determine the OpenXR name for the application, you must run the application **with hand tracking enabled** (using the in-headset meanu), then inspect the log file (see [Troubleshooting](troubleshooting#inspect-the-log-file)). In the log file, the name of the application will appear with one of the following messages:
