@@ -28,7 +28,7 @@ This software may be used with any brand of VR headset as long as the target app
 
 + This software was only extensively tested with Microsoft Flight Simulator 2020;
 + The brand new Varjo Aero headset is not supported (we are working on it);
-+ The menu does not display correctly with Pimax headsets;
++ The menu does not display correctly with AMD card and/or Pimax headsets (working on it too);
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
 For future plans, see the [Roadmap](roadmap).
