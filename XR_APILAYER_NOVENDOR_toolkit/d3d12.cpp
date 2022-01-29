@@ -48,7 +48,7 @@ namespace {
             if (type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER || type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
                 desc.Flags |= D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
             }
-            CHECK_HRCMD(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap)));
+            CHECK_HRCMD(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(set(heap))));
             heapStartCPU = heap->GetCPUDescriptorHandleForHeapStart();
             heapStartGPU = heap->GetGPUDescriptorHandleForHeapStart();
             heapOffset = 0;
@@ -132,7 +132,7 @@ namespace {
             ComPtr<ID3DBlob> serializedRootSignature;
             ComPtr<ID3DBlob> errors;
             const HRESULT hr =
-                D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &serializedRootSignature, &errors);
+                D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &serializedRootSignature, set(errors));
             if (FAILED(hr)) {
                 if (errors) {
                     Log("%s", (char*)errors->GetBufferPointer());
@@ -143,7 +143,7 @@ namespace {
             CHECK_HRCMD(device->CreateRootSignature(0,
                                                     serializedRootSignature->GetBufferPointer(),
                                                     serializedRootSignature->GetBufferSize(),
-                                                    IID_PPV_ARGS(&m_rootSignature)));
+                                                    IID_PPV_ARGS(set(m_rootSignature))));
 
             m_parametersDescriptorRanges.clear();
         }
@@ -208,20 +208,20 @@ namespace {
                 m_psoDesc.SampleDesc.Quality = qualityLevels.NumQualityLevels - 1;
                 m_psoDesc.RasterizerState.MultisampleEnable = true;
             }
-            m_psoDesc.pRootSignature = m_rootSignature.Get();
-            CHECK_HRCMD(device->CreateGraphicsPipelineState(&m_psoDesc, IID_PPV_ARGS(&m_pipelineState)));
+            m_psoDesc.pRootSignature = get(m_rootSignature);
+            CHECK_HRCMD(device->CreateGraphicsPipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
 
             if (m_debugName) {
                 m_pipelineState->SetName(std::wstring(m_debugName->begin(), m_debugName->end()).c_str());
             }
 
-            m_shaderData.rootSignature = m_rootSignature.Get();
-            m_shaderData.pipelineState = m_pipelineState.Get();
+            m_shaderData.rootSignature = get(m_rootSignature);
+            m_shaderData.pipelineState = get(m_pipelineState);
 
             // Setup the pipeline to make up for the deferred initialization.
             auto context = m_device->getContext<D3D12>();
-            context->SetGraphicsRootSignature(m_rootSignature.Get());
-            context->SetPipelineState(m_pipelineState.Get());
+            context->SetGraphicsRootSignature(get(m_rootSignature));
+            context->SetPipelineState(get(m_pipelineState));
             context->IASetIndexBuffer(nullptr);
             context->IASetVertexBuffers(0, 0, nullptr);
             context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
@@ -275,20 +275,20 @@ namespace {
 
             // Initialize the pipeline state now.
             auto device = m_device->getNative<D3D12>();
-            m_psoDesc.pRootSignature = m_rootSignature.Get();
-            CHECK_HRCMD(device->CreateComputePipelineState(&m_psoDesc, IID_PPV_ARGS(&m_pipelineState)));
+            m_psoDesc.pRootSignature = get(m_rootSignature);
+            CHECK_HRCMD(device->CreateComputePipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
 
             if (m_debugName) {
                 m_pipelineState->SetName(std::wstring(m_debugName->begin(), m_debugName->end()).c_str());
             }
 
-            m_shaderData.rootSignature = m_rootSignature.Get();
-            m_shaderData.pipelineState = m_pipelineState.Get();
+            m_shaderData.rootSignature = get(m_rootSignature);
+            m_shaderData.pipelineState = get(m_pipelineState);
 
             // Setup the pipeline to make up for the deferred initialization.
             auto context = m_device->getContext<D3D12>();
-            context->SetComputeRootSignature(m_rootSignature.Get());
-            context->SetPipelineState(m_pipelineState.Get());
+            context->SetComputeRootSignature(get(m_rootSignature));
+            context->SetPipelineState(get(m_pipelineState));
             for (const auto& parameter : m_parametersForFirstCall) {
                 context->SetComputeRootDescriptorTable(parameter.first, parameter.second);
             }
@@ -403,7 +403,7 @@ namespace {
         }
 
         void* getNativePtr() const override {
-            return m_texture.Get();
+            return get(m_texture);
         }
 
       private:
@@ -429,7 +429,7 @@ namespace {
 
                 D3D12_CPU_DESCRIPTOR_HANDLE handle;
                 m_rvHeap.allocate(handle);
-                device->CreateShaderResourceView(m_texture.Get(), &desc, handle);
+                device->CreateShaderResourceView(get(m_texture), &desc, handle);
                 shaderResourceView = std::make_shared<D3D12ResourceView>(m_device, handle);
             }
             return shaderResourceView;
@@ -456,7 +456,7 @@ namespace {
 
                 D3D12_CPU_DESCRIPTOR_HANDLE handle;
                 m_rvHeap.allocate(handle);
-                device->CreateUnorderedAccessView(m_texture.Get(), nullptr, &desc, handle);
+                device->CreateUnorderedAccessView(get(m_texture), nullptr, &desc, handle);
                 unorderedAccessView = std::make_shared<D3D12ResourceView>(m_device, handle);
             }
             return unorderedAccessView;
@@ -483,7 +483,7 @@ namespace {
 
                 D3D12_CPU_DESCRIPTOR_HANDLE handle;
                 m_rtvHeap.allocate(handle);
-                device->CreateRenderTargetView(m_texture.Get(), &desc, handle);
+                device->CreateRenderTargetView(get(m_texture), &desc, handle);
                 renderTargetView = std::make_shared<D3D12ResourceView>(m_device, handle);
             }
             return renderTargetView;
@@ -510,7 +510,7 @@ namespace {
 
                 D3D12_CPU_DESCRIPTOR_HANDLE handle;
                 m_dsvHeap.allocate(handle);
-                device->CreateDepthStencilView(m_texture.Get(), &desc, handle);
+                device->CreateDepthStencilView(get(m_texture), &desc, handle);
                 depthStencilView = std::make_shared<D3D12ResourceView>(m_device, handle);
             }
             return depthStencilView;
@@ -576,13 +576,13 @@ namespace {
 
             {
                 const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                    m_buffer.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+                    get(m_buffer), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
                 context->ResourceBarrier(1, &barrier);
             }
-            UpdateSubresources<1>(context, m_buffer.Get(), uploadBuffer, 0, 0, 1, &subresourceData);
+            UpdateSubresources<1>(context, get(m_buffer), uploadBuffer, 0, 0, 1, &subresourceData);
             {
                 const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                    m_buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+                    get(m_buffer), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
                 context->ResourceBarrier(1, &barrier);
             }
         }
@@ -591,7 +591,7 @@ namespace {
             if (!m_uploadBuffer) {
                 throw new std::runtime_error("Texture is immutable");
             }
-            uploadData(buffer, count, m_uploadBuffer.Get());
+            uploadData(buffer, count, get(m_uploadBuffer));
         }
 
         // TODO: Consider moving this operation up to IShaderBuffer. Will prevent the need for dynamic_cast below.
@@ -614,7 +614,7 @@ namespace {
         }
 
         void* getNativePtr() const override {
-            return m_buffer.Get();
+            return get(m_buffer);
         }
 
       private:
@@ -691,11 +691,11 @@ namespace {
         }
 
         void start() override {
-            m_device->getContext<D3D12>()->EndQuery(m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, m_startIndex);
+            m_device->getContext<D3D12>()->EndQuery(get(m_queryHeap), D3D12_QUERY_TYPE_TIMESTAMP, m_startIndex);
         }
 
         void stop() override {
-            m_device->getContext<D3D12>()->EndQuery(m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, m_stopIndex);
+            m_device->getContext<D3D12>()->EndQuery(get(m_queryHeap), D3D12_QUERY_TYPE_TIMESTAMP, m_stopIndex);
         }
 
         uint64_t query(bool reset) const override {
@@ -721,13 +721,13 @@ namespace {
         D3D12Device(ID3D12Device* device, ID3D12CommandQueue* queue) : m_device(device), m_queue(queue) {
             {
                 ComPtr<IDXGIFactory1> dxgiFactory;
-                CHECK_HRCMD(CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory)));
+                CHECK_HRCMD(CreateDXGIFactory1(IID_PPV_ARGS(set(dxgiFactory))));
                 const LUID adapterLuid = m_device->GetAdapterLuid();
 
                 for (UINT adapterIndex = 0;; adapterIndex++) {
                     // EnumAdapters1 will fail with DXGI_ERROR_NOT_FOUND when there are no more adapters to enumerate.
                     ComPtr<IDXGIAdapter1> dxgiAdapter;
-                    CHECK_HRCMD(dxgiFactory->EnumAdapters1(adapterIndex, &dxgiAdapter));
+                    CHECK_HRCMD(dxgiFactory->EnumAdapters1(adapterIndex, set(dxgiAdapter)));
 
                     DXGI_ADAPTER_DESC1 adapterDesc;
                     CHECK_HRCMD(dxgiAdapter->GetDesc1(&adapterDesc));
@@ -746,17 +746,17 @@ namespace {
             }
 
             // Initialize the command lists and heaps.
-            m_rtvHeap.initialize(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-            m_dsvHeap.initialize(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-            m_rvHeap.initialize(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 32 + MaxModelBuffers);
-            m_samplerHeap.initialize(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+            m_rtvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+            m_dsvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+            m_rvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 32 + MaxModelBuffers);
+            m_samplerHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
             {
                 D3D12_QUERY_HEAP_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
                 desc.Count = MaxGpuTimers * 2;
                 desc.NodeMask = 0;
                 desc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
-                m_device->CreateQueryHeap(&desc, IID_PPV_ARGS(&m_queryHeap));
+                m_device->CreateQueryHeap(&desc, IID_PPV_ARGS(set(m_queryHeap)));
                 m_queryHeap->SetName(L"Timestamp Query Heap");
 
                 m_queue->GetTimestampFrequency(&m_gpuTickFrequency);
@@ -769,7 +769,7 @@ namespace {
                                                                   &readbackDesc,
                                                                   D3D12_RESOURCE_STATE_COPY_DEST,
                                                                   nullptr,
-                                                                  IID_PPV_ARGS(&m_queryReadbackBuffer)));
+                                                                  IID_PPV_ARGS(set(m_queryReadbackBuffer))));
                     m_queryReadbackBuffer->SetName(L"Query Readback Buffer");
                 }
 
@@ -806,16 +806,16 @@ namespace {
                                                   reinterpret_cast<IUnknown**>(&queue),
                                                   1,
                                                   0,
-                                                  &textDevice,
+                                                  set(textDevice),
                                                   nullptr,
                                                   nullptr));
                 CHECK_HRCMD(textDevice->QueryInterface(__uuidof(ID3D11On12Device),
-                                                       reinterpret_cast<void**>(m_textInteropDevice.GetAddressOf())));
+                                                       reinterpret_cast<void**>(set(m_textInteropDevice))));
 
-                m_textDevice = WrapD3D11TextDevice(textDevice.Get());
+                m_textDevice = WrapD3D11TextDevice(get(textDevice));
             }
 
-            CHECK_HRCMD(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
+            CHECK_HRCMD(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(set(m_fence))));
 
             initializeShadingResources();
             initializeMeshResources();
@@ -908,21 +908,21 @@ namespace {
         void flushContext(bool blocking, bool isEndOfFrame = false) override {
             if (isEndOfFrame) {
                 // Resolve the timers.
-                m_context->ResolveQueryData(m_queryHeap.Get(),
+                m_context->ResolveQueryData(get(m_queryHeap),
                                             D3D12_QUERY_TYPE_TIMESTAMP,
                                             0,
                                             m_nextGpuTimestampIndex,
-                                            m_queryReadbackBuffer.Get(),
+                                            get(m_queryReadbackBuffer),
                                             0);
             }
 
             CHECK_HRCMD(m_context->Close());
 
-            ID3D12CommandList* lists[] = {m_context.Get()};
+            ID3D12CommandList* lists[] = {get(m_context)};
             m_queue->ExecuteCommandLists(1, lists);
 
             if (blocking) {
-                m_queue->Signal(m_fence.Get(), ++m_fenceValue);
+                m_queue->Signal(get(m_fence), ++m_fenceValue);
                 if (m_fence->GetCompletedValue() < m_fenceValue) {
                     HANDLE eventHandle = CreateEventEx(nullptr, L"flushContext Fence", 0, EVENT_ALL_ACCESS);
                     CHECK_HRCMD(m_fence->SetEventOnCompletion(m_fenceValue, eventHandle));
@@ -967,7 +967,7 @@ namespace {
             ComPtr<ID3D12Resource> texture;
             const auto& heapType = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
             CHECK_HRCMD(m_device->CreateCommittedResource(
-                &heapType, D3D12_HEAP_FLAG_NONE, &desc, initialState, nullptr, IID_PPV_ARGS(&texture)));
+                &heapType, D3D12_HEAP_FLAG_NONE, &desc, initialState, nullptr, IID_PPV_ARGS(set(texture))));
 
             if (initialData) {
                 // Create an upload buffer.
@@ -980,7 +980,7 @@ namespace {
                                                                   &stagingDesc,
                                                                   D3D12_RESOURCE_STATE_GENERIC_READ,
                                                                   nullptr,
-                                                                  IID_PPV_ARGS(&uploadBuffer)));
+                                                                  IID_PPV_ARGS(set(uploadBuffer))));
                 }
                 {
                     void* mappedBuffer = nullptr;
@@ -992,7 +992,7 @@ namespace {
                 // Do the upload now.
                 {
                     const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                        texture.Get(), initialState, D3D12_RESOURCE_STATE_COPY_DEST);
+                        get(texture), initialState, D3D12_RESOURCE_STATE_COPY_DEST);
                     m_context->ResourceBarrier(1, &barrier);
                 }
                 {
@@ -1003,13 +1003,13 @@ namespace {
                     footprint.Footprint.Depth = 1;
                     footprint.Footprint.RowPitch = Align(rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
                     footprint.Footprint.Format = desc.Format;
-                    CD3DX12_TEXTURE_COPY_LOCATION src(uploadBuffer.Get(), footprint);
-                    CD3DX12_TEXTURE_COPY_LOCATION dst(texture.Get(), 0);
+                    CD3DX12_TEXTURE_COPY_LOCATION src(get(uploadBuffer), footprint);
+                    CD3DX12_TEXTURE_COPY_LOCATION dst(get(texture), 0);
                     m_context->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
                 }
                 {
                     const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                        texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, initialState);
+                        get(texture), D3D12_RESOURCE_STATE_COPY_DEST, initialState);
                     m_context->ResourceBarrier(1, &barrier);
                 }
                 flushContext(true);
@@ -1020,7 +1020,7 @@ namespace {
             }
 
             return std::make_shared<D3D12Texture>(
-                shared_from_this(), info, desc, texture.Get(), m_rtvHeap, m_dsvHeap, m_rvHeap);
+                shared_from_this(), info, desc, get(texture), m_rtvHeap, m_dsvHeap, m_rvHeap);
         }
 
         std::shared_ptr<IShaderBuffer> createBuffer(size_t size,
@@ -1038,7 +1038,7 @@ namespace {
                                                               &desc,
                                                               D3D12_RESOURCE_STATE_COMMON,
                                                               nullptr,
-                                                              IID_PPV_ARGS(&buffer)));
+                                                              IID_PPV_ARGS(set(buffer))));
             }
 
             // Create an upload buffer.
@@ -1050,7 +1050,7 @@ namespace {
                                                               &desc,
                                                               D3D12_RESOURCE_STATE_GENERIC_READ,
                                                               nullptr,
-                                                              IID_PPV_ARGS(&uploadBuffer)));
+                                                              IID_PPV_ARGS(set(uploadBuffer))));
             }
 
             if (debugName) {
@@ -1058,10 +1058,10 @@ namespace {
             }
 
             auto result = std::make_shared<D3D12Buffer>(
-                shared_from_this(), desc, buffer.Get(), m_rvHeap, !immutable ? uploadBuffer.Get() : nullptr);
+                shared_from_this(), desc, get(buffer), m_rvHeap, !immutable ? get(uploadBuffer) : nullptr);
 
             if (initialData) {
-                result->uploadData(initialData, size, uploadBuffer.Get());
+                result->uploadData(initialData, size, get(uploadBuffer));
                 flushContext(true);
             }
 
@@ -1092,9 +1092,9 @@ namespace {
             ComPtr<ID3DBlob> psBytes;
             if (!includePath.empty()) {
                 utilities::shader::IncludeHeader includes({includePath});
-                utilities::shader::CompileShader(shaderPath, entryPoint, &psBytes, defines, &includes, "ps_5_0");
+                utilities::shader::CompileShader(shaderPath, entryPoint, set(psBytes), defines, &includes, "ps_5_0");
             } else {
-                utilities::shader::CompileShader(shaderPath, entryPoint, &psBytes, defines, nullptr, "ps_5_0");
+                utilities::shader::CompileShader(shaderPath, entryPoint, set(psBytes), defines, nullptr, "ps_5_0");
             }
 
             D3D12_GRAPHICS_PIPELINE_STATE_DESC desc;
@@ -1109,7 +1109,7 @@ namespace {
             desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
             // The rest of the descriptor will be filled up by D3D12QuadShader.
 
-            return std::make_shared<D3D12QuadShader>(shared_from_this(), desc, psBytes.Get(), debugName);
+            return std::make_shared<D3D12QuadShader>(shared_from_this(), desc, get(psBytes), debugName);
         }
 
         std::shared_ptr<IComputeShader> createComputeShader(const std::string& shaderPath,
@@ -1121,9 +1121,9 @@ namespace {
             ComPtr<ID3DBlob> csBytes;
             if (!includePath.empty()) {
                 utilities::shader::IncludeHeader includes({includePath});
-                utilities::shader::CompileShader(shaderPath, entryPoint, &csBytes, defines, &includes, "cs_5_0");
+                utilities::shader::CompileShader(shaderPath, entryPoint, set(csBytes), defines, &includes, "cs_5_0");
             } else {
-                utilities::shader::CompileShader(shaderPath, entryPoint, &csBytes, defines, nullptr, "cs_5_0");
+                utilities::shader::CompileShader(shaderPath, entryPoint, set(csBytes), defines, nullptr, "cs_5_0");
             }
 
             D3D12_COMPUTE_PIPELINE_STATE_DESC desc;
@@ -1132,14 +1132,14 @@ namespace {
             // The rest of the descriptor will be filled up by D3D12ComputeShader.
 
             return std::make_shared<D3D12ComputeShader>(
-                shared_from_this(), desc, csBytes.Get(), debugName, threadGroups);
+                shared_from_this(), desc, get(csBytes), debugName, threadGroups);
         }
 
         std::shared_ptr<IGpuTimer> createTimer() override {
             assert(m_nextGpuTimestampIndex < ARRAYSIZE(m_queryBuffer));
             return std::make_shared<D3D12GpuTimer>(
                 shared_from_this(),
-                m_queryHeap.Get(),
+                get(m_queryHeap),
                 [&](UINT startIndex, UINT stopIndex) { return queryTimeStampDelta(startIndex, stopIndex); },
                 m_nextGpuTimestampIndex++,
                 m_nextGpuTimestampIndex++);
@@ -1151,8 +1151,8 @@ namespace {
             m_currentRootSlot = 0;
 
             ID3D12DescriptorHeap* heaps[] = {
-                m_rvHeap.heap.Get(),
-                m_samplerHeap.heap.Get(),
+                get(m_rvHeap.heap),
+                get(m_samplerHeap.heap),
             };
             m_context->SetDescriptorHeaps(ARRAYSIZE(heaps), heaps);
 
@@ -1183,8 +1183,8 @@ namespace {
             m_currentRootSlot = 0;
 
             ID3D12DescriptorHeap* heaps[] = {
-                m_rvHeap.heap.Get(),
-                m_samplerHeap.heap.Get(),
+                get(m_rvHeap.heap),
+                get(m_samplerHeap.heap),
             };
             m_context->SetDescriptorHeaps(ARRAYSIZE(heaps), heaps);
 
@@ -1468,7 +1468,7 @@ namespace {
                     D3D12_GRAPHICS_PIPELINE_STATE_DESC desc;
                     ZeroMemory(&desc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
                     desc.InputLayout = {m_meshRendererInputLayout.data(), (UINT)m_meshRendererInputLayout.size()};
-                    desc.pRootSignature = m_meshRendererRootSignature.Get();
+                    desc.pRootSignature = get(m_meshRendererRootSignature);
                     desc.VS = {reinterpret_cast<BYTE*>(m_meshRendererVertexShaderBytes->GetBufferPointer()),
                                m_meshRendererVertexShaderBytes->GetBufferSize()};
                     desc.PS = {reinterpret_cast<BYTE*>(m_meshRendererPixelShaderBytes->GetBufferPointer()),
@@ -1501,17 +1501,17 @@ namespace {
                         desc.DSVFormat = (DXGI_FORMAT)m_currentDrawDepthBuffer->getInfo().format;
                     }
                     CHECK_HRCMD(
-                        m_device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&m_meshRendererPipelineState)));
+                        m_device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(set(m_meshRendererPipelineState))));
                 }
 
-                m_context->SetPipelineState(m_meshRendererPipelineState.Get());
-                m_context->SetGraphicsRootSignature(m_meshRendererRootSignature.Get());
+                m_context->SetPipelineState(get(m_meshRendererPipelineState));
+                m_context->SetGraphicsRootSignature(get(m_meshRendererRootSignature));
                 m_context->IASetVertexBuffers(0, 1, meshData->vertexBuffer);
                 m_context->IASetIndexBuffer(meshData->indexBuffer);
                 m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
                 ID3D12DescriptorHeap* heaps[] = {
-                    m_rvHeap.heap.Get(),
+                    get(m_rvHeap.heap),
                 };
                 m_context->SetDescriptorHeaps(ARRAYSIZE(heaps), heaps);
 
@@ -1594,11 +1594,11 @@ namespace {
                                                                        &flags,
                                                                        D3D12_RESOURCE_STATE_RENDER_TARGET,
                                                                        D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                                                       IID_PPV_ARGS(&interopTexture)));
+                                                                       IID_PPV_ARGS(set(interopTexture))));
 
                 m_currentTextRenderTarget = WrapD3D11Texture(m_textDevice,
                                                              m_currentDrawRenderTarget->getInfo(),
-                                                             interopTexture.Get(),
+                                                             get(interopTexture),
                                                              "Render Target Interop TEX2D");
 
                 d3d12DrawRenderTarget->setInteropTexture(m_currentTextRenderTarget);
@@ -1649,11 +1649,11 @@ namespace {
         }
 
         void* getNativePtr() const override {
-            return m_device.Get();
+            return get(m_device);
         }
 
         void* getContextPtr() const override {
-            return m_context.Get();
+            return get(m_context);
         }
 
       private:
@@ -1696,8 +1696,8 @@ namespace {
                                               "vs_5_0",
                                               D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
                                               0,
-                                              &m_quadVertexShaderBytes,
-                                              &errors);
+                                              set(m_quadVertexShaderBytes),
+                                              set(errors));
                 if (FAILED(hr)) {
                     if (errors) {
                         Log("%s", (char*)errors->GetBufferPointer());
@@ -1720,8 +1720,8 @@ namespace {
                                               "vs_5_0",
                                               D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
                                               0,
-                                              &m_meshRendererVertexShaderBytes,
-                                              &errors);
+                                              set(m_meshRendererVertexShaderBytes),
+                                              set(errors));
                 if (FAILED(hr)) {
                     if (errors) {
                         Log("%s", (char*)errors->GetBufferPointer());
@@ -1740,8 +1740,8 @@ namespace {
                                               "ps_5_0",
                                               D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
                                               0,
-                                              &m_meshRendererPixelShaderBytes,
-                                              &errors);
+                                              set(m_meshRendererPixelShaderBytes),
+                                              set(errors));
                 if (FAILED(hr)) {
                     if (errors) {
                         Log("%s", (char*)errors->GetBufferPointer());
@@ -1770,8 +1770,8 @@ namespace {
 
                 ComPtr<ID3DBlob> serializedRootSignature;
                 ComPtr<ID3DBlob> errors;
-                const HRESULT hr =
-                    D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &serializedRootSignature, &errors);
+                const HRESULT hr = D3D12SerializeRootSignature(
+                    &desc, D3D_ROOT_SIGNATURE_VERSION_1, set(serializedRootSignature), set(errors));
                 if (FAILED(hr)) {
                     if (errors) {
                         Log("%s", (char*)errors->GetBufferPointer());
@@ -1782,7 +1782,7 @@ namespace {
                 CHECK_HRCMD(m_device->CreateRootSignature(0,
                                                           serializedRootSignature->GetBufferPointer(),
                                                           serializedRootSignature->GetBufferSize(),
-                                                          IID_PPV_ARGS(&m_meshRendererRootSignature)));
+                                                          IID_PPV_ARGS(set(m_meshRendererRootSignature))));
             }
         }
 
