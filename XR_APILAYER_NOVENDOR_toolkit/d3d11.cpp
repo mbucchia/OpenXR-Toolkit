@@ -632,6 +632,7 @@ namespace {
             CHECK_HRCMD(m_device->CreateDeferredContext(0, &m_currentContext));
             if (clear) {
                 m_currentContext->ClearState();
+                m_currentContext->Flush();
             }
         }
 
@@ -1124,7 +1125,9 @@ namespace {
                              x,
                              y,
                              color,
-                             (alignRight ? FW1_RIGHT : FW1_LEFT) | FW1_NOFLUSH);
+                             (alignRight ? FW1_RIGHT : FW1_LEFT) | FW1_NOGEOMETRYSHADER | FW1_RESTORESTATE | FW1_NOFLUSH);
+            font->Flush(m_currentContext.Get());
+
             return measure ? measureString(string, style, size) : 0.0f;
         }
 
