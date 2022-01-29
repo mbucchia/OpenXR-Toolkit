@@ -963,6 +963,8 @@ namespace {
             m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
             m_graphicsDevice->resolveQueries();
 
+            m_graphicsDevice->saveContext();
+
             // Handle inputs.
             if (m_menuHandler) {
                 m_menuHandler->handleInput();
@@ -1132,7 +1134,6 @@ namespace {
 
                     m_performanceCounters.overlayCpuTimer->start();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
-                    m_graphicsDevice->saveContext();
                 }
 
                 if (m_menuHandler && m_needCalibrateEyeOffsets) {
@@ -1181,7 +1182,6 @@ namespace {
                 }
 
                 if (m_menuHandler || m_handTracker) {
-                    m_graphicsDevice->restoreContext();
                     m_performanceCounters.overlayCpuTimer->stop();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
                 }
@@ -1197,6 +1197,7 @@ namespace {
                 takeScreenshot(textureForOverlay[0]);
             }
 
+            m_graphicsDevice->restoreContext();
             m_graphicsDevice->flushContext(false, true);
 
             return OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
