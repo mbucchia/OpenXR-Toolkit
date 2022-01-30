@@ -16,7 +16,7 @@ DISCLAIMER: This software is distributed as-is, without any warranties or condit
 
 ## Downloads
 
-[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/0.9.4/OpenXR-Toolkit.msi){: .btn .btn-blue }
+[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/0.9.5/OpenXR-Toolkit.msi){: .btn .btn-blue }
 
 ...or expore [all versions](https://github.com/mbucchia/OpenXR-Toolkit/releases).
 
@@ -28,7 +28,7 @@ This software may be used with any brand of VR headset as long as the target app
 
 + This software was only extensively tested with Microsoft Flight Simulator 2020;
 + The brand new Varjo Aero headset is not supported (we are working on it);
-+ The menu does not display correctly with AMD card and/or Pimax headsets (working on it too);
++ The menu does not display correctly on Pimax headsets;
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
 For future plans, see the [Roadmap](roadmap).
