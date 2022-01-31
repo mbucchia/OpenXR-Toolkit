@@ -56,8 +56,8 @@ namespace {
             : m_configManager(configManager), m_device(graphicsDevice), m_outputWidth(outputWidth),
               m_outputHeight(outputHeight) {
             // The upscaling factor is only read upon initialization of the session. It cannot be changed after.
-            std::tie(m_inputWidth, m_inputHeight) = utilities::GetScaledDimensions(
-                m_outputWidth, m_outputHeight, configManager->getValue(SettingScaling), 2);
+            std::tie(m_inputWidth, m_inputHeight) =
+                config::GetScaledDimensions(m_configManager.get(), m_outputWidth, m_outputHeight, 2);
 
             if (m_inputWidth != m_outputWidth || m_inputHeight != m_outputHeight) {
                 initializeScaler();
@@ -143,6 +143,7 @@ namespace {
             defines.add("SAMPLE_SLOW_FALLBACK", 1);
             defines.add("SAMPLE_BILINEAR", 0);
             defines.add("SAMPLE_HDR_OUTPUT", 0);
+            defines.add("FSR_RCAS_DENOISE", 0);
 
             // EASU specific
             defines.add("SAMPLE_RCAS", 0);
@@ -161,13 +162,12 @@ namespace {
 
         void initializeSharpen() {
             // TODO:
-            // AMD offers 2 libs: FSR and CAS. The former does both, the latter seems to be designed for the sharpen
-            // only case. Right now the code is using the "RCAS" half of FSR for the Sharpen only case but it is
-            // untested/unvalidated yet. m_isSharpenOnly = true;
+            // AMD offers 2 libs: FSR and CAS. The former does both, the latter seems to be designed
+            // for sharpen only. For now, we're using the "RCAS" half of FSR in this case.
 
             initializeScaler();
 
-            // m_isSharpenOnly = true;
+            m_isSharpenOnly = true;
         }
 
         void initializeIntermediary(uint32_t width, uint32_t height, int64_t format) {

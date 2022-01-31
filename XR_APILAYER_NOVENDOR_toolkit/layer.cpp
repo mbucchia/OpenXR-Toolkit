@@ -148,6 +148,7 @@ namespace {
                 // Set the default settings.
                 m_configManager->setEnumDefault(config::SettingScalingType, config::ScalingType::None);
                 m_configManager->setDefault(config::SettingScaling, 100);
+                m_configManager->setDefault(config::SettingAnamorphic, -100);
                 m_configManager->setDefault(config::SettingSharpness, 20);
                 m_configManager->setDefault(config::SettingICD, 1000);
                 m_configManager->setDefault(config::SettingFOV, 100);
@@ -179,10 +180,10 @@ namespace {
                 case config::ScalingType::FSR:
                     [[fallthrough]];
 
-                case config::ScalingType::NIS:
-                    std::tie(inputWidth, inputHeight) = utilities::GetScaledDimensions(
-                        m_displayWidth, m_displayHeight, m_configManager->getValue(config::SettingScaling), 2);
-                    break;
+                case config::ScalingType::NIS: {
+                    std::tie(inputWidth, inputHeight) =
+                        config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
+                } break;
 
                 case config::ScalingType::None:
                     break;

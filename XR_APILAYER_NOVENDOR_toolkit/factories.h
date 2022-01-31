@@ -33,8 +33,7 @@ namespace toolkit {
 
         std::shared_ptr<ICpuTimer> CreateCpuTimer();
 
-        std::pair<uint32_t, uint32_t>
-        GetScaledDimensions(uint32_t outputWidth, uint32_t outputHeight, uint32_t scalePercent, uint32_t blockSize);
+        uint32_t GetScaledInputSize(uint32_t outputSize, int scalePercent, uint32_t blockSize);
 
         bool UpdateKeyState(bool& keyState, int vkModifier, int vkKey, bool isRepeat);
 
@@ -44,6 +43,10 @@ namespace toolkit {
 
         std::shared_ptr<IConfigManager> CreateConfigManager(const std::string& appName);
 
+        std::pair<uint32_t, uint32_t> GetScaledDimensions(const IConfigManager* configManager,
+                                                          uint32_t outputWidth,
+                                                          uint32_t outputHeight,
+                                                          uint32_t blockSize);
     } // namespace config
 
     namespace graphics {
@@ -70,6 +73,11 @@ namespace toolkit {
                                                      std::shared_ptr<IDevice> graphicsDevice,
                                                      uint32_t outputWidth,
                                                      uint32_t outputHeight);
+
+        bool IsDeviceSupportingFP16(std::shared_ptr<IDevice> device);
+
+        GpuArchitecture GetGpuArchitecture(UINT VendorId);
+        GpuArchitecture GetGpuArchitecture(std::shared_ptr<IDevice> device);
 
         std::shared_ptr<IImageProcessor>
         CreateImageProcessor(std::shared_ptr<toolkit::config::IConfigManager> configManager,

@@ -1,6 +1,7 @@
 // MIT License
 //
 // Copyright(c) 2021-2022 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -718,7 +719,8 @@ namespace {
         static constexpr size_t NumInflightContexts = 8;
 
       public:
-        D3D12Device(ID3D12Device* device, ID3D12CommandQueue* queue) : m_device(device), m_queue(queue) {
+        D3D12Device(ID3D12Device* device, ID3D12CommandQueue* queue)
+            : m_device(device), m_queue(queue), m_gpuArchitecture(GpuArchitecture::Unknown) {
             {
                 ComPtr<IDXGIFactory1> dxgiFactory;
                 CHECK_HRCMD(CreateDXGIFactory1(IID_PPV_ARGS(set(dxgiFactory))));
@@ -737,6 +739,8 @@ namespace {
                                        wadapterDescription.end(),
                                        std::back_inserter(m_deviceName),
                                        [](wchar_t c) { return (char)c; });
+
+                        m_gpuArchitecture = graphics::GetGpuArchitecture(adapterDesc.VendorId);
 
                         // Log the adapter name to help debugging customer issues.
                         Log("Using Direct3D 12 on adapter: %s\n", m_deviceName.c_str());
@@ -861,6 +865,10 @@ namespace {
 
         const std::string& getDeviceName() const override {
             return m_deviceName;
+        }
+
+        GpuArchitecture GetGpuArchitecture() const override {
+            return m_gpuArchitecture;
         }
 
         int64_t getTextureFormat(TextureFormat format) const override {
@@ -1793,6 +1801,7 @@ namespace {
         ComPtr<ID3D12Device> m_device;
         ComPtr<ID3D12CommandQueue> m_queue;
         std::string m_deviceName;
+        GpuArchitecture m_gpuArchitecture;
 
         ComPtr<ID3D12CommandAllocator> m_commandAllocator[NumInflightContexts];
         ComPtr<ID3D12GraphicsCommandList> m_commandList[NumInflightContexts];

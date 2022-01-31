@@ -1,6 +1,7 @@
 // MIT License
 //
 // Copyright(c) 2021 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -83,6 +84,54 @@ namespace {
 } // namespace
 
 namespace toolkit::graphics {
+
+    bool IsDeviceSupportingFP16(std::shared_ptr<IDevice> device) {
+        if (device) {
+            if (auto device11 = device->getAs<D3D11>()) {
+                D3D11_FEATURE_DATA_SHADER_MIN_PRECISION_SUPPORT feature = {};
+                device11->CheckFeatureSupport(D3D11_FEATURE_SHADER_MIN_PRECISION_SUPPORT, &feature, sizeof(feature));
+                return (feature.PixelShaderMinPrecision & D3D11_SHADER_MIN_PRECISION_16_BIT) != 0;
+            }
+            if (auto device12 = device->getAs<D3D12>()) {
+                D3D12_FEATURE_DATA_D3D12_OPTIONS feature = {};
+                device12->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &feature, sizeof(feature));
+                return (feature.MinPrecisionSupport & D3D12_SHADER_MIN_PRECISION_SUPPORT_16_BIT) != 0;
+            }
+        }
+
+        return false;
+    }
+
+    GpuArchitecture GetGpuArchitecture(UINT VendorId) {
+        // Known PCI vendor IDs
+        constexpr uint32_t kVendorID_AMD = 0x1002;
+        constexpr uint32_t kVendorID_Intel = 0x8086;
+        constexpr uint32_t kVendorID_NVIDIA = 0x10DE;
+
+        return VendorId == kVendorID_AMD      ? GpuArchitecture::AMD
+               : VendorId == kVendorID_Intel  ? GpuArchitecture::Intel
+               : VendorId == kVendorID_NVIDIA ? GpuArchitecture::NVidia
+                                              : GpuArchitecture::Unknown;
+    }
+
+    GpuArchitecture GetGpuArchitecture(std::shared_ptr<IDevice> device) {
+        if (device) {
+            std::string name = device->getDeviceName();
+            std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return std::tolower(c); });
+
+            if (name.find("nvidia") != std::string::npos)
+                return GpuArchitecture::NVidia;
+
+            if (name.find("intel") != std::string::npos)
+                return GpuArchitecture::Intel;
+
+            // put last in case other vendor names have these 3 letters in their device name.
+            if (name.find("amd") != std::string::npos)
+                return GpuArchitecture::AMD;
+        }
+
+        return GpuArchitecture::Unknown;
+    }
 
     std::shared_ptr<IImageProcessor> CreateImageProcessor(std::shared_ptr<IConfigManager> configManager,
                                                           std::shared_ptr<IDevice> graphicsDevice,

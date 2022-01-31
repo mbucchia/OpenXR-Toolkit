@@ -58,6 +58,22 @@ namespace {
 
 } // namespace
 
+namespace toolkit::config {
+
+    std::pair<uint32_t, uint32_t> GetScaledDimensions(const IConfigManager* configManager,
+                                                      uint32_t outputWidth,
+                                                      uint32_t outputHeight,
+                                                      uint32_t blockSize) {
+        const auto settingScaling = configManager->peekValue(SettingScaling);
+        const auto settingAnamophic = configManager->peekValue(SettingAnamorphic);
+
+        return std::make_pair(utilities::GetScaledInputSize(outputWidth, settingScaling, blockSize),
+                              utilities::GetScaledInputSize(
+                                  outputHeight, settingAnamophic > 0 ? settingAnamophic : settingScaling, blockSize));
+    }
+
+} // namespace toolkit::config
+
 namespace toolkit::utilities {
 
     using namespace toolkit::config;
@@ -66,20 +82,15 @@ namespace toolkit::utilities {
         return std::make_shared<CpuTimer>();
     }
 
-    std::pair<uint32_t, uint32_t>
-    GetScaledDimensions(uint32_t outputWidth, uint32_t outputHeight, uint32_t scalePercent, uint32_t blockSize) {
-        auto inputWidth =
-            scalePercent >= 100 ? (outputWidth * 100u) / scalePercent : (outputWidth * scalePercent) / 100u;
-        auto inputHeight =
-            scalePercent >= 100 ? (outputHeight * 100u) / scalePercent : (outputHeight * scalePercent) / 100u;
+    uint32_t GetScaledInputSize(uint32_t outputSize, int scalePercent, uint32_t blockSize) {
+        scalePercent = abs(scalePercent);
+        auto size = scalePercent >= 100 ? (outputSize * 100u) / scalePercent : (outputSize * scalePercent) / 100u;
 
-        // align both dimensions to blockSize
-        if (blockSize >= 2u) {
-            inputWidth = ((inputWidth + blockSize - 1u) / blockSize) * blockSize;
-            inputHeight = ((inputHeight + blockSize - 1u) / blockSize) * blockSize;
-        }
+        // align size to blockSize
+        if (blockSize >= 2u)
+            size = ((size + blockSize - 1u) / blockSize) * blockSize;
 
-        return std::make_pair(inputWidth, inputHeight);
+        return size;
     }
 
     bool UpdateKeyState(bool& keyState, int vkModifier, int vkKey, bool isRepeat) {

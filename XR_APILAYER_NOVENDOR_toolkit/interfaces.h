@@ -1,6 +1,7 @@
 // MIT License
 //
 // Copyright(c) 2021-2022 Matthieu Bucchianeri
+// Copyright(c) 2021-2022 Jean-Luc Dupiot - Reality XP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this softwareand associated documentation files(the "Software"), to deal
@@ -70,6 +71,7 @@ namespace toolkit {
         const std::string SettingMenuTimeout = "menu_timeout";
         const std::string SettingScalingType = "scaling_type";
         const std::string SettingScaling = "scaling";
+        const std::string SettingAnamorphic = "anamorphic";
         const std::string SettingSharpness = "sharpness";
         const std::string SettingICD = "icd";
         const std::string SettingFOV = "fov";
@@ -174,6 +176,9 @@ namespace toolkit {
 
         // A few handy texture formats.
         enum class TextureFormat { R32G32B32A32_FLOAT, R16G16B16A16_UNORM, R10G10B10A2_UNORM, R8G8B8A8_UNORM };
+
+        // A list of supported GPU Architectures.
+        enum class GpuArchitecture { Unknown, AMD, Intel, NVidia };
 
         enum class TextStyle { Normal, Bold };
 
@@ -378,6 +383,7 @@ namespace toolkit {
             virtual Api getApi() const = 0;
 
             virtual const std::string& getDeviceName() const = 0;
+            virtual GpuArchitecture GetGpuArchitecture() const = 0;
 
             virtual int64_t getTextureFormat(TextureFormat format) const = 0;
             virtual bool isTextureFormatSRGB(int64_t format) const = 0;
@@ -468,6 +474,12 @@ namespace toolkit {
 
             virtual void* getNativePtr() const = 0;
             virtual void* getContextPtr() const = 0;
+
+            template <typename ApiTraits>
+            typename ApiTraits::Device getAs() const {
+                return ApiTraits::Api == getApi() ? reinterpret_cast<typename ApiTraits::Device>(getNativePtr())
+                                                  : nullptr;
+            }
 
             template <typename ApiTraits>
             typename ApiTraits::Device getNative() const {

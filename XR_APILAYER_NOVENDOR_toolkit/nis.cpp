@@ -51,27 +51,20 @@ namespace {
             : m_configManager(configManager), m_device(graphicsDevice), m_outputWidth(outputWidth),
               m_outputHeight(outputHeight) {
             // Identify the GPU architecture in order to infer the best settings for the shader.
-            NISGPUArchitecture gpuArch = NISGPUArchitecture::NVIDIA_Generic;
-            std::string lowercaseDeviceName = m_device->getDeviceName();
-            std::transform(lowercaseDeviceName.begin(),
-                           lowercaseDeviceName.end(),
-                           lowercaseDeviceName.begin(),
-                           [](unsigned char c) { return std::tolower(c); });
+            const auto gpuArchitecture = m_device->GetGpuArchitecture();
+            const auto nisArchitecture = gpuArchitecture == GpuArchitecture::AMD ? NISGPUArchitecture::AMD_Generic
+                                         : gpuArchitecture == GpuArchitecture::Intel
+                                             ? NISGPUArchitecture::Intel_Generic
+                                             : NISGPUArchitecture::NVIDIA_Generic;
 
-            if (lowercaseDeviceName.find("intel") != std::string::npos) {
-                gpuArch = NISGPUArchitecture::Intel_Generic;
-            } else if (lowercaseDeviceName.find("amd") != std::string::npos) {
-                gpuArch = NISGPUArchitecture::AMD_Generic;
-            }
-
-            NISOptimizer opt(true, gpuArch);
+            NISOptimizer opt(true, nisArchitecture);
             m_blockWidth = opt.GetOptimalBlockWidth();
             m_blockHeight = opt.GetOptimalBlockHeight();
             m_threadGroupSize = opt.GetOptimalThreadGroupSize();
 
             // The upscaling factor is only read upon initialization of the session. It cannot be changed after.
-            std::tie(m_inputWidth, m_inputHeight) = utilities::GetScaledDimensions(
-                m_outputWidth, m_outputHeight, m_configManager->getValue(SettingScaling), 2);
+            std::tie(m_inputWidth, m_inputHeight) =
+                config::GetScaledDimensions(m_configManager.get(), m_outputWidth, m_outputHeight, 2);
 
             if (m_inputWidth != m_outputWidth || m_inputHeight != m_outputHeight) {
                 initializeScaler();
