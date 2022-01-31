@@ -265,7 +265,7 @@ namespace {
 
                         m_selectedItem += acceleration ? -1 : 1;
                         if (m_selectedItem >= m_menuEntries.size())
-                            m_selectedItem = acceleration ? m_menuEntries.size()-1 : 0;
+                            m_selectedItem = acceleration ? m_menuEntries.size() - 1 : 0;
 
                     } while (m_menuEntries[m_selectedItem].type == MenuEntryType::Separator ||
                              !m_menuEntries[m_selectedItem].visible);
@@ -485,6 +485,14 @@ namespace {
                         continue;
                     }
 
+                    // highlight selected item line.
+                    if (i == m_selectedItem && !measure) {
+                        XrColor4f background({0.01f, 0.01f, 0.01f, alpha/255.f});
+                        const auto highlightTop = top + (fontSize / 3.f);
+                        m_device->clearColor(
+                            highlightTop, left, highlightTop + fontSize, m_menuEntriesRight + eyeOffset, background);
+                    }
+
                     const auto entryStyle = i == m_selectedItem ? TextStyle::Bold : TextStyle::Normal;
                     const auto entryColor = i == m_selectedItem ? colorSelected : colorNormal;
 
@@ -563,7 +571,7 @@ namespace {
                     } else if (m_needRestart) {
                         top += fontSize;
 
-                        left += m_device->drawString(L"\x26A0  Some settings require to restart the VR session \x26A0",
+                        left += m_device->drawString(L"\x26A0  Restart the VR session to apply changes \x26A0",
                                                      TextStyle::Bold,
                                                      fontSize,
                                                      left,
