@@ -40,8 +40,8 @@ namespace SetupCustomActions
             foreach (var value in existingValues)
             {
                 // Do not re-create keys for previous versions of our layer.
-                if (value.EndsWith("\\XR_APILAYER_NOVENDOR_nis_scaler") ||
-                    value.EndsWith("\\XR_APILAYER_NOVENDOR_hand_to_controller"))
+                if (value.EndsWith("\\XR_APILAYER_NOVENDOR_nis_scaler.json") ||
+                    value.EndsWith("\\XR_APILAYER_NOVENDOR_hand_to_controller.json"))
                 {
                     detectedOldSoftware = true;
                     continue;
@@ -62,7 +62,7 @@ namespace SetupCustomActions
             {
                 MessageBox.Show("An older version of this software was detected (OpenXR-NIS-Scaler or OpenXR-Hand-To-Controller). " +
                     "It was deactivated, however please uninstall it through 'Add or remove programs' to free up disk space.",
-                    "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
             }
 
             base.OnAfterInstall(savedState);

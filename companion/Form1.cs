@@ -286,10 +286,10 @@ namespace companion
 
         private void checkUpdatesLink_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            string githubReleases = "https://mbucchia.github.io/OpenXR-Toolkit";
+            string homepage = "https://mbucchia.github.io/OpenXR-Toolkit";
 
             checkUpdatesLink.LinkVisited = true;
-            System.Diagnostics.Process.Start(githubReleases);
+            System.Diagnostics.Process.Start(homepage);
         }
 
         private void disableCheckbox_CheckedChanged(object sender, EventArgs e)
@@ -471,6 +471,14 @@ namespace companion
             catch (Win32Exception)
             {
             }
+        }
+
+        private void pictureBox1_Click(object sender, EventArgs e)
+        {
+            string homepage = "https://mbucchia.github.io/OpenXR-Toolkit";
+
+            checkUpdatesLink.LinkVisited = true;
+            System.Diagnostics.Process.Start(homepage);
         }
     }
 }

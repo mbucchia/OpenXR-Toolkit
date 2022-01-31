@@ -55,6 +55,28 @@ using namespace std::chrono_literals;
 
 using Microsoft::WRL::ComPtr;
 
+// Helpers for ComPtr manipulation.
+
+template<typename T>
+inline T* get(const ComPtr<T>& object) {
+    return object.Get();
+}
+
+template <typename T>
+inline T** set(ComPtr<T>& object) {
+    return object.ReleaseAndGetAddressOf();
+}
+
+template <typename T>
+void attach(ComPtr<T>& object, T* value) {
+    object.Attach(value);
+}
+
+template <typename T>
+T* detach(ComPtr<T>& object) {
+    return object.Detach();
+}
+
 // Direct3D.
 #include <d3d11_1.h>
 #include <D3DX11tex.h>

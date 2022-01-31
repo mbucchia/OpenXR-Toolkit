@@ -94,7 +94,7 @@ namespace toolkit::utilities {
     }
 
     bool UpdateKeyState(bool& keyState, int vkModifier, int vkKey, bool isRepeat) {
-        const bool isPressed = GetAsyncKeyState(vkModifier) && GetAsyncKeyState(vkKey);
+        const bool isPressed = (GetAsyncKeyState(vkModifier) < 0) && (GetAsyncKeyState(vkKey) < 0);
         const bool wasPressed = std::exchange(keyState, isPressed);
         return isPressed && (!wasPressed || isRepeat);
     }

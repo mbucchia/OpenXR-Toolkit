@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 **Describe the bug**
-A clear and concise description of what the bug is.
+A clear and concise description of what the bug is. If possible, please attach (upload, do not copy/paste) the log file that can be found at `%LocalAppData%\OpenXR-Toolkit\logs`.
 
 **Environment**
 - Application/Game and its version
@@ -26,4 +26,4 @@ Steps to reproduce the behavior:
 A clear and concise description of what you expected to happen.
 
 **Screenshots**
-If applicable, add screenshots to help explain your problem. Use the Companion app to enable screenshots, then use Ctrl+F12 to capture. The file is placed in `%LocalAppData%`.
+If applicable, add screenshots to help explain your problem. Use the Companion app to enable screenshots, then use Ctrl+F12 to capture. The file is placed in `%LocalAppData%\OpenXR-Toolkit\screenshots`.

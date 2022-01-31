@@ -14,4 +14,4 @@ A clear and concise description of what the problem is. Ex. I'm always frustrate
 A clear and concise description of what you want to happen.
 
 **Screenshots**
-If applicable, add screenshots to help explain your idea. Use the Companion app to enable screenshots, then use Ctrl+F12 to capture. The file is placed in `%LocalAppData%`.
+If applicable, add screenshots to help explain your idea. Use the Companion app to enable screenshots, then use Ctrl+F12 to capture. The file is placed in `%LocalAppData%\OpenXR-Toolkit\screenshots`.

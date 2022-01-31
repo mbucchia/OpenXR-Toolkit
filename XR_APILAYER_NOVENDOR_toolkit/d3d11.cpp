@@ -38,6 +38,234 @@ namespace {
 
     const std::wstring FontFamily = L"Segoe UI Symbol";
 
+    struct D3D11ContextState {
+        ComPtr<ID3D11InputLayout> inputLayout;
+        D3D11_PRIMITIVE_TOPOLOGY topology;
+        ComPtr<ID3D11Buffer> vertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+        UINT vertexBufferStrides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+        UINT vertexBufferOffsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+
+        ComPtr<ID3D11Buffer> indexBuffer;
+        DXGI_FORMAT indexBufferFormat;
+        UINT indexBufferOffset;
+
+        ComPtr<ID3D11RenderTargetView> renderTargets[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+        ComPtr<ID3D11DepthStencilView> depthStencil;
+        ComPtr<ID3D11DepthStencilState> depthStencilState;
+        UINT stencilRef;
+        ComPtr<ID3D11BlendState> blendState;
+        float blendFactor[4];
+        UINT blendMask;
+
+#define SHADER_STAGE_STATE(stage, programType)                                                                         \
+    ComPtr<programType> stage##Program;                                                                                \
+    ComPtr<ID3D11Buffer> stage##ConstantBuffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];                    \
+    ComPtr<ID3D11SamplerState> stage##Samplers[D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT];                                 \
+    ComPtr<ID3D11ShaderResourceView> stage##ShaderResources[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+
+        SHADER_STAGE_STATE(VS, ID3D11VertexShader);
+        SHADER_STAGE_STATE(PS, ID3D11PixelShader);
+        SHADER_STAGE_STATE(GS, ID3D11GeometryShader);
+        SHADER_STAGE_STATE(DS, ID3D11DomainShader);
+        SHADER_STAGE_STATE(HS, ID3D11HullShader);
+        SHADER_STAGE_STATE(CS, ID3D11ComputeShader);
+
+#undef SHADER_STAGE_STATE
+
+        ComPtr<ID3D11UnorderedAccessView> CSUnorderedResources[D3D11_1_UAV_SLOT_COUNT];
+
+        ComPtr<ID3D11RasterizerState> rasterizerState;
+        D3D11_VIEWPORT viewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+        UINT numViewports;
+        D3D11_RECT scissorRects[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+        UINT numScissorRects;
+
+        void save(ID3D11DeviceContext* context) {
+            context->IAGetInputLayout(set(inputLayout));
+            context->IAGetPrimitiveTopology(&topology);
+            {
+                ID3D11Buffer* vbs[ARRAYSIZE(vertexBuffers)];
+                context->IAGetVertexBuffers(0, ARRAYSIZE(vbs), vbs, vertexBufferStrides, vertexBufferOffsets);
+                for (uint32_t i = 0; i < ARRAYSIZE(vbs); i++) {
+                    attach(vertexBuffers[i], vbs[i]);
+                }
+            }
+            context->IAGetIndexBuffer(set(indexBuffer), &indexBufferFormat, &indexBufferOffset);
+
+            {
+                ID3D11RenderTargetView* rtvs[ARRAYSIZE(renderTargets)];
+                context->OMGetRenderTargets(ARRAYSIZE(rtvs), rtvs, set(depthStencil));
+                for (uint32_t i = 0; i < ARRAYSIZE(rtvs); i++) {
+                    attach(renderTargets[i], rtvs[i]);
+                }
+            }
+
+            context->OMGetDepthStencilState(set(depthStencilState), &stencilRef);
+            context->OMGetBlendState(set(blendState), blendFactor, &blendMask);
+
+#define SHADER_STAGE_SAVE_CONTEXT(stage)                                                                               \
+    context->stage##GetShader(set(stage##Program), nullptr, nullptr);                                                  \
+    {                                                                                                                  \
+        ID3D11Buffer* buffers[ARRAYSIZE(stage##ConstantBuffers)];                                                      \
+        context->stage##GetConstantBuffers(0, ARRAYSIZE(buffers), buffers);                                            \
+        for (uint32_t i = 0; i < ARRAYSIZE(buffers); i++) {                                                            \
+            attach(stage##ConstantBuffers[i], buffers[i]);                                                             \
+        }                                                                                                              \
+    }                                                                                                                  \
+    {                                                                                                                  \
+        ID3D11SamplerState* samp[ARRAYSIZE(stage##Samplers)];                                                          \
+        context->stage##GetSamplers(0, ARRAYSIZE(samp), samp);                                                         \
+        for (uint32_t i = 0; i < ARRAYSIZE(samp); i++) {                                                               \
+            attach(stage##Samplers[i], samp[i]);                                                                       \
+        }                                                                                                              \
+    }                                                                                                                  \
+    {                                                                                                                  \
+        ID3D11ShaderResourceView* srvs[ARRAYSIZE(stage##ShaderResources)];                                             \
+        context->stage##GetShaderResources(0, ARRAYSIZE(srvs), srvs);                                                  \
+        for (uint32_t i = 0; i < ARRAYSIZE(srvs); i++) {                                                               \
+            attach(stage##ShaderResources[i], srvs[i]);                                                                \
+        }                                                                                                              \
+    }
+
+            SHADER_STAGE_SAVE_CONTEXT(VS);
+            SHADER_STAGE_SAVE_CONTEXT(PS);
+            SHADER_STAGE_SAVE_CONTEXT(GS);
+            SHADER_STAGE_SAVE_CONTEXT(DS);
+            SHADER_STAGE_SAVE_CONTEXT(HS);
+            SHADER_STAGE_SAVE_CONTEXT(CS);
+
+#undef SHADER_STAGE_SAVE_CONTEXT
+
+            {
+                ID3D11UnorderedAccessView* uavs[ARRAYSIZE(CSUnorderedResources)];
+                context->CSGetUnorderedAccessViews(0, ARRAYSIZE(uavs), uavs);
+                for (uint32_t i = 0; i < ARRAYSIZE(uavs); i++) {
+                    attach(CSUnorderedResources[i], uavs[i]);
+                }
+            }
+
+            context->RSGetState(set(rasterizerState));
+            numViewports = ARRAYSIZE(viewports);
+            context->RSGetViewports(&numViewports, viewports);
+            numScissorRects = ARRAYSIZE(scissorRects);
+            context->RSGetScissorRects(&numScissorRects, scissorRects);
+
+            m_isValid = true;
+        }
+
+        void restore(ID3D11DeviceContext* context) const {
+            context->IASetInputLayout(get(inputLayout));
+            context->IASetPrimitiveTopology(topology);
+            {
+                ID3D11Buffer* vbs[ARRAYSIZE(vertexBuffers)];
+                for (uint32_t i = 0; i < ARRAYSIZE(vbs); i++) {
+                    vbs[i] = get(vertexBuffers[i]);
+                }
+                context->IASetVertexBuffers(0, ARRAYSIZE(vbs), vbs, vertexBufferStrides, vertexBufferOffsets);
+            }
+            context->IASetIndexBuffer(get(indexBuffer), indexBufferFormat, indexBufferOffset);
+
+            {
+                ID3D11RenderTargetView* rtvs[ARRAYSIZE(renderTargets)];
+                for (uint32_t i = 0; i < ARRAYSIZE(rtvs); i++) {
+                    rtvs[i] = get(renderTargets[i]);
+                }
+                context->OMSetRenderTargets(ARRAYSIZE(rtvs), rtvs, get(depthStencil));
+            }
+            context->OMSetDepthStencilState(get(depthStencilState), stencilRef);
+            context->OMSetBlendState(get(blendState), blendFactor, blendMask);
+
+#define SHADER_STAGE_RESTORE_CONTEXT(stage)                                                                            \
+    context->stage##SetShader(get(stage##Program), nullptr, 0);                                                        \
+    {                                                                                                                  \
+        ID3D11Buffer* buffers[ARRAYSIZE(stage##ConstantBuffers)];                                                      \
+        for (uint32_t i = 0; i < ARRAYSIZE(buffers); i++) {                                                            \
+            buffers[i] = get(stage##ConstantBuffers[i]);                                                               \
+        }                                                                                                              \
+        context->stage##SetConstantBuffers(0, ARRAYSIZE(buffers), buffers);                                            \
+    }                                                                                                                  \
+    {                                                                                                                  \
+        ID3D11SamplerState* samp[ARRAYSIZE(stage##Samplers)];                                                          \
+        for (uint32_t i = 0; i < ARRAYSIZE(samp); i++) {                                                               \
+            samp[i] = get(stage##Samplers[i]);                                                                         \
+        }                                                                                                              \
+        context->stage##SetSamplers(0, ARRAYSIZE(samp), samp);                                                         \
+    }                                                                                                                  \
+    {                                                                                                                  \
+        ID3D11ShaderResourceView* srvs[ARRAYSIZE(stage##ShaderResources)];                                             \
+        for (uint32_t i = 0; i < ARRAYSIZE(srvs); i++) {                                                               \
+            srvs[i] = get(stage##ShaderResources[i]);                                                                  \
+        }                                                                                                              \
+        context->stage##SetShaderResources(0, ARRAYSIZE(srvs), srvs);                                                  \
+    }
+
+            SHADER_STAGE_RESTORE_CONTEXT(VS);
+            SHADER_STAGE_RESTORE_CONTEXT(PS);
+            SHADER_STAGE_RESTORE_CONTEXT(GS);
+            SHADER_STAGE_RESTORE_CONTEXT(DS);
+            SHADER_STAGE_RESTORE_CONTEXT(HS);
+            SHADER_STAGE_RESTORE_CONTEXT(CS);
+
+#undef SHADER_STAGE_RESTORE_CONTEXT
+
+            {
+                ID3D11UnorderedAccessView* uavs[ARRAYSIZE(CSUnorderedResources)];
+                for (uint32_t i = 0; i < ARRAYSIZE(uavs); i++) {
+                    uavs[i] = get(CSUnorderedResources[i]);
+                }
+                context->CSGetUnorderedAccessViews(0, ARRAYSIZE(uavs), uavs);
+            }
+
+            context->RSSetState(get(rasterizerState));
+            context->RSSetViewports(numViewports, viewports);
+            context->RSSetScissorRects(numScissorRects, scissorRects);
+        }
+
+        void clear() {
+#define RESET_ARRAY(array)                                                                                             \
+    for (uint32_t i = 0; i < ARRAYSIZE(array); i++) {                                                                  \
+        array[i].Reset();                                                                                              \
+    }
+
+            inputLayout.Reset();
+            RESET_ARRAY(vertexBuffers);
+            indexBuffer.Reset();
+
+            RESET_ARRAY(renderTargets);
+            depthStencil.Reset();
+            depthStencilState.Reset();
+            blendState.Reset();
+
+#define SHADER_STAGE_STATE(stage)                                                                                      \
+    stage##Program.Reset();                                                                                            \
+    RESET_ARRAY(stage##ConstantBuffers);                                                                               \
+    RESET_ARRAY(stage##Samplers);                                                                                      \
+    RESET_ARRAY(stage##ShaderResources);
+
+            SHADER_STAGE_STATE(VS);
+            SHADER_STAGE_STATE(PS);
+            SHADER_STAGE_STATE(GS);
+            SHADER_STAGE_STATE(DS);
+            SHADER_STAGE_STATE(HS);
+            SHADER_STAGE_STATE(CS);
+
+            RESET_ARRAY(CSUnorderedResources);
+
+            rasterizerState.Reset();
+
+#undef RESET_ARRAY
+
+            m_isValid = false;
+        }
+
+        bool isValid() const {
+            return m_isValid;
+        }
+
+      private:
+        bool m_isValid{false};
+    };
+
     // Wrap a pixel shader resource. Obtained from D3D11Device.
     class D3D11QuadShader : public IQuadShader {
       public:
@@ -54,7 +282,7 @@ namespace {
         }
 
         void* getNativePtr() const override {
-            return m_pixelShader.Get();
+            return get(m_pixelShader);
         }
 
       private:
@@ -88,7 +316,7 @@ namespace {
         }
 
         void* getNativePtr() const override {
-            return m_computeShader.Get();
+            return get(m_computeShader);
         }
 
       private:
@@ -113,7 +341,7 @@ namespace {
         }
 
         void* getNativePtr() const override {
-            return m_shaderResourceView.Get();
+            return get(m_shaderResourceView);
         }
 
       private:
@@ -137,7 +365,7 @@ namespace {
         }
 
         void* getNativePtr() const override {
-            return m_unorderedAccessView.Get();
+            return get(m_unorderedAccessView);
         }
 
       private:
@@ -161,7 +389,7 @@ namespace {
         }
 
         void* getNativePtr() const override {
-            return m_renderTargetView.Get();
+            return get(m_renderTargetView);
         }
 
       private:
@@ -185,7 +413,7 @@ namespace {
         }
 
         void* getNativePtr() const override {
-            return m_depthStencilView.Get();
+            return get(m_depthStencilView);
         }
 
       private:
@@ -256,7 +484,7 @@ namespace {
 
         void saveToFile(const std::string& path) const override {
             const HRESULT hr =
-                D3DX11SaveTextureToFileA(m_device->getContext<D3D11>(), m_texture.Get(), D3DX11_IFF_DDS, path.c_str());
+                D3DX11SaveTextureToFileA(m_device->getContext<D3D11>(), get(m_texture), D3DX11_IFF_DDS, path.c_str());
             if (SUCCEEDED(hr)) {
                 Log("Screenshot saved to %s\n", path.c_str());
             } else {
@@ -265,7 +493,7 @@ namespace {
         }
 
         void* getNativePtr() const override {
-            return m_texture.Get();
+            return get(m_texture);
         }
 
       private:
@@ -289,9 +517,9 @@ namespace {
                 desc.Texture2DArray.MostDetailedMip = D3D11CalcSubresource(0, 0, m_info.mipCount);
 
                 ComPtr<ID3D11ShaderResourceView> srv;
-                CHECK_HRCMD(device->CreateShaderResourceView(m_texture.Get(), &desc, &srv));
+                CHECK_HRCMD(device->CreateShaderResourceView(get(m_texture), &desc, set(srv)));
 
-                shaderResourceView = std::make_shared<D3D11ShaderResourceView>(m_device, srv.Get());
+                shaderResourceView = std::make_shared<D3D11ShaderResourceView>(m_device, get(srv));
             }
             return shaderResourceView;
         }
@@ -315,9 +543,9 @@ namespace {
                 desc.Texture2DArray.MipSlice = D3D11CalcSubresource(0, 0, m_info.mipCount);
 
                 ComPtr<ID3D11UnorderedAccessView> uav;
-                CHECK_HRCMD(device->CreateUnorderedAccessView(m_texture.Get(), &desc, &uav));
+                CHECK_HRCMD(device->CreateUnorderedAccessView(get(m_texture), &desc, set(uav)));
 
-                unorderedAccessView = std::make_shared<D3D11UnorderedAccessView>(m_device, uav.Get());
+                unorderedAccessView = std::make_shared<D3D11UnorderedAccessView>(m_device, get(uav));
             }
             return unorderedAccessView;
         }
@@ -341,9 +569,9 @@ namespace {
                 desc.Texture2DArray.MipSlice = D3D11CalcSubresource(0, 0, m_info.mipCount);
 
                 ComPtr<ID3D11RenderTargetView> rtv;
-                CHECK_HRCMD(device->CreateRenderTargetView(m_texture.Get(), &desc, &rtv));
+                CHECK_HRCMD(device->CreateRenderTargetView(get(m_texture), &desc, set(rtv)));
 
-                renderTargetView = std::make_shared<D3D11RenderTargetView>(m_device, rtv.Get());
+                renderTargetView = std::make_shared<D3D11RenderTargetView>(m_device, get(rtv));
             }
             return renderTargetView;
         }
@@ -367,9 +595,9 @@ namespace {
                 desc.Texture2DArray.MipSlice = D3D11CalcSubresource(0, 0, m_info.mipCount);
 
                 ComPtr<ID3D11DepthStencilView> rtv;
-                CHECK_HRCMD(device->CreateDepthStencilView(m_texture.Get(), &desc, &rtv));
+                CHECK_HRCMD(device->CreateDepthStencilView(get(m_texture), &desc, set(rtv)));
 
-                depthStencilView = std::make_shared<D3D11DepthStencilView>(m_device, rtv.Get());
+                depthStencilView = std::make_shared<D3D11DepthStencilView>(m_device, get(rtv));
             }
             return depthStencilView;
         }
@@ -412,13 +640,13 @@ namespace {
             auto context = m_device->getContext<D3D11>();
 
             D3D11_MAPPED_SUBRESOURCE mappedResources;
-            CHECK_HRCMD(context->Map(m_buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResources));
+            CHECK_HRCMD(context->Map(get(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResources));
             memcpy(mappedResources.pData, buffer, count);
-            context->Unmap(m_buffer.Get(), 0);
+            context->Unmap(get(m_buffer), 0);
         }
 
         void* getNativePtr() const override {
-            return m_buffer.Get();
+            return get(m_buffer);
         }
 
       private:
@@ -436,9 +664,9 @@ namespace {
                         ID3D11Buffer* indexBuffer,
                         size_t numIndices)
             : m_device(device), m_vertexBuffer(vertexBuffer), m_indexBuffer(indexBuffer) {
-            m_meshData.vertexBuffer = m_vertexBuffer.Get();
+            m_meshData.vertexBuffer = get(m_vertexBuffer);
             m_meshData.stride = (UINT)stride;
-            m_meshData.indexBuffer = m_indexBuffer.Get();
+            m_meshData.indexBuffer = get(m_indexBuffer);
             m_meshData.numIndices = (UINT)numIndices;
         }
 
@@ -470,10 +698,10 @@ namespace {
             D3D11_QUERY_DESC queryDesc;
             ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
             queryDesc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
-            CHECK_HRCMD(d3dDevice->CreateQuery(&queryDesc, &m_timeStampDis));
+            CHECK_HRCMD(d3dDevice->CreateQuery(&queryDesc, set(m_timeStampDis)));
             queryDesc.Query = D3D11_QUERY_TIMESTAMP;
-            CHECK_HRCMD(d3dDevice->CreateQuery(&queryDesc, &m_timeStampStart));
-            CHECK_HRCMD(d3dDevice->CreateQuery(&queryDesc, &m_timeStampEnd));
+            CHECK_HRCMD(d3dDevice->CreateQuery(&queryDesc, set(m_timeStampStart)));
+            CHECK_HRCMD(d3dDevice->CreateQuery(&queryDesc, set(m_timeStampEnd)));
         }
 
         Api getApi() const override {
@@ -489,8 +717,8 @@ namespace {
 
             auto context = m_device->getContext<D3D11>();
 
-            context->Begin(m_timeStampDis.Get());
-            context->End(m_timeStampStart.Get());
+            context->Begin(get(m_timeStampDis));
+            context->End(get(m_timeStampStart));
         }
 
         void stop() override {
@@ -498,8 +726,8 @@ namespace {
 
             auto context = m_device->getContext<D3D11>();
 
-            context->End(m_timeStampEnd.Get());
-            context->End(m_timeStampDis.Get());
+            context->End(get(m_timeStampEnd));
+            context->End(get(m_timeStampDis));
             m_valid = true;
         }
 
@@ -513,10 +741,10 @@ namespace {
             uint64_t duration = 0;
 
             if (m_valid &&
-                context->GetData(m_timeStampDis.Get(), &disData, sizeof(D3D11_QUERY_DATA_TIMESTAMP_DISJOINT), 0) ==
+                context->GetData(get(m_timeStampDis), &disData, sizeof(D3D11_QUERY_DATA_TIMESTAMP_DISJOINT), 0) ==
                     S_OK &&
-                context->GetData(m_timeStampStart.Get(), &startime, sizeof(UINT64), 0) == S_OK &&
-                context->GetData(m_timeStampEnd.Get(), &endtime, sizeof(UINT64), 0) == S_OK && !disData.Disjoint) {
+                context->GetData(get(m_timeStampStart), &startime, sizeof(UINT64), 0) == S_OK &&
+                context->GetData(get(m_timeStampEnd), &endtime, sizeof(UINT64), 0) == S_OK && !disData.Disjoint) {
                 duration = (uint64_t)((endtime - startime) / double(disData.Frequency) * 1e6);
             }
 
@@ -539,17 +767,14 @@ namespace {
       public:
         D3D11Device(ID3D11Device* device, bool textOnly = false)
             : m_device(device), m_gpuArchitecture(GpuArchitecture::Unknown) {
-            m_device->GetImmediateContext(&m_context);
-            m_currentContext = m_context;
-
+            m_device->GetImmediateContext(set(m_context));
             {
                 ComPtr<IDXGIDevice> dxgiDevice;
                 ComPtr<IDXGIAdapter> adapter;
                 DXGI_ADAPTER_DESC desc;
 
-                CHECK_HRCMD(m_device->QueryInterface(__uuidof(IDXGIDevice),
-                                                     reinterpret_cast<void**>(dxgiDevice.GetAddressOf())));
-                CHECK_HRCMD(dxgiDevice->GetAdapter(&adapter));
+                CHECK_HRCMD(m_device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(set(dxgiDevice))));
+                CHECK_HRCMD(dxgiDevice->GetAdapter(set(adapter)));
                 CHECK_HRCMD(adapter->GetDesc(&desc));
 
                 const std::wstring wadapterDescription(desc.Description);
@@ -634,31 +859,28 @@ namespace {
 
         void saveContext(bool clear) override {
             // Ensure we are not dropping an unfinished context.
-            assert(m_currentContext == m_context);
+            assert(!m_state.isValid());
 
-            CHECK_HRCMD(m_device->CreateDeferredContext(0, &m_currentContext));
+            m_state.save(get(m_context));
             if (clear) {
-                m_currentContext->ClearState();
+                m_context->ClearState();
             }
         }
 
         void restoreContext() override {
             // Ensure saveContext() was called.
-            assert(m_currentContext != m_context);
+            assert(m_state.isValid());
 
-            ComPtr<ID3D11CommandList> commandList;
-            CHECK_HRCMD(m_currentContext->FinishCommandList(FALSE, &commandList));
-            m_context->ExecuteCommandList(commandList.Get(), TRUE);
-
-            m_currentContext = m_context;
+            m_state.restore(get(m_context));
+            m_state.clear();
         }
 
         void flushContext(bool blocking, bool isEndOfFrame = false) override {
             // Ensure we are not dropping an unfinished context.
-            assert(m_currentContext == m_context);
+            assert(!m_state.isValid());
 
             if (blocking) {
-                m_currentContext->Flush();
+                m_context->Flush();
             }
         }
 
@@ -697,16 +919,16 @@ namespace {
                 data.SysMemPitch = static_cast<uint32_t>(rowPitch);
                 data.SysMemSlicePitch = static_cast<uint32_t>(imageSize);
 
-                CHECK_HRCMD(m_device->CreateTexture2D(&desc, &data, &texture));
+                CHECK_HRCMD(m_device->CreateTexture2D(&desc, &data, set(texture)));
             } else {
-                CHECK_HRCMD(m_device->CreateTexture2D(&desc, nullptr, &texture));
+                CHECK_HRCMD(m_device->CreateTexture2D(&desc, nullptr, set(texture)));
             }
 
             if (debugName) {
                 texture->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName->size(), debugName->c_str());
             }
 
-            return std::make_shared<D3D11Texture>(shared_from_this(), info, desc, texture.Get());
+            return std::make_shared<D3D11Texture>(shared_from_this(), info, desc, get(texture));
         }
 
         std::shared_ptr<IShaderBuffer> createBuffer(size_t size,
@@ -726,16 +948,16 @@ namespace {
                 ZeroMemory(&data, sizeof(data));
                 data.pSysMem = initialData;
 
-                CHECK_HRCMD(m_device->CreateBuffer(&desc, &data, &buffer));
+                CHECK_HRCMD(m_device->CreateBuffer(&desc, &data, set(buffer)));
             } else {
-                CHECK_HRCMD(m_device->CreateBuffer(&desc, nullptr, &buffer));
+                CHECK_HRCMD(m_device->CreateBuffer(&desc, nullptr, set(buffer)));
             }
 
             if (debugName) {
                 buffer->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName->size(), debugName->c_str());
             }
 
-            return std::make_shared<D3D11Buffer>(shared_from_this(), desc, buffer.Get());
+            return std::make_shared<D3D11Buffer>(shared_from_this(), desc, get(buffer));
         }
 
         std::shared_ptr<ISimpleMesh> createSimpleMesh(std::vector<SimpleMeshVertex>& vertices,
@@ -752,13 +974,13 @@ namespace {
             desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
             data.pSysMem = vertices.data();
             ComPtr<ID3D11Buffer> vertexBuffer;
-            CHECK_HRCMD(m_device->CreateBuffer(&desc, &data, &vertexBuffer));
+            CHECK_HRCMD(m_device->CreateBuffer(&desc, &data, set(vertexBuffer)));
 
             desc.ByteWidth = (UINT)indices.size() * sizeof(uint16_t);
             desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
             data.pSysMem = indices.data();
             ComPtr<ID3D11Buffer> indexBuffer;
-            CHECK_HRCMD(m_device->CreateBuffer(&desc, &data, &indexBuffer));
+            CHECK_HRCMD(m_device->CreateBuffer(&desc, &data, set(indexBuffer)));
 
             if (debugName) {
                 vertexBuffer->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName->size(), debugName->c_str());
@@ -766,7 +988,7 @@ namespace {
             }
 
             return std::make_shared<D3D11SimpleMesh>(
-                shared_from_this(), vertexBuffer.Get(), sizeof(SimpleMeshVertex), indexBuffer.Get(), indices.size());
+                shared_from_this(), get(vertexBuffer), sizeof(SimpleMeshVertex), get(indexBuffer), indices.size());
         }
 
         std::shared_ptr<IQuadShader> createQuadShader(const std::string& shaderPath,
@@ -777,20 +999,20 @@ namespace {
             ComPtr<ID3DBlob> psBytes;
             if (!includePath.empty()) {
                 utilities::shader::IncludeHeader includes({includePath});
-                utilities::shader::CompileShader(shaderPath, entryPoint, &psBytes, defines, &includes, "ps_5_0");
+                utilities::shader::CompileShader(shaderPath, entryPoint, set(psBytes), defines, &includes, "ps_5_0");
             } else {
-                utilities::shader::CompileShader(shaderPath, entryPoint, &psBytes, defines, nullptr, "ps_5_0");
+                utilities::shader::CompileShader(shaderPath, entryPoint, set(psBytes), defines, nullptr, "ps_5_0");
             }
 
             ComPtr<ID3D11PixelShader> compiledShader;
             CHECK_HRCMD(m_device->CreatePixelShader(
-                psBytes->GetBufferPointer(), psBytes->GetBufferSize(), nullptr, &compiledShader));
+                psBytes->GetBufferPointer(), psBytes->GetBufferSize(), nullptr, set(compiledShader)));
 
             if (debugName) {
                 compiledShader->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName->size(), debugName->c_str());
             }
 
-            return std::make_shared<D3D11QuadShader>(shared_from_this(), compiledShader.Get());
+            return std::make_shared<D3D11QuadShader>(shared_from_this(), get(compiledShader));
         }
 
         std::shared_ptr<IComputeShader> createComputeShader(const std::string& shaderPath,
@@ -802,20 +1024,20 @@ namespace {
             ComPtr<ID3DBlob> csBytes;
             if (!includePath.empty()) {
                 utilities::shader::IncludeHeader includes({includePath});
-                utilities::shader::CompileShader(shaderPath, entryPoint, &csBytes, defines, &includes, "cs_5_0");
+                utilities::shader::CompileShader(shaderPath, entryPoint, set(csBytes), defines, &includes, "cs_5_0");
             } else {
-                utilities::shader::CompileShader(shaderPath, entryPoint, &csBytes, defines, nullptr, "cs_5_0");
+                utilities::shader::CompileShader(shaderPath, entryPoint, set(csBytes), defines, nullptr, "cs_5_0");
             }
 
             ComPtr<ID3D11ComputeShader> compiledShader;
             CHECK_HRCMD(m_device->CreateComputeShader(
-                csBytes->GetBufferPointer(), csBytes->GetBufferSize(), nullptr, &compiledShader));
+                csBytes->GetBufferPointer(), csBytes->GetBufferSize(), nullptr, set(compiledShader)));
 
             if (debugName) {
                 compiledShader->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName->size(), debugName->c_str());
             }
 
-            return std::make_shared<D3D11ComputeShader>(shared_from_this(), compiledShader.Get(), threadGroups);
+            return std::make_shared<D3D11ComputeShader>(shared_from_this(), get(compiledShader), threadGroups);
         }
 
         std::shared_ptr<IGpuTimer> createTimer() override {
@@ -828,18 +1050,18 @@ namespace {
             m_currentShaderHighestSRV = m_currentShaderHighestUAV = m_currentShaderHighestRTV = 0;
 
             // Prepare to draw the quad.
-            m_currentContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
-            m_currentContext->OMSetDepthStencilState(nullptr, 0);
-            m_currentContext->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
-            m_currentContext->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
-            m_currentContext->IASetInputLayout(nullptr);
-            m_currentContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-            m_currentContext->VSSetShader(m_quadVertexShader.Get(), nullptr, 0);
+            m_context->OMSetBlendState(nullptr, nullptr, 0xffffffff);
+            m_context->OMSetDepthStencilState(nullptr, 0);
+            m_context->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
+            m_context->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
+            m_context->IASetInputLayout(nullptr);
+            m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+            m_context->VSSetShader(get(m_quadVertexShader), nullptr, 0);
 
             // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
-            ID3D11SamplerState* samp[] = {m_linearClampSamplerPS.Get()};
-            m_currentContext->PSSetSamplers(0, 1, samp);
-            m_currentContext->PSSetShader(shader->getNative<D3D11>(), nullptr, 0);
+            ID3D11SamplerState* samp[] = {get(m_linearClampSamplerPS)};
+            m_context->PSSetSamplers(0, 1, samp);
+            m_context->PSSetShader(shader->getNative<D3D11>(), nullptr, 0);
 
             m_currentQuadShader = shader;
         }
@@ -850,10 +1072,10 @@ namespace {
             m_currentShaderHighestSRV = m_currentShaderHighestUAV = m_currentShaderHighestRTV = 0;
 
             // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
-            ID3D11SamplerState* samp[] = {m_linearClampSamplerCS.Get()};
-            m_currentContext->CSSetSamplers(0, 1, samp);
+            ID3D11SamplerState* samp[] = {get(m_linearClampSamplerCS)};
+            m_context->CSSetSamplers(0, 1, samp);
 
-            m_currentContext->CSSetShader(shader->getNative<D3D11>(), nullptr, 0);
+            m_context->CSSetShader(shader->getNative<D3D11>(), nullptr, 0);
 
             m_currentComputeShader = shader;
         }
@@ -862,9 +1084,9 @@ namespace {
             ID3D11ShaderResourceView* srvs[] = {slice == -1 ? input->getShaderInputView()->getNative<D3D11>()
                                                             : input->getShaderInputView(slice)->getNative<D3D11>()};
             if (m_currentQuadShader) {
-                m_currentContext->PSSetShaderResources(slot, 1, srvs);
+                m_context->PSSetShaderResources(slot, 1, srvs);
             } else if (m_currentComputeShader) {
-                m_currentContext->CSSetShaderResources(slot, 1, srvs);
+                m_context->CSSetShaderResources(slot, 1, srvs);
             } else {
                 throw std::runtime_error("No shader is set");
             }
@@ -874,9 +1096,9 @@ namespace {
         void setShaderInput(uint32_t slot, std::shared_ptr<IShaderBuffer> input) override {
             ID3D11Buffer* cbs[] = {input->getNative<D3D11>()};
             if (m_currentQuadShader) {
-                m_currentContext->PSSetConstantBuffers(slot, 1, cbs);
+                m_context->PSSetConstantBuffers(slot, 1, cbs);
             } else if (m_currentComputeShader) {
-                m_currentContext->CSSetConstantBuffers(slot, 1, cbs);
+                m_context->CSSetConstantBuffers(slot, 1, cbs);
             } else {
                 throw std::runtime_error("No shader is set");
             }
@@ -893,15 +1115,15 @@ namespace {
                     setRenderTargets({std::make_pair(output, slice)}, {});
                 }
 
-                m_currentContext->RSSetState(output->getInfo().sampleCount > 1 ? m_quadRasterizerMSAA.Get()
-                                                                               : m_quadRasterizer.Get());
+                m_context->RSSetState(output->getInfo().sampleCount > 1 ? get(m_quadRasterizerMSAA)
+                                                                        : get(m_quadRasterizer));
                 m_currentShaderHighestRTV = max(m_currentShaderHighestRTV, slot);
 
             } else if (m_currentComputeShader) {
                 ID3D11UnorderedAccessView* uavs[] = {
                     slice == -1 ? output->getComputeShaderOutputView()->getNative<D3D11>()
                                 : output->getComputeShaderOutputView(slice)->getNative<D3D11>()};
-                m_currentContext->CSSetUnorderedAccessViews(slot, 1, uavs, nullptr);
+                m_context->CSSetUnorderedAccessViews(slot, 1, uavs, nullptr);
                 m_currentShaderHighestUAV = max(m_currentShaderHighestUAV, slot);
             } else {
                 throw std::runtime_error("No shader is set");
@@ -910,11 +1132,11 @@ namespace {
 
         void dispatchShader(bool doNotClear) const override {
             if (m_currentQuadShader) {
-                m_currentContext->Draw(3, 0);
+                m_context->Draw(3, 0);
             } else if (m_currentComputeShader) {
-                m_currentContext->Dispatch(m_currentComputeShader->getThreadGroups()[0],
-                                           m_currentComputeShader->getThreadGroups()[1],
-                                           m_currentComputeShader->getThreadGroups()[2]);
+                m_context->Dispatch(m_currentComputeShader->getThreadGroups()[0],
+                                    m_currentComputeShader->getThreadGroups()[1],
+                                    m_currentComputeShader->getThreadGroups()[2]);
             } else {
                 throw std::runtime_error("No shader is set");
             }
@@ -927,7 +1149,7 @@ namespace {
                         rtvs.push_back(nullptr);
                     }
 
-                    m_currentContext->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
+                    m_context->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
                     m_currentShaderHighestRTV = 0;
                 }
                 {
@@ -937,9 +1159,9 @@ namespace {
                     }
 
                     if (m_currentQuadShader) {
-                        m_currentContext->PSSetShaderResources(0, (UINT)srvs.size(), srvs.data());
+                        m_context->PSSetShaderResources(0, (UINT)srvs.size(), srvs.data());
                     } else {
-                        m_currentContext->CSSetShaderResources(0, (UINT)srvs.size(), srvs.data());
+                        m_context->CSSetShaderResources(0, (UINT)srvs.size(), srvs.data());
                     }
                     m_currentShaderHighestSRV = 0;
                 }
@@ -949,7 +1171,7 @@ namespace {
                         uavs.push_back(nullptr);
                     }
 
-                    m_currentContext->CSSetUnorderedAccessViews(0, (UINT)uavs.size(), uavs.data(), nullptr);
+                    m_context->CSSetUnorderedAccessViews(0, (UINT)uavs.size(), uavs.data(), nullptr);
                     m_currentShaderHighestUAV = 0;
                 }
                 m_currentQuadShader.reset();
@@ -964,7 +1186,7 @@ namespace {
                 rtvs.push_back(nullptr);
             }
 
-            m_currentContext->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
+            m_context->OMSetRenderTargets((UINT)rtvs.size(), rtvs.data(), nullptr);
 
             m_currentDrawRenderTarget.reset();
             m_currentDrawDepthBuffer.reset();
@@ -993,7 +1215,7 @@ namespace {
                     rtvs.push_back(renderTarget.first->getRenderTargetView(slice)->getNative<D3D11>());
                 }
             }
-            m_currentContext->OMSetRenderTargets(
+            m_context->OMSetRenderTargets(
                 (UINT)rtvs.size(),
                 rtvs.data(),
                 depthBuffer.first ? depthBuffer.first->getDepthStencilView()->getNative<D3D11>() : nullptr);
@@ -1010,7 +1232,7 @@ namespace {
                 viewport.TopLeftY = 0.0f;
                 viewport.Width = (float)m_currentDrawRenderTarget->getInfo().width;
                 viewport.Height = (float)m_currentDrawRenderTarget->getInfo().height;
-                m_currentContext->RSSetViewports(1, &viewport);
+                m_context->RSSetViewports(1, &viewport);
             } else {
                 m_currentDrawRenderTarget.reset();
                 m_currentDrawDepthBuffer.reset();
@@ -1024,8 +1246,8 @@ namespace {
             }
 
             ComPtr<ID3D11DeviceContext1> d3d11Context;
-            if (FAILED(m_currentContext->QueryInterface(__uuidof(ID3D11DeviceContext1),
-                                                        reinterpret_cast<void**>(d3d11Context.GetAddressOf())))) {
+            if (FAILED(m_context->QueryInterface(__uuidof(ID3D11DeviceContext1),
+                                                 reinterpret_cast<void**>(set(d3d11Context))))) {
                 // The app did not use a sufficient FEATURE_LEVEL. Nothing we can do.
                 return;
             }
@@ -1060,7 +1282,7 @@ namespace {
                     m_currentDrawDepthBuffer->getDepthStencilView(m_currentDrawDepthBufferSlice)->getNative<D3D11>();
             }
 
-            m_currentContext->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, value, 0);
+            m_context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, value, 0);
         }
 
         void setViewProjection(const XrPosef& eyePose, const XrFovf& fov, float depthNear, float depthFar) override {
@@ -1076,8 +1298,7 @@ namespace {
             }
             m_meshViewProjectionBuffer->uploadData(&staging, sizeof(staging));
 
-            m_currentContext->OMSetDepthStencilState(
-                depthNear > depthFar ? m_reversedZDepthNoStencilTest.Get() : nullptr, 0);
+            m_context->OMSetDepthStencilState(depthNear > depthFar ? get(m_reversedZDepthNoStencilTest) : nullptr, 0);
         }
 
         void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling) override {
@@ -1089,19 +1310,18 @@ namespace {
                 }
                 ID3D11Buffer* const constantBuffers[] = {m_meshModelBuffer->getNative<D3D11>(),
                                                          m_meshViewProjectionBuffer->getNative<D3D11>()};
-                m_currentContext->VSSetConstantBuffers(0, (UINT)std::size(constantBuffers), constantBuffers);
-                m_currentContext->VSSetShader(m_meshVertexShader.Get(), nullptr, 0);
-                m_currentContext->PSSetShader(m_meshPixelShader.Get(), nullptr, 0);
-                m_currentContext->GSSetShader(nullptr, nullptr, 0);
+                m_context->VSSetConstantBuffers(0, (UINT)std::size(constantBuffers), constantBuffers);
+                m_context->VSSetShader(get(m_meshVertexShader), nullptr, 0);
+                m_context->PSSetShader(get(m_meshPixelShader), nullptr, 0);
+                m_context->GSSetShader(nullptr, nullptr, 0);
 
                 const UINT strides[] = {meshData->stride};
                 const UINT offsets[] = {0};
                 ID3D11Buffer* vertexBuffers[] = {meshData->vertexBuffer};
-                m_currentContext->IASetVertexBuffers(
-                    0, (UINT)std::size(vertexBuffers), vertexBuffers, strides, offsets);
-                m_currentContext->IASetIndexBuffer(meshData->indexBuffer, DXGI_FORMAT_R16_UINT, 0);
-                m_currentContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-                m_currentContext->IASetInputLayout(m_meshInputLayout.Get());
+                m_context->IASetVertexBuffers(0, (UINT)std::size(vertexBuffers), vertexBuffers, strides, offsets);
+                m_context->IASetIndexBuffer(meshData->indexBuffer, DXGI_FORMAT_R16_UINT, 0);
+                m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                m_context->IASetInputLayout(get(m_meshInputLayout));
 
                 m_currentMesh = mesh;
             }
@@ -1112,7 +1332,7 @@ namespace {
                                      DirectX::XMMatrixTranspose(scaleMatrix * xr::math::LoadXrPose(pose)));
             m_meshModelBuffer->uploadData(&model, sizeof(model));
 
-            m_currentContext->DrawIndexedInstanced(meshData->numIndices, 1, 0, 0, 0);
+            m_context->DrawIndexedInstanced(meshData->numIndices, 1, 0, 0, 0);
         }
 
         float drawString(std::wstring string,
@@ -1125,13 +1345,8 @@ namespace {
                          bool alignRight) override {
             auto& font = style == TextStyle::Bold ? m_fontBold : m_fontNormal;
 
-            font->DrawString(m_currentContext.Get(),
-                             string.c_str(),
-                             size,
-                             x,
-                             y,
-                             color,
-                             (alignRight ? FW1_RIGHT : FW1_LEFT) | FW1_NOFLUSH);
+            font->DrawString(
+                get(m_context), string.c_str(), size, x, y, color, (alignRight ? FW1_RIGHT : FW1_LEFT) | FW1_NOFLUSH);
             return measure ? measureString(string, style, size) : 0.0f;
         }
 
@@ -1167,9 +1382,9 @@ namespace {
         }
 
         void flushText() override {
-            m_fontNormal->Flush(m_currentContext.Get());
-            m_fontBold->Flush(m_currentContext.Get());
-            m_currentContext->Flush();
+            m_fontNormal->Flush(get(m_context));
+            m_fontBold->Flush(get(m_context));
+            m_context->Flush();
         }
 
         void resolveQueries() override {
@@ -1184,11 +1399,11 @@ namespace {
         }
 
         void* getNativePtr() const override {
-            return m_device.Get();
+            return get(m_device);
         }
 
         void* getContextPtr() const override {
-            return m_currentContext.Get();
+            return get(m_context);
         }
 
       private:
@@ -1203,7 +1418,7 @@ namespace {
                 desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
                 desc.MaxAnisotropy = 1;
                 desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-                CHECK_HRCMD(m_device->CreateSamplerState(&desc, &m_linearClampSamplerPS));
+                CHECK_HRCMD(m_device->CreateSamplerState(&desc, set(m_linearClampSamplerPS)));
             }
             {
                 D3D11_SAMPLER_DESC desc;
@@ -1216,7 +1431,7 @@ namespace {
                 desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
                 desc.MinLOD = D3D11_MIP_LOD_BIAS_MIN;
                 desc.MaxLOD = D3D11_MIP_LOD_BIAS_MAX;
-                CHECK_HRCMD(m_device->CreateSamplerState(&desc, &m_linearClampSamplerCS));
+                CHECK_HRCMD(m_device->CreateSamplerState(&desc, set(m_linearClampSamplerCS)));
             }
             {
                 D3D11_RASTERIZER_DESC desc;
@@ -1224,9 +1439,9 @@ namespace {
                 desc.FillMode = D3D11_FILL_SOLID;
                 desc.CullMode = D3D11_CULL_NONE;
                 desc.FrontCounterClockwise = TRUE;
-                CHECK_HRCMD(m_device->CreateRasterizerState(&desc, &m_quadRasterizer));
+                CHECK_HRCMD(m_device->CreateRasterizerState(&desc, set(m_quadRasterizer)));
                 desc.MultisampleEnable = TRUE;
-                CHECK_HRCMD(m_device->CreateRasterizerState(&desc, &m_quadRasterizerMSAA));
+                CHECK_HRCMD(m_device->CreateRasterizerState(&desc, set(m_quadRasterizerMSAA)));
             }
             {
                 ComPtr<ID3DBlob> errors;
@@ -1240,8 +1455,8 @@ namespace {
                                         "vs_5_0",
                                         D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
                                         0,
-                                        &vsBytes,
-                                        &errors);
+                                        set(vsBytes),
+                                        set(errors));
                 if (FAILED(hr)) {
                     if (errors) {
                         Log("%s", (char*)errors->GetBufferPointer());
@@ -1249,7 +1464,7 @@ namespace {
                     CHECK_HRESULT(hr, "Failed to compile shader");
                 }
                 CHECK_HRCMD(m_device->CreateVertexShader(
-                    vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, &m_quadVertexShader));
+                    vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, set(m_quadVertexShader)));
                 {
                     const std::string debugName = "Quad PS";
                     m_quadVertexShader->SetPrivateData(
@@ -1272,8 +1487,8 @@ namespace {
                                         "vs_5_0",
                                         D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
                                         0,
-                                        &vsBytes,
-                                        &errors);
+                                        set(vsBytes),
+                                        set(errors));
                 if (FAILED(hr)) {
                     if (errors) {
                         Log("%s", (char*)errors->GetBufferPointer());
@@ -1281,7 +1496,7 @@ namespace {
                     CHECK_HRESULT(hr, "Failed to compile shader");
                 }
                 CHECK_HRCMD(m_device->CreateVertexShader(
-                    vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, &m_meshVertexShader));
+                    vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, set(m_meshVertexShader)));
                 {
                     const std::string debugName = "SimpleMesh VS";
                     m_meshVertexShader->SetPrivateData(
@@ -1309,7 +1524,7 @@ namespace {
                                                         (UINT)std::size(vertexDesc),
                                                         vsBytes->GetBufferPointer(),
                                                         vsBytes->GetBufferSize(),
-                                                        &m_meshInputLayout));
+                                                        set(m_meshInputLayout)));
             }
             {
                 ComPtr<ID3DBlob> errors;
@@ -1323,8 +1538,8 @@ namespace {
                                         "ps_5_0",
                                         D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
                                         0,
-                                        &psBytes,
-                                        &errors);
+                                        set(psBytes),
+                                        set(errors));
                 if (FAILED(hr)) {
                     if (errors) {
                         Log("%s", (char*)errors->GetBufferPointer());
@@ -1332,7 +1547,7 @@ namespace {
                     CHECK_HRESULT(hr, "Failed to compile shader");
                 }
                 CHECK_HRCMD(m_device->CreatePixelShader(
-                    psBytes->GetBufferPointer(), psBytes->GetBufferSize(), nullptr, &m_meshPixelShader));
+                    psBytes->GetBufferPointer(), psBytes->GetBufferSize(), nullptr, set(m_meshPixelShader)));
                 {
                     const std::string debugName = "SimpleMesh PS";
                     m_meshPixelShader->SetPrivateData(
@@ -1345,15 +1560,15 @@ namespace {
                 desc.DepthEnable = true;
                 desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
                 desc.DepthFunc = D3D11_COMPARISON_GREATER;
-                CHECK_HRCMD(m_device->CreateDepthStencilState(&desc, &m_reversedZDepthNoStencilTest));
+                CHECK_HRCMD(m_device->CreateDepthStencilState(&desc, set(m_reversedZDepthNoStencilTest)));
             }
         }
 
         // Initialize resources for drawString() and related calls.
         void initializeTextResources() {
-            CHECK_HRCMD(FW1CreateFactory(FW1_VERSION, &m_fontWrapperFactory));
+            CHECK_HRCMD(FW1CreateFactory(FW1_VERSION, set(m_fontWrapperFactory)));
 
-            CHECK_HRCMD(m_fontWrapperFactory->CreateFontWrapper(m_device.Get(), FontFamily.c_str(), &m_fontNormal));
+            CHECK_HRCMD(m_fontWrapperFactory->CreateFontWrapper(get(m_device), FontFamily.c_str(), set(m_fontNormal)));
 
             IDWriteFactory* dwriteFactory = nullptr;
             CHECK_HRCMD(m_fontNormal->GetDWriteFactory(&dwriteFactory));
@@ -1363,12 +1578,13 @@ namespace {
             params.DefaultFontParams.FontWeight = DWRITE_FONT_WEIGHT_BOLD;
             params.DefaultFontParams.FontStretch = DWRITE_FONT_STRETCH_NORMAL;
             params.DefaultFontParams.FontStyle = DWRITE_FONT_STYLE_NORMAL;
-            CHECK_HRCMD(m_fontWrapperFactory->CreateFontWrapper(m_device.Get(), dwriteFactory, &params, &m_fontBold));
+            CHECK_HRCMD(
+                m_fontWrapperFactory->CreateFontWrapper(get(m_device), dwriteFactory, &params, set(m_fontBold)));
         }
 
         const ComPtr<ID3D11Device> m_device;
         ComPtr<ID3D11DeviceContext> m_context;
-        ComPtr<ID3D11DeviceContext> m_currentContext;
+        D3D11ContextState m_state;
         std::string m_deviceName;
         GpuArchitecture m_gpuArchitecture;
 
