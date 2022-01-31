@@ -147,7 +147,7 @@ namespace {
 
             // The unit for ICD is tenth of millimeters.
             m_menuEntries.push_back({"World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
-                                         return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.0f, m_stats.icd * 1000);
+                                         return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.f, m_stats.icd * 1000);
                                      }});
             m_menuEntries.push_back({"FOV",
                                      MenuEntryType::Slider,
@@ -460,7 +460,7 @@ namespace {
                 top += 1.5f * fontSize;
 
                 if (eye == 0) {
-                    m_menuEntriesRight = max(m_menuEntriesRight, left);
+                    m_menuEntriesRight = std::max(m_menuEntriesRight, left);
                 }
 
                 float menuEntriesTitleWidth = m_menuEntriesTitleWidth;
@@ -478,7 +478,7 @@ namespace {
                     if (menuEntriesTitleWidth == 0.0f) {
                         // Worst case should be Selected (bold).
                         entryWidth = m_device->measureString(title, TextStyle::Bold, fontSize) + 50;
-                        m_menuEntriesTitleWidth = max(m_menuEntriesTitleWidth, entryWidth);
+                        m_menuEntriesTitleWidth = std::max(m_menuEntriesTitleWidth, entryWidth);
                     }
 
                     if (!menuEntry.visible) {
@@ -541,7 +541,7 @@ namespace {
                     top += 1.05f * fontSize;
 
                     if (eye == 0) {
-                        m_menuEntriesRight = max(m_menuEntriesRight, left);
+                        m_menuEntriesRight = std::max(m_menuEntriesRight, left);
                     }
                 }
 
@@ -575,7 +575,7 @@ namespace {
                     }
 
                     if (eye == 0) {
-                        m_menuEntriesRight = max(m_menuEntriesRight, left);
+                        m_menuEntriesRight = std::max(m_menuEntriesRight, left);
                     }
                 }
                 m_menuEntriesBottom = top + fontSize * 0.2f;

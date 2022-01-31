@@ -732,7 +732,7 @@ namespace {
                 // Override the ICD if requested.
                 const int icdOverride = m_configManager->getValue(config::SettingICD);
                 if (icdOverride != 1000) {
-                    const float icd = (ipd * icdOverride) / 1000;
+                    const float icd = (ipd * 1000) / std::max(icdOverride,1);
                     m_stats.icd = icd;
                     const auto center = views[0].pose.position + vec / 2.0f;
                     const auto unit = Normalize(vec);
