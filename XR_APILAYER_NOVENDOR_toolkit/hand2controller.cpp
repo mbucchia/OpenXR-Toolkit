@@ -577,8 +577,8 @@ namespace {
                     }
 
                     XrVector3f scaling{jointsPoses[joint].radius,
-                                       min(0.0025f, jointsPoses[joint].radius),
-                                       max(0.015f, jointsPoses[joint].radius)};
+                                       std::min(0.0025f, jointsPoses[joint].radius),
+                                       std::max(0.015f, jointsPoses[joint].radius)};
                     m_graphicsDevice->draw(m_jointMesh[meshIndex], jointsPoses[joint].pose, scaling);
                 }
             }
@@ -697,7 +697,7 @@ namespace {
 
                 CHECK_HRCMD(xrLocateHandJointsEXT(m_handTracker[side], &locateInfo, &locations));
                 if (Pose::IsPoseTracked(locations.jointLocations[XR_HAND_JOINT_PALM_EXT].locationFlags)) {
-                    m_lastTimestampWithPoseTracked[side] = max(time, m_lastTimestampWithPoseTracked[side]);
+                    m_lastTimestampWithPoseTracked[side] = std::max(time, m_lastTimestampWithPoseTracked[side]);
                 } else {
                     m_gesturesState.numTrackingLosses[side]++;
                 }
@@ -821,7 +821,7 @@ namespace {
                 Pose::IsPoseValid(joints2Poses[joint2].locationFlags)) {
                 // We ignore joints radius and assume the near/far distance are configured to account for them.
                 const float distance =
-                    max(Length(joints1Poses[joint1].pose.position - joints2Poses[joint2].pose.position), 0.f);
+                    std::max(Length(joints1Poses[joint1].pose.position - joints2Poses[joint2].pose.position), 0.f);
 
                 return 1.f -
                        (std::clamp(distance, nearDistance, farDistance) - nearDistance) / (farDistance - nearDistance);
@@ -850,7 +850,7 @@ namespace {
                 // path.endswith(actionPath)
                 if (path.rfind(actionPath) == path.length() - actionPath.length()) {
                     // If multiple gestures are bound to the same action, pick the highest value.
-                    const float newFloatValue = subAction.synced ? max(subAction.floatValue, value) : value;
+                    const float newFloatValue = subAction.synced ? std::max(subAction.floatValue, value) : value;
                     const bool newBoolValue = newFloatValue >= m_config.clickThreshold;
 
                     if (std::abs(subAction.floatValue - newFloatValue) > FLT_EPSILON) {

@@ -1090,7 +1090,7 @@ namespace {
             } else {
                 throw std::runtime_error("No shader is set");
             }
-            m_currentShaderHighestSRV = max(m_currentShaderHighestSRV, slot);
+            m_currentShaderHighestSRV = std::max(m_currentShaderHighestSRV, slot);
         }
 
         void setShaderInput(uint32_t slot, std::shared_ptr<IShaderBuffer> input) override {
@@ -1117,14 +1117,14 @@ namespace {
 
                 m_context->RSSetState(output->getInfo().sampleCount > 1 ? get(m_quadRasterizerMSAA)
                                                                         : get(m_quadRasterizer));
-                m_currentShaderHighestRTV = max(m_currentShaderHighestRTV, slot);
+                m_currentShaderHighestRTV = std::max(m_currentShaderHighestRTV, slot);
 
             } else if (m_currentComputeShader) {
                 ID3D11UnorderedAccessView* uavs[] = {
                     slice == -1 ? output->getComputeShaderOutputView()->getNative<D3D11>()
                                 : output->getComputeShaderOutputView(slice)->getNative<D3D11>()};
                 m_context->CSSetUnorderedAccessViews(slot, 1, uavs, nullptr);
-                m_currentShaderHighestUAV = max(m_currentShaderHighestUAV, slot);
+                m_currentShaderHighestUAV = std::max(m_currentShaderHighestUAV, slot);
             } else {
                 throw std::runtime_error("No shader is set");
             }
