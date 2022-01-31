@@ -80,6 +80,7 @@ copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shade
 type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-1.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_a.h $(OutDir)\shaders
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h $(OutDir)\shaders
+type $(SolutionDir)\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-code-fsr-v1.20210629.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
 copy $(ProjectDir)\NIS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\FSR.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
@@ -133,6 +134,7 @@ copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shade
 type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-1.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_a.h $(OutDir)\shaders
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h $(OutDir)\shaders
+type $(SolutionDir)\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-code-fsr-v1.20210629.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
 copy $(ProjectDir)\NIS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\FSR.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
@@ -207,6 +209,7 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     <ClCompile Include="utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-code-fsr-v1.20210629.patch" />
     <None Include="..\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-1.patch" />
     <None Include="framework\dispatch_generator.py" />
     <None Include="framework\layer_apis.py" />
