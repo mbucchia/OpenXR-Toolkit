@@ -1086,9 +1086,9 @@ namespace {
                 createBuffer(indices.size() * sizeof(uint16_t), debugName, indices.data(), true);
 
             return std::make_shared<D3D12SimpleMesh>(shared_from_this(),
-                                                     vertexBuffer->getAs<D3D12>(),
+                                                     vertexBuffer->getNative<D3D12>(),
                                                      sizeof(SimpleMeshVertex),
-                                                     indexBuffer->getAs<D3D12>(),
+                                                     indexBuffer->getNative<D3D12>(),
                                                      indices.size());
         }
 
@@ -1598,7 +1598,7 @@ namespace {
                 D3D11_RESOURCE_FLAGS flags;
                 ZeroMemory(&flags, sizeof(flags));
                 flags.BindFlags = D3D11_BIND_RENDER_TARGET;
-                CHECK_HRCMD(m_textInteropDevice->CreateWrappedResource(m_currentDrawRenderTarget->getAs<D3D12>(),
+                CHECK_HRCMD(m_textInteropDevice->CreateWrappedResource(m_currentDrawRenderTarget->getNative<D3D12>(),
                                                                        &flags,
                                                                        D3D12_RESOURCE_STATE_RENDER_TARGET,
                                                                        D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -1612,7 +1612,7 @@ namespace {
                 d3d12DrawRenderTarget->setInteropTexture(m_currentTextRenderTarget);
             }
             {
-                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
+                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getNative<D3D11>()};
                 m_textInteropDevice->AcquireWrappedResources(resources, 1);
             }
 
@@ -1628,7 +1628,7 @@ namespace {
             // Commit to the D3D12 queue.
             m_textDevice->flushContext(true);
             {
-                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
+                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getNative<D3D11>()};
                 m_textInteropDevice->ReleaseWrappedResources(resources, 1);
             }
             m_currentTextRenderTarget.reset();
