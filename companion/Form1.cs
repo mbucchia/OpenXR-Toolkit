@@ -55,6 +55,7 @@ namespace companion
             InitializeKeyList(leftKey);
             InitializeKeyList(nextKey);
             InitializeKeyList(rightKey);
+            InitializeKeyList(screenshotKey);
 
             InitXr();
 
@@ -72,6 +73,7 @@ namespace companion
                 SelectKey(leftKey, (int)key.GetValue("key_left", KeyInterop.VirtualKeyFromKey(Key.F1)));
                 SelectKey(nextKey, (int)key.GetValue("key_menu", KeyInterop.VirtualKeyFromKey(Key.F2)));
                 SelectKey(rightKey, (int)key.GetValue("key_right", KeyInterop.VirtualKeyFromKey(Key.F3)));
+                SelectKey(screenshotKey, (int)key.GetValue("key_screenshot", KeyInterop.VirtualKeyFromKey(Key.F12)));
             }
             catch (Exception)
             {
@@ -95,7 +97,7 @@ namespace companion
             {
                 VirtualKeys = new();
                 Key[] allowed = new[] {
-                    Key.Escape, Key.F1, Key.F2, Key.F3, Key.F4, Key.F5, Key.F6, Key.F7, Key.F8, Key.F9, Key.F10, Key.F11, Key.PrintScreen, Key.Scroll, Key.Pause,
+                    Key.Escape, Key.F1, Key.F2, Key.F3, Key.F4, Key.F5, Key.F6, Key.F7, Key.F8, Key.F9, Key.F10, Key.F11, Key.F12, Key.PrintScreen, Key.Scroll, Key.Pause,
                     Key.OemTilde, Key.D1, Key.D2, Key.D3, Key.D4, Key.D5, Key.D6, Key.D7, Key.D8, Key.D9, Key.D0, Key.OemMinus, Key.OemPlus, Key.Back, Key.Insert, Key.Home, Key.PageUp,
                     Key.Tab, Key.Q, Key.W, Key.E, Key.R, Key.T, Key.Y, Key.U, Key.I, Key.O, Key.P, Key.OemOpenBrackets, Key.OemCloseBrackets, Key.OemPipe, Key.Delete, Key.End, Key.PageDown,
                     Key.A, Key.S, Key.D, Key.F, Key.G, Key.H, Key.J, Key.K, Key.L, Key.OemSemicolon, Key.OemQuotes, Key.Enter,
@@ -232,7 +234,7 @@ namespace companion
                         loading = wasLoading;
                     }
                     safemodeCheckbox.Enabled = experimentalCheckbox.Enabled = screenshotCheckbox.Enabled = leftKey.Enabled = nextKey.Enabled = rightKey.Enabled =
-                        ctrlModifierCheckbox.Enabled = altModifierCheckbox.Enabled = !disableCheckbox.Checked;
+                        screenshotKey.Enabled = ctrlModifierCheckbox.Enabled = altModifierCheckbox.Enabled = !disableCheckbox.Checked;
                 }
                 else
                 {
@@ -367,7 +369,7 @@ namespace companion
             {
                 return;
             }
-            if (leftKey.SelectedItem == rightKey.SelectedItem || leftKey.SelectedItem == nextKey.SelectedItem)
+            if (leftKey.SelectedItem == rightKey.SelectedItem || leftKey.SelectedItem == nextKey.SelectedItem || leftKey.SelectedItem == screenshotKey.SelectedItem)
             {
                 MessageBox.Show("Please make the key assignments unique.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
@@ -388,7 +390,7 @@ namespace companion
             {
                 return;
             }
-            if (nextKey.SelectedItem == leftKey.SelectedItem || nextKey.SelectedItem == rightKey.SelectedItem)
+            if (nextKey.SelectedItem == leftKey.SelectedItem || nextKey.SelectedItem == rightKey.SelectedItem || nextKey.SelectedItem == screenshotKey.SelectedItem)
             {
                 MessageBox.Show("Please make the key assignments unique.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
@@ -409,7 +411,7 @@ namespace companion
             {
                 return;
             }
-            if (rightKey.SelectedItem == leftKey.SelectedItem || rightKey.SelectedItem == nextKey.SelectedItem)
+            if (rightKey.SelectedItem == leftKey.SelectedItem || rightKey.SelectedItem == nextKey.SelectedItem || rightKey.SelectedItem == screenshotKey.SelectedItem)
             {
                 MessageBox.Show("Please make the key assignments unique.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
@@ -419,6 +421,27 @@ namespace companion
                 if (key.Item1 == (string)rightKey.SelectedItem)
                 {
                     WriteSetting("key_right", key.Item2);
+                    break;
+                }
+            }
+        }
+
+        private void screenshotKey_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (loading)
+            {
+                return;
+            }
+            if (screenshotKey.SelectedItem == leftKey.SelectedItem || screenshotKey.SelectedItem == nextKey.SelectedItem || screenshotKey.SelectedItem == rightKey.SelectedItem)
+            {
+                MessageBox.Show("Please make the key assignments unique.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            foreach (var key in VirtualKeys)
+            {
+                if (key.Item1 == (string)screenshotKey.SelectedItem)
+                {
+                    WriteSetting("key_screenshot", key.Item2);
                     break;
                 }
             }

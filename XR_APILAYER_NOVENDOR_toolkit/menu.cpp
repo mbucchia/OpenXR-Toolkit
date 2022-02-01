@@ -72,10 +72,12 @@ namespace {
                     std::shared_ptr<IDevice> device,
                     uint32_t displayWidth,
                     uint32_t displayHeight,
+                    std::vector<int>& keyModifiers,
                     bool isHandTrackingSupported,
                     bool isPredictionDampeningSupported)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
-              m_displayHeight(displayHeight), m_isHandTrackingSupported(isHandTrackingSupported) {
+              m_displayHeight(displayHeight), m_keyModifiers(keyModifiers),
+              m_isHandTrackingSupported(isHandTrackingSupported) {
             m_lastInput = std::chrono::steady_clock::now();
 
             // We display the hint for menu hotkeys for the first few runs.
@@ -86,18 +88,12 @@ namespace {
                 m_configManager->setValue("first_run", firstRun + 1);
             }
 
-            // Check what keys to use.
-            m_configManager->setDefault("ctrl_modifier", 1);
-            if (m_configManager->getValue("ctrl_modifier")) {
-                m_keyModifiers |= VK_CONTROL;
+            if (std::count(m_keyModifiers.cbegin(), m_keyModifiers.cend(), VK_CONTROL)) {
                 m_keyModifiersLabel += L"CTRL+";
             }
-            m_configManager->setDefault("alt_modifier", 0);
-            if (m_configManager->getValue("alt_modifier")) {
-                m_keyModifiers |= VK_MENU;
+            if (std::count(m_keyModifiers.cbegin(), m_keyModifiers.cend(), VK_MENU)) {
                 m_keyModifiersLabel += L"ALT+";
             }
-
             m_configManager->setDefault("key_left", m_keyLeft);
             m_configManager->setDefault("key_right", m_keyRight);
             m_configManager->setDefault("key_menu", m_keyMenu);
@@ -265,7 +261,7 @@ namespace {
 
                         m_selectedItem += acceleration ? -1 : 1;
                         if (m_selectedItem >= m_menuEntries.size())
-                            m_selectedItem = acceleration ? m_menuEntries.size()-1 : 0;
+                            m_selectedItem = acceleration ? m_menuEntries.size() - 1 : 0;
 
                     } while (m_menuEntries[m_selectedItem].type == MenuEntryType::Separator ||
                              !m_menuEntries[m_selectedItem].visible);
@@ -692,7 +688,7 @@ namespace {
         LayerStatistics m_stats{};
         GesturesState m_gesturesState{};
 
-        int m_keyModifiers{0};
+        std::vector<int> m_keyModifiers;
         std::wstring m_keyModifiersLabel;
         int m_keyLeft{VK_F1};
         std::wstring m_keyLeftLabel;
@@ -731,12 +727,14 @@ namespace toolkit::menu {
                                                     std::shared_ptr<toolkit::graphics::IDevice> device,
                                                     uint32_t displayWidth,
                                                     uint32_t displayHeight,
+                                                    std::vector<int>& keyModifiers,
                                                     bool isHandTrackingSupported,
                                                     bool isPredictionDampeningSupported) {
         return std::make_shared<MenuHandler>(configManager,
                                              device,
                                              displayWidth,
                                              displayHeight,
+                                             keyModifiers,
                                              isHandTrackingSupported,
                                              isPredictionDampeningSupported);
     }
