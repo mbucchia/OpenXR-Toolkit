@@ -14,9 +14,9 @@ nav_order: 5
 | Hand tracking                        | [Experimental](){: .btn .btn-purple }   | Dec 2021        |
 | World Scale override                 | [Stable](){: .btn .btn-green }          | Jan 2022        |
 | Prediction dampening                 | [Stable](){: .btn .btn-green }          | Jan 2022        |
-| Anamorphic upscaling                 | [Implementation](){: .btn .btn-blue }   | Feb 2022        |
+| Anamorphic upscaling                 | [Ready](){: .btn .btn-blue }            | Feb 2022        |
+| Lock Motion Reprojection rate (WMR)  | [Ready](){: .btn .btn-blue }            | Feb 2022        |
 | Brightness/exposure control          | [Implementation](){: .btn .btn-blue }   | Mar 2022        |
-| Lock Motion Reprojection rate (WMR)  | [Implementation](){: .btn .btn-blue }   | Feb 2022        |
 | FOV override                         | [Investigation](){: .btn .btn-blue }    |                 |
 | Zoom-in                              | [Investigation](){: .btn .btn-blue }    |                 |
 | Texture LOD biasing                  | [Not started](){: .btn .btn-outline }   | Feb 2022        |
