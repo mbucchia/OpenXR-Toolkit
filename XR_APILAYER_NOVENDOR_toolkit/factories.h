@@ -31,6 +31,11 @@ namespace toolkit {
 
     namespace utilities {
 
+        std::optional<int> RegGetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value);
+        void RegSetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value, DWORD dwordValue);
+        void RegDeleteValue(HKEY hKey, const std::wstring& subKey, const std::wstring& value);
+        void RegDeleteKey(HKEY hKey, const std::wstring& subKey);
+
         std::shared_ptr<ICpuTimer> CreateCpuTimer();
 
         uint32_t GetScaledInputSize(uint32_t outputSize, int scalePercent, uint32_t blockSize);
@@ -101,7 +106,8 @@ namespace toolkit {
                                                         uint32_t displayHeight,
                                                         std::vector<int>& keyModifiers,
                                                         bool isHandTrackingSupported,
-                                                        bool isPredictionDampeningSupported);
+                                                        bool isPredictionDampeningSupported,
+                                                        bool isMotionReprojectionRateSupported);
 
     } // namespace menu
 

@@ -32,31 +32,9 @@ namespace {
     using namespace toolkit;
     using namespace toolkit::config;
     using namespace toolkit::log;
+    using namespace toolkit::utilities;
 
     constexpr unsigned int WriteDelay = 22; // 1s in bad VR.
-
-    // https://docs.microsoft.com/en-us/archive/msdn-magazine/2017/may/c-use-modern-c-to-access-the-windows-registry
-    std::optional<int> RegGetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value) {
-        DWORD data{};
-        DWORD dataSize = sizeof(data);
-        LONG retCode = ::RegGetValue(hKey, subKey.c_str(), value.c_str(), RRF_RT_REG_DWORD, nullptr, &data, &dataSize);
-        if (retCode != ERROR_SUCCESS) {
-            return {};
-        }
-        return data;
-    }
-
-    void RegSetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value, DWORD dwordValue) {
-        DWORD dataSize = sizeof(dwordValue);
-        LONG retCode = ::RegSetKeyValue(hKey, subKey.c_str(), value.c_str(), REG_DWORD, &dwordValue, dataSize);
-        if (retCode != ERROR_SUCCESS) {
-            Log("Failed to write value: %d\n", retCode);
-        }
-    }
-
-    void RegDeleteKey(HKEY hKey, const std::wstring& subKey) {
-        ::RegDeleteKey(hKey, subKey.c_str());
-    }
 
     struct ConfigValue {
         int value;

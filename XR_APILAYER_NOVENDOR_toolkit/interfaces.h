@@ -80,12 +80,14 @@ namespace toolkit {
         const std::string SettingHandTimeout = "hand_timeout";
         const std::string SettingPredictionDampen = "prediction_dampen";
         const std::string SettingBypassMsftHandInteractionCheck = "allow_msft_hand_interaction";
+        const std::string SettingMotionReprojectionRate = "motion_reprojection_rate";
 
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
         enum class MenuTimeout { Small = 0, Medium, Large, MaxValue };
         enum class ScalingType { None = 0, NIS, FSR, MaxValue };
         enum class HandTrackingEnabled { Off = 0, Both, Left, Right, MaxValue };
+        enum class MotionReprojectionRate { Off = 1, R_45Hz, R_30Hz, R_22Hz, MaxValue };
 
         struct IConfigManager {
             virtual ~IConfigManager() = default;
