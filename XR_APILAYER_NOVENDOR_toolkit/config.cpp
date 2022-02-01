@@ -33,7 +33,7 @@ namespace {
     using namespace toolkit::config;
     using namespace toolkit::log;
 
-    constexpr unsigned int WriteDelay = 90; // 1-2s in good VR :)
+    constexpr unsigned int WriteDelay = 22; // 1s in bad VR.
 
     // https://docs.microsoft.com/en-us/archive/msdn-magazine/2017/may/c-use-modern-c-to-access-the-windows-registry
     std::optional<int> RegGetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value) {
