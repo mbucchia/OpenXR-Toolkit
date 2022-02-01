@@ -87,6 +87,18 @@ namespace {
 
             m_configManager = config::CreateConfigManager(createInfo->applicationInfo.applicationName);
 
+            // Check what keys to use.
+            m_configManager->setDefault("ctrl_modifier", 1);
+            if (m_configManager->getValue("ctrl_modifier")) {
+                m_keyModifiers.push_back(VK_CONTROL);
+            }
+            m_configManager->setDefault("alt_modifier", 0);
+            if (m_configManager->getValue("alt_modifier")) {
+                m_keyModifiers.push_back(VK_MENU);
+            }
+            m_configManager->setDefault("key_screenshot", m_keyScreenshot);
+            m_keyScreenshot = m_configManager->getValue("key_screenshot");
+
             // We must initialize hand tracking early on, because the application can start creating actions etc
             // before creating the session.
             m_configManager->setEnumDefault(config::SettingHandTrackingEnabled, config::HandTrackingEnabled::Off);
@@ -288,6 +300,7 @@ namespace {
                                                             m_graphicsDevice,
                                                             m_displayWidth,
                                                             m_displayHeight,
+                                                            m_keyModifiers,
                                                             m_supportHandTracking,
                                                             xrConvertWin32PerformanceCounterToTimeKHR != nullptr);
                 } else {
@@ -920,7 +933,9 @@ namespace {
                 m_stats.handTrackingCpuTimeUs /= numFrames;
                 m_stats.predictionTimeUs /= numFrames;
 
-                m_menuHandler->updateStatistics(m_stats);
+                if (m_menuHandler) {
+                    m_menuHandler->updateStatistics(m_stats);
+                }
 
                 // Start from fresh!
                 memset(&m_stats, 0, sizeof(m_stats));
@@ -1212,7 +1227,7 @@ namespace {
             // Whether the menu is available or not, we can still use that top-most texture for screenshot.
             // TODO: The screenshot does not work with multi-layer applications.
             const bool requestScreenshot =
-                utilities::UpdateKeyState(m_requestScreenShotKeyState, VK_CONTROL, VK_F12, false) &&
+                utilities::UpdateKeyState(m_requestScreenShotKeyState, m_keyModifiers, m_keyScreenshot, false) &&
                 m_configManager->getValue(config::SettingScreenshotEnabled);
 
             if (textureForOverlay[0] && requestScreenshot) {
@@ -1278,6 +1293,8 @@ namespace {
 
         std::shared_ptr<input::IHandTracker> m_handTracker;
 
+        std::vector<int> m_keyModifiers;
+        int m_keyScreenshot{VK_F12};
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
         bool m_requestScreenShotKeyState{false};
         bool m_needCalibrateEyeOffsets{true};

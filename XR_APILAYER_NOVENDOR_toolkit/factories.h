@@ -36,7 +36,7 @@ namespace toolkit {
         std::pair<uint32_t, uint32_t>
         GetScaledDimensions(uint32_t outputWidth, uint32_t outputHeight, uint32_t scalePercent, uint32_t blockSize);
 
-        bool UpdateKeyState(bool& keyState, int vkModifier, int vkKey, bool isRepeat);
+        bool UpdateKeyState(bool& keyState, const std::vector<int>& vkModifiers, int vkKey, bool isRepeat);
 
     } // namespace utilities
 
@@ -91,6 +91,7 @@ namespace toolkit {
                                                         std::shared_ptr<toolkit::graphics::IDevice> device,
                                                         uint32_t displayWidth,
                                                         uint32_t displayHeight,
+                                                        std::vector<int>& keyModifiers,
                                                         bool isHandTrackingSupported,
                                                         bool isPredictionDampeningSupported);
 
