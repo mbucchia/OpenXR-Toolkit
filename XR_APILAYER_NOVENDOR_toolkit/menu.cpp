@@ -80,7 +80,8 @@ namespace {
                     uint32_t displayHeight,
                     std::vector<int>& keyModifiers,
                     bool isHandTrackingSupported,
-                    bool isPredictionDampeningSupported)
+                    bool isPredictionDampeningSupported,
+                    bool isMotionReprojectionRateSupported)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
               m_displayHeight(displayHeight), m_keyModifiers(keyModifiers),
               m_isHandTrackingSupported(isHandTrackingSupported) {
@@ -209,10 +210,19 @@ namespace {
                      }
                  },
                  isPredictionDampeningSupported});
-
-            // Controler tracking group.
+            m_menuEntries.push_back({"Lock motion reprojection",
+                                     MenuEntryType::Slider,
+                                     SettingMotionReprojectionRate,
+                                     (int)MotionReprojectionRate::Off,
+                                     (int)MotionReprojectionRate::MaxValue - 1,
+                                     [&](int value) {
+                                         std::string labels[] = {"Off", "45 Hz", "30 Hz", "22.5 Hz"};
+                                         return labels[value - 1];
+                                     },
+                                     isMotionReprojectionRateSupported});
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
 
+            // Controller tracking group.
             m_menuEntries.push_back({"Hand tracking",
                                      MenuEntryType::Choice,
                                      SettingHandTrackingEnabled,
@@ -535,7 +545,7 @@ namespace {
 
                     // highlight selected item line.
                     if (i == m_selectedItem && !measure) {
-                        XrColor4f background({0.01f, 0.01f, 0.01f, alpha/255.f});
+                        XrColor4f background({0.01f, 0.01f, 0.01f, alpha / 255.f});
                         const auto highlightTop = top + (fontSize / 3.f);
                         m_device->clearColor(
                             highlightTop, left, highlightTop + fontSize, m_menuEntriesRight + eyeOffset, background);
@@ -810,14 +820,16 @@ namespace toolkit::menu {
                                                     uint32_t displayHeight,
                                                     std::vector<int>& keyModifiers,
                                                     bool isHandTrackingSupported,
-                                                    bool isPredictionDampeningSupported) {
+                                                    bool isPredictionDampeningSupported,
+                                                    bool isMotionReprojectionRateSupported) {
         return std::make_shared<MenuHandler>(configManager,
                                              device,
                                              displayWidth,
                                              displayHeight,
                                              keyModifiers,
                                              isHandTrackingSupported,
-                                             isPredictionDampeningSupported);
+                                             isPredictionDampeningSupported,
+                                             isMotionReprojectionRateSupported);
     }
 
 } // namespace toolkit::menu

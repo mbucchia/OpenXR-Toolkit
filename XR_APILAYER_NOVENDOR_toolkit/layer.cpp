@@ -165,6 +165,8 @@ namespace {
                 m_configManager->setDefault(config::SettingICD, 1000);
                 m_configManager->setDefault(config::SettingFOV, 100);
                 m_configManager->setDefault(config::SettingPredictionDampen, 100);
+                m_configManager->setEnumDefault(config::SettingMotionReprojectionRate,
+                                                config::MotionReprojectionRate::Off);
 
                 // Remember the XrSystemId to use.
                 m_vrSystemId = *systemId;
@@ -296,13 +298,20 @@ namespace {
 
                     m_performanceCounters.lastWindowStart = std::chrono::steady_clock::now();
 
-                    m_menuHandler = menu::CreateMenuHandler(m_configManager,
-                                                            m_graphicsDevice,
-                                                            m_displayWidth,
-                                                            m_displayHeight,
-                                                            m_keyModifiers,
-                                                            m_supportHandTracking,
-                                                            xrConvertWin32PerformanceCounterToTimeKHR != nullptr);
+                    {
+                        const bool isPredictionDampeningSupported =
+                            xrConvertWin32PerformanceCounterToTimeKHR != nullptr;
+                        const bool isMotionReprojectionRateSupported =
+                            m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
+                        m_menuHandler = menu::CreateMenuHandler(m_configManager,
+                                                                m_graphicsDevice,
+                                                                m_displayWidth,
+                                                                m_displayHeight,
+                                                                m_keyModifiers,
+                                                                m_supportHandTracking,
+                                                                isPredictionDampeningSupported,
+                                                                isMotionReprojectionRateSupported);
+                    }
                 } else {
                     Log("Unsupported graphics runtime.\n");
                 }
@@ -986,6 +995,22 @@ namespace {
                 m_menuHandler->handleInput();
             }
 
+            // Forward the motion reprojection locking values to WMR.
+            if (m_configManager->hasChanged(config::SettingMotionReprojectionRate)) {
+                const auto rate = m_configManager->getEnumValue<config::MotionReprojectionRate>(
+                    config::SettingMotionReprojectionRate);
+
+                if (rate != config::MotionReprojectionRate::Off) {
+                    utilities::RegSetDword(
+                        HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval", (DWORD)rate);
+                    utilities::RegSetDword(
+                        HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval", (DWORD)rate);
+                } else {
+                    utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
+                    utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
+                }
+            }
+
             // Prepare the Shaders for rendering.
             updateConfiguration();
 
@@ -996,8 +1021,8 @@ namespace {
             XrCompositionLayerProjectionView* viewsForOverlay = nullptr;
             XrSpace spaceForOverlay = XR_NULL_HANDLE;
 
-            // Because the frame info is passed const, we are going to need to reconstruct a writable version of it to
-            // patch the resolution.
+            // Because the frame info is passed const, we are going to need to reconstruct a writable version of it
+            // to patch the resolution.
             XrFrameEndInfo chainFrameEndInfo = *frameEndInfo;
             std::vector<const XrCompositionLayerBaseHeader*> correctedLayers;
 
@@ -1178,8 +1203,8 @@ namespace {
                 }
 
                 // Render the menu.
-                // Ideally, we would not have to split this from the branch above, however with D3D12 we are forced to
-                // flush the context, and we'd rather do it only once.
+                // Ideally, we would not have to split this from the branch above, however with D3D12 we are forced
+                // to flush the context, and we'd rather do it only once.
                 if (m_menuHandler) {
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                         m_graphicsDevice->flushContext();
