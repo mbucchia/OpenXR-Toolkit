@@ -469,7 +469,7 @@ namespace {
                                      measure,
                                      FW1_CENTER);
                 top += 1.05f * fontSize;
-                m_device->drawString(L"Use SHIFT to scroll faster",
+                m_device->drawString(L"Change values faster with SHIFT",
                                      TextStyle::Normal,
                                      fontSize * 0.75f,
                                      center,
