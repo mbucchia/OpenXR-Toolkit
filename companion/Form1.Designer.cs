@@ -68,7 +68,7 @@ namespace companion
             this.layerActive.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.layerActive.Name = "layerActive";
             this.layerActive.Size = new System.Drawing.Size(127, 13);
-            this.layerActive.TabIndex = 10;
+            this.layerActive.TabIndex = 0;
             this.layerActive.Text = "Layer status is not known";
             // 
             // reportIssuesLink
@@ -78,7 +78,7 @@ namespace companion
             this.reportIssuesLink.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.reportIssuesLink.Name = "reportIssuesLink";
             this.reportIssuesLink.Size = new System.Drawing.Size(71, 13);
-            this.reportIssuesLink.TabIndex = 12;
+            this.reportIssuesLink.TabIndex = 23;
             this.reportIssuesLink.TabStop = true;
             this.reportIssuesLink.Text = "Report issues";
             this.reportIssuesLink.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.reportIssuesLink_LinkClicked);
@@ -89,7 +89,7 @@ namespace companion
             this.screenshotCheckbox.Location = new System.Drawing.Point(25, 301);
             this.screenshotCheckbox.Name = "screenshotCheckbox";
             this.screenshotCheckbox.Size = new System.Drawing.Size(121, 21);
-            this.screenshotCheckbox.TabIndex = 13;
+            this.screenshotCheckbox.TabIndex = 7;
             this.screenshotCheckbox.Text = "Enable screenshot";
             this.screenshotCheckbox.UseVisualStyleBackColor = true;
             this.screenshotCheckbox.CheckedChanged += new System.EventHandler(this.sceenshotCheckbox_CheckedChanged);
@@ -101,7 +101,7 @@ namespace companion
             this.checkUpdatesLink.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.checkUpdatesLink.Name = "checkUpdatesLink";
             this.checkUpdatesLink.Size = new System.Drawing.Size(131, 13);
-            this.checkUpdatesLink.TabIndex = 14;
+            this.checkUpdatesLink.TabIndex = 24;
             this.checkUpdatesLink.TabStop = true;
             this.checkUpdatesLink.Text = "Check for a newer version";
             this.checkUpdatesLink.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.checkUpdatesLink_LinkClicked);
@@ -113,7 +113,7 @@ namespace companion
             this.disableCheckbox.Margin = new System.Windows.Forms.Padding(2);
             this.disableCheckbox.Name = "disableCheckbox";
             this.disableCheckbox.Size = new System.Drawing.Size(165, 21);
-            this.disableCheckbox.TabIndex = 15;
+            this.disableCheckbox.TabIndex = 1;
             this.disableCheckbox.Text = "Disable the OpenXR Toolkit";
             this.disableCheckbox.UseVisualStyleBackColor = true;
             this.disableCheckbox.CheckedChanged += new System.EventHandler(this.disableCheckbox_CheckedChanged);
@@ -125,7 +125,7 @@ namespace companion
             this.safemodeCheckbox.Margin = new System.Windows.Forms.Padding(2);
             this.safemodeCheckbox.Name = "safemodeCheckbox";
             this.safemodeCheckbox.Size = new System.Drawing.Size(118, 21);
-            this.safemodeCheckbox.TabIndex = 16;
+            this.safemodeCheckbox.TabIndex = 3;
             this.safemodeCheckbox.Text = "Enable safe mode";
             this.safemodeCheckbox.UseVisualStyleBackColor = true;
             this.safemodeCheckbox.CheckedChanged += new System.EventHandler(this.safemodeCheckbox_CheckedChanged);
@@ -137,7 +137,7 @@ namespace companion
             this.label1.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(297, 13);
-            this.label1.TabIndex = 17;
+            this.label1.TabIndex = 2;
             this.label1.Text = "Completely disable the software without needing to uninstall it.";
             // 
             // experimentalCheckbox
@@ -147,7 +147,7 @@ namespace companion
             this.experimentalCheckbox.Margin = new System.Windows.Forms.Padding(2);
             this.experimentalCheckbox.Name = "experimentalCheckbox";
             this.experimentalCheckbox.Size = new System.Drawing.Size(167, 21);
-            this.experimentalCheckbox.TabIndex = 18;
+            this.experimentalCheckbox.TabIndex = 5;
             this.experimentalCheckbox.Text = "Enable experimental settings";
             this.experimentalCheckbox.UseVisualStyleBackColor = true;
             this.experimentalCheckbox.CheckedChanged += new System.EventHandler(this.experimentalCheckbox_CheckedChanged);
@@ -158,7 +158,7 @@ namespace companion
             this.label2.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(348, 26);
-            this.label2.TabIndex = 19;
+            this.label2.TabIndex = 4;
             this.label2.Text = "Recover an application by ignoring all its settings upon next startup. When in sa" +
     "fe mode, press Ctrl+F1+F2+F3 to delete all settings.";
             // 
@@ -169,7 +169,7 @@ namespace companion
             this.label3.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(312, 13);
-            this.label3.TabIndex = 20;
+            this.label3.TabIndex = 6;
             this.label3.Text = "Expose experimental features that may be unfinished or unstable.";
             // 
             // label4
@@ -179,7 +179,7 @@ namespace companion
             this.label4.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(360, 13);
-            this.label4.TabIndex = 21;
+            this.label4.TabIndex = 8;
             this.label4.Text = "Screenshots are stored in %LocalAppData%\\OpenXR-Toolkit\\screenshots.";
             // 
             // openLog
@@ -188,7 +188,7 @@ namespace companion
             this.openLog.Margin = new System.Windows.Forms.Padding(2);
             this.openLog.Name = "openLog";
             this.openLog.Size = new System.Drawing.Size(150, 31);
-            this.openLog.TabIndex = 22;
+            this.openLog.TabIndex = 21;
             this.openLog.Text = "Open log file";
             this.openLog.UseVisualStyleBackColor = true;
             this.openLog.Click += new System.EventHandler(this.openLog_Click);
@@ -199,7 +199,7 @@ namespace companion
             this.openScreenshots.Margin = new System.Windows.Forms.Padding(2);
             this.openScreenshots.Name = "openScreenshots";
             this.openScreenshots.Size = new System.Drawing.Size(150, 31);
-            this.openScreenshots.TabIndex = 23;
+            this.openScreenshots.TabIndex = 22;
             this.openScreenshots.Text = "Open screenshots folder";
             this.openScreenshots.UseVisualStyleBackColor = true;
             this.openScreenshots.Click += new System.EventHandler(this.openScreenshots_Click);
@@ -211,7 +211,7 @@ namespace companion
             this.leftKey.Location = new System.Drawing.Point(154, 379);
             this.leftKey.Name = "leftKey";
             this.leftKey.Size = new System.Drawing.Size(75, 21);
-            this.leftKey.TabIndex = 24;
+            this.leftKey.TabIndex = 11;
             this.leftKey.SelectedIndexChanged += new System.EventHandler(this.leftKey_SelectedIndexChanged);
             // 
             // nextKey
@@ -221,7 +221,7 @@ namespace companion
             this.nextKey.Location = new System.Drawing.Point(234, 379);
             this.nextKey.Name = "nextKey";
             this.nextKey.Size = new System.Drawing.Size(75, 21);
-            this.nextKey.TabIndex = 25;
+            this.nextKey.TabIndex = 13;
             this.nextKey.SelectedIndexChanged += new System.EventHandler(this.nextKey_SelectedIndexChanged);
             // 
             // rightKey
@@ -231,7 +231,7 @@ namespace companion
             this.rightKey.Location = new System.Drawing.Point(314, 379);
             this.rightKey.Name = "rightKey";
             this.rightKey.Size = new System.Drawing.Size(75, 21);
-            this.rightKey.TabIndex = 26;
+            this.rightKey.TabIndex = 15;
             this.rightKey.SelectedIndexChanged += new System.EventHandler(this.rightKey_SelectedIndexChanged);
             // 
             // label5
@@ -240,7 +240,7 @@ namespace companion
             this.label5.Location = new System.Drawing.Point(22, 382);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(125, 13);
-            this.label5.TabIndex = 27;
+            this.label5.TabIndex = 9;
             this.label5.Text = "On-screen menu hotkeys";
             // 
             // label6
@@ -249,7 +249,7 @@ namespace companion
             this.label6.Location = new System.Drawing.Point(93, 446);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(49, 13);
-            this.label6.TabIndex = 28;
+            this.label6.TabIndex = 18;
             this.label6.Text = "Modifiers";
             // 
             // ctrlModifierCheckbox
@@ -258,7 +258,7 @@ namespace companion
             this.ctrlModifierCheckbox.Location = new System.Drawing.Point(156, 446);
             this.ctrlModifierCheckbox.Name = "ctrlModifierCheckbox";
             this.ctrlModifierCheckbox.Size = new System.Drawing.Size(48, 21);
-            this.ctrlModifierCheckbox.TabIndex = 29;
+            this.ctrlModifierCheckbox.TabIndex = 19;
             this.ctrlModifierCheckbox.Text = "Ctrl";
             this.ctrlModifierCheckbox.UseVisualStyleBackColor = true;
             this.ctrlModifierCheckbox.CheckedChanged += new System.EventHandler(this.ctrlModifierCheckbox_CheckedChanged);
@@ -269,7 +269,7 @@ namespace companion
             this.altModifierCheckbox.Location = new System.Drawing.Point(207, 446);
             this.altModifierCheckbox.Name = "altModifierCheckbox";
             this.altModifierCheckbox.Size = new System.Drawing.Size(45, 21);
-            this.altModifierCheckbox.TabIndex = 30;
+            this.altModifierCheckbox.TabIndex = 20;
             this.altModifierCheckbox.Text = "Alt";
             this.altModifierCheckbox.UseVisualStyleBackColor = true;
             this.altModifierCheckbox.CheckedChanged += new System.EventHandler(this.altModifierCheckbox_CheckedChanged);
@@ -280,7 +280,7 @@ namespace companion
             this.label7.Location = new System.Drawing.Point(179, 363);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(21, 13);
-            this.label7.TabIndex = 32;
+            this.label7.TabIndex = 10;
             this.label7.Text = "left";
             // 
             // label8
@@ -289,7 +289,7 @@ namespace companion
             this.label8.Location = new System.Drawing.Point(254, 363);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(33, 13);
-            this.label8.TabIndex = 33;
+            this.label8.TabIndex = 12;
             this.label8.Text = "down";
             // 
             // label9
@@ -298,7 +298,7 @@ namespace companion
             this.label9.Location = new System.Drawing.Point(339, 363);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(27, 13);
-            this.label9.TabIndex = 34;
+            this.label9.TabIndex = 14;
             this.label9.Text = "right";
             // 
             // pictureBox1
@@ -317,7 +317,7 @@ namespace companion
             this.label10.Location = new System.Drawing.Point(60, 409);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(87, 13);
-            this.label10.TabIndex = 37;
+            this.label10.TabIndex = 16;
             this.label10.Text = "Take screenshot";
             // 
             // screenshotKey
@@ -327,7 +327,7 @@ namespace companion
             this.screenshotKey.Location = new System.Drawing.Point(154, 406);
             this.screenshotKey.Name = "screenshotKey";
             this.screenshotKey.Size = new System.Drawing.Size(75, 21);
-            this.screenshotKey.TabIndex = 36;
+            this.screenshotKey.TabIndex = 17;
             this.screenshotKey.SelectedIndexChanged += new System.EventHandler(this.screenshotKey_SelectedIndexChanged);
             // 
             // Form1
