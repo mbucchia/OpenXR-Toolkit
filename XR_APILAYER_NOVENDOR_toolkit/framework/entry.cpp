@@ -70,7 +70,7 @@ XrResult __declspec(dllexport) XRAPI_CALL
     }
 
     // Create the necessary subfolders in LocalAppData (if they don't exist).
-    localAppData = std::filesystem::path(getenv("LOCALAPPDATA")) / "OpenXR-Toolkit";
+    localAppData = std::filesystem::path(getenv("LOCALAPPDATA")) / LayerPrettyName;
     CreateDirectoryA(localAppData.string().c_str(), nullptr);
     CreateDirectoryA((localAppData / "logs").string().c_str(), nullptr);
     CreateDirectoryA((localAppData / "screenshots").string().c_str(), nullptr);
@@ -82,6 +82,7 @@ XrResult __declspec(dllexport) XRAPI_CALL
         logStream.open(logFile, std::ios_base::ate);
     }
 
+    Log("%s\n", LayerPrettyNameFull.c_str());
     Log("dllHome is \"%s\"\n", dllHome.string().c_str());
 
     DebugLog("--> xrNegotiateLoaderApiLayerInterface\n");
@@ -113,7 +114,7 @@ XrResult __declspec(dllexport) XRAPI_CALL
 
     DebugLog("<-- xrNegotiateLoaderApiLayerInterface\n");
 
-    Log("%s layer (%s) is active\n", LayerName.c_str(), VersionString.c_str());
+    Log("%s layer is active\n", LayerPrettyName.c_str());
 
     return XR_SUCCESS;
 }
