@@ -23,6 +23,7 @@
 
 #include "pch.h"
 
+#include "layer.h"
 #include "factories.h"
 #include "interfaces.h"
 #include "log.h"
@@ -242,8 +243,9 @@ namespace {
             const auto now = std::chrono::steady_clock::now();
 
             // Check whether this is a long press and the event needs to be repeated.
-            const bool acceleration = GetAsyncKeyState(VK_SHIFT) < 0;
-            const bool isRepeat = (now - m_lastInput) > (acceleration ? KeyRepeatDelay / 10 : KeyRepeatDelay);
+            m_isAccelerating = GetAsyncKeyState(VK_SHIFT) < 0;
+
+            const bool isRepeat = (now - m_lastInput) > (m_isAccelerating ? KeyRepeatDelay / 10 : KeyRepeatDelay);
             const bool moveLeft = UpdateKeyState(m_moveLeftKeyState, m_keyModifiers, m_keyLeft, isRepeat);
             const bool moveRight = UpdateKeyState(m_moveRightKeyState, m_keyModifiers, m_keyRight, isRepeat);
             const bool menuControl = UpdateKeyState(m_menuControlKeyState, m_keyModifiers, m_keyMenu, false);
@@ -255,13 +257,14 @@ namespace {
                     m_needRestart = checkNeedRestartCondition();
                     m_menuEntriesTitleWidth = 0.0f;
                     m_menuEntriesRight = m_menuEntriesBottom = 0.0f;
+
                 } else {
                     do {
                         static_assert(std::is_unsigned_v<decltype(m_selectedItem)>);
 
-                        m_selectedItem += acceleration ? -1 : 1;
+                        m_selectedItem += m_isAccelerating ? -1 : 1;
                         if (m_selectedItem >= m_menuEntries.size())
-                            m_selectedItem = acceleration ? m_menuEntries.size() - 1 : 0;
+                            m_selectedItem = m_isAccelerating ? m_menuEntries.size() - 1 : 0;
 
                     } while (m_menuEntries[m_selectedItem].type == MenuEntryType::Separator ||
                              !m_menuEntries[m_selectedItem].visible);
@@ -436,23 +439,44 @@ namespace {
                         topAlign, leftAlign, m_menuEntriesBottom, m_menuEntriesRight + eyeOffset, background);
                 }
 
+                const auto center = (leftAlign + m_menuEntriesRight + eyeOffset) / 2;
+
                 float top = topAlign;
                 float left = leftAlign;
 
-                left += m_device->drawString(fmt::format(L"\xE112 : {0}{1}   \xE1FC : {0}{2}   \xE111 : {0}{3}",
-                                                         m_keyModifiersLabel,
-                                                         m_keyLeftLabel,
-                                                         m_keyMenuLabel,
-                                                         m_keyRightLabel),
-                                             TextStyle::Normal,
-                                             fontSize,
-                                             leftAlign,
-                                             top,
-                                             colorNormal,
-                                             measure);
+                m_device->drawString(toolkit::LayerPrettyNameFull,
+                                     TextStyle::Bold,
+                                     fontSize,
+                                     center,
+                                     top,
+                                     colorSelected,
+                                     measure,
+                                     FW1_CENTER);
+
+                top += 1.10f * fontSize;
+
+                m_device->drawString(fmt::format(L"\xE2B6 : {0}{1}   {4} : {0}{2}   \xE2B7 : {0}{3}",
+                                                 m_keyModifiersLabel,
+                                                 m_keyLeftLabel,
+                                                 m_keyMenuLabel,
+                                                 m_keyRightLabel,
+                                                 m_isAccelerating ? L"\xE1FE" : L"\xE1FC"),
+                                     TextStyle::Normal,
+                                     fontSize * 0.75f,
+                                     center,
+                                     top,
+                                     colorNormal,
+                                     measure,
+                                     FW1_CENTER);
                 top += 1.05f * fontSize;
-                m_device->drawString(
-                    L"Use SHIFT to scroll faster", TextStyle::Normal, fontSize, leftAlign, top, colorNormal, measure);
+                m_device->drawString(L"Use SHIFT to scroll faster",
+                                     TextStyle::Normal,
+                                     fontSize * 0.75f,
+                                     center,
+                                     top,
+                                     colorNormal,
+                                     measure,
+                                     FW1_CENTER);
                 top += 1.5f * fontSize;
 
                 if (eye == 0) {
@@ -589,7 +613,7 @@ namespace {
             if (m_state != MenuState::Splash && overlayType != OverlayType::None) {
                 float top = m_state != MenuState::Visible ? topAlign : topAlign - 1.1f * fontSize;
 
-#define OVERLAY_COMMON TextStyle::Normal, fontSize, rightAlign - 200, top, ColorSelected, true
+#define OVERLAY_COMMON TextStyle::Normal, fontSize, rightAlign - 200, top, ColorSelected, true, FW1_LEFT
 
                 m_device->drawString(fmt::format("FPS: {}", m_stats.fps), OVERLAY_COMMON);
                 top += 1.05f * fontSize;
@@ -713,6 +737,9 @@ namespace {
         bool m_moveRightKeyState{false};
         bool m_menuControlKeyState{false};
         bool m_resetArmed{false};
+
+        // animation control
+        bool m_isAccelerating{false};
 
         MenuGroup m_upscalingGroup;
         MenuGroup m_handTrackingGroup;

@@ -26,10 +26,10 @@
 
 namespace toolkit {
 
+    const std::string LayerPrettyName = "OpenXR-Toolkit";
+    const std::string LayerPrettyNameFull = "OpenXR Toolkit - Beta-2 (v0.9.6)";
+
     const std::string LayerName = "XR_APILAYER_NOVENDOR_toolkit";
-    const uint32_t VersionMajor = 0;
-    const uint32_t VersionMinor = 9;
-    const uint32_t VersionPatch = 6;
     const std::string VersionString = "Beta-2";
     const std::string RegPrefix = "SOFTWARE\\OpenXR_Toolkit";
 

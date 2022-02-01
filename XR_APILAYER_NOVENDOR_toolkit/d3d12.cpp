@@ -1557,8 +1557,8 @@ namespace {
                          float y,
                          uint32_t color,
                          bool measure,
-                         bool alignRight) override {
-            return m_textDevice->drawString(string, style, size, x, y, color, measure, alignRight);
+                         int alignment) override {
+            return m_textDevice->drawString(string, style, size, x, y, color, measure, alignment);
         }
 
         float drawString(std::string string,
@@ -1568,8 +1568,8 @@ namespace {
                          float y,
                          uint32_t color,
                          bool measure,
-                         bool alignRight) override {
-            return m_textDevice->drawString(string, style, size, x, y, color, measure, alignRight);
+                         int alignment) override {
+            return m_textDevice->drawString(string, style, size, x, y, color, measure, alignment);
         }
 
         float measureString(std::wstring string, TextStyle style, float size) const override {

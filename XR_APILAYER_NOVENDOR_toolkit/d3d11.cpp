@@ -1336,11 +1336,11 @@ namespace {
                          float y,
                          uint32_t color,
                          bool measure,
-                         bool alignRight) override {
+                         int alignment) override {
             auto& font = style == TextStyle::Bold ? m_fontBold : m_fontNormal;
 
             font->DrawString(
-                get(m_context), string.c_str(), size, x, y, color, (alignRight ? FW1_RIGHT : FW1_LEFT) | FW1_NOFLUSH);
+                get(m_context), string.c_str(), size, x, y, color, alignment | FW1_NOFLUSH);
             return measure ? measureString(string, style, size) : 0.0f;
         }
 
@@ -1351,9 +1351,9 @@ namespace {
                          float y,
                          uint32_t color,
                          bool measure,
-                         bool alignRight) override {
+                         int alignment) override {
             return drawString(
-                std::wstring(string.begin(), string.end()), style, size, x, y, color, measure, alignRight);
+                std::wstring(string.begin(), string.end()), style, size, x, y, color, measure, alignment);
         }
 
         float measureString(std::wstring string, TextStyle style, float size) const override {

@@ -445,7 +445,7 @@ namespace toolkit {
                                      float y,
                                      uint32_t color,
                                      bool measure = false,
-                                     bool alignRight = false) = 0;
+                                     int alignment = FW1_LEFT) = 0;
             virtual float drawString(std::string string,
                                      TextStyle style,
                                      float size,
@@ -453,7 +453,7 @@ namespace toolkit {
                                      float y,
                                      uint32_t color,
                                      bool measure = false,
-                                     bool alignRight = false) = 0;
+                                     int alignment = FW1_LEFT) = 0;
             virtual float measureString(std::wstring string, TextStyle style, float size) const = 0;
             virtual float measureString(std::string string, TextStyle style, float size) const = 0;
             virtual void beginText() = 0;
