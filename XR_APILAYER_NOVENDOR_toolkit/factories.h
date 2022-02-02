@@ -96,6 +96,12 @@ namespace toolkit {
                              std::shared_ptr<IDevice> graphicsDevice,
                              const std::string& shaderFile);
 
+        std::shared_ptr<IVariableRateShader>
+        CreateVariableRateShader(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                                 std::shared_ptr<IDevice> graphicsDevice,
+                                 uint32_t targetWidth,
+                                 uint32_t targetHeight);
+
     } // namespace graphics
 
     namespace input {
@@ -114,7 +120,8 @@ namespace toolkit {
                                                         std::vector<int>& keyModifiers,
                                                         bool isHandTrackingSupported,
                                                         bool isPredictionDampeningSupported,
-                                                        bool isMotionReprojectionRateSupported);
+                                                        bool isMotionReprojectionRateSupported,
+                                                        uint8_t variableRateShaderMaxDownsamplePow2);
 
     } // namespace menu
 

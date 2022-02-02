@@ -39,6 +39,14 @@ namespace toolkit {
 
         uint64_t predictionTimeUs{0};
         float icd{0.0f};
+
+        uint32_t numRenderTargetsWithVRS{0};
+    };
+
+    struct FeatureNotSupported : public std::exception {
+        const char* what() const throw() {
+            return "Feature is not supported";
+        }
     };
 
     namespace {
@@ -81,6 +89,14 @@ namespace toolkit {
         const std::string SettingPredictionDampen = "prediction_dampen";
         const std::string SettingBypassMsftHandInteractionCheck = "allow_msft_hand_interaction";
         const std::string SettingMotionReprojectionRate = "motion_reprojection_rate";
+        const std::string SettingVRS = "vrs";
+        const std::string SettingVRSQuality = "vrs_quality";
+        const std::string SettingVRSPattern = "vrs_pattern";
+        const std::string SettingVRSOuter = "vrs_outer";
+        const std::string SettingVRSOuterRadius = "vrs_outer_radius";
+        const std::string SettingVRSMiddle = "vrs_middle";
+        const std::string SettingVRSInnerRadius = "vrs_inner_radius";
+        const std::string SettingVRSInner = "vrs_inner";
 
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
@@ -88,6 +104,9 @@ namespace toolkit {
         enum class ScalingType { None = 0, NIS, FSR, MaxValue };
         enum class HandTrackingEnabled { Off = 0, Both, Left, Right, MaxValue };
         enum class MotionReprojectionRate { Off = 1, R_45Hz, R_30Hz, R_22Hz, MaxValue };
+        enum class VariableShadingRateType { None = 0, Preset, Custom, MaxValue };
+        enum class VariableShadingRateQuality { Performance = 0, Balanced, Quality, MaxValue };
+        enum class VariableShadingRatePattern { Wide = 0, Balanced, Narrow, MaxValue };
 
         struct IConfigManager {
             virtual ~IConfigManager() = default;
@@ -118,6 +137,11 @@ namespace toolkit {
             template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
             T getEnumValue(const std::string& name) const {
                 return (T)getValue(name);
+            }
+
+            template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
+            T peekEnumValue(const std::string& name) const {
+                return (T)peekValue(name);
             }
         };
 
@@ -316,6 +340,7 @@ namespace toolkit {
             virtual std::shared_ptr<IDepthStencilView> getDepthStencilView() const = 0;
             virtual std::shared_ptr<IDepthStencilView> getDepthStencilView(uint32_t slice) const = 0;
 
+            virtual void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) = 0;
             virtual void saveToFile(const std::string& path) const = 0;
 
             virtual void* getNativePtr() const = 0;
@@ -376,6 +401,24 @@ namespace toolkit {
         struct IGpuTimer : public ITimer {
             virtual Api getApi() const = 0;
             virtual std::shared_ptr<IDevice> getDevice() const = 0;
+        };
+
+        // A graphics execution context (eg: command list).
+        struct IContext {
+            virtual ~IContext() = default;
+
+            virtual Api getApi() const = 0;
+            virtual std::shared_ptr<IDevice> getDevice() const = 0;
+
+            virtual void* getNativePtr() const = 0;
+
+            template <typename ApiTraits>
+            typename ApiTraits::Context getNative() const {
+                if (ApiTraits::Api != getApi()) {
+                    throw new std::runtime_error("Api mismatch");
+                }
+                return reinterpret_cast<typename ApiTraits::Context>(getNativePtr());
+            }
         };
 
         // A graphics device.
@@ -469,6 +512,10 @@ namespace toolkit {
 
             virtual void resolveQueries() = 0;
 
+            using RenderTargetEvent = std::function<void(std::shared_ptr<IContext>, XrSwapchainCreateInfo&)>;
+            virtual uint32_t registerRenderTargetEvent(RenderTargetEvent event) = 0;
+            virtual void unregisterRenderTargetEvent(uint32_t token) = 0;
+
             virtual void shutdown() = 0;
 
             virtual uint32_t getBufferAlignmentConstraint() const = 0;
@@ -518,6 +565,20 @@ namespace toolkit {
             virtual void process(std::shared_ptr<ITexture> input,
                                  std::shared_ptr<ITexture> output,
                                  int32_t slice = -1) = 0;
+        };
+
+        // A Variable Rate Shader (VRS) control implementation.
+        struct IVariableRateShader {
+            virtual ~IVariableRateShader() = default;
+
+            virtual void update() = 0;
+
+            virtual void block() = 0;
+            virtual void unblock() = 0;
+
+            virtual bool onSetRenderTarget(std::shared_ptr<IContext> context, XrSwapchainCreateInfo& info) = 0;
+
+            virtual uint8_t getMaxDownsamplePow2() const = 0;
         };
 
     } // namespace graphics

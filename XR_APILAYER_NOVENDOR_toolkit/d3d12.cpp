@@ -39,6 +39,10 @@ namespace {
     constexpr size_t MaxGpuTimers = 32;
     constexpr size_t MaxModelBuffers = 128;
 
+    auto descriptorCompare = [](const D3D12_CPU_DESCRIPTOR_HANDLE& left, const D3D12_CPU_DESCRIPTOR_HANDLE& right) {
+        return left.ptr < right.ptr;
+    };
+
     struct D3D12Heap {
         void initialize(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT numDescriptors = 32) {
             D3D12_DESCRIPTOR_HEAP_DESC desc;
@@ -399,6 +403,57 @@ namespace {
             return getDepthStencilViewInternal(m_depthStencilSubView[slice], slice);
         }
 
+        void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) override {
+            assert(!(rowPitch % m_device->getTextureAlignmentConstraint()));
+
+            // Create an upload buffer if we don't have one already
+            if (!m_uploadBuffer) {
+                m_uploadSize =
+                    Align((UINT)m_textureDesc.Width, m_device->getTextureAlignmentConstraint()) * m_textureDesc.Height;
+                const auto& heapType = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+                const auto stagingDesc = CD3DX12_RESOURCE_DESC::Buffer(m_uploadSize);
+                CHECK_HRCMD(m_device->getNative<D3D12>()->CreateCommittedResource(&heapType,
+                                                                                  D3D12_HEAP_FLAG_NONE,
+                                                                                  &stagingDesc,
+                                                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                                                  nullptr,
+                                                                                  IID_PPV_ARGS(set(m_uploadBuffer))));
+            }
+
+            // Copy to the upload buffer.
+            {
+                void* mappedBuffer = nullptr;
+                m_uploadBuffer->Map(0, nullptr, &mappedBuffer);
+                memcpy(mappedBuffer, buffer, m_uploadSize);
+                m_uploadBuffer->Unmap(0, nullptr);
+            }
+
+            // Do the upload now.
+            auto context = m_device->getContext<D3D12>();
+            {
+                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                    get(m_texture), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+                context->ResourceBarrier(1, &barrier);
+            }
+            {
+                D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+                ZeroMemory(&footprint, sizeof(footprint));
+                footprint.Footprint.Width = (UINT)m_textureDesc.Width;
+                footprint.Footprint.Height = m_textureDesc.Height;
+                footprint.Footprint.Depth = 1;
+                footprint.Footprint.RowPitch = rowPitch;
+                footprint.Footprint.Format = m_textureDesc.Format;
+                CD3DX12_TEXTURE_COPY_LOCATION src(get(m_uploadBuffer), footprint);
+                CD3DX12_TEXTURE_COPY_LOCATION dst(get(m_texture), 0);
+                context->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+            }
+            {
+                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                    get(m_texture), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
+                context->ResourceBarrier(1, &barrier);
+            }
+        }
+
         void saveToFile(const std::string& path) const override {
             // TODO: Implement this.
         }
@@ -530,6 +585,8 @@ namespace {
         const D3D12_RESOURCE_DESC m_textureDesc;
         const ComPtr<ID3D12Resource> m_texture;
 
+        ComPtr<ID3D12Resource> m_uploadBuffer;
+        UINT m_uploadSize{0};
         std::shared_ptr<ITexture> m_interopTexture;
 
         D3D12Heap& m_rtvHeap;
@@ -711,6 +768,37 @@ namespace {
         const UINT m_stopIndex;
     };
 
+    // Wrap a device context.
+    class D3D12Context : public graphics::IContext {
+      public:
+        D3D12Context(std::shared_ptr<IDevice> device, ID3D12GraphicsCommandList* context)
+            : m_device(device), m_context(context) {
+        }
+
+        Api getApi() const override {
+            return Api::D3D12;
+        }
+
+        std::shared_ptr<IDevice> getDevice() const override {
+            return m_device;
+        }
+
+        void* getNativePtr() const override {
+            return get(m_context);
+        }
+
+      private:
+        const std::shared_ptr<IDevice> m_device;
+        const ComPtr<ID3D12GraphicsCommandList> m_context;
+    };
+
+    typedef void (*PFN_ID3D12Device_CreateRenderTargetView)(ID3D12Device*,
+                                                            ID3D12Resource*,
+                                                            const D3D12_RENDER_TARGET_VIEW_DESC*,
+                                                            D3D12_CPU_DESCRIPTOR_HANDLE);
+    typedef void (*PFN_ID3D12GraphicsCommandList_OMSetRenderTargets)(
+        ID3D12GraphicsCommandList*, UINT, const D3D12_CPU_DESCRIPTOR_HANDLE*, BOOL, const D3D12_CPU_DESCRIPTOR_HANDLE*);
+
     class D3D12Device : public IDevice, public std::enable_shared_from_this<D3D12Device> {
       private:
         // OpenXR will not allow more than 2 frames in-flight, so 2 would be sufficient, however we might split the
@@ -760,6 +848,19 @@ namespace {
                     Log("Failed to enable debug layer - please check that the 'Graphics Tools' feature of Windows is "
                         "installed\n");
                 }
+
+                // Disable some common warnings.
+                D3D12_MESSAGE_ID messages[] = {
+                    D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
+                    D3D12_MESSAGE_ID_CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE,
+                    D3D12_MESSAGE_ID_CREATERESOURCE_CLEARVALUEDENORMFLUSH,
+                    D3D12_MESSAGE_ID_REFLECTSHAREDPROPERTIES_INVALIDOBJECT, // Caused by D3D11on12.
+                };
+                D3D12_INFO_QUEUE_FILTER filter;
+                ZeroMemory(&filter, sizeof(filter));
+                filter.DenyList.NumIDs = ARRAYSIZE(messages);
+                filter.DenyList.pIDList = messages;
+                m_infoQueue->AddStorageFilterEntries(&filter);
             }
 
             // Initialize the command lists and heaps.
@@ -834,11 +935,13 @@ namespace {
 
             CHECK_HRCMD(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(set(m_fence))));
 
+            initializeInterceptor();
             initializeShadingResources();
             initializeMeshResources();
         }
 
         ~D3D12Device() override {
+            uninitializeInterceptor();
             Log("D3D12Device destroyed\n");
         }
 
@@ -982,6 +1085,8 @@ namespace {
                                                 uint32_t rowPitch = 0,
                                                 uint32_t imageSize = 0,
                                                 const void* initialData = nullptr) override {
+            assert(!(rowPitch % getTextureAlignmentConstraint()));
+
             auto desc = CD3DX12_RESOURCE_DESC::Tex2D(
                 (DXGI_FORMAT)info.format, info.width, info.height, info.arraySize, info.mipCount, info.sampleCount);
 
@@ -1038,7 +1143,7 @@ namespace {
                     footprint.Footprint.Width = (UINT)desc.Width;
                     footprint.Footprint.Height = desc.Height;
                     footprint.Footprint.Depth = 1;
-                    footprint.Footprint.RowPitch = Align(rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+                    footprint.Footprint.RowPitch = rowPitch;
                     footprint.Footprint.Format = desc.Format;
                     CD3DX12_TEXTURE_COPY_LOCATION src(get(uploadBuffer), footprint);
                     CD3DX12_TEXTURE_COPY_LOCATION dst(get(texture), 0);
@@ -1677,6 +1782,16 @@ namespace {
             m_queryReadbackBuffer->Unmap(0, nullptr);
         }
 
+        uint32_t registerRenderTargetEvent(RenderTargetEvent event) override {
+            const uint32_t token = (uint32_t)m_onSetRenderTargetCallbacks.size();
+            m_onSetRenderTargetCallbacks.push_back(event);
+            return token;
+        }
+
+        void unregisterRenderTargetEvent(uint32_t token) override {
+            m_onSetRenderTargetCallbacks.erase(m_onSetRenderTargetCallbacks.begin() + token);
+        }
+
         uint32_t getBufferAlignmentConstraint() const override {
             return D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
         }
@@ -1694,6 +1809,37 @@ namespace {
         }
 
       private:
+        void initializeInterceptor() {
+            g_instance = this;
+
+            // Hook to the Direct3D device and command list  to intercept preparation for the rendering.
+            DetourMethodAttach(m_context.Get(),
+                               // Method offset is 10 + method index (0-based) for ID3D12GraphicsCommandList.
+                               46,
+                               hooked_ID3D12GraphicsCommandList_OMSetRenderTargets,
+                               g_original_ID3D12GraphicsCommandList_OMSetRenderTargets);
+            DetourMethodAttach(m_device.Get(),
+                               // Method offset is 7 + method index (0-based) for ID3D12Device.
+                               20,
+                               hooked_ID3D12Device_CreateRenderTargetView,
+                               g_original_ID3D12Device_CreateRenderTargetView);
+        }
+
+        void uninitializeInterceptor() {
+            DetourMethodDetach(m_context.Get(),
+                               // Method offset is 10 + method index (0-based) for ID3D12GraphicsCommandList.
+                               46,
+                               hooked_ID3D12GraphicsCommandList_OMSetRenderTargets,
+                               g_original_ID3D12GraphicsCommandList_OMSetRenderTargets);
+            DetourMethodDetach(m_device.Get(),
+                               // Method offset is 7 + method index (0-based) for ID3D12Device.
+                               20,
+                               hooked_ID3D12Device_CreateRenderTargetView,
+                               g_original_ID3D12Device_CreateRenderTargetView);
+
+            g_instance = nullptr;
+        }
+
         // Initialize the resources needed for dispatchShader() and related calls.
         void initializeShadingResources() {
             {
@@ -1827,6 +1973,63 @@ namespace {
             return ((m_queryBuffer[stopIndex] - m_queryBuffer[startIndex]) * 1000000) / m_gpuTickFrequency;
         }
 
+        void registerRenderTargetView(ID3D12Resource* resource,
+                                      const D3D12_RENDER_TARGET_VIEW_DESC* desc,
+                                      D3D12_CPU_DESCRIPTOR_HANDLE handle) {
+            D3D12_RESOURCE_DESC resourceDesc = resource->GetDesc();
+            if (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+                const size_t sizeBefore = m_renderTargetResourceDescriptors.size();
+                m_renderTargetResourceDescriptors.insert_or_assign(handle, resourceDesc);
+                if (sizeBefore && !(sizeBefore % 100) && m_renderTargetResourceDescriptors.size() != sizeBefore) {
+                    Log("Dictionary of render target resource descriptor now at %zu elements\n", sizeBefore + 1);
+                }
+            }
+        }
+
+        void onSetRenderTargets(ID3D12GraphicsCommandList* context,
+                                UINT numRenderTargetDescriptors,
+                                const D3D12_CPU_DESCRIPTOR_HANDLE* renderTargetHandles,
+                                BOOL singleHandleToDescriptorRange,
+                                const D3D12_CPU_DESCRIPTOR_HANDLE* depthStencilHandle) {
+            if (!numRenderTargetDescriptors) {
+                return;
+            }
+
+            auto it = m_renderTargetResourceDescriptors.find(renderTargetHandles[0]);
+            if (it == m_renderTargetResourceDescriptors.cend()) {
+                return;
+            }
+
+            D3D12_RESOURCE_DESC& resourceDesc = it->second;
+
+            XrSwapchainCreateInfo info;
+            ZeroMemory(&info, sizeof(info));
+            info.format = (int64_t)resourceDesc.Format;
+            info.width = (uint32_t)resourceDesc.Width;
+            info.height = resourceDesc.Height;
+            info.arraySize = resourceDesc.DepthOrArraySize;
+            info.mipCount = resourceDesc.MipLevels;
+            info.sampleCount = resourceDesc.SampleDesc.Count;
+            if (resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+            }
+            if (resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            }
+            if (!(resourceDesc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE)) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+            }
+            if (resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+            }
+
+            // Time to fire all the events!
+            auto wrappedContext = std::make_shared<D3D12Context>(shared_from_this(), context);
+            for (auto& callback : m_onSetRenderTargetCallbacks) {
+                callback(wrappedContext, info);
+            }
+        }
+
         ComPtr<ID3D12Device> m_device;
         ComPtr<ID3D12CommandQueue> m_queue;
         std::string m_deviceName;
@@ -1880,12 +2083,65 @@ namespace {
 
         ComPtr<ID3D12InfoQueue> m_infoQueue;
 
+        std::vector<RenderTargetEvent> m_onSetRenderTargetCallbacks;
+        std::map<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_RESOURCE_DESC, decltype(descriptorCompare)>
+            m_renderTargetResourceDescriptors{descriptorCompare};
+
         friend std::shared_ptr<ITexture>
         toolkit::graphics::WrapD3D12Texture(std::shared_ptr<IDevice> device,
                                             const XrSwapchainCreateInfo& info,
                                             ID3D12Resource* texture,
                                             const std::optional<std::string>& debugName);
+
+        static D3D12Device* g_instance;
+
+        static PFN_ID3D12Device_CreateRenderTargetView g_original_ID3D12Device_CreateRenderTargetView;
+        static void hooked_ID3D12Device_CreateRenderTargetView(ID3D12Device* device,
+                                                               ID3D12Resource* pResource,
+                                                               const D3D12_RENDER_TARGET_VIEW_DESC* pDesc,
+                                                               D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor) {
+            DebugLog("--> ID3D12Device_CreateRenderTargetView\n");
+
+            assert(g_instance);
+            g_instance->registerRenderTargetView(pResource, pDesc, DestDescriptor);
+
+            assert(g_original_ID3D12Device_CreateRenderTargetView);
+            g_original_ID3D12Device_CreateRenderTargetView(device, pResource, pDesc, DestDescriptor);
+
+            DebugLog("<-- ID3D12Device_CreateRenderTargetView\n");
+        }
+
+        static PFN_ID3D12GraphicsCommandList_OMSetRenderTargets g_original_ID3D12GraphicsCommandList_OMSetRenderTargets;
+        static void hooked_ID3D12GraphicsCommandList_OMSetRenderTargets(
+            ID3D12GraphicsCommandList* context,
+            UINT NumRenderTargetDescriptors,
+            const D3D12_CPU_DESCRIPTOR_HANDLE* pRenderTargetDescriptors,
+            BOOL RTsSingleHandleToDescriptorRange,
+            const D3D12_CPU_DESCRIPTOR_HANDLE* pDepthStencilDescriptor) {
+            DebugLog("--> ID3D12GraphicsCommandList_OMSetRenderTargets\n");
+
+            assert(g_instance);
+            g_instance->onSetRenderTargets(context,
+                                           NumRenderTargetDescriptors,
+                                           pRenderTargetDescriptors,
+                                           RTsSingleHandleToDescriptorRange,
+                                           pDepthStencilDescriptor);
+
+            assert(g_original_ID3D12GraphicsCommandList_OMSetRenderTargets);
+            g_original_ID3D12GraphicsCommandList_OMSetRenderTargets(context,
+                                                                    NumRenderTargetDescriptors,
+                                                                    pRenderTargetDescriptors,
+                                                                    RTsSingleHandleToDescriptorRange,
+                                                                    pDepthStencilDescriptor);
+
+            DebugLog("<-- ID3D12GraphicsCommandList_OMSetRenderTargets\n");
+        }
     };
+
+    D3D12Device* D3D12Device::g_instance = nullptr;
+    PFN_ID3D12Device_CreateRenderTargetView D3D12Device::g_original_ID3D12Device_CreateRenderTargetView = nullptr;
+    PFN_ID3D12GraphicsCommandList_OMSetRenderTargets
+        D3D12Device::g_original_ID3D12GraphicsCommandList_OMSetRenderTargets = nullptr;
 
 } // namespace
 

@@ -111,3 +111,6 @@ T* detach(ComPtr<T>& object) {
 // Detours
 #include <detours.h>
 #include "detours_helpers.h"
+
+// NVAPI SDK.
+#include <nvapi.h>

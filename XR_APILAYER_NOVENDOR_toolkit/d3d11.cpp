@@ -482,6 +482,18 @@ namespace {
             return getDepthStencilViewInternal(m_depthStencilSubView[slice], slice);
         }
 
+        void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) override {
+            assert(!(rowPitch % m_device->getTextureAlignmentConstraint()));
+
+            m_device->getContext<D3D11>()->UpdateSubresource(
+                m_texture.Get(),
+                D3D11CalcSubresource(0, std::max(0, slice), m_textureDesc.MipLevels),
+                nullptr,
+                buffer,
+                rowPitch,
+                0);
+        }
+
         void saveToFile(const std::string& path) const override {
             const HRESULT hr =
                 D3DX11SaveTextureToFileA(m_device->getContext<D3D11>(), get(m_texture), D3DX11_IFF_DDS, path.c_str());
@@ -763,6 +775,44 @@ namespace {
         mutable bool m_valid{false};
     };
 
+    // Wrap a device context.
+    class D3D11Context : public graphics::IContext {
+      public:
+        D3D11Context(std::shared_ptr<IDevice> device, ID3D11DeviceContext* context)
+            : m_device(device), m_context(context) {
+        }
+
+        Api getApi() const override {
+            return Api::D3D11;
+        }
+
+        std::shared_ptr<IDevice> getDevice() const override {
+            return m_device;
+        }
+
+        void* getNativePtr() const override {
+            return get(m_context);
+        }
+
+      private:
+        const std::shared_ptr<IDevice> m_device;
+        const ComPtr<ID3D11DeviceContext> m_context;
+    };
+
+    typedef void (*PFN_ID3D11DeviceContext_OMSetRenderTargets)(ID3D11DeviceContext*,
+                                                               UINT,
+                                                               ID3D11RenderTargetView* const*,
+                                                               ID3D11DepthStencilView*);
+
+    typedef void (*PFN_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews)(ID3D11DeviceContext*,
+                                                                                      UINT,
+                                                                                      ID3D11RenderTargetView* const*,
+                                                                                      ID3D11DepthStencilView*,
+                                                                                      UINT,
+                                                                                      UINT,
+                                                                                      ID3D11UnorderedAccessView* const*,
+                                                                                      const UINT*);
+
     class D3D11Device : public IDevice, public std::enable_shared_from_this<D3D11Device> {
       public:
         D3D11Device(ID3D11Device* device, std::shared_ptr<config::IConfigManager> configManager, bool textOnly = false)
@@ -804,6 +854,7 @@ namespace {
 
             // Create common resources.
             if (!textOnly) {
+                initializeInterceptor();
                 initializeShadingResources();
                 initializeMeshResources();
             }
@@ -811,6 +862,7 @@ namespace {
         }
 
         ~D3D11Device() override {
+            uninitializeInterceptor();
             Log("D3D11Device destroyed\n");
         }
 
@@ -916,6 +968,8 @@ namespace {
                                                 uint32_t rowPitch = 0,
                                                 uint32_t imageSize = 0,
                                                 const void* initialData = nullptr) override {
+            assert(!(rowPitch % getTextureAlignmentConstraint()));
+
             D3D11_TEXTURE2D_DESC desc;
             ZeroMemory(&desc, sizeof(desc));
             desc.Format = (DXGI_FORMAT)info.format;
@@ -1209,7 +1263,7 @@ namespace {
         void unsetRenderTargets() override {
             std::vector<ID3D11RenderTargetView*> rtvs;
 
-            for (int i = 0; i < 8; i++) {
+            for (int i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
                 rtvs.push_back(nullptr);
             }
 
@@ -1415,6 +1469,16 @@ namespace {
         void resolveQueries() override {
         }
 
+        uint32_t registerRenderTargetEvent(RenderTargetEvent event) override {
+            const uint32_t token = (uint32_t)m_onSetRenderTargetCallbacks.size();
+            m_onSetRenderTargetCallbacks.push_back(event);
+            return token;
+        }
+
+        void unregisterRenderTargetEvent(uint32_t token) override {
+            m_onSetRenderTargetCallbacks.erase(m_onSetRenderTargetCallbacks.begin() + token);
+        }
+
         uint32_t getBufferAlignmentConstraint() const override {
             return 16;
         }
@@ -1432,6 +1496,37 @@ namespace {
         }
 
       private:
+        void initializeInterceptor() {
+            g_instance = this;
+
+            // Hook to the Direct3D device context to intercept preparation for the rendering.
+            DetourMethodAttach(m_context.Get(),
+                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
+                               33,
+                               hooked_ID3D11DeviceContext_OMSetRenderTargets,
+                               g_original_ID3D11DeviceContext_OMSetRenderTargets);
+            DetourMethodAttach(m_context.Get(),
+                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
+                               34,
+                               hooked_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews,
+                               g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews);
+        }
+
+        void uninitializeInterceptor() {
+            DetourMethodDetach(m_context.Get(),
+                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
+                               33,
+                               hooked_ID3D11DeviceContext_OMSetRenderTargets,
+                               g_original_ID3D11DeviceContext_OMSetRenderTargets);
+            DetourMethodDetach(m_context.Get(),
+                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
+                               34,
+                               hooked_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews,
+                               g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews);
+
+            g_instance = nullptr;
+        }
+
         // Initialize the resources needed for dispatchShader() and related calls.
         void initializeShadingResources() {
             {
@@ -1613,6 +1708,68 @@ namespace {
                 m_fontWrapperFactory->CreateFontWrapper(get(m_device), dwriteFactory, &params, set(m_fontBold)));
         }
 
+        void onSetRenderTargets(ID3D11DeviceContext* context,
+                                UINT numViews,
+                                ID3D11RenderTargetView* const* renderTargetViews,
+                                ID3D11DepthStencilView* depthStencilView) {
+            if (!numViews) {
+                return;
+            }
+
+            if (!renderTargetViews[0]) {
+                return;
+            }
+
+            {
+                D3D11_RENDER_TARGET_VIEW_DESC desc;
+                renderTargetViews[0]->GetDesc(&desc);
+                if (desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2D &&
+                    desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2DMS &&
+                    desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2DARRAY &&
+                    desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY) {
+                    return;
+                }
+            }
+
+            ComPtr<ID3D11Resource> resource;
+            renderTargetViews[0]->GetResource(set(resource));
+
+            ComPtr<ID3D11Texture2D> texture;
+            if (FAILED(resource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(set(texture))))) {
+                return;
+            }
+
+            D3D11_TEXTURE2D_DESC textureDesc;
+            texture->GetDesc(&textureDesc);
+
+            XrSwapchainCreateInfo info;
+            ZeroMemory(&info, sizeof(info));
+            info.format = (int64_t)textureDesc.Format;
+            info.width = textureDesc.Width;
+            info.height = textureDesc.Height;
+            info.arraySize = textureDesc.ArraySize;
+            info.mipCount = textureDesc.MipLevels;
+            info.sampleCount = textureDesc.SampleDesc.Count;
+            if (textureDesc.BindFlags & D3D11_BIND_RENDER_TARGET) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+            }
+            if (textureDesc.BindFlags & D3D11_BIND_DEPTH_STENCIL) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            }
+            if (textureDesc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+            }
+            if (textureDesc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+            }
+
+            // Time to fire all the events!
+            auto wrappedContext = std::make_shared<D3D11Context>(shared_from_this(), context);
+            for (auto& callback : m_onSetRenderTargetCallbacks) {
+                callback(wrappedContext, info);
+            }
+        }
+
         const ComPtr<ID3D11Device> m_device;
         ComPtr<ID3D11DeviceContext> m_context;
         D3D11ContextState m_state;
@@ -1643,12 +1800,67 @@ namespace {
 
         ComPtr<ID3D11InfoQueue> m_infoQueue;
 
+        std::vector<RenderTargetEvent> m_onSetRenderTargetCallbacks;
+
         mutable std::shared_ptr<IQuadShader> m_currentQuadShader;
         mutable std::shared_ptr<IComputeShader> m_currentComputeShader;
         mutable uint32_t m_currentShaderHighestSRV;
         mutable uint32_t m_currentShaderHighestUAV;
         mutable uint32_t m_currentShaderHighestRTV;
+
+        static D3D11Device* g_instance;
+
+        static PFN_ID3D11DeviceContext_OMSetRenderTargets g_original_ID3D11DeviceContext_OMSetRenderTargets;
+        static void hooked_ID3D11DeviceContext_OMSetRenderTargets(ID3D11DeviceContext* context,
+                                                                  UINT NumViews,
+                                                                  ID3D11RenderTargetView* const* ppRenderTargetViews,
+                                                                  ID3D11DepthStencilView* pDepthStencilView) {
+            DebugLog("--> ID3D11DeviceContext_OMSetRenderTargets\n");
+
+            assert(g_instance);
+            g_instance->onSetRenderTargets(context, NumViews, ppRenderTargetViews, pDepthStencilView);
+
+            assert(g_original_ID3D11DeviceContext_OMSetRenderTargets);
+            g_original_ID3D11DeviceContext_OMSetRenderTargets(
+                context, NumViews, ppRenderTargetViews, pDepthStencilView);
+
+            DebugLog("<-- ID3D11DeviceContext_OMSetRenderTargets\n");
+        }
+
+        static PFN_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews
+            g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews;
+        static void hooked_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews(
+            ID3D11DeviceContext* context,
+            UINT NumRTVs,
+            ID3D11RenderTargetView* const* ppRenderTargetViews,
+            ID3D11DepthStencilView* pDepthStencilView,
+            UINT UAVStartSlot,
+            UINT NumUAVs,
+            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+            const UINT* pUAVInitialCounts) {
+            DebugLog("--> ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews\n");
+
+            assert(g_instance);
+            g_instance->onSetRenderTargets(context, NumRTVs, ppRenderTargetViews, pDepthStencilView);
+
+            assert(g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews);
+            g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews(context,
+                                                                                     NumRTVs,
+                                                                                     ppRenderTargetViews,
+                                                                                     pDepthStencilView,
+                                                                                     UAVStartSlot,
+                                                                                     NumUAVs,
+                                                                                     ppUnorderedAccessViews,
+                                                                                     pUAVInitialCounts);
+
+            DebugLog("<-- ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews\n");
+        }
     };
+
+    D3D11Device* D3D11Device::g_instance = nullptr;
+    PFN_ID3D11DeviceContext_OMSetRenderTargets D3D11Device::g_original_ID3D11DeviceContext_OMSetRenderTargets = nullptr;
+    PFN_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews
+        D3D11Device::g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews = nullptr;
 
     typedef HRESULT (*PFN_D3D11CreateDevice)(IDXGIAdapter*,
                                              D3D_DRIVER_TYPE,

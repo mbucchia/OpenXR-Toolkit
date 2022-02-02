@@ -189,6 +189,16 @@ namespace {
                 m_configManager->setDefault(config::SettingPredictionDampen, 100);
                 m_configManager->setEnumDefault(config::SettingMotionReprojectionRate,
                                                 config::MotionReprojectionRate::Off);
+                m_configManager->setEnumDefault(config::SettingVRS, config::VariableShadingRateType::None);
+                m_configManager->setEnumDefault(config::SettingVRSQuality,
+                                                config::VariableShadingRateQuality::Balanced);
+                m_configManager->setEnumDefault(config::SettingVRSPattern,
+                                                config::VariableShadingRatePattern::Balanced);
+                m_configManager->setDefault(config::SettingVRSInner, 0); // 1x
+                m_configManager->setDefault(config::SettingVRSInnerRadius, 25);
+                m_configManager->setDefault(config::SettingVRSMiddle, 2); // 1/4x
+                m_configManager->setDefault(config::SettingVRSOuter, 4);  // 1/16x
+                m_configManager->setDefault(config::SettingVRSOuterRadius, 50);
 
                 // Remember the XrSystemId to use.
                 m_vrSystemId = *systemId;
@@ -281,10 +291,13 @@ namespace {
                     // Initialize the other resources.
                     m_upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
 
+                    uint32_t inputWidth, inputHeight;
                     switch (m_upscaleMode) {
                     case config::ScalingType::FSR:
                         m_upscaler = graphics::CreateFSRUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
+                        std::tie(inputWidth, inputHeight) =
+                            config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
 
                         // Latch this value now.
                         m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
@@ -293,12 +306,16 @@ namespace {
                     case config::ScalingType::NIS:
                         m_upscaler = graphics::CreateNISUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
+                        std::tie(inputWidth, inputHeight) =
+                            config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
 
                         // Latch this value now.
                         m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
                         break;
 
                     case config::ScalingType::None:
+                        inputWidth = m_displayWidth;
+                        inputHeight = m_displayHeight;
                         break;
 
                     default:
@@ -308,6 +325,17 @@ namespace {
 
                     m_postProcessor =
                         graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
+
+                    m_variableRateShader =
+                        graphics::CreateVariableRateShader(m_configManager, m_graphicsDevice, inputWidth, inputHeight);
+                    if (m_variableRateShader) {
+                        m_graphicsDevice->registerRenderTargetEvent(
+                            [&](std::shared_ptr<graphics::IContext> context, XrSwapchainCreateInfo& info) {
+                                if (m_variableRateShader->onSetRenderTarget(context, info)) {
+                                    m_stats.numRenderTargetsWithVRS++;
+                                }
+                            });
+                    }
 
                     m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.endFrameCpuTimer = utilities::CreateCpuTimer();
@@ -326,14 +354,16 @@ namespace {
                             xrConvertWin32PerformanceCounterToTimeKHR != nullptr;
                         const bool isMotionReprojectionRateSupported =
                             m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
-                        m_menuHandler = menu::CreateMenuHandler(m_configManager,
-                                                                m_graphicsDevice,
-                                                                m_displayWidth,
-                                                                m_displayHeight,
-                                                                m_keyModifiers,
-                                                                m_supportHandTracking,
-                                                                isPredictionDampeningSupported,
-                                                                isMotionReprojectionRateSupported);
+                        m_menuHandler = menu::CreateMenuHandler(
+                            m_configManager,
+                            m_graphicsDevice,
+                            m_displayWidth,
+                            m_displayHeight,
+                            m_keyModifiers,
+                            m_supportHandTracking,
+                            isPredictionDampeningSupported,
+                            isMotionReprojectionRateSupported,
+                            m_variableRateShader ? m_variableRateShader->getMaxDownsamplePow2() : 0);
                     }
                 } else {
                     Log("Unsupported graphics runtime.\n");
@@ -364,6 +394,7 @@ namespace {
                 m_upscaler.reset();
                 m_preProcessor.reset();
                 m_postProcessor.reset();
+                m_variableRateShader.reset();
                 for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
                     m_performanceCounters.appGpuTimer[i].reset();
                     m_performanceCounters.overlayGpuTimer[i].reset();
@@ -976,6 +1007,8 @@ namespace {
             if (m_handTracker && m_menuHandler) {
                 m_menuHandler->updateGesturesState(m_handTracker->getGesturesState());
             }
+
+            m_stats.numRenderTargetsWithVRS = 0;
         }
 
         void updateConfiguration() {
@@ -991,6 +1024,9 @@ namespace {
             }
             if (m_postProcessor) {
                 m_postProcessor->update();
+            }
+            if (m_variableRateShader) {
+                m_variableRateShader->update();
             }
         }
 
@@ -1032,6 +1068,25 @@ namespace {
             m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
             m_graphicsDevice->resolveQueries();
 
+            // Create a blackout for variable rate shading while in this function.
+            struct VariableRateShaderBlackout {
+                VariableRateShaderBlackout(std::shared_ptr<graphics::IVariableRateShader> variableRateShader)
+                    : m_variableRateShader(variableRateShader) {
+                    if (m_variableRateShader) {
+                        m_variableRateShader->block();
+                    }
+                }
+
+                ~VariableRateShaderBlackout() {
+                    if (m_variableRateShader) {
+                        m_variableRateShader->unblock();
+                    }
+                }
+
+                std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;
+            } variableRateShaderBlackout(m_variableRateShader);
+
+            // TODO: Ensure restoreContext() even on error.
             m_graphicsDevice->saveContext();
 
             // Handle inputs.
@@ -1340,6 +1395,8 @@ namespace {
 
         std::shared_ptr<graphics::IImageProcessor> m_preProcessor;
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
+
+        std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;
 
         std::shared_ptr<input::IHandTracker> m_handTracker;
 
