@@ -123,10 +123,10 @@ namespace toolkit::utilities {
     }
 
     bool UpdateKeyState(bool& keyState, const std::vector<int>& vkModifiers, int vkKey, bool isRepeat) {
-        bool isPressed = (GetAsyncKeyState(vkKey) < 0);
-        for (const auto& vkModifier : vkModifiers) {
-            isPressed = isPressed && (GetAsyncKeyState(vkModifier) < 0);
-        }
+        // bail out early if any modifier is not depressed.
+        const auto isPressed =
+            std::all_of(vkModifiers.begin(), vkModifiers.end(), [](int vk) { return GetAsyncKeyState(vk) < 0; }) &&
+            GetAsyncKeyState(vkKey) < 0;
         const bool wasPressed = std::exchange(keyState, isPressed);
         return isPressed && (!wasPressed || isRepeat);
     }
