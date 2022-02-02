@@ -143,6 +143,7 @@ namespace {
             m_menuEntries.back().noCommitDelay = true;
 
             // Scaling sub group.
+            m_upscalingGroup.start = m_menuEntries.size();
             m_menuEntries.push_back({"Anamorphic", MenuEntryType::Choice, "", 0, 1, [](int value) {
                                          const std::string_view labels[] = {"Off", "On"};
                                          return std::string(labels[value]);
@@ -150,7 +151,8 @@ namespace {
             m_menuEntries.back().noCommitDelay = true;
             m_menuEntries.back().pValue = &m_useAnamorphic;
 
-            m_upscalingGroup.start = m_menuEntries.size();
+            // Proportional sub group
+            m_proportionalGroup.start = m_menuEntries.size();
             m_menuEntries.push_back({"Factor", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
                                          // We don't even use value, the utility function below will query it.
                                          return fmt::format("{}% ({}x{})",
@@ -159,11 +161,7 @@ namespace {
                                                             GetScaledInputSize(m_displayHeight, value, 2));
                                      }});
             m_menuEntries.back().noCommitDelay = true;
-
-            m_menuEntries.push_back({"Sharpness", MenuEntryType::Slider, SettingSharpness, 0, 100, [](int value) {
-                                         return fmt::format("{}%", value);
-                                     }});
-            m_upscalingGroup.end = m_menuEntries.size();
+            m_proportionalGroup.end = m_menuEntries.size();
 
             // Anamorphic sub group.
             m_anamorphicGroup.start = m_menuEntries.size();
@@ -178,11 +176,12 @@ namespace {
                                              "{}% ({} pixels)", value, GetScaledInputSize(m_displayHeight, value, 2));
                                      }});
             m_menuEntries.back().noCommitDelay = true;
+            m_anamorphicGroup.end = m_menuEntries.size();
 
             m_menuEntries.push_back({"Sharpness", MenuEntryType::Slider, SettingSharpness, 0, 100, [](int value) {
                                          return fmt::format("{}%", value);
                                      }});
-            m_anamorphicGroup.end = m_menuEntries.size();
+            m_upscalingGroup.end = m_menuEntries.size();
 
             // View control group.
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
@@ -217,8 +216,8 @@ namespace {
                                      (int)MotionReprojectionRate::Off,
                                      (int)MotionReprojectionRate::MaxValue - 1,
                                      [&](int value) {
-                                         std::string labels[] = {"Off", "45 Hz", "30 Hz", "22.5 Hz"};
-                                         return labels[value - 1];
+                                         std::string_view labels[] = {"Off", "45 Hz", "30 Hz", "22.5 Hz"};
+                                         return std::string(labels[value - 1]);
                                      },
                                      isMotionReprojectionRateSupported});
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
@@ -402,10 +401,12 @@ namespace {
                 }
             };
 
-            updateGroupVisibility(m_upscalingGroup,
-                                  getCurrentScalingType() != ScalingType::None && m_useAnamorphic == 0);
-            updateGroupVisibility(m_anamorphicGroup,
-                                  getCurrentScalingType() != ScalingType::None && m_useAnamorphic != 0);
+            const auto isUpscalingGroupVisible = getCurrentScalingType() != ScalingType::None;
+            updateGroupVisibility(m_upscalingGroup, isUpscalingGroupVisible);
+            if (isUpscalingGroupVisible) {
+                updateGroupVisibility(m_proportionalGroup, m_useAnamorphic == 0);
+                updateGroupVisibility(m_anamorphicGroup, m_useAnamorphic != 0);
+            }
             updateGroupVisibility(m_handTrackingGroup, isHandTrackingEnabled());
         }
 
@@ -821,6 +822,7 @@ namespace {
         bool m_isAccelerating{false};
 
         MenuGroup m_upscalingGroup;
+        MenuGroup m_proportionalGroup;
         MenuGroup m_anamorphicGroup;
         MenuGroup m_handTrackingGroup;
 
