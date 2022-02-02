@@ -252,6 +252,7 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     <Import Project="..\packages\FW1FontWrapper.1.1.2017.317\build\native\FW1FontWrapper.targets" Condition="Exists('..\packages\FW1FontWrapper.1.1.2017.317\build\native\FW1FontWrapper.targets')" />
     <Import Project="..\packages\fmt.7.0.1\build\fmt.targets" Condition="Exists('..\packages\fmt.7.0.1\build\fmt.targets')" />
     <Import Project="..\packages\Microsoft.DXSDK.D3DX.9.29.952.8\build\native\Microsoft.DXSDK.D3DX.targets" Condition="Exists('..\packages\Microsoft.DXSDK.D3DX.9.29.952.8\build\native\Microsoft.DXSDK.D3DX.targets')" />
+    <Import Project="..\packages\Detours.4.0.1\build\native\Detours.targets" Condition="Exists('..\packages\Detours.4.0.1\build\native\Detours.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -260,5 +261,6 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     <Error Condition="!Exists('..\packages\FW1FontWrapper.1.1.2017.317\build\native\FW1FontWrapper.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\FW1FontWrapper.1.1.2017.317\build\native\FW1FontWrapper.targets'))" />
     <Error Condition="!Exists('..\packages\fmt.7.0.1\build\fmt.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fmt.7.0.1\build\fmt.targets'))" />
     <Error Condition="!Exists('..\packages\Microsoft.DXSDK.D3DX.9.29.952.8\build\native\Microsoft.DXSDK.D3DX.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.DXSDK.D3DX.9.29.952.8\build\native\Microsoft.DXSDK.D3DX.targets'))" />
+    <Error Condition="!Exists('..\packages\Detours.4.0.1\build\native\Detours.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Detours.4.0.1\build\native\Detours.targets'))" />
   </Target>
 </Project>
