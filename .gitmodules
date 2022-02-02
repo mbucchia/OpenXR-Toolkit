@@ -13,3 +13,6 @@
 [submodule "external/FidelityFX-FSR"]
 	path = external/FidelityFX-FSR
 	url = https://github.com/GPUOpen-Effects/FidelityFX-FSR.git
+[submodule "external/NVAPI"]
+	path = external/NVAPI
+	url = https://github.com/mbucchia/NVAPI.git
