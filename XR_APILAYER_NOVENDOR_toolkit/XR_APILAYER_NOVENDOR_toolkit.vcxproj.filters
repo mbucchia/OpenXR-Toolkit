@@ -77,6 +77,9 @@
     <ClInclude Include="d3dcommon.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="detours_helpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

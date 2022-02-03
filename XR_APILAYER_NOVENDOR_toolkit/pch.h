@@ -107,3 +107,7 @@ T* detach(ComPtr<T>& object) {
 
 // FMT formatter.
 #include <fmt/format.h>
+
+// Detours
+#include <detours.h>
+#include "detours_helpers.h"

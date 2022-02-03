@@ -719,7 +719,9 @@ namespace {
         static constexpr size_t NumInflightContexts = 8;
 
       public:
-        D3D12Device(ID3D12Device* device, ID3D12CommandQueue* queue)
+        D3D12Device(ID3D12Device* device,
+                    ID3D12CommandQueue* queue,
+                    std::shared_ptr<config::IConfigManager> configManager)
             : m_device(device), m_queue(queue), m_gpuArchitecture(GpuArchitecture::Unknown) {
             {
                 ComPtr<IDXGIFactory1> dxgiFactory;
@@ -746,6 +748,17 @@ namespace {
                         Log("Using Direct3D 12 on adapter: %s\n", m_deviceName.c_str());
                         break;
                     }
+                }
+            }
+
+            // Initialize Debug layer logging.
+            if (configManager->getValue("debug_layer")) {
+                if (SUCCEEDED(m_device->QueryInterface(__uuidof(ID3D12InfoQueue),
+                                                       reinterpret_cast<void**>(set(m_infoQueue))))) {
+                    Log("D3D12 Debug layer is enabled\n");
+                } else {
+                    Log("Failed to enable debug layer - please check that the 'Graphics Tools' feature of Windows is "
+                        "installed\n");
                 }
             }
 
@@ -816,7 +829,7 @@ namespace {
                 CHECK_HRCMD(textDevice->QueryInterface(__uuidof(ID3D11On12Device),
                                                        reinterpret_cast<void**>(set(m_textInteropDevice))));
 
-                m_textDevice = WrapD3D11TextDevice(get(textDevice));
+                m_textDevice = WrapD3D11TextDevice(get(textDevice), configManager);
             }
 
             CHECK_HRCMD(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(set(m_fence))));
@@ -946,6 +959,22 @@ namespace {
             CHECK_HRCMD(m_commandAllocator[m_currentContext]->Reset());
             CHECK_HRCMD(m_commandList[m_currentContext]->Reset(m_commandAllocator[m_currentContext].Get(), nullptr));
             m_context = m_commandList[m_currentContext];
+
+            // Log any messages from the Debug layer.
+            if (m_infoQueue) {
+                auto count = m_infoQueue->GetNumStoredMessages();
+                for (auto i = 0u; i < count; i++) {
+                    SIZE_T size = 0;
+                    m_infoQueue->GetMessage(i, nullptr, &size);
+
+                    D3D12_MESSAGE* message = (D3D12_MESSAGE*)malloc(size);
+                    CHECK_HRCMD(m_infoQueue->GetMessage(i, message, &size));
+
+                    Log("D3D12: %.*s\n", message->DescriptionByteLength, message->pDescription);
+                    free(message);
+                }
+                m_infoQueue->ClearStoredMessages();
+            }
         }
 
         std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
@@ -1849,6 +1878,8 @@ namespace {
         mutable std::shared_ptr<IComputeShader> m_currentComputeShader;
         uint32_t m_currentRootSlot;
 
+        ComPtr<ID3D12InfoQueue> m_infoQueue;
+
         friend std::shared_ptr<ITexture>
         toolkit::graphics::WrapD3D12Texture(std::shared_ptr<IDevice> device,
                                             const XrSwapchainCreateInfo& info,
@@ -1859,8 +1890,17 @@ namespace {
 } // namespace
 
 namespace toolkit::graphics {
-    std::shared_ptr<IDevice> WrapD3D12Device(ID3D12Device* device, ID3D12CommandQueue* queue) {
-        return std::make_shared<D3D12Device>(device, queue);
+
+    void EnableD3D12DebugLayer() {
+        ComPtr<ID3D12Debug> debug;
+        CHECK_HRCMD(D3D12GetDebugInterface(__uuidof(ID3D12Debug), reinterpret_cast<void**>(set(debug))));
+        debug->EnableDebugLayer();
+    }
+
+    std::shared_ptr<IDevice> WrapD3D12Device(ID3D12Device* device,
+                                             ID3D12CommandQueue* queue,
+                                             std::shared_ptr<config::IConfigManager> configManager) {
+        return std::make_shared<D3D12Device>(device, queue, configManager);
     }
 
     std::shared_ptr<ITexture> WrapD3D12Texture(std::shared_ptr<IDevice> device,
