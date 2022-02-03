@@ -765,7 +765,7 @@ namespace {
 
     class D3D11Device : public IDevice, public std::enable_shared_from_this<D3D11Device> {
       public:
-        D3D11Device(ID3D11Device* device, bool textOnly = false)
+        D3D11Device(ID3D11Device* device, std::shared_ptr<config::IConfigManager> configManager, bool textOnly = false)
             : m_device(device), m_gpuArchitecture(GpuArchitecture::Unknown) {
             m_device->GetImmediateContext(set(m_context));
             {
@@ -788,6 +788,17 @@ namespace {
                 if (!textOnly) {
                     // Log the adapter name to help debugging customer issues.
                     Log("Using Direct3D 11 on adapter: %s\n", m_deviceName.c_str());
+                }
+            }
+
+            // Initialize Debug layer logging.
+            if (!textOnly && configManager->getValue("debug_layer")) {
+                if (SUCCEEDED(m_device->QueryInterface(__uuidof(ID3D11InfoQueue),
+                                                       reinterpret_cast<void**>(set(m_infoQueue))))) {
+                    Log("D3D11 Debug layer is enabled\n");
+                } else {
+                    Log("Failed to enable debug layer - please check that the 'Graphics Tools' feature of Windows is "
+                        "installed\n");
                 }
             }
 
@@ -881,6 +892,22 @@ namespace {
 
             if (blocking) {
                 m_context->Flush();
+            }
+
+            // Log any messages from the Debug layer.
+            if (m_infoQueue) {
+                auto count = m_infoQueue->GetNumStoredMessages();
+                for (auto i = 0u; i < count; i++) {
+                    SIZE_T size = 0;
+                    m_infoQueue->GetMessage(i, nullptr, &size);
+
+                    D3D11_MESSAGE* message = (D3D11_MESSAGE*)malloc(size);
+                    CHECK_HRCMD(m_infoQueue->GetMessage(i, message, &size));
+
+                    Log("D3D11: %.*s\n", message->DescriptionByteLength, message->pDescription);
+                    free(message);
+                }
+                m_infoQueue->ClearStoredMessages();
             }
         }
 
@@ -1345,8 +1372,7 @@ namespace {
                          int alignment) override {
             auto& font = style == TextStyle::Bold ? m_fontBold : m_fontNormal;
 
-            font->DrawString(
-                get(m_context), string.c_str(), size, x, y, color, alignment | FW1_NOFLUSH);
+            font->DrawString(get(m_context), string.c_str(), size, x, y, color, alignment | FW1_NOFLUSH);
             return measure ? measureString(string, style, size) : 0.0f;
         }
 
@@ -1358,8 +1384,7 @@ namespace {
                          uint32_t color,
                          bool measure,
                          int alignment) override {
-            return drawString(
-                std::wstring(string.begin(), string.end()), style, size, x, y, color, measure, alignment);
+            return drawString(std::wstring(string.begin(), string.end()), style, size, x, y, color, measure, alignment);
         }
 
         float measureString(std::wstring string, TextStyle style, float size) const override {
@@ -1608,6 +1633,9 @@ namespace {
         std::shared_ptr<ITexture> m_currentDrawDepthBuffer;
         int32_t m_currentDrawDepthBufferSlice;
         std::shared_ptr<ISimpleMesh> m_currentMesh;
+
+        ComPtr<ID3D11InfoQueue> m_infoQueue;
+
         mutable std::shared_ptr<IQuadShader> m_currentQuadShader;
         mutable std::shared_ptr<IComputeShader> m_currentComputeShader;
         mutable uint32_t m_currentShaderHighestSRV;
@@ -1615,15 +1643,62 @@ namespace {
         mutable uint32_t m_currentShaderHighestRTV;
     };
 
+    typedef HRESULT (*PFN_D3D11CreateDevice)(IDXGIAdapter*,
+                                             D3D_DRIVER_TYPE,
+                                             HMODULE,
+                                             UINT,
+                                             const D3D_FEATURE_LEVEL*,
+                                             UINT,
+                                             UINT,
+                                             ID3D11Device**,
+                                             D3D_FEATURE_LEVEL*,
+                                             ID3D11DeviceContext**);
+    PFN_D3D11CreateDevice g_original_D3D11CreateDevice = nullptr;
+
+    HRESULT Hooked_D3D11CreateDevice(IDXGIAdapter* pAdapter,
+                                     D3D_DRIVER_TYPE DriverType,
+                                     HMODULE Software,
+                                     UINT Flags,
+                                     const D3D_FEATURE_LEVEL* pFeatureLevels,
+                                     UINT FeatureLevels,
+                                     UINT SDKVersion,
+                                     ID3D11Device** ppDevice,
+                                     D3D_FEATURE_LEVEL* pFeatureLevel,
+                                     ID3D11DeviceContext** ppImmediateContext) {
+        assert(g_original_D3D11CreateDevice);
+        Log("Creating D3D11 device with D3D11_CREATE_DEVICE_DEBUG flag\n");
+        return g_original_D3D11CreateDevice(pAdapter,
+                                            DriverType,
+                                            Software,
+                                            Flags | D3D11_CREATE_DEVICE_DEBUG,
+                                            pFeatureLevels,
+                                            FeatureLevels,
+                                            SDKVersion,
+                                            ppDevice,
+                                            pFeatureLevel,
+                                            ppImmediateContext);
+    }
+
 } // namespace
 
 namespace toolkit::graphics {
-    std::shared_ptr<IDevice> WrapD3D11Device(ID3D11Device* device) {
-        return std::make_shared<D3D11Device>(device);
+
+    void HookForD3D11DebugLayer() {
+        DetourDllAttach("d3d11.dll", "D3D11CreateDevice", Hooked_D3D11CreateDevice, g_original_D3D11CreateDevice);
     }
 
-    std::shared_ptr<IDevice> WrapD3D11TextDevice(ID3D11Device* device) {
-        return std::make_shared<D3D11Device>(device, true);
+    void UnhookForD3D11DebugLayer() {
+        DetourDllDetach("d3d11.dll", "D3D11CreateDevice", Hooked_D3D11CreateDevice, g_original_D3D11CreateDevice);
+    }
+
+    std::shared_ptr<IDevice> WrapD3D11Device(ID3D11Device* device,
+                                             std::shared_ptr<config::IConfigManager> configManager) {
+        return std::make_shared<D3D11Device>(device, configManager);
+    }
+
+    std::shared_ptr<IDevice> WrapD3D11TextDevice(ID3D11Device* device,
+                                                 std::shared_ptr<config::IConfigManager> configManager) {
+        return std::make_shared<D3D11Device>(device, configManager, true);
     }
 
     std::shared_ptr<ITexture> WrapD3D11Texture(std::shared_ptr<IDevice> device,

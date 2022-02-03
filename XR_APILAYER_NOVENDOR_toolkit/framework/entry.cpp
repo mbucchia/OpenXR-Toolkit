@@ -87,6 +87,9 @@ XrResult __declspec(dllexport) XRAPI_CALL
 
     DebugLog("--> xrNegotiateLoaderApiLayerInterface\n");
 
+    // Initialize Detours early on.
+    DetourRestoreAfterWith();
+
     if (apiLayerName && apiLayerName != LayerName) {
         Log("Invalid apiLayerName \"%s\"\n", apiLayerName);
         return XR_ERROR_INITIALIZATION_FAILED;

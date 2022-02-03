@@ -60,7 +60,6 @@ namespace {
     class OpenXrLayer : public toolkit::OpenXrApi {
       public:
         OpenXrLayer() = default;
-        ~OpenXrLayer() override = default;
 
         XrResult xrCreateInstance(const XrInstanceCreateInfo* createInfo) override {
             // Needed to resolve the requested function pointers.
@@ -86,6 +85,19 @@ namespace {
 
             m_configManager = config::CreateConfigManager(createInfo->applicationInfo.applicationName);
 
+            // Hook to enable Direct3D 11 Debug layer on request.
+            m_configManager->setDefault("debug_layer",
+#ifdef _DEBUG
+                                        1
+#else
+                                        0
+#endif
+            );
+            if (m_configManager->getValue("debug_layer")) {
+                graphics::HookForD3D11DebugLayer();
+                graphics::EnableD3D12DebugLayer();
+            }
+
             // Check what keys to use.
             m_configManager->setDefault("ctrl_modifier", 1);
             if (m_configManager->getValue("ctrl_modifier")) {
@@ -110,6 +122,10 @@ namespace {
             }
 
             return XR_SUCCESS;
+        }
+
+        ~OpenXrLayer() override {
+            graphics::UnhookForD3D11DebugLayer();
         }
 
         XrResult xrGetSystem(XrInstance instance, const XrSystemGetInfo* getInfo, XrSystemId* systemId) override {
@@ -242,12 +258,13 @@ namespace {
                     if (entry->type == XR_TYPE_GRAPHICS_BINDING_D3D11_KHR) {
                         const XrGraphicsBindingD3D11KHR* d3dBindings =
                             reinterpret_cast<const XrGraphicsBindingD3D11KHR*>(entry);
-                        m_graphicsDevice = graphics::WrapD3D11Device(d3dBindings->device);
+                        m_graphicsDevice = graphics::WrapD3D11Device(d3dBindings->device, m_configManager);
                         break;
                     } else if (entry->type == XR_TYPE_GRAPHICS_BINDING_D3D12_KHR) {
                         const XrGraphicsBindingD3D12KHR* d3dBindings =
                             reinterpret_cast<const XrGraphicsBindingD3D12KHR*>(entry);
-                        m_graphicsDevice = graphics::WrapD3D12Device(d3dBindings->device, d3dBindings->queue);
+                        m_graphicsDevice =
+                            graphics::WrapD3D12Device(d3dBindings->device, d3dBindings->queue, m_configManager);
                         break;
                     }
 
@@ -441,7 +458,7 @@ namespace {
                             desc.ArraySize,
                             desc.Format);
                         Log("  mipCount=%u sampleCount=%u\n", desc.MipLevels, desc.SampleDesc.Count);
-                        Log("  usage=0x%x bindFlags=0x%x cpuFlags=0x%x misc=0x%p\n",
+                        Log("  usage=0x%x bindFlags=0x%x cpuFlags=0x%x misc=0x%x\n",
                             desc.Usage,
                             desc.BindFlags,
                             desc.CPUAccessFlags,
@@ -733,7 +750,7 @@ namespace {
                 // Override the ICD if requested.
                 const int icdOverride = m_configManager->getValue(config::SettingICD);
                 if (icdOverride != 1000) {
-                    const float icd = (ipd * 1000) / std::max(icdOverride,1);
+                    const float icd = (ipd * 1000) / std::max(icdOverride, 1);
                     m_stats.icd = icd;
                     const auto center = views[0].pose.position + vec / 2.0f;
                     const auto unit = Normalize(vec);
@@ -1006,8 +1023,10 @@ namespace {
                     utilities::RegSetDword(
                         HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval", (DWORD)rate);
                 } else {
-                    utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
-                    utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
+                    utilities::RegDeleteValue(
+                        HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
+                    utilities::RegDeleteValue(
+                        HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
                 }
             }
 
