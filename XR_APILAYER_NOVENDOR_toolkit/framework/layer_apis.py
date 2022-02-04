@@ -13,6 +13,7 @@ override_functions = [
     "xrDestroySpace",
     "xrEnumerateSwapchainImages",
     "xrAcquireSwapchainImage",
+    "xrReleaseSwapchainImage",
     "xrPollEvent",
     "xrGetCurrentInteractionProfile",
     "xrLocateViews",
