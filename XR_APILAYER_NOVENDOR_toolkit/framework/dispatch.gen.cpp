@@ -279,6 +279,26 @@ namespace LAYER_NAMESPACE
 		return result;
 	}
 
+	XrResult xrReleaseSwapchainImage(XrSwapchain swapchain, const XrSwapchainImageReleaseInfo* releaseInfo)
+	{
+		DebugLog("--> xrReleaseSwapchainImage\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrReleaseSwapchainImage(swapchain, releaseInfo);
+		}
+		catch (std::exception exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrReleaseSwapchainImage %d\n", result);
+
+		return result;
+	}
+
 	XrResult xrWaitFrame(XrSession session, const XrFrameWaitInfo* frameWaitInfo, XrFrameState* frameState)
 	{
 		DebugLog("--> xrWaitFrame\n");
@@ -593,6 +613,11 @@ namespace LAYER_NAMESPACE
 			{
 				m_xrAcquireSwapchainImage = reinterpret_cast<PFN_xrAcquireSwapchainImage>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrAcquireSwapchainImage);
+			}
+			else if (apiName == "xrReleaseSwapchainImage")
+			{
+				m_xrReleaseSwapchainImage = reinterpret_cast<PFN_xrReleaseSwapchainImage>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrReleaseSwapchainImage);
 			}
 			else if (apiName == "xrWaitFrame")
 			{

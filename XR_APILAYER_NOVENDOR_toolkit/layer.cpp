@@ -55,6 +55,7 @@ namespace {
     struct SwapchainState {
         std::vector<SwapchainImages> images;
         uint32_t acquiredImageIndex{0};
+        bool delayedRelease{false};
     };
 
     class OpenXrLayer : public toolkit::OpenXrApi {
@@ -673,16 +674,37 @@ namespace {
         XrResult xrAcquireSwapchainImage(XrSwapchain swapchain,
                                          const XrSwapchainImageAcquireInfo* acquireInfo,
                                          uint32_t* index) override {
+            auto swapchainIt = m_swapchains.find(swapchain);
+            if (swapchainIt != m_swapchains.end()) {
+                // Perform the release now in case it was delayed. This could happen for a discarded frame.
+                if (swapchainIt->second.delayedRelease) {
+                    XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO, nullptr};
+                    swapchainIt->second.delayedRelease = false;
+                    CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(swapchain, &releaseInfo));
+                }
+            }
+
             const XrResult result = OpenXrApi::xrAcquireSwapchainImage(swapchain, acquireInfo, index);
             if (XR_SUCCEEDED(result)) {
                 // Record the index so we know which texture to use in xrEndFrame().
-                auto swapchainIt = m_swapchains.find(swapchain);
                 if (swapchainIt != m_swapchains.end()) {
                     swapchainIt->second.acquiredImageIndex = *index;
                 }
             }
 
             return result;
+        }
+
+        XrResult xrReleaseSwapchainImage(XrSwapchain swapchain,
+                                         const XrSwapchainImageReleaseInfo* releaseInfo) override {
+            auto swapchainIt = m_swapchains.find(swapchain);
+            if (swapchainIt != m_swapchains.end()) {
+                // Perform a delayed release: we still need to write to the swapchain in our xrEndFrame()!
+                swapchainIt->second.delayedRelease = true;
+                return XR_SUCCESS;
+            }
+
+            return OpenXrApi::xrReleaseSwapchainImage(swapchain, releaseInfo);
         }
 
         XrResult xrPollEvent(XrInstance instance, XrEventDataBuffer* eventData) override {
@@ -733,7 +755,7 @@ namespace {
                 // Override the ICD if requested.
                 const int icdOverride = m_configManager->getValue(config::SettingICD);
                 if (icdOverride != 1000) {
-                    const float icd = (ipd * 1000) / std::max(icdOverride,1);
+                    const float icd = (ipd * 1000) / std::max(icdOverride, 1);
                     m_stats.icd = icd;
                     const auto center = views[0].pose.position + vec / 2.0f;
                     const auto unit = Normalize(vec);
@@ -1006,8 +1028,10 @@ namespace {
                     utilities::RegSetDword(
                         HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval", (DWORD)rate);
                 } else {
-                    utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
-                    utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
+                    utilities::RegDeleteValue(
+                        HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
+                    utilities::RegDeleteValue(
+                        HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
                 }
             }
 
@@ -1240,6 +1264,15 @@ namespace {
 
             m_graphicsDevice->restoreContext();
             m_graphicsDevice->flushContext(false, true);
+
+            // Release the swapchain images now, as we are really done this time.
+            for (auto& swapchain : m_swapchains) {
+                if (swapchain.second.delayedRelease) {
+                    XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO, nullptr};
+                    swapchain.second.delayedRelease = false;
+                    CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(swapchain.first, &releaseInfo));
+                }
+            }
 
             return OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
         }
