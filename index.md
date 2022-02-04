@@ -26,8 +26,10 @@ This software may be used with any brand of VR headset as long as the target app
 
 ## Limitations
 
-+ This software was only extensively tested with Microsoft Flight Simulator 2020;
++ This software was only extensively tested with Microsoft Flight Simulator 2020, it appears to work with War Thunder as well. Other applications are untested.
+  + Contrary to popular belief, this software will not work with OpenVR-based games, like the majority of games you can find on Steam.
 + The brand new Varjo Aero headset is not supported (we are working on it);
++ The HTC Vive Pro 2 and Vive Cosmos headsets are not supported (but the original Vive Pro was reported to work);
 + The menu does not display correctly on Pimax headsets;
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
