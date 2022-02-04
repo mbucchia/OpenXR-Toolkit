@@ -33,6 +33,8 @@ nav_order: 6
 - Tentatively fix loss of tracking/loss of synchronization with the emulated controller.
 - Add controller timeout to simulate shutdown of the controller after loss of hand tracking.
 - Fix frequent `XR_ERROR_LIMIT_REACHED` error when using the OpenXR Developer Tools for Windows Mixed Reality.
+- Hotfix #1: Fix issue with AMD graphic cards.
+- Hotfix #2: Fix issue with Varjo Aero headset.
 
 ## Initial OpenXR NIS Scaler
 
