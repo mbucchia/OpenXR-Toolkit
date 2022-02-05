@@ -18,7 +18,6 @@ nav_order: 5
 | Lock Motion Reprojection rate (WMR)  | [Ready](){: .btn .btn-blue }            | Feb 2022        |
 | Hand tracking haptics cues           | [Implementation](){: .btn .btn-blue }   | Feb 2022?       |
 | Brightness/exposure control          | [Implementation](){: .btn .btn-blue }   | Mar 2022?       |
-| Varjo Aero support                   | [Investigation](){: .btn .btn-blue }    |                 |
 | FOV override                         | [Investigation](){: .btn .btn-blue }    |                 |
 | Zoom-in                              | [Investigation](){: .btn .btn-blue }    |                 |
 | Fixed foveated rendering (VRS, VRSS) | [Investigation](){: .btn .btn-blue }    | Mar 2022?       |
