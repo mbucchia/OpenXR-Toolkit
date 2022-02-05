@@ -59,48 +59,13 @@ namespace {
             std::tie(m_inputWidth, m_inputHeight) =
                 config::GetScaledDimensions(m_configManager.get(), m_outputWidth, m_outputHeight, 2);
 
-            if (m_inputWidth != m_outputWidth || m_inputHeight != m_outputHeight) {
-                initializeScaler();
-            } else {
-                initializeSharpen();
-            }
-
-            // TODO: Consider making immutable and create a new buffer in update(). For now, our D3D12 implementation
-            // does not do heap descriptor recycling.
-            m_configBuffer = m_device->createBuffer(sizeof(FSRConstants), "FSR Constants CB");
-            update();
+            m_isSharpenOnly = m_inputWidth == m_outputWidth && m_inputHeight == m_outputHeight;
+            initializeScaler();
         }
 
         void update() override {
             if (m_configManager->hasChanged(SettingSharpness)) {
-                const auto sharpness = m_configManager->getValue(SettingSharpness) / 100.f;
-                const auto attenuation = 1.f - AClampF1(sharpness, 0, 1);
-
-                FSRConstants config = {};
-                if (!m_isSharpenOnly) {
-                    FsrEasuCon(config.Const0,
-                               config.Const1,
-                               config.Const2,
-                               config.Const3,
-                               static_cast<AF1>(m_inputWidth),
-                               static_cast<AF1>(m_inputHeight),
-                               static_cast<AF1>(m_inputWidth),
-                               static_cast<AF1>(m_inputHeight),
-                               static_cast<AF1>(m_outputWidth),
-                               static_cast<AF1>(m_outputHeight));
-                }
-
-                FsrRcasCon(config.Const4, static_cast<AF1>(attenuation));
-
-                // TODO:
-                // The AMD FSR sample is using a value in the constant buffer to correct the output color accordingly.
-                // We're replacing the constant with a shader compilation define because the project code is not HDR
-                // aware yet, When we'll be supporting HDR, we might need to change the implementation back to something
-                // like:
-                //
-                // config.Const4[3] = hdr ? 1 : 0;
-
-                m_configBuffer->uploadData(&config, sizeof(config));
+                updateScaler(m_configManager->getValue(SettingSharpness) / 100.f);
             }
         }
 
@@ -157,17 +122,10 @@ namespace {
             m_shaderRCAS = m_device->createComputeShader(
                 shaderPath.string(), "mainCS", "FSR RCAS CS", threadGroups, defines.get(), shadersDir.string());
 
-            m_isSharpenOnly = false;
-        }
-
-        void initializeSharpen() {
-            // TODO:
-            // AMD offers 2 libs: FSR and CAS. The former does both, the latter seems to be designed
-            // for sharpen only. For now, we're using the "RCAS" half of FSR in this case.
-
-            initializeScaler();
-
-            m_isSharpenOnly = true;
+            // TODO: Consider making immutable and create a new buffer in update(). For now, our D3D12 implementation
+            // does not do heap descriptor recycling.
+            m_configBuffer = m_device->createBuffer(sizeof(FSRConstants), "FSR Constants CB");
+            updateScaler(m_configManager->getValue(SettingSharpness) / 100.f);
         }
 
         void initializeIntermediary(uint32_t width, uint32_t height, int64_t format) {
@@ -194,6 +152,36 @@ namespace {
             info.sampleCount = 1;
             info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
             m_intermediary = m_device->createTexture(info, "FSR Intermediary TEX2D", 0, 0, nullptr);
+        }
+
+        void updateScaler(float sharpness) {
+            const auto attenuation = 1.f - AClampF1(sharpness, 0, 1);
+
+            FSRConstants config = {};
+            if (!m_isSharpenOnly) {
+                FsrEasuCon(config.Const0,
+                           config.Const1,
+                           config.Const2,
+                           config.Const3,
+                           static_cast<AF1>(m_inputWidth),
+                           static_cast<AF1>(m_inputHeight),
+                           static_cast<AF1>(m_inputWidth),
+                           static_cast<AF1>(m_inputHeight),
+                           static_cast<AF1>(m_outputWidth),
+                           static_cast<AF1>(m_outputHeight));
+            }
+
+            FsrRcasCon(config.Const4, static_cast<AF1>(attenuation));
+
+            // TODO:
+            // The AMD FSR sample is using a value in the constant buffer to correct the output color accordingly.
+            // We're replacing the constant with a shader compilation define because the project code is not HDR
+            // aware yet, When we'll be supporting HDR, we might need to change the implementation back to something
+            // like:
+            //
+            // config.Const4[3] = hdr ? 1 : 0;
+
+            m_configBuffer->uploadData(&config, sizeof(config));
         }
 
         const std::shared_ptr<IConfigManager> m_configManager;
