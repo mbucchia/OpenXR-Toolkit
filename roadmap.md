@@ -18,9 +18,9 @@ nav_order: 5
 | Lock Motion Reprojection rate (WMR)  | [Ready](){: .btn .btn-blue }            | Feb 2022        |
 | Hand tracking haptics cues           | [Implementation](){: .btn .btn-blue }   | Feb 2022?       |
 | Brightness/exposure control          | [Implementation](){: .btn .btn-blue }   | Mar 2022?       |
+| Fixed foveated rendering (VRS, VRSS) | [Implementation](){: .btn .btn-blue }   | Mar 2022?       |
 | FOV override                         | [Investigation](){: .btn .btn-blue }    |                 |
 | Zoom-in                              | [Investigation](){: .btn .btn-blue }    |                 |
-| Fixed foveated rendering (VRS, VRSS) | [Investigation](){: .btn .btn-blue }    | Mar 2022?       |
 | Texture LOD biasing                  | [Not started](){: .btn .btn-outline }   |                 |
 | Per-application disable setting      | [Not started](){: .btn .btn-outline }   |                 |
 | DLSS                                 | [Blocked](){: .btn .btn-primary }       |                 |
