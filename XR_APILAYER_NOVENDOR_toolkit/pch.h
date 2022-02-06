@@ -37,8 +37,9 @@
 #include <fstream>
 #include <sstream>
 #include <string>
-#include <memory>
 #include <map>
+#include <memory>
+#include <mutex>
 #include <optional>
 #include <set>
 #include <thread>

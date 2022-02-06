@@ -725,6 +725,17 @@ namespace {
                                                          m_gesturesState.numTrackingLosses[1] % 256),
                                              OVERLAY_COMMON);
                         top += 1.05f * fontSize;
+
+                        m_device->drawString(
+                            fmt::format("cache: {}/{}", m_gesturesState.cacheSize[0], m_gesturesState.cacheSize[1]),
+                            OVERLAY_COMMON);
+                        top += 1.05f * fontSize;
+
+                        m_device->drawString(fmt::format("age: {:.1f}/{:.1f}",
+                                                         m_gesturesState.handposeAgeUs[0] / 1000000.0f,
+                                                         m_gesturesState.handposeAgeUs[1] / 1000000.0f),
+                                             OVERLAY_COMMON);
+                        top += 1.05f * fontSize;
                     }
 
 #undef GESTURE_STATE

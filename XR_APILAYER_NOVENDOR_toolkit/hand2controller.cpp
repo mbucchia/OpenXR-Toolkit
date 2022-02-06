@@ -407,7 +407,7 @@ namespace {
             }
         }
 
-        void sync(XrTime frameTime, const XrActionsSyncInfo& syncInfo) override {
+        void sync(XrTime frameTime, XrTime now, const XrActionsSyncInfo& syncInfo) override {
             // Arbitrarily choose this place to handle configuration input.
             if (m_configSocket != INVALID_SOCKET) {
                 struct sockaddr_in saddr;
@@ -426,11 +426,19 @@ namespace {
             }
 
             // Delete outdated entries from the cache.
-            for (auto& spaceCache : m_cachedHandJointsPoses) {
-                auto& cache = spaceCache.second;
-                for (uint32_t side = 0; side < HandCount; side++) {
-                    while (cache[side].size() > 0 && cache[side].front().first + GracePeriod < frameTime) {
-                        cache[side].pop_front();
+            {
+                std::unique_lock lock(m_cacheLock);
+                for (auto& spaceCache : m_cachedHandJointsPoses) {
+                    auto& cache = spaceCache.second;
+                    for (uint32_t side = 0; side < HandCount; side++) {
+                        while (cache[side].size() > 0 && cache[side].front().first + GracePeriod < now) {
+                            cache[side].pop_front();
+                        }
+
+                        // Update statistics.
+                        if (spaceCache.first == m_preferredBaseSpace.value_or(m_referenceSpace)) {
+                            m_gesturesState.cacheSize[side] = cache[side].size();
+                        }
                     }
                 }
             }
@@ -447,12 +455,12 @@ namespace {
             const XrHandJointLocationEXT* leftHandJointsPoses = nullptr;
             if (m_leftHandEnabled) {
                 leftHandJointsPoses = getCachedHandJointsPoses(
-                    Hand::Left, m_thisFrameTime, m_preferredBaseSpace.value_or(m_referenceSpace));
+                    Hand::Left, m_thisFrameTime, now, m_preferredBaseSpace.value_or(m_referenceSpace));
             }
             const XrHandJointLocationEXT* rightHandJointsPoses = nullptr;
             if (m_rightHandEnabled) {
                 rightHandJointsPoses = getCachedHandJointsPoses(
-                    Hand::Right, m_thisFrameTime, m_preferredBaseSpace.value_or(m_referenceSpace));
+                    Hand::Right, m_thisFrameTime, now, m_preferredBaseSpace.value_or(m_referenceSpace));
             }
 
             // Only sync actions for the specified action sets.
@@ -488,18 +496,6 @@ namespace {
                 }
             }
 
-            // Try to get the time.
-            XrTime now;
-#if 0
-            // TODO: Need to fix the source generator to properly expose that operation.
-            LARGE_INTEGER qpcTimeNow;
-            QueryPerformanceCounter(&qpcTimeNow);
-
-            XrTime xrTimeNow;
-            CHECK_XRCMD(xrConvertWin32PerformanceCounterToTimeKHR(GetXrInstance(), &qpcTimeNow, &xrTimeNow));
-#endif
-            now = m_thisFrameTime + 1;
-
             // For each gesture, update the action value.
             performGesturesDetection(leftHandJointsPoses, rightHandJointsPoses, ignore, now);
 
@@ -525,10 +521,48 @@ namespace {
                 }
             }
 
+            const int64_t timeout = m_configManager->getValue(SettingHandTimeout);
+            for (uint32_t side = 0; side < HandCount; side++) {
+                if (timeout == 0) {
+                    m_trackedRecently[side] = true;
+                    continue;
+                }
+
+                const bool tracked = m_lastTimestampWithPoseTracked[side] + (timeout * 1000000000) > m_thisFrameTime;
+                // On transition, zero all actions.
+                if (m_trackedRecently[side] && !tracked) {
+                    const XrPath subactionPath = side == 0 ? m_leftHandSubaction : m_rightHandSubaction;
+                    for (auto& action : m_actions) {
+                        const auto& subActionIt = action.second.subActions.find(subactionPath);
+                        if (subActionIt == action.second.subActions.cend()) {
+                            continue;
+                        }
+                        auto& subAction = subActionIt->second;
+                        // We must only set changed if the value is actually different.
+                        subAction.floatValueChanged = std::abs(subAction.floatValue) > FLT_EPSILON;
+                        subAction.floatValue = 0.f;
+                        if (subAction.floatValueChanged) {
+                            subAction.timeFloatValueChanged = now;
+                        }
+
+                        subAction.boolValueChanged = subAction.boolValue;
+                        subAction.boolValue = false;
+                        if (subAction.boolValueChanged) {
+                            subAction.timeBoolValueChanged = now;
+                        }
+                    }
+
+                    // Clear statistics.
+                    m_gesturesState.handposeAgeUs[side] = 0;
+                }
+                m_trackedRecently[side] = tracked;
+            }
+
             m_thisFrameTime = frameTime;
         }
 
-        bool locate(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation& location) const override {
+        bool
+        locate(XrSpace space, XrSpace baseSpace, XrTime time, XrTime now, XrSpaceLocation& location) const override {
             const auto actionSpaceIt = m_actionSpaces.find(space);
             if (actionSpaceIt == m_actionSpaces.cend()) {
                 return false;
@@ -541,7 +575,7 @@ namespace {
                 return false;
             }
 
-            const auto& jointsPoses = getCachedHandJointsPoses(actionSpace.hand, time, baseSpace);
+            const auto& jointsPoses = getCachedHandJointsPoses(actionSpace.hand, time, now, baseSpace);
 
             const uint32_t side = actionSpace.hand == Hand::Left ? 0 : 1;
             const uint32_t joint =
@@ -549,14 +583,22 @@ namespace {
 
             // Translate the hand poses for the requested joint to a controller pose.
             location.locationFlags = jointsPoses[joint].locationFlags;
+            if (Pose::IsPoseValid(location.locationFlags)) {
+                // Workaround to loss of virtual controller: if the pose is Valid, we always report it Tracked.
+                location.locationFlags |=
+                    XR_SPACE_LOCATION_POSITION_TRACKED_BIT | XR_SPACE_LOCATION_ORIENTATION_TRACKED_BIT;
+            }
             location.pose = Pose::Multiply(actionSpace.poseInActionSpace,
                                            Pose::Multiply(m_config.transform[side], jointsPoses[joint].pose));
+
+            m_gesturesState.handposeAgeUs[side] = std::max(m_gesturesState.handposeAgeUs[side], time - now);
 
             return true;
         }
 
         void render(const XrPosef& pose,
                     XrSpace baseSpace,
+                    XrTime now,
                     std::shared_ptr<graphics::ITexture> renderTarget) const override {
             const int meshIndex = m_configManager->getValue(SettingHandVisibilityAndSkinTone) - 1;
             if (meshIndex < 0) {
@@ -569,7 +611,7 @@ namespace {
                 }
 
                 const auto& jointsPoses =
-                    getCachedHandJointsPoses(hand ? Hand::Right : Hand::Left, m_thisFrameTime, baseSpace);
+                    getCachedHandJointsPoses(hand ? Hand::Right : Hand::Left, m_thisFrameTime, now, baseSpace);
 
                 for (uint32_t joint = 0; joint < XR_HAND_JOINT_COUNT_EXT; joint++) {
                     if (!xr::math::Pose::IsPoseValid(jointsPoses[joint].locationFlags)) {
@@ -632,11 +674,7 @@ namespace {
 
         bool isTrackedRecently(Hand hand) const override {
             const uint32_t side = hand == Hand::Left ? 0 : 1;
-            const int64_t timeout = m_configManager->getValue(SettingHandTimeout);
-            if (timeout == 0) {
-                return true;
-            }
-            return m_lastTimestampWithPoseTracked[side] + (timeout * 1000000000) > m_thisFrameTime;
+            return m_trackedRecently[side];
         }
 
         const GesturesState& getGesturesState() const override {
@@ -653,10 +691,11 @@ namespace {
             return str;
         }
 
-        const XrHandJointLocationEXT* getCachedHandJointsPoses(Hand hand,
-                                                               XrTime time,
-                                                               std::optional<XrSpace> baseSpace) const {
+        const XrHandJointLocationEXT*
+        getCachedHandJointsPoses(Hand hand, XrTime time, XrTime now, std::optional<XrSpace> baseSpace) const {
             const uint32_t side = hand == Hand::Left ? 0 : 1;
+
+            std::unique_lock lock(m_cacheLock);
 
             auto& cache = m_cachedHandJointsPoses[baseSpace.value_or(m_referenceSpace)][side];
 
@@ -687,7 +726,8 @@ namespace {
             {
                 XrHandJointsLocateInfoEXT locateInfo{XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT};
                 locateInfo.baseSpace = baseSpace.value_or(m_referenceSpace);
-                locateInfo.time = time;
+                // Workaround to loss of virtual controller: do not query a time in the past!
+                locateInfo.time = std::max(time, now);
 
                 CacheEntry entry;
                 XrHandJointLocationsEXT locations{XR_TYPE_HAND_JOINT_LOCATIONS_EXT};
@@ -696,6 +736,19 @@ namespace {
                 entry.first = time;
 
                 CHECK_HRCMD(xrLocateHandJointsEXT(m_handTracker[side], &locateInfo, &locations));
+
+#if 0
+                if (side == 0) {
+                    Log("fr=%u call=%u now=%u v=%d t=%d (pd=%u)\n",
+                        m_thisFrameTime,
+                        time,
+                        now,
+                        Pose::IsPoseValid(locations.jointLocations[XR_HAND_JOINT_PALM_EXT].locationFlags),
+                        Pose::IsPoseTracked(locations.jointLocations[XR_HAND_JOINT_PALM_EXT].locationFlags),
+                        m_configManager->peekValue(SettingPredictionDampen));
+                }
+#endif
+
                 if (Pose::IsPoseTracked(locations.jointLocations[XR_HAND_JOINT_PALM_EXT].locationFlags)) {
                     m_lastTimestampWithPoseTracked[side] = std::max(time, m_lastTimestampWithPoseTracked[side]);
                 } else {
@@ -875,8 +928,6 @@ namespace {
         XrPath m_rightHandSubaction{XR_NULL_PATH};
 
         XrSpace m_referenceSpace{XR_NULL_HANDLE};
-        using CacheEntry = std::pair<XrTime, XrHandJointLocationEXT[XR_HAND_JOINT_COUNT_EXT]>;
-        mutable std::map<XrSpace, std::deque<CacheEntry>[HandCount]> m_cachedHandJointsPoses;
 
         Config m_config;
         SOCKET m_configSocket{INVALID_SOCKET};
@@ -896,6 +947,11 @@ namespace {
         std::map<XrActionSet, std::set<XrAction>> m_actionSets;
         std::map<XrAction, Action> m_actions;
 
+        bool m_trackedRecently[2]{false, false};
+
+        using CacheEntry = std::pair<XrTime, XrHandJointLocationEXT[XR_HAND_JOINT_COUNT_EXT]>;
+        mutable std::map<XrSpace, std::deque<CacheEntry>[HandCount]> m_cachedHandJointsPoses;
+        mutable std::mutex m_cacheLock;
         mutable std::optional<XrSpace> m_preferredBaseSpace;
         mutable XrTime m_lastTimestampWithPoseTracked[HandCount]{0, 0};
         mutable GesturesState m_gesturesState{};
