@@ -416,7 +416,7 @@ namespace {
             updateGroupVisibility(m_handTrackingGroup, isHandTrackingEnabled());
         }
 
-        void render(Eye eye, const XrPosef& pose, std::shared_ptr<ITexture> renderTarget) const override {
+        void render(Eye eye, std::shared_ptr<ITexture> renderTarget) const override {
             const float leftEyeOffset = 0.0f;
             const float rightEyeOffset = (float)m_configManager->getValue(SettingOverlayEyeOffset);
             const float eyeOffset = eye == Eye::Left ? leftEyeOffset : rightEyeOffset;
