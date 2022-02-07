@@ -467,9 +467,9 @@ namespace {
                 return OpenXrApi::xrCreateSwapchain(session, createInfo, swapchain);
             }
 
-            // Identify the swapchains of interest for our processing chain. For now, we only handle color
-            // buffers.
-            const bool useSwapchain = createInfo->usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+            // Identify the swapchains of interest for our processing chain.
+            const bool useSwapchain = createInfo->usageFlags & (XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT |
+                                                                XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
             Log("Creating swapchain with dimensions=%ux%u, arraySize=%u, mipCount=%u, sampleCount=%u, format=%d, "
                 "usage=0x%x\n",
@@ -486,27 +486,29 @@ namespace {
                 // Modify the swapchain to handle our processing chain (eg: change resolution and/or select usage
                 // XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT).
 
-                if (m_preProcessor) {
-                    // This is redundant (given the useSwapchain conditions) but we do this for correctness.
-                    chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
-                }
+                if (createInfo->usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT) {
+                    if (m_preProcessor) {
+                        // This is redundant (given the useSwapchain conditions) but we do this for correctness.
+                        chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+                    }
 
-                if (m_upscaler) {
-                    // When upscaling, be sure to request the full resolution with the runtime.
-                    chainCreateInfo.width = m_displayWidth;
-                    chainCreateInfo.height = m_displayHeight;
+                    if (m_upscaler) {
+                        // When upscaling, be sure to request the full resolution with the runtime.
+                        chainCreateInfo.width = m_displayWidth;
+                        chainCreateInfo.height = m_displayHeight;
 
-                    // The upscaler requires to use as an unordered access view.
-                    chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
-                }
+                        // The upscaler requires to use as an unordered access view.
+                        chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+                    }
 
-                if (m_postProcessor) {
-                    // We no longer need the runtime swapchain to have this flag since we will use an intermediate
-                    // texture.
-                    chainCreateInfo.usageFlags &= ~XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+                    if (m_postProcessor) {
+                        // We no longer need the runtime swapchain to have this flag since we will use an intermediate
+                        // texture.
+                        chainCreateInfo.usageFlags &= ~XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
 
-                    // This is redundant (given the useSwapchain conditions) but we do this for correctness.
-                    chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+                        // This is redundant (given the useSwapchain conditions) but we do this for correctness.
+                        chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+                    }
                 }
             }
 
@@ -593,6 +595,11 @@ namespace {
 
                 for (uint32_t i = 0; i < imageCount; i++) {
                     SwapchainImages& images = swapchainState.images[i];
+
+                    // We do no processing to depth buffers.
+                    if (!(createInfo->usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT)) {
+                        continue;
+                    }
 
                     // Create other entries in the chain based on the processing to do (scaling,
                     // post-processing...).
@@ -1195,7 +1202,8 @@ namespace {
             m_graphicsDevice->unsetRenderTargets();
 
             std::shared_ptr<graphics::ITexture> textureForOverlay[utilities::ViewCount] = {};
-            XrCompositionLayerProjectionView* viewsForOverlay = nullptr;
+            std::shared_ptr<graphics::ITexture> depthForOverlay[utilities::ViewCount] = {};
+            graphics::View viewsForOverlay[utilities::ViewCount];
             XrSpace spaceForOverlay = XR_NULL_HANDLE;
 
             // Because the frame info is passed const, we are going to need to reconstruct a writable version of it
@@ -1237,11 +1245,41 @@ namespace {
                         if (swapchainIt == m_swapchains.end()) {
                             throw std::runtime_error("Swapchain is not registered");
                         }
-                        auto swapchainState = swapchainIt->second;
-                        auto swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
+                        auto& swapchainState = swapchainIt->second;
+                        auto& swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
                         uint32_t nextImage = 0;
                         uint32_t lastImage = 0;
                         uint32_t gpuTimerIndex = useVPRT ? eye : 0;
+
+                        // Look for the depth buffer.
+                        std::shared_ptr<graphics::ITexture> depthBuffer;
+                        NearFar nearFar{0.001f, 100.f};
+                        const XrBaseInStructure* entry = reinterpret_cast<const XrBaseInStructure*>(view.next);
+                        while (entry) {
+                            if (entry->type == XR_TYPE_COMPOSITION_LAYER_DEPTH_INFO_KHR) {
+                                const XrCompositionLayerDepthInfoKHR* depth =
+                                    reinterpret_cast<const XrCompositionLayerDepthInfoKHR*>(entry);
+                                // The order of color/depth textures must match.
+                                if (depth->subImage.imageArrayIndex == view.subImage.imageArrayIndex) {
+                                    auto depthSwapchainIt = m_swapchains.find(depth->subImage.swapchain);
+                                    if (depthSwapchainIt == m_swapchains.end()) {
+                                        throw std::runtime_error("Swapchain is not registered");
+                                    }
+                                    auto depthSwapchainState = depthSwapchainIt->second;
+
+                                    assert(depthSwapchainState.images[depthSwapchainState.acquiredImageIndex]
+                                               .chain.size() == 1);
+                                    depthBuffer =
+                                        depthSwapchainState.images[depthSwapchainState.acquiredImageIndex].chain[0];
+                                    nearFar.Near = depth->nearZ;
+                                    nearFar.Far = depth->farZ;
+                                }
+                                break;
+                            }
+                            entry = entry->next;
+                        }
+
+                        const bool isDepthInverted = nearFar.Far < nearFar.Near;
 
                         // Now that we know what eye the swapchain is used for, register it.
                         // TODO: We always assume that if VPRT is used, left eye is texture 0 and right eye is
@@ -1320,6 +1358,7 @@ namespace {
                         }
 
                         textureForOverlay[eye] = swapchainImages.chain.back();
+                        depthForOverlay[eye] = depthBuffer;
 
                         // Patch the resolution.
                         correctedProjectionViews[eye].subImage.imageRect.extent.width = m_displayWidth;
@@ -1335,9 +1374,12 @@ namespace {
                             correctedProjectionViews[eye].fov.angleLeft *= multiplier;
                             correctedProjectionViews[eye].fov.angleRight *= multiplier;
                         }
+
+                        viewsForOverlay[eye].pose = correctedProjectionViews[eye].pose;
+                        viewsForOverlay[eye].fov = correctedProjectionViews[eye].fov;
+                        viewsForOverlay[eye].nearFar = nearFar;
                     }
 
-                    viewsForOverlay = correctedProjectionViews;
                     spaceForOverlay = proj->space;
 
                     correctedProjectionLayer->views = correctedProjectionViews;
@@ -1370,12 +1412,12 @@ namespace {
                 if (m_handTracker) {
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                         if (!useVPRT) {
-                            m_graphicsDevice->setRenderTargets({textureForOverlay[eye]});
+                            m_graphicsDevice->setRenderTargets({textureForOverlay[eye]}, depthForOverlay[eye]);
                         } else {
-                            m_graphicsDevice->setRenderTargets({std::make_pair(textureForOverlay[eye], eye)});
+                            m_graphicsDevice->setRenderTargets({std::make_pair(textureForOverlay[eye], eye)},
+                                                               {std::make_pair(depthForOverlay[eye], eye)});
                         }
-                        m_graphicsDevice->setViewProjection(
-                            viewsForOverlay[eye].pose, viewsForOverlay[eye].fov, 0.001f, 100.0f);
+                        m_graphicsDevice->setViewProjection(viewsForOverlay[eye]);
 
                         m_handTracker->render(viewsForOverlay[eye].pose, spaceForOverlay, textureForOverlay[eye]);
                     }
@@ -1384,6 +1426,7 @@ namespace {
                 // Render the menu.
                 // Ideally, we would not have to split this from the branch above, however with D3D12 we are forced
                 // to flush the context, and we'd rather do it only once.
+                // We omit the depth buffer for menu (2D) content.
                 if (m_menuHandler) {
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                         m_graphicsDevice->flushContext();
@@ -1396,7 +1439,7 @@ namespace {
                         }
 
                         m_graphicsDevice->beginText();
-                        m_menuHandler->render((utilities::Eye)eye, viewsForOverlay[eye].pose, textureForOverlay[eye]);
+                        m_menuHandler->render((utilities::Eye)eye, textureForOverlay[eye]);
                         m_graphicsDevice->flushText();
                     }
                 }

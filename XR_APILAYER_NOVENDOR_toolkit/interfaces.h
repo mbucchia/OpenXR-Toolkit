@@ -197,6 +197,12 @@ namespace toolkit {
         struct IDevice;
         struct ITexture;
 
+        struct View {
+            XrPosef pose;
+            XrFovf fov;
+            xr::math::NearFar nearFar;
+        };
+
         // A shader that will be rendered on a quad wrapping the entire target.
         struct IQuadShader {
             virtual ~IQuadShader() = default;
@@ -469,8 +475,7 @@ namespace toolkit {
             virtual void clearColor(float top, float left, float bottom, float right, XrColor4f& color) const = 0;
             virtual void clearDepth(float value) = 0;
 
-            virtual void
-            setViewProjection(const XrPosef& eyePose, const XrFovf& fov, float depthNear, float depthFar) = 0;
+            virtual void setViewProjection(const View& view) = 0;
             virtual void draw(std::shared_ptr<ISimpleMesh> mesh,
                               const XrPosef& pose,
                               XrVector3f scaling = {1.0f, 1.0f, 1.0f}) = 0;
@@ -646,9 +651,7 @@ namespace toolkit {
             virtual ~IMenuHandler() = default;
 
             virtual void handleInput() = 0;
-            virtual void render(utilities::Eye eye,
-                                const XrPosef& pose,
-                                std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
+            virtual void render(utilities::Eye eye, std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
             virtual void updateStatistics(const LayerStatistics& stats) = 0;
             virtual void updateGesturesState(const input::GesturesState& state) = 0;
         };

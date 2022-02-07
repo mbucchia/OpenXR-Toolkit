@@ -1570,13 +1570,13 @@ namespace {
             m_context->ClearDepthStencilView(depthStencilView, D3D12_CLEAR_FLAG_DEPTH, value, 0, 0, nullptr);
         }
 
-        void setViewProjection(const XrPosef& eyePose, const XrFovf& fov, float depthNear, float depthFar) override {
-            xr::math::NearFar nearFar{depthNear, depthFar};
-            const DirectX::XMMATRIX projection = xr::math::ComposeProjectionMatrix(fov, nearFar);
-            const DirectX::XMMATRIX view = xr::math::LoadInvertedXrPose(eyePose);
+        void setViewProjection(const View& view) override {
+            const DirectX::XMMATRIX projectionMatrix = xr::math::ComposeProjectionMatrix(view.fov, view.nearFar);
+            const DirectX::XMMATRIX viewMatrix = xr::math::LoadInvertedXrPose(view.pose);
 
             ViewProjectionConstantBuffer staging;
-            DirectX::XMStoreFloat4x4(&staging.ViewProjection, DirectX::XMMatrixTranspose(view * projection));
+            DirectX::XMStoreFloat4x4(&staging.ViewProjection,
+                                     DirectX::XMMatrixTranspose(viewMatrix * projectionMatrix));
 
             m_currentMeshViewProjectionBuffer++;
             if (m_currentMeshViewProjectionBuffer >= ARRAYSIZE(m_meshViewProjectionBuffer)) {
@@ -1588,7 +1588,7 @@ namespace {
             }
             m_meshViewProjectionBuffer[m_currentMeshViewProjectionBuffer]->uploadData(&staging, sizeof(staging));
 
-            m_currentDrawDepthBufferIsInverted = depthNear > depthFar;
+            m_currentDrawDepthBufferIsInverted = view.nearFar.Near > view.nearFar.Far;
         }
 
         void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling) override {
@@ -2203,7 +2203,8 @@ namespace {
                                                                          const D3D12_CPU_DESCRIPTOR_HANDLE*,
                                                                          BOOL,
                                                                          const D3D12_CPU_DESCRIPTOR_HANDLE*);
-        static inline PFN_ID3D12GraphicsCommandList_OMSetRenderTargets g_original_ID3D12GraphicsCommandList_OMSetRenderTargets = nullptr;
+        static inline PFN_ID3D12GraphicsCommandList_OMSetRenderTargets
+            g_original_ID3D12GraphicsCommandList_OMSetRenderTargets = nullptr;
         static void hooked_ID3D12GraphicsCommandList_OMSetRenderTargets(
             ID3D12GraphicsCommandList* context,
             UINT NumRenderTargetDescriptors,
@@ -2236,7 +2237,8 @@ namespace {
                                                                         UINT,
                                                                         const D3D12_TEXTURE_COPY_LOCATION*,
                                                                         const D3D12_BOX*);
-        static inline PFN_ID3D12GraphicsCommandList_CopyTextureRegion g_original_ID3D12GraphicsCommandList_CopyTextureRegion = nullptr;
+        static inline PFN_ID3D12GraphicsCommandList_CopyTextureRegion
+            g_original_ID3D12GraphicsCommandList_CopyTextureRegion = nullptr;
         static void hooked_ID3D12GraphicsCommandList_CopyTextureRegion(ID3D12GraphicsCommandList* context,
                                                                        const D3D12_TEXTURE_COPY_LOCATION* pDst,
                                                                        UINT DstX,
