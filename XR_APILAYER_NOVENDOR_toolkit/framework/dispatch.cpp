@@ -59,7 +59,10 @@ namespace LAYER_NAMESPACE {
             std::string(instanceCreateInfo->applicationInfo.engineName) == "OpenXRDeveloperTools";
 
         // Check that the extensions we need are supported by the runtime and/or an upstream API layer.
-        // But first, we need to create a dummy instance in order to be able to perform these checks.
+        //
+        // Workaround: per specification, we should be able to retrive the pointer to
+        // xrEnumerateInstanceExtensionProperties() without an XrInstance. However, some API layers (eg: Ultraleap) do
+        // not seem to properly handle this case. So we create a dummy instance.
         bool hasHandTrackingExt = false;
         bool hasConvertPerformanceCounterTimeExt = false;
         if (!fastInitialization) {
@@ -78,11 +81,22 @@ namespace LAYER_NAMESPACE {
             const XrResult result = apiLayerInfo->nextInfo->nextCreateApiLayerInstance(
                 &dummyCreateInfo, &chainApiLayerInfo, &dummyInstance);
             if (result == XR_SUCCESS) {
-                CHECK_XRCMD(apiLayerInfo->nextInfo->nextGetInstanceProcAddr(
+                // Workaround: the Vive API layers are not compliant with xrEnumerateInstanceExtensionProperties()
+                // specification and the ability to pass NULL in the first argument.
+
+                // Skip the first layer (which is us).
+                auto info = apiLayerInfo->nextInfo->next;
+
+                // Skip all the Vive layers. Hopefully, they come in a continuous chunk.
+                while (info->next && std::string_view(info->layerName).substr(0, 17) == "XR_APILAYER_VIVE_") {
+                    info = info->next;
+                }
+
+                CHECK_XRCMD(info->nextGetInstanceProcAddr(
                     dummyInstance,
                     "xrEnumerateInstanceExtensionProperties",
                     reinterpret_cast<PFN_xrVoidFunction*>(&xrEnumerateInstanceExtensionProperties)));
-                CHECK_XRCMD(apiLayerInfo->nextInfo->nextGetInstanceProcAddr(
+                CHECK_XRCMD(info->nextGetInstanceProcAddr(
                     dummyInstance, "xrDestroyInstance", reinterpret_cast<PFN_xrVoidFunction*>(&xrDestroyInstance)));
             } else {
                 Log("Failed to create bootstrap instance: %d\n", result);
