@@ -59,7 +59,10 @@ namespace LAYER_NAMESPACE {
             std::string(instanceCreateInfo->applicationInfo.engineName) == "OpenXRDeveloperTools";
 
         // Check that the extensions we need are supported by the runtime and/or an upstream API layer.
-        // But first, we need to create a dummy instance in order to be able to perform these checks.
+        //
+        // Workaround: per specification, we should be able to retrive the pointer to
+        // xrEnumerateInstanceExtensionProperties() without an XrInstance. However, some API layers (eg: Ultraleap) do
+        // not seem to properly handle this case. So we create a dummy instance.
         bool hasHandTrackingExt = false;
         bool hasConvertPerformanceCounterTimeExt = false;
         if (!fastInitialization) {
@@ -70,6 +73,25 @@ namespace LAYER_NAMESPACE {
             // Try to speed things up by requesting no extentions.
             XrInstanceCreateInfo dummyCreateInfo = *instanceCreateInfo;
             dummyCreateInfo.enabledExtensionCount = dummyCreateInfo.enabledApiLayerCount = 0;
+
+            {
+                // Workaround: the Vive API layers are not compliant with xrEnumerateInstanceExtensionProperties()
+                // specification and the ability to pass NULL in the first argument.
+
+                // Skip all the Vive layers.
+                auto info = apiLayerInfo->nextInfo;
+                do {
+                    if (std::string_view(info->next->layerName).substr(0, 17) == "XR_APILAYER_VIVE_") {
+                        Log("Skipping unsupported layer: %s\n", info->next->layerName);
+                        info->nextCreateApiLayerInstance = info->next->nextCreateApiLayerInstance;
+                        info->nextGetInstanceProcAddr = info->next->nextGetInstanceProcAddr;
+                        info->next = info->next->next;
+                    } else {
+                        Log("Using layer: %s\n", info->next->layerName);
+                        info = info->next;
+                    }
+                } while (info && info->next);
+            }
 
             // Call the chain to create the dummy instance.
             XrApiLayerCreateInfo chainApiLayerInfo = *apiLayerInfo;
