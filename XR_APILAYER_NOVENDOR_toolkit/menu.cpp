@@ -59,6 +59,7 @@ namespace {
         std::function<std::string(int)> valueToString;
 
         bool visible{true};
+        int acceleration{1};
     };
 
     struct MenuGroup {
@@ -146,6 +147,7 @@ namespace {
             m_menuEntries.push_back({"World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
                                          return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.f, m_stats.icd * 1000);
                                      }});
+            m_menuEntries.back().acceleration = 5;
             m_menuEntries.push_back({"FOV",
                                      MenuEntryType::Slider,
                                      SettingFOV,
@@ -232,9 +234,11 @@ namespace {
                                      }});
             m_configManager->setEnumDefault(SettingMenuTimeout, MenuTimeout::Medium);
             m_menuEntries.push_back(
-                {"Menu eye offset", MenuEntryType::Slider, SettingOverlayEyeOffset, -500, 500, [](int value) {
+                {"Menu eye offset", MenuEntryType::Slider, SettingOverlayEyeOffset, -3000, 3000, [](int value) {
                      return fmt::format("{}px", value);
                  }});
+            m_menuEntries.back().acceleration = 10;
+
             m_menuEntries.push_back({"Restore defaults", MenuEntryType::RestoreDefaultsButton, BUTTON_OR_SEPARATOR});
             m_menuEntries.push_back({"Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
         }
@@ -302,7 +306,9 @@ namespace {
                 default:
                     const int value = m_configManager->peekValue(menuEntry.configName);
                     const int newValue =
-                        std::clamp(value + (moveLeft ? -1 : 1), menuEntry.minValue, menuEntry.maxValue);
+                        std::clamp(value + (moveLeft ? -1 : 1) * (!m_isAccelerating ? 1 : menuEntry.acceleration),
+                                   menuEntry.minValue,
+                                   menuEntry.maxValue);
 
                     // When changing the upscaling, people might immediately exit VR to test the change. Bypass the
                     // commit delay.
