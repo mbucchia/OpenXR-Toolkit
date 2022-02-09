@@ -36,7 +36,7 @@ namespace {
     using namespace toolkit::graphics::d3dcommon;
     using namespace toolkit::log;
 
-    const std::wstring FontFamily = L"Segoe UI Symbol";
+    const std::wstring_view FontFamily = L"Segoe UI Symbol";
 
     struct D3D11ContextState {
         ComPtr<ID3D11InputLayout> inputLayout;
@@ -1395,7 +1395,7 @@ namespace {
             ZeroMemory(&inRect, sizeof(inRect));
             inRect.Right = inRect.Bottom = 1000.0f;
             const auto rect =
-                font->MeasureString(string.c_str(), FontFamily.c_str(), size, &inRect, FW1_LEFT | FW1_TOP);
+                font->MeasureString(string.c_str(), m_fontFamily.c_str(), size, &inRect, FW1_LEFT | FW1_TOP);
             return 1000.0f + rect.Right;
         }
 
@@ -1593,13 +1593,19 @@ namespace {
         void initializeTextResources() {
             CHECK_HRCMD(FW1CreateFactory(FW1_VERSION, set(m_fontWrapperFactory)));
 
-            CHECK_HRCMD(m_fontWrapperFactory->CreateFontWrapper(get(m_device), FontFamily.c_str(), set(m_fontNormal)));
+            if (FAILED(
+                    m_fontWrapperFactory->CreateFontWrapper(get(m_device), m_fontFamily.c_str(), set(m_fontNormal)))) {
+                // Fallback to Arial - won't have symbols but will have text.
+                m_fontFamily = L"Arial";
+                CHECK_HRCMD(
+                    m_fontWrapperFactory->CreateFontWrapper(get(m_device), m_fontFamily.c_str(), set(m_fontNormal)));
+            }
 
             IDWriteFactory* dwriteFactory = nullptr;
             CHECK_HRCMD(m_fontNormal->GetDWriteFactory(&dwriteFactory));
             FW1_FONTWRAPPERCREATEPARAMS params;
             ZeroMemory(&params, sizeof(params));
-            params.DefaultFontParams.pszFontFamily = FontFamily.c_str();
+            params.DefaultFontParams.pszFontFamily = m_fontFamily.c_str();
             params.DefaultFontParams.FontWeight = DWRITE_FONT_WEIGHT_BOLD;
             params.DefaultFontParams.FontStretch = DWRITE_FONT_STRETCH_NORMAL;
             params.DefaultFontParams.FontStyle = DWRITE_FONT_STYLE_NORMAL;
@@ -1627,6 +1633,7 @@ namespace {
         ComPtr<IFW1Factory> m_fontWrapperFactory;
         ComPtr<IFW1FontWrapper> m_fontNormal;
         ComPtr<IFW1FontWrapper> m_fontBold;
+        std::wstring m_fontFamily{FontFamily};
 
         std::shared_ptr<ITexture> m_currentDrawRenderTarget;
         int32_t m_currentDrawRenderTargetSlice;
