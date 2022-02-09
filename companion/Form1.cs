@@ -36,11 +36,15 @@ using Silk.NET.OpenXR;
 using System.Reflection;
 using System.Diagnostics;
 using System.Windows.Input;
+using System.Runtime.InteropServices;
 
 namespace companion
 {
     public partial class Form1 : Form
     {
+        [DllImport("XR_APILAYER_NOVENDOR_toolkit.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall)]
+        public static extern IntPtr getVersionString();
+
         // Must match config.cpp.
         private const string RegPrefix = "SOFTWARE\\OpenXR_Toolkit";
 
@@ -177,6 +181,17 @@ namespace companion
 
         private unsafe void InitXr()
         {
+            string versionString = null;
+            try
+            {
+                IntPtr pStr = getVersionString();
+                versionString = Marshal.PtrToStringAnsi(pStr);
+            }
+            catch (Exception)
+            {
+                MessageBox.Show(this, "Failed to query version", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
             AppDomain dom = AppDomain.CreateDomain("temporaryXr");
             try
             {
@@ -227,7 +242,14 @@ namespace companion
                     }
                     else
                     {
-                        layerActive.Text = "OpenXR Toolkit layer is active";
+                        if (versionString != null)
+                        {
+                            layerActive.Text = versionString + " is active";
+                        }
+                        else
+                        {
+                            layerActive.Text = "OpenXR Toolkit layer is active";
+                        }
                         layerActive.ForeColor = Color.Green;
                         loading = true;
                         disableCheckbox.Checked = false;
