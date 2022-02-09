@@ -119,12 +119,15 @@ namespace LAYER_NAMESPACE {
                 for (auto extension : extensions) {
                     const std::string extensionName(extension.extensionName);
 
+                    Log("Runtime supports extension: %s\n", extension.extensionName);
                     if (extensionName == "XR_EXT_hand_tracking") {
                         hasHandTrackingExt = true;
                     } else if (extensionName == "XR_KHR_win32_convert_performance_counter_time") {
                         hasConvertPerformanceCounterTimeExt = true;
                     }
                 }
+            } else {
+                Log("Failed to query extensions\n");
             }
 
             if (xrDestroyInstance) {
