@@ -67,12 +67,6 @@ namespace {
             // Needed to resolve the requested function pointers.
             OpenXrApi::xrCreateInstance(createInfo);
 
-            // TODO: This should be auto-generated in the call above, but today our generator only looks at core spec.
-            // We may let this fail intentionally and check that the pointer is populated later.
-            xrGetInstanceProcAddr(GetXrInstance(),
-                                  "xrConvertWin32PerformanceCounterToTimeKHR",
-                                  reinterpret_cast<PFN_xrVoidFunction*>(&xrConvertWin32PerformanceCounterToTimeKHR));
-
             m_applicationName = createInfo->applicationInfo.applicationName;
 
             // Dump the OpenXR runtime information to help debugging customer issues.
@@ -84,6 +78,17 @@ namespace {
                                         XR_VERSION_MINOR(instanceProperties.runtimeVersion),
                                         XR_VERSION_PATCH(instanceProperties.runtimeVersion));
             Log("Using OpenXR runtime %s\n", m_runtimeName.c_str());
+
+            // TODO: This should be auto-generated in the call above, but today our generator only looks at core spec.
+            // We may let this fail intentionally and check that the pointer is populated later.
+            // Workaround: the implementation of this function on the Varjo runtime seems to be using a time base than
+            // the timings returned by xrWaitFrame(). Do not use it.
+            if (m_runtimeName.find("Varjo") == std::string::npos) {
+                xrGetInstanceProcAddr(
+                    GetXrInstance(),
+                    "xrConvertWin32PerformanceCounterToTimeKHR",
+                    reinterpret_cast<PFN_xrVoidFunction*>(&xrConvertWin32PerformanceCounterToTimeKHR));
+            }
 
             m_configManager = config::CreateConfigManager(createInfo->applicationInfo.applicationName);
 
