@@ -118,4 +118,9 @@ XrResult __declspec(dllexport) XRAPI_CALL
 
     return XR_SUCCESS;
 }
+
+__declspec(dllexport) const char* WINAPI getVersionString() {
+    return LayerPrettyNameFull.c_str();
+}
+
 }
