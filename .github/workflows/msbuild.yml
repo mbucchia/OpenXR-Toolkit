@@ -41,6 +41,9 @@ jobs:
       run: nuget restore ${{env.SOLUTION_FILE_PATH}}
 
     - name: Build
+      env:
+        PFX_PASSWORD: ${{ secrets.PFX_PASSWORD }}
+        PFX_NAME: "comodo"
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
         # Need to build vdproj. We must invoke this tool from inside its own folder.
@@ -55,9 +58,11 @@ jobs:
     - name: Signing
       env:
         PFX_PASSWORD: ${{ secrets.PFX_PASSWORD }}
+        PFX_NAME: "comodo"
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
-        & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f installer/selfsigncert.pfx /p "$env:PFX_PASSWORD" /v installer/output/OpenXR-Toolkit.msi
+        $pfxName = if ($env:PFX_NAME) { $env:PFX_NAME } else { "selfsigncert" };
+        & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f installer/$pfxName.pfx /p "$env:PFX_PASSWORD" /v installer/output/OpenXR-Toolkit.msi
 
     - name: Publish
       uses: actions/upload-artifact@v2
