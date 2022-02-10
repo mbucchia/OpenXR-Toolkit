@@ -63,13 +63,13 @@ namespace companion
             // 
             // layerActive
             // 
-            this.layerActive.AutoSize = true;
             this.layerActive.Location = new System.Drawing.Point(23, 99);
             this.layerActive.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.layerActive.Name = "layerActive";
-            this.layerActive.Size = new System.Drawing.Size(127, 13);
+            this.layerActive.Size = new System.Drawing.Size(365, 13);
             this.layerActive.TabIndex = 0;
             this.layerActive.Text = "Layer status is not known";
+            this.layerActive.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
             // reportIssuesLink
             // 
