@@ -32,9 +32,6 @@
 
 namespace {
 
-    // 2 views to process, one per eye.
-    constexpr uint32_t ViewCount = 2;
-
     // The xrWaitFrame() loop might cause to have 2 frames in-flight, so we want to delay the GPU timer re-use by those
     // 2 frames.
     constexpr uint32_t GpuTimerLatency = 2;
@@ -47,9 +44,9 @@ namespace {
     struct SwapchainImages {
         std::vector<std::shared_ptr<graphics::ITexture>> chain;
 
-        std::shared_ptr<graphics::IGpuTimer> upscalerGpuTimer[ViewCount];
-        std::shared_ptr<graphics::IGpuTimer> preProcessorGpuTimer[ViewCount];
-        std::shared_ptr<graphics::IGpuTimer> postProcessorGpuTimer[ViewCount];
+        std::shared_ptr<graphics::IGpuTimer> upscalerGpuTimer[utilities::ViewCount];
+        std::shared_ptr<graphics::IGpuTimer> preProcessorGpuTimer[utilities::ViewCount];
+        std::shared_ptr<graphics::IGpuTimer> postProcessorGpuTimer[utilities::ViewCount];
     };
 
     struct SwapchainState {
@@ -138,11 +135,11 @@ namespace {
             const XrResult result = OpenXrApi::xrGetSystem(instance, getInfo, systemId);
             if (XR_SUCCEEDED(result) && getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY) {
                 // Store the actual OpenXR resolution.
-                XrViewConfigurationView views[ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW},
+                XrViewConfigurationView views[utilities::ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW},
                                                             {XR_TYPE_VIEW_CONFIGURATION_VIEW}};
                 uint32_t viewCount;
                 CHECK_XRCMD(OpenXrApi::xrEnumerateViewConfigurationViews(
-                    instance, *systemId, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, ViewCount, &viewCount, views));
+                    instance, *systemId, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, utilities::ViewCount, &viewCount, views));
 
                 m_displayWidth = views[0].recommendedImageRectWidth;
                 m_displayHeight = views[0].recommendedImageRectHeight;
@@ -800,7 +797,7 @@ namespace {
                 OpenXrApi::xrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
             if (XR_SUCCEEDED(result) && isVrSession(session) &&
                 viewLocateInfo->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
-                assert(*viewCountOutput == ViewCount);
+                assert(*viewCountOutput == utilities::ViewCount);
 
                 const auto vec = views[1].pose.position - views[0].pose.position;
                 const auto ipd = Length(vec);
@@ -1118,7 +1115,7 @@ namespace {
             // Unbind all textures from the render targets.
             m_graphicsDevice->unsetRenderTargets();
 
-            std::shared_ptr<graphics::ITexture> textureForOverlay[ViewCount] = {};
+            std::shared_ptr<graphics::ITexture> textureForOverlay[utilities::ViewCount] = {};
             XrCompositionLayerProjectionView* viewsForOverlay = nullptr;
             XrSpace spaceForOverlay = XR_NULL_HANDLE;
 
@@ -1149,11 +1146,11 @@ namespace {
                                                         .data();
 
                     // For VPRT, we need to handle texture arrays.
-                    static_assert(ViewCount == 2);
+                    static_assert(utilities::ViewCount == 2);
                     const bool useVPRT = proj->views[0].subImage.swapchain == proj->views[1].subImage.swapchain;
 
-                    assert(proj->viewCount == ViewCount);
-                    for (uint32_t eye = 0; eye < ViewCount; eye++) {
+                    assert(proj->viewCount == utilities::ViewCount);
+                    for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                         const XrCompositionLayerProjectionView& view = proj->views[eye];
 
                         auto swapchainIt = m_swapchains.find(view.subImage.swapchain);
@@ -1290,7 +1287,7 @@ namespace {
 
                 // Render the hands.
                 if (m_handTracker) {
-                    for (uint32_t eye = 0; eye < ViewCount; eye++) {
+                    for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                         if (!useVPRT) {
                             m_graphicsDevice->setRenderTargets({textureForOverlay[eye]});
                         } else {
@@ -1310,7 +1307,7 @@ namespace {
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                         m_graphicsDevice->flushContext();
                     }
-                    for (uint32_t eye = 0; eye < ViewCount; eye++) {
+                    for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                         if (!useVPRT) {
                             m_graphicsDevice->setRenderTargets({textureForOverlay[eye]});
                         } else {
@@ -1318,7 +1315,7 @@ namespace {
                         }
 
                         m_graphicsDevice->beginText();
-                        m_menuHandler->render(eye, viewsForOverlay[eye].pose, textureForOverlay[eye]);
+                        m_menuHandler->render((utilities::Eye)eye, viewsForOverlay[eye].pose, textureForOverlay[eye]);
                         m_graphicsDevice->flushText();
                     }
                 }

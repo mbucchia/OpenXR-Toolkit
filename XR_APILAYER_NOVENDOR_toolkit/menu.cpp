@@ -221,7 +221,7 @@ namespace {
             m_variableRateShaderPresetGroup.end = m_menuEntries.size();
             m_variableRateShaderCustomGroup.start = m_menuEntries.size();
             {
-                static auto samplePow2ToString = [](int value)->std::string {
+                static auto samplePow2ToString = [](int value) -> std::string {
                     switch (value) {
                     case 0:
                         return "1x";
@@ -537,12 +537,10 @@ namespace {
             m_configManager->setDefault(SettingOverlayEyeOffset, (int)offset.x);
         }
 
-        void render(uint32_t eye, const XrPosef& pose, std::shared_ptr<ITexture> renderTarget) const override {
-            assert(eye == 0 || eye == 1);
-
+        void render(Eye eye, const XrPosef& pose, std::shared_ptr<ITexture> renderTarget) const override {
             const float leftEyeOffset = 0.0f;
             const float rightEyeOffset = (float)m_configManager->getValue(SettingOverlayEyeOffset);
-            const float eyeOffset = eye ? rightEyeOffset : leftEyeOffset;
+            const float eyeOffset = eye == Eye::Left ? leftEyeOffset : rightEyeOffset;
 
             const float leftAlign = (2.0f * renderTarget->getInfo().width / 5.0f) + eyeOffset;
             const float rightAlign = (2 * renderTarget->getInfo().width / 3.0f) + eyeOffset;
@@ -640,7 +638,7 @@ namespace {
                                      FW1_CENTER);
                 top += 1.5f * fontSize;
 
-                if (eye == 0) {
+                if (eye == Eye::Left) {
                     m_menuEntriesRight = std::max(m_menuEntriesRight, left);
                 }
 
@@ -729,7 +727,7 @@ namespace {
 
                     top += 1.05f * fontSize;
 
-                    if (eye == 0) {
+                    if (eye == Eye::Left) {
                         m_menuEntriesRight = std::max(m_menuEntriesRight, left);
                     }
                 }
@@ -763,7 +761,7 @@ namespace {
                         top += 1.05f * fontSize;
                     }
 
-                    if (eye == 0) {
+                    if (eye == Eye::Left) {
                         m_menuEntriesRight = std::max(m_menuEntriesRight, left);
                     }
                 }
