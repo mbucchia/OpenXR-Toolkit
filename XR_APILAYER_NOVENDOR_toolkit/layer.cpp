@@ -136,10 +136,14 @@ namespace {
             if (XR_SUCCEEDED(result) && getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY) {
                 // Store the actual OpenXR resolution.
                 XrViewConfigurationView views[utilities::ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW},
-                                                            {XR_TYPE_VIEW_CONFIGURATION_VIEW}};
+                                                                       {XR_TYPE_VIEW_CONFIGURATION_VIEW}};
                 uint32_t viewCount;
-                CHECK_XRCMD(OpenXrApi::xrEnumerateViewConfigurationViews(
-                    instance, *systemId, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, utilities::ViewCount, &viewCount, views));
+                CHECK_XRCMD(OpenXrApi::xrEnumerateViewConfigurationViews(instance,
+                                                                         *systemId,
+                                                                         XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+                                                                         utilities::ViewCount,
+                                                                         &viewCount,
+                                                                         views));
 
                 m_displayWidth = views[0].recommendedImageRectWidth;
                 m_displayHeight = views[0].recommendedImageRectHeight;
@@ -362,6 +366,14 @@ namespace {
                             isMotionReprojectionRateSupported,
                             m_variableRateShader ? m_variableRateShader->getMaxDownsamplePow2() : 0);
                     }
+
+                    // Create a reference space to calculate projection views.
+                    {
+                        XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+                        referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
+                        referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
+                        CHECK_XRCMD(xrCreateReferenceSpace(*session, &referenceSpaceCreateInfo, &m_viewSpace));
+                    }
                 } else {
                     Log("Unsupported graphics runtime.\n");
                 }
@@ -385,6 +397,10 @@ namespace {
                     m_graphicsDevice->flushContext(true);
                 }
 
+                if (m_viewSpace != XR_NULL_HANDLE) {
+                    xrDestroySpace(m_viewSpace);
+                    m_viewSpace = XR_NULL_HANDLE;
+                }
                 if (m_handTracker) {
                     m_handTracker->endSession();
                 }
@@ -798,6 +814,57 @@ namespace {
             if (XR_SUCCEEDED(result) && isVrSession(session) &&
                 viewLocateInfo->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
                 assert(*viewCountOutput == utilities::ViewCount);
+
+                // Calibrate the projection center for each eye.
+                if (m_needCalibrateEyeProjections) {
+                    XrViewLocateInfo info = *viewLocateInfo;
+                    info.space = m_viewSpace;
+
+                    XrViewState state{XR_TYPE_VIEW_STATE, nullptr};
+                    XrView eyeInViewSpace[2] = {{XR_TYPE_VIEW, nullptr}, {XR_TYPE_VIEW, nullptr}};
+                    CHECK_HRCMD(OpenXrApi::xrLocateViews(
+                        session, &info, &state, viewCapacityInput, viewCountOutput, eyeInViewSpace));
+
+                    if (Pose::IsPoseValid(state.viewStateFlags)) {
+                        DirectX::XMFLOAT4X4 leftView, rightView;
+                        {
+                            const auto tmp = LoadXrPose(eyeInViewSpace[0].pose);
+                            DirectX::XMStoreFloat4x4(&leftView, tmp);
+                        }
+                        {
+                            const auto tmp = LoadXrPose(eyeInViewSpace[1].pose);
+                            DirectX::XMStoreFloat4x4(&rightView, tmp);
+                        }
+
+                        // https://github.com/fholger/vrperfkit/blob/master/src/openvr/openvr_manager.cpp
+                        const float dotForward = leftView.m[2][0] * rightView.m[2][0] +
+                                                 leftView.m[2][1] * rightView.m[2][1] +
+                                                 leftView.m[2][2] * rightView.m[2][2];
+
+                        int projCenterX[utilities::ViewCount];
+                        int projCenterY[utilities::ViewCount];
+                        for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
+                            const auto& fov = eyeInViewSpace[eye].fov;
+                            const float cantedAngle = std::abs(std::acosf(dotForward) / 2) * (eye ? -1 : 1);
+                            const float canted = std::tanf(cantedAngle);
+                            projCenterX[eye] = (int)(m_displayWidth * 0.5f *
+                                                     (1.f + (fov.angleRight + fov.angleLeft - 2 * canted) /
+                                                                (fov.angleLeft - fov.angleRight)));
+                            projCenterY[eye] =
+                                (int)(m_displayHeight * 0.5f *
+                                      (1.f + (fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown)));
+                        }
+
+                        // Push those values where needed.
+                        m_configManager->setDefault(config::SettingOverlayEyeOffset, projCenterX[1] - projCenterX[0]);
+                        if (m_variableRateShader) {
+                            m_variableRateShader->setViewProjectionCenters(
+                                projCenterX[0], projCenterY[0], projCenterX[1], projCenterY[1]);
+                        }
+
+                        m_needCalibrateEyeProjections = false;
+                    }
+                }
 
                 const auto vec = views[1].pose.position - views[0].pose.position;
                 const auto ipd = Length(vec);
@@ -1275,16 +1342,6 @@ namespace {
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
                 }
 
-                if (m_menuHandler && m_needCalibrateEyeOffsets) {
-                    m_menuHandler->calibrate(viewsForOverlay[0].pose,
-                                             viewsForOverlay[0].fov,
-                                             textureForOverlay[0]->getInfo(),
-                                             viewsForOverlay[1].pose,
-                                             viewsForOverlay[1].fov,
-                                             textureForOverlay[1]->getInfo());
-                    m_needCalibrateEyeOffsets = false;
-                }
-
                 // Render the hands.
                 if (m_handTracker) {
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
@@ -1380,6 +1437,8 @@ namespace {
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;
         bool m_sendInterationProfileEvent{false};
+        XrSpace m_viewSpace{XR_NULL_HANDLE};
+        bool m_needCalibrateEyeProjections{true};
 
         std::shared_ptr<config::IConfigManager> m_configManager;
 
@@ -1401,7 +1460,6 @@ namespace {
         int m_keyScreenshot{VK_F12};
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
         bool m_requestScreenShotKeyState{false};
-        bool m_needCalibrateEyeOffsets{true};
 
         struct {
             std::shared_ptr<utilities::ICpuTimer> appCpuTimer;

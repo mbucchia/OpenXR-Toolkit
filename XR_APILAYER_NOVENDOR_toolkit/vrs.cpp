@@ -346,6 +346,13 @@ namespace {
             return true;
         }
 
+        void setViewProjectionCenters(int leftCenterX, int leftCenterY, int rightCenterX, int rightCenterY) override {
+            m_projCenterX[0] = leftCenterX;
+            m_projCenterY[0] = leftCenterY;
+            m_projCenterX[1] = rightCenterX;
+            m_projCenterY[1] = rightCenterY;
+        }
+
         uint8_t getMaxDownsamplePow2() const override {
             return m_maxDownsamplePow2;
         }

@@ -508,35 +508,6 @@ namespace {
             updateGroupVisibility(m_handTrackingGroup, isHandTrackingEnabled());
         }
 
-        void calibrate(const XrPosef& poseLeft,
-                       const XrFovf& fovLeft,
-                       const XrSwapchainCreateInfo& leftImageInfo,
-                       const XrPosef& poseRight,
-                       const XrFovf& fovRight,
-                       const XrSwapchainCreateInfo& rightImageInfo) override {
-            // Project a single point 1m in front of the head from both eyes to clip space and compute the offset.
-            // Seems to work well.
-            const XrVector3f worldPos3 =
-                Pose::Multiply(poseLeft, Pose::Translation(XrVector3f{0.0f, 0.0f, 1.0f})).position;
-            const XrVector4f worldPos4 = XrVector4f{worldPos3.x, worldPos3.y, worldPos3.z, 1.0f};
-            const DirectX::XMVECTOR worldPos = LoadXrVector4(worldPos4);
-            auto projectPoint = [&worldPos](
-                                    const XrPosef& eyePose, const XrFovf& fov, const XrSwapchainCreateInfo& imageInfo) {
-                const DirectX::XMMATRIX projMatrix = ComposeProjectionMatrix(fov, NearFar{0.001f, 100.0f});
-                const DirectX::XMVECTOR viewPos = DirectX::XMVector4Transform(worldPos, LoadInvertedXrPose(eyePose));
-                const DirectX::XMVECTOR clipPos = DirectX::XMVector4Transform(viewPos, projMatrix);
-                XrVector4f clipPos4;
-                StoreXrVector4(&clipPos4, clipPos);
-                XrVector2f screenPos{clipPos4.x / clipPos4.w, clipPos4.y / clipPos4.w};
-                return XrVector2f{screenPos.x * imageInfo.width, screenPos.y * imageInfo.height};
-            };
-
-            const auto offset =
-                projectPoint(poseRight, fovRight, rightImageInfo) - projectPoint(poseLeft, fovLeft, leftImageInfo);
-
-            m_configManager->setDefault(SettingOverlayEyeOffset, (int)offset.x);
-        }
-
         void render(Eye eye, const XrPosef& pose, std::shared_ptr<ITexture> renderTarget) const override {
             const float leftEyeOffset = 0.0f;
             const float rightEyeOffset = (float)m_configManager->getValue(SettingOverlayEyeOffset);
