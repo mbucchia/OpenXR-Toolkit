@@ -125,6 +125,7 @@ namespace {
                 for (uint32_t i = 0; i < ViewCount; i++) {
                     m_shadingRateMask[i] = m_device->createTexture(info, "VRS {} TEX2D");
                 }
+                m_shadingRateMaskGeneric = m_device->createTexture(info, "VRS Generic TEX2D");
 
                 info.arraySize = 2;
                 m_shadingRateMaskVPRT = m_device->createTexture(info, "VRS VPRT TEX2D");
@@ -146,6 +147,12 @@ namespace {
                                                                   &desc,
                                                                   set(m_d3d11Resources.shadingRateResourceView[i])));
                 }
+                CHECK_NVCMD(
+                    NvAPI_D3D11_CreateShadingRateResourceView(m_device->getNative<D3D11>(),
+                                                              m_shadingRateMaskGeneric->getNative<D3D11>(),
+                                                              &desc,
+                                                              set(m_d3d11Resources.shadingRateResourceViewGeneric)));
+
                 desc.ViewDimension = NV_SRRV_DIMENSION_TEXTURE2DARRAY;
                 desc.Texture2DArray.ArraySize = 2;
                 CHECK_NVCMD(
@@ -167,6 +174,7 @@ namespace {
             for (uint32_t i = 0; i < ViewCount; i++) {
                 m_d3d11Resources.shadingRateResourceView[i].Detach();
             }
+            m_d3d11Resources.shadingRateResourceViewGeneric.Detach();
             m_d3d11Resources.shadingRateResourceViewVPRT.Detach();
         }
 
@@ -242,9 +250,10 @@ namespace {
 
                     static_assert(ViewCount == 2);
                     std::vector<uint8_t> leftPattern;
-                    generateFoveationPattern(Eye::Left,
-                                             leftPattern,
+                    generateFoveationPattern(leftPattern,
                                              rowPitchAligned,
+                                             m_projCenterX[0],
+                                             m_projCenterY[0],
                                              innerRadius / 100.f,
                                              outerRadius / 100.f,
                                              innerValue,
@@ -252,9 +261,21 @@ namespace {
                                              outerValue);
 
                     std::vector<uint8_t> rightPattern;
-                    generateFoveationPattern(Eye::Right,
-                                             rightPattern,
+                    generateFoveationPattern(rightPattern,
                                              rowPitchAligned,
+                                             m_projCenterX[1],
+                                             m_projCenterY[1],
+                                             innerRadius / 100.f,
+                                             outerRadius / 100.f,
+                                             innerValue,
+                                             middleValue,
+                                             outerValue);
+
+                    std::vector<uint8_t> genericPattern;
+                    generateFoveationPattern(genericPattern,
+                                             rowPitchAligned,
+                                             m_targetWidth / 2,
+                                             m_targetHeight / 2,
                                              innerRadius / 100.f,
                                              outerRadius / 100.f,
                                              innerValue,
@@ -263,6 +284,7 @@ namespace {
 
                     m_shadingRateMask[0]->uploadData(leftPattern.data(), rowPitchAligned);
                     m_shadingRateMask[1]->uploadData(rightPattern.data(), rowPitchAligned);
+                    m_shadingRateMaskGeneric->uploadData(genericPattern.data(), rowPitchAligned);
 
                     m_shadingRateMaskVPRT->uploadData(leftPattern.data(), rowPitchAligned, 0);
                     m_shadingRateMaskVPRT->uploadData(rightPattern.data(), rowPitchAligned, 1);
@@ -277,6 +299,9 @@ namespace {
                                 CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMask[1]->getNative<D3D12>(),
                                                                      D3D12_RESOURCE_STATE_COMMON,
                                                                      D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE),
+                                CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMaskGeneric->getNative<D3D12>(),
+                                                                     D3D12_RESOURCE_STATE_COMMON,
+                                                                     D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE),
                                 CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMaskVPRT->getNative<D3D12>(),
                                                                      D3D12_RESOURCE_STATE_COMMON,
                                                                      D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE)};
@@ -287,23 +312,15 @@ namespace {
             }
         }
 
-        void block() override {
-            m_isBlocked = true;
-            disable();
-        }
+        bool onSetRenderTarget(std::shared_ptr<graphics::IContext> context,
+                               std::shared_ptr<ITexture> renderTarget,
+                               std::optional<Eye> eyeHint) override {
+            const auto& info = renderTarget->getInfo();
 
-        void unblock() override {
-            m_isBlocked = false;
-        }
-
-        bool onSetRenderTarget(std::shared_ptr<graphics::IContext> context, XrSwapchainCreateInfo& info) override {
-            if (!m_isEnabled || m_isBlocked || !isVariableRateShadingCandidate(info)) {
+            if (!m_isEnabled || !isVariableRateShadingCandidate(info)) {
                 disable(context);
                 return false;
             }
-
-            // TODO: Guess which eye now...
-            Eye eye = Eye::Left;
 
             DebugLog("VRS: enable\n");
             if (m_device->getApi() == Api::D3D11) {
@@ -323,10 +340,11 @@ namespace {
                 desc.pViewports = viewports;
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context->getNative<D3D11>(), &desc));
 
-                CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(
-                    context->getNative<D3D11>(),
-                    get(info.arraySize == 1 ? m_d3d11Resources.shadingRateResourceView[(uint32_t)eye]
-                                            : m_d3d11Resources.shadingRateResourceViewVPRT)));
+                auto& mask = info.arraySize == 2   ? m_d3d11Resources.shadingRateResourceViewVPRT
+                             : eyeHint.has_value() ? m_d3d11Resources.shadingRateResourceView[(uint32_t)eyeHint.value()]
+                                                   : m_d3d11Resources.shadingRateResourceViewGeneric;
+
+                CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context->getNative<D3D11>(), get(mask)));
             } else if (m_device->getApi() == Api::D3D12) {
                 ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
                 if (FAILED(context->getNative<D3D12>()->QueryInterface(
@@ -336,14 +354,47 @@ namespace {
                 }
 
                 vrsCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, nullptr);
-                vrsCommandList->RSSetShadingRateImage(
-                    (info.arraySize == 1 ? m_shadingRateMask[(uint32_t)eye] : m_shadingRateMaskVPRT)
-                        ->getNative<D3D12>());
+
+                auto& mask = info.arraySize == 2   ? m_shadingRateMaskVPRT
+                             : eyeHint.has_value() ? m_shadingRateMask[(uint32_t)eyeHint.value()]
+                                                   : m_shadingRateMaskGeneric;
+
+                vrsCommandList->RSSetShadingRateImage(mask->getNative<D3D12>());
             } else {
                 throw new std::runtime_error("Unsupported graphics runtime");
             }
 
             return true;
+        }
+
+        void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) override {
+            disable(context);
+        }
+
+        void disable(std::shared_ptr<graphics::IContext> context = nullptr) override {
+            DebugLog("VRS: disable\n");
+            if (m_device->getApi() == Api::D3D11) {
+                auto nativeContext = context ? context->getNative<D3D11>() : m_device->getContext<D3D11>();
+
+                NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.version = NV_D3D11_VIEWPORTS_SHADING_RATE_DESC_VER;
+                CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(nativeContext, &desc));
+                CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(nativeContext, nullptr));
+            } else if (m_device->getApi() == Api::D3D12) {
+                auto nativeContext = context ? context->getNative<D3D12>() : m_device->getContext<D3D12>();
+
+                ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
+                if (FAILED(nativeContext->QueryInterface(__uuidof(ID3D12GraphicsCommandList5),
+                                                         reinterpret_cast<void**>(set(vrsCommandList))))) {
+                    DebugLog("VRS: failed to query ID3D12GraphicsCommandList5\n");
+                    return;
+                }
+
+                vrsCommandList->RSSetShadingRateImage(nullptr);
+            } else {
+                throw new std::runtime_error("Unsupported graphics runtime");
+            }
         }
 
         void setViewProjectionCenters(int leftCenterX, int leftCenterY, int rightCenterX, int rightCenterY) override {
@@ -358,9 +409,10 @@ namespace {
         }
 
       private:
-        void generateFoveationPattern(Eye eye,
-                                      std::vector<uint8_t>& pattern,
+        void generateFoveationPattern(std::vector<uint8_t>& pattern,
                                       size_t rowPitch,
+                                      int projCenterX,
+                                      int projCenterY,
                                       float innerRadius,
                                       float outerRadius,
                                       uint8_t innerValue,
@@ -370,8 +422,8 @@ namespace {
             const auto height = Align(m_targetHeight, m_tileSize) / m_tileSize;
 
             pattern.resize(rowPitch * height);
-            const int centerX = m_projCenterX[(uint32_t)eye] / m_tileSize;
-            const int centerY = m_projCenterY[(uint32_t)eye] / m_tileSize;
+            const int centerX = projCenterX / m_tileSize;
+            const int centerY = projCenterY / m_tileSize;
 
             const int innerSemiMinor = (int)(height * innerRadius / 2);
             const int innerSemiMajor = (int)(1.25f * innerSemiMinor);
@@ -398,7 +450,7 @@ namespace {
             }
         }
 
-        bool isVariableRateShadingCandidate(XrSwapchainCreateInfo& info) const {
+        bool isVariableRateShadingCandidate(const XrSwapchainCreateInfo& info) const {
             // Check for proportionality with the size of our render target.
             DebugLog("VRS: textureDesc.Width=%u textureDesc.Height=%u\n", info.width, info.height);
             const float aspectRatio = (float)info.width / info.height;
@@ -414,32 +466,6 @@ namespace {
             return true;
         }
 
-        void disable(std::shared_ptr<graphics::IContext> context = nullptr) {
-            DebugLog("VRS: disable\n");
-            if (m_device->getApi() == Api::D3D11) {
-                auto nativeContext = context ? context->getNative<D3D11>() : m_device->getContext<D3D11>();
-
-                NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.version = NV_D3D11_VIEWPORTS_SHADING_RATE_DESC_VER;
-                CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(nativeContext, &desc));
-                CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(nativeContext, nullptr));
-            } else if (m_device->getApi() == Api::D3D12) {
-                auto nativeContext = context ? context->getNative<D3D12>() : m_device->getContext<D3D12>();
-
-                ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
-                if (FAILED(nativeContext->QueryInterface(__uuidof(ID3D12GraphicsCommandList5),
-                                                         reinterpret_cast<void**>(set(vrsCommandList))))) {
-                    DebugLog("VRS: failed to query ID3D12GraphicsCommandList5\n");
-                    return;
-                }
-
-                vrsCommandList->RSSetShadingRateImage(nullptr);
-            } else {
-                throw new std::runtime_error("Unsupported graphics runtime");
-            }
-        }
-
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
         const uint32_t m_targetWidth;
@@ -453,7 +479,6 @@ namespace {
         uint8_t m_maxDownsamplePow2{0};
 
         bool m_isEnabled{true};
-        bool m_isBlocked{false};
 
         struct {
             NV_PIXEL_SHADING_RATE innerShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
@@ -461,10 +486,12 @@ namespace {
             NV_PIXEL_SHADING_RATE outerShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
 
             ComPtr<ID3D11NvShadingRateResourceView> shadingRateResourceView[ViewCount];
+            ComPtr<ID3D11NvShadingRateResourceView> shadingRateResourceViewGeneric;
             ComPtr<ID3D11NvShadingRateResourceView> shadingRateResourceViewVPRT;
         } m_d3d11Resources;
 
         std::shared_ptr<ITexture> m_shadingRateMask[ViewCount];
+        std::shared_ptr<ITexture> m_shadingRateMaskGeneric;
         std::shared_ptr<ITexture> m_shadingRateMaskVPRT;
 
         // Must appear last.

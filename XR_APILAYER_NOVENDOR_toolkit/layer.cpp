@@ -53,6 +53,8 @@ namespace {
         std::vector<SwapchainImages> images;
         uint32_t acquiredImageIndex{0};
         bool delayedRelease{false};
+
+        bool registeredWithFrameAnalyzer{false};
     };
 
     class OpenXrLayer : public toolkit::OpenXrApi {
@@ -327,16 +329,47 @@ namespace {
                     m_postProcessor =
                         graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
 
+                    m_configManager->setDefault("disable_frame_analyzer", 0);
+                    if (!m_configManager->getValue("disable_frame_analyzer")) {
+                        m_frameAnalyzer =
+                            graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice, inputWidth, inputHeight);
+                    }
                     m_variableRateShader =
                         graphics::CreateVariableRateShader(m_configManager, m_graphicsDevice, inputWidth, inputHeight);
-                    if (m_variableRateShader) {
-                        m_graphicsDevice->registerRenderTargetEvent(
-                            [&](std::shared_ptr<graphics::IContext> context, XrSwapchainCreateInfo& info) {
-                                if (m_variableRateShader->onSetRenderTarget(context, info)) {
+
+                    // Register intercepted events.
+                    m_graphicsDevice->registerSetRenderTargetEvent(
+                        [&](std::shared_ptr<graphics::IContext> context,
+                            std::shared_ptr<graphics::ITexture> renderTarget) {
+                            if (m_frameAnalyzer) {
+                                m_frameAnalyzer->onSetRenderTarget(context, renderTarget);
+                            }
+                            if (m_variableRateShader) {
+                                if (m_variableRateShader->onSetRenderTarget(
+                                        context,
+                                        renderTarget,
+                                        m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt)) {
                                     m_stats.numRenderTargetsWithVRS++;
                                 }
-                            });
-                    }
+                            }
+                        });
+                    m_graphicsDevice->registerUnsetRenderTargetEvent([&](std::shared_ptr<graphics::IContext> context) {
+                        if (m_frameAnalyzer) {
+                            m_frameAnalyzer->onUnsetRenderTarget(context);
+                        }
+                        if (m_variableRateShader) {
+                            m_variableRateShader->onUnsetRenderTarget(context);
+                        }
+                    });
+                    m_graphicsDevice->registerCopyTextureEvent([&](std::shared_ptr<graphics::IContext> context,
+                                                                   std::shared_ptr<graphics::ITexture> source,
+                                                                   std::shared_ptr<graphics::ITexture> destination,
+                                                                   int sourceSlice,
+                                                                   int destinationSlice) {
+                        if (m_frameAnalyzer) {
+                            m_frameAnalyzer->onCopyTexture(source, destination, sourceSlice, destinationSlice);
+                        }
+                    });
 
                     m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.endFrameCpuTimer = utilities::CreateCpuTimer();
@@ -394,6 +427,7 @@ namespace {
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 // Wait for any pending operation to complete.
                 if (m_graphicsDevice) {
+                    m_graphicsDevice->blockCallbacks();
                     m_graphicsDevice->flushContext(true);
                 }
 
@@ -407,6 +441,7 @@ namespace {
                 m_upscaler.reset();
                 m_preProcessor.reset();
                 m_postProcessor.reset();
+                m_frameAnalyzer.reset();
                 m_variableRateShader.reset();
                 for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
                     m_performanceCounters.appGpuTimer[i].reset();
@@ -417,7 +452,9 @@ namespace {
                 m_performanceCounters.overlayCpuTimer.reset();
                 m_swapchains.clear();
                 m_menuHandler.reset();
-                m_graphicsDevice->shutdown();
+                if (m_graphicsDevice) {
+                    m_graphicsDevice->shutdown();
+                }
                 m_graphicsDevice.reset();
                 m_vrSession = XR_NULL_HANDLE;
                 // A good check to ensure there are no resources leak is to confirm that the graphics device is
@@ -1028,6 +1065,10 @@ namespace {
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                         m_graphicsDevice->flushContext();
                     }
+
+                    if (m_frameAnalyzer) {
+                        m_frameAnalyzer->resetForFrame();
+                    }
                 }
             }
 
@@ -1132,25 +1173,15 @@ namespace {
             m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
             m_graphicsDevice->resolveQueries();
 
-            // Create a blackout for variable rate shading while in this function.
-            struct VariableRateShaderBlackout {
-                VariableRateShaderBlackout(std::shared_ptr<graphics::IVariableRateShader> variableRateShader)
-                    : m_variableRateShader(variableRateShader) {
-                    if (m_variableRateShader) {
-                        m_variableRateShader->block();
-                    }
-                }
-
-                ~VariableRateShaderBlackout() {
-                    if (m_variableRateShader) {
-                        m_variableRateShader->unblock();
-                    }
-                }
-
-                std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;
-            } variableRateShaderBlackout(m_variableRateShader);
+            if (m_frameAnalyzer) {
+                m_frameAnalyzer->prepareForEndFrame();
+            }
+            if (m_variableRateShader) {
+                m_variableRateShader->disable();
+            }
 
             // TODO: Ensure restoreContext() even on error.
+            m_graphicsDevice->blockCallbacks();
             m_graphicsDevice->saveContext();
 
             // Handle inputs.
@@ -1215,6 +1246,7 @@ namespace {
                     // For VPRT, we need to handle texture arrays.
                     static_assert(utilities::ViewCount == 2);
                     const bool useVPRT = proj->views[0].subImage.swapchain == proj->views[1].subImage.swapchain;
+                    // TODO: We need to use subImage.imageArrayIndex instead of assuming 0/left and 1/right.
 
                     assert(proj->viewCount == utilities::ViewCount);
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
@@ -1229,6 +1261,17 @@ namespace {
                         uint32_t nextImage = 0;
                         uint32_t lastImage = 0;
                         uint32_t gpuTimerIndex = useVPRT ? eye : 0;
+
+                        // Now that we know what eye the swapchain is used for, register it.
+                        // TODO: We always assume that if VPRT is used, left eye is texture 0 and right eye is
+                        // texture 1. I'm sure this holds in like 99% of the applications, but still not very clean to
+                        // assume.
+                        if (m_frameAnalyzer && !useVPRT && !swapchainState.registeredWithFrameAnalyzer) {
+                            for (const auto& image : swapchainState.images) {
+                                m_frameAnalyzer->registerColorSwapchainImage(image.chain[0], (utilities::Eye)eye);
+                            }
+                            swapchainState.registeredWithFrameAnalyzer = true;
+                        }
 
                         // Insert processing below.
                         //
@@ -1405,7 +1448,13 @@ namespace {
                 }
             }
 
-            return OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
+            {
+                const auto result = OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
+
+                m_graphicsDevice->unblockCallbacks();
+
+                return result;
+            }
         }
 
       private:
@@ -1452,6 +1501,7 @@ namespace {
         std::shared_ptr<graphics::IImageProcessor> m_preProcessor;
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
 
+        std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;
         std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;
 
         std::shared_ptr<input::IHandTracker> m_handTracker;

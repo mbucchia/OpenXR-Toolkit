@@ -516,9 +516,19 @@ namespace toolkit {
 
             virtual void resolveQueries() = 0;
 
-            using RenderTargetEvent = std::function<void(std::shared_ptr<IContext>, XrSwapchainCreateInfo&)>;
-            virtual uint32_t registerRenderTargetEvent(RenderTargetEvent event) = 0;
-            virtual void unregisterRenderTargetEvent(uint32_t token) = 0;
+            virtual void blockCallbacks() = 0;
+            virtual void unblockCallbacks() = 0;
+
+            using SetRenderTargetEvent = std::function<void(std::shared_ptr<IContext>, std::shared_ptr<ITexture> renderTarget)>;
+            virtual void registerSetRenderTargetEvent(SetRenderTargetEvent event) = 0;
+            using UnsetRenderTargetEvent = std::function<void(std::shared_ptr<IContext>)>;
+            virtual void registerUnsetRenderTargetEvent(UnsetRenderTargetEvent event) = 0;
+            using CopyTextureEvent = std::function<void(std::shared_ptr<IContext> /* context */,
+                                                        std::shared_ptr<ITexture> /* source */,
+                                                        std::shared_ptr<ITexture> /* destination */,
+                                                        int /* sourceSlice */,
+                                                        int /* destinationSlice */)>;
+            virtual void registerCopyTextureEvent(CopyTextureEvent event) = 0;
 
             virtual void shutdown() = 0;
 
@@ -571,16 +581,37 @@ namespace toolkit {
                                  int32_t slice = -1) = 0;
         };
 
+        struct IFrameAnalyzer {
+            virtual ~IFrameAnalyzer() = default;
+
+            virtual void registerColorSwapchainImage(std::shared_ptr<ITexture> source, utilities::Eye eye) = 0;
+
+            virtual void resetForFrame() = 0;
+            virtual void prepareForEndFrame() = 0;
+
+            virtual void onSetRenderTarget(std::shared_ptr<IContext> context,
+                                           std::shared_ptr<ITexture> renderTarget) = 0;
+            virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
+
+            virtual void onCopyTexture(std::shared_ptr<ITexture> source,
+                                       std::shared_ptr<ITexture> destination,
+                                       int sourceSlice = -1,
+                                       int destinationSlice = -1) = 0;
+
+            virtual std::optional<utilities::Eye> getEyeHint() const = 0;
+        };
+
         // A Variable Rate Shader (VRS) control implementation.
         struct IVariableRateShader {
             virtual ~IVariableRateShader() = default;
 
             virtual void update() = 0;
 
-            virtual void block() = 0;
-            virtual void unblock() = 0;
-
-            virtual bool onSetRenderTarget(std::shared_ptr<IContext> context, XrSwapchainCreateInfo& info) = 0;
+            virtual bool onSetRenderTarget(std::shared_ptr<IContext> context,
+                                           std::shared_ptr<ITexture> renderTarget,
+                                           std::optional<utilities::Eye> eyeHint) = 0;
+            virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
+            virtual void disable(std::shared_ptr<graphics::IContext> context = nullptr) = 0;
 
             virtual void
             setViewProjectionCenters(int leftCenterX, int leftCenterY, int rightCenterX, int rightCenterY) = 0;

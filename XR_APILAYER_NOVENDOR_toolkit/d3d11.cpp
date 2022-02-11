@@ -486,7 +486,7 @@ namespace {
             assert(!(rowPitch % m_device->getTextureAlignmentConstraint()));
 
             m_device->getContext<D3D11>()->UpdateSubresource(
-                m_texture.Get(),
+                get(m_texture),
                 D3D11CalcSubresource(0, std::max(0, slice), m_textureDesc.MipLevels),
                 nullptr,
                 buffer,
@@ -803,7 +803,6 @@ namespace {
                                                                UINT,
                                                                ID3D11RenderTargetView* const*,
                                                                ID3D11DepthStencilView*);
-
     typedef void (*PFN_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews)(ID3D11DeviceContext*,
                                                                                       UINT,
                                                                                       ID3D11RenderTargetView* const*,
@@ -812,6 +811,17 @@ namespace {
                                                                                       UINT,
                                                                                       ID3D11UnorderedAccessView* const*,
                                                                                       const UINT*);
+
+    typedef void (*PFN_ID3D11DeviceContext_CopyResource)(ID3D11DeviceContext*, ID3D11Resource*, ID3D11Resource*);
+    typedef void (*PFN_ID3D11DeviceContext_CopySubresourceRegion)(
+        ID3D11DeviceContext*, ID3D11Resource*, UINT, UINT, UINT, UINT, ID3D11Resource*, UINT, const D3D11_BOX*);
+
+#define INVOKE_EVENT(event, ...)                                                                                       \
+    do {                                                                                                               \
+        if (!m_blockEvents && m_##event) {                                                                             \
+            m_##event(##__VA_ARGS__);                                                                                  \
+        }                                                                                                              \
+    } while (0);
 
     class D3D11Device : public IDevice, public std::enable_shared_from_this<D3D11Device> {
       public:
@@ -1469,14 +1479,24 @@ namespace {
         void resolveQueries() override {
         }
 
-        uint32_t registerRenderTargetEvent(RenderTargetEvent event) override {
-            const uint32_t token = (uint32_t)m_onSetRenderTargetCallbacks.size();
-            m_onSetRenderTargetCallbacks.push_back(event);
-            return token;
+        void blockCallbacks() override {
+            m_blockEvents = true;
         }
 
-        void unregisterRenderTargetEvent(uint32_t token) override {
-            m_onSetRenderTargetCallbacks.erase(m_onSetRenderTargetCallbacks.begin() + token);
+        void unblockCallbacks() override {
+            m_blockEvents = false;
+        }
+
+        void registerSetRenderTargetEvent(SetRenderTargetEvent event) override {
+            m_setRenderTargetEvent = event;
+        }
+
+        void registerUnsetRenderTargetEvent(UnsetRenderTargetEvent event) override {
+            m_unsetRenderTargetEvent = event;
+        }
+
+        void registerCopyTextureEvent(CopyTextureEvent event) override {
+            m_copyTextureEvent = event;
         }
 
         uint32_t getBufferAlignmentConstraint() const override {
@@ -1500,29 +1520,49 @@ namespace {
             g_instance = this;
 
             // Hook to the Direct3D device context to intercept preparation for the rendering.
-            DetourMethodAttach(m_context.Get(),
+            DetourMethodAttach(get(m_context),
                                // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
                                33,
                                hooked_ID3D11DeviceContext_OMSetRenderTargets,
                                g_original_ID3D11DeviceContext_OMSetRenderTargets);
-            DetourMethodAttach(m_context.Get(),
+            DetourMethodAttach(get(m_context),
                                // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
                                34,
                                hooked_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews,
                                g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews);
+            DetourMethodAttach(get(m_context),
+                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
+                               47,
+                               hooked_ID3D11DeviceContext_CopyResource,
+                               g_original_ID3D11DeviceContext_CopyResource);
+            DetourMethodAttach(get(m_context),
+                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
+                               46,
+                               hooked_ID3D11DeviceContext_CopySubresourceRegion,
+                               g_original_ID3D11DeviceContext_CopySubresourceRegion);
         }
 
         void uninitializeInterceptor() {
-            DetourMethodDetach(m_context.Get(),
+            DetourMethodDetach(get(m_context),
                                // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
                                33,
                                hooked_ID3D11DeviceContext_OMSetRenderTargets,
                                g_original_ID3D11DeviceContext_OMSetRenderTargets);
-            DetourMethodDetach(m_context.Get(),
+            DetourMethodDetach(get(m_context),
                                // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
                                34,
                                hooked_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews,
                                g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews);
+            DetourMethodDetach(get(m_context),
+                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
+                               47,
+                               hooked_ID3D11DeviceContext_CopyResource,
+                               g_original_ID3D11DeviceContext_CopyResource);
+            DetourMethodDetach(get(m_context),
+                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
+                               46,
+                               hooked_ID3D11DeviceContext_CopySubresourceRegion,
+                               g_original_ID3D11DeviceContext_CopySubresourceRegion);
 
             g_instance = nullptr;
         }
@@ -1712,11 +1752,10 @@ namespace {
                                 UINT numViews,
                                 ID3D11RenderTargetView* const* renderTargetViews,
                                 ID3D11DepthStencilView* depthStencilView) {
-            if (!numViews) {
-                return;
-            }
+            auto wrappedContext = std::make_shared<D3D11Context>(shared_from_this(), context);
 
-            if (!renderTargetViews[0]) {
+            if (!numViews || !renderTargetViews[0]) {
+                INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
                 return;
             }
 
@@ -1727,6 +1766,7 @@ namespace {
                     desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2DMS &&
                     desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2DARRAY &&
                     desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY) {
+                    INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
                     return;
                 }
             }
@@ -1736,38 +1776,52 @@ namespace {
 
             ComPtr<ID3D11Texture2D> texture;
             if (FAILED(resource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(set(texture))))) {
+                INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
                 return;
             }
 
             D3D11_TEXTURE2D_DESC textureDesc;
             texture->GetDesc(&textureDesc);
 
-            XrSwapchainCreateInfo info;
-            ZeroMemory(&info, sizeof(info));
-            info.format = (int64_t)textureDesc.Format;
-            info.width = textureDesc.Width;
-            info.height = textureDesc.Height;
-            info.arraySize = textureDesc.ArraySize;
-            info.mipCount = textureDesc.MipLevels;
-            info.sampleCount = textureDesc.SampleDesc.Count;
-            if (textureDesc.BindFlags & D3D11_BIND_RENDER_TARGET) {
-                info.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
-            }
-            if (textureDesc.BindFlags & D3D11_BIND_DEPTH_STENCIL) {
-                info.usageFlags |= XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-            }
-            if (textureDesc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
-                info.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-            }
-            if (textureDesc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
-                info.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+            auto renderTarget = std::make_shared<D3D11Texture>(
+                shared_from_this(), getTextureInfo(textureDesc), textureDesc, get(texture));
+            INVOKE_EVENT(setRenderTargetEvent, wrappedContext, renderTarget);
+        }
+
+        void onCopyResource(ID3D11DeviceContext* context,
+                            ID3D11Resource* pSrcResource,
+                            ID3D11Resource* pDstResource,
+                            UINT SrcSubresource = 0,
+                            UINT DstSubresource = 0) {
+            ComPtr<ID3D11Texture2D> sourceTexture;
+            if (FAILED(pSrcResource->QueryInterface(__uuidof(ID3D11Texture2D),
+                                                    reinterpret_cast<void**>(set(sourceTexture))))) {
+                return;
             }
 
-            // Time to fire all the events!
-            auto wrappedContext = std::make_shared<D3D11Context>(shared_from_this(), context);
-            for (auto& callback : m_onSetRenderTargetCallbacks) {
-                callback(wrappedContext, info);
+            ComPtr<ID3D11Texture2D> destinationTexture;
+            if (FAILED(pDstResource->QueryInterface(__uuidof(ID3D11Texture2D),
+                                                    reinterpret_cast<void**>(set(destinationTexture))))) {
+                return;
             }
+
+            auto wrappedContext = std::make_shared<D3D11Context>(shared_from_this(), context);
+
+            D3D11_TEXTURE2D_DESC sourceTextureDesc;
+            sourceTexture->GetDesc(&sourceTextureDesc);
+
+            auto source = std::make_shared<D3D11Texture>(
+                shared_from_this(), getTextureInfo(sourceTextureDesc), sourceTextureDesc, get(sourceTexture));
+
+            D3D11_TEXTURE2D_DESC destinationTextureDesc;
+            destinationTexture->GetDesc(&destinationTextureDesc);
+
+            auto destination = std::make_shared<D3D11Texture>(shared_from_this(),
+                                                              getTextureInfo(destinationTextureDesc),
+                                                              destinationTextureDesc,
+                                                              get(destinationTexture));
+
+            INVOKE_EVENT(copyTextureEvent, wrappedContext, source, destination, SrcSubresource, DstSubresource);
         }
 
         const ComPtr<ID3D11Device> m_device;
@@ -1800,7 +1854,10 @@ namespace {
 
         ComPtr<ID3D11InfoQueue> m_infoQueue;
 
-        std::vector<RenderTargetEvent> m_onSetRenderTargetCallbacks;
+        SetRenderTargetEvent m_setRenderTargetEvent;
+        UnsetRenderTargetEvent m_unsetRenderTargetEvent;
+        CopyTextureEvent m_copyTextureEvent;
+        std::atomic<bool> m_blockEvents{false};
 
         mutable std::shared_ptr<IQuadShader> m_currentQuadShader;
         mutable std::shared_ptr<IComputeShader> m_currentComputeShader;
@@ -1809,6 +1866,31 @@ namespace {
         mutable uint32_t m_currentShaderHighestRTV;
 
         static D3D11Device* g_instance;
+
+        static XrSwapchainCreateInfo getTextureInfo(const D3D11_TEXTURE2D_DESC& textureDesc) {
+            XrSwapchainCreateInfo info;
+            ZeroMemory(&info, sizeof(info));
+            info.format = (int64_t)textureDesc.Format;
+            info.width = textureDesc.Width;
+            info.height = textureDesc.Height;
+            info.arraySize = textureDesc.ArraySize;
+            info.mipCount = textureDesc.MipLevels;
+            info.sampleCount = textureDesc.SampleDesc.Count;
+            if (textureDesc.BindFlags & D3D11_BIND_RENDER_TARGET) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+            }
+            if (textureDesc.BindFlags & D3D11_BIND_DEPTH_STENCIL) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            }
+            if (textureDesc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+            }
+            if (textureDesc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+            }
+
+            return info;
+        }
 
         static PFN_ID3D11DeviceContext_OMSetRenderTargets g_original_ID3D11DeviceContext_OMSetRenderTargets;
         static void hooked_ID3D11DeviceContext_OMSetRenderTargets(ID3D11DeviceContext* context,
@@ -1855,12 +1937,52 @@ namespace {
 
             DebugLog("<-- ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews\n");
         }
+
+        static PFN_ID3D11DeviceContext_CopyResource g_original_ID3D11DeviceContext_CopyResource;
+        static void hooked_ID3D11DeviceContext_CopyResource(ID3D11DeviceContext* context,
+                                                            ID3D11Resource* pDstResource,
+                                                            ID3D11Resource* pSrcResource) {
+            DebugLog("--> ID3D11DeviceContext_CopyResource\n");
+
+            assert(g_instance);
+            g_instance->onCopyResource(context, pSrcResource, pDstResource);
+
+            assert(g_original_ID3D11DeviceContext_CopyResource);
+            g_original_ID3D11DeviceContext_CopyResource(context, pDstResource, pSrcResource);
+
+            DebugLog("<-- ID3D11DeviceContext_CopyResource\n");
+        }
+
+        static PFN_ID3D11DeviceContext_CopySubresourceRegion g_original_ID3D11DeviceContext_CopySubresourceRegion;
+        static void hooked_ID3D11DeviceContext_CopySubresourceRegion(ID3D11DeviceContext* context,
+                                                                     ID3D11Resource* pDstResource,
+                                                                     UINT DstSubresource,
+                                                                     UINT DstX,
+                                                                     UINT DstY,
+                                                                     UINT DstZ,
+                                                                     ID3D11Resource* pSrcResource,
+                                                                     UINT SrcSubresource,
+                                                                     const D3D11_BOX* pSrcBox) {
+            DebugLog("--> ID3D11DeviceContext_CopySubresourceRegion\n");
+
+            assert(g_instance);
+            g_instance->onCopyResource(context, pSrcResource, pDstResource, SrcSubresource, DstSubresource);
+
+            assert(g_original_ID3D11DeviceContext_CopySubresourceRegion);
+            g_original_ID3D11DeviceContext_CopySubresourceRegion(
+                context, pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
+
+            DebugLog("<-- ID3D11DeviceContext_CopySubresourceRegion\n");
+        }
     };
 
     D3D11Device* D3D11Device::g_instance = nullptr;
     PFN_ID3D11DeviceContext_OMSetRenderTargets D3D11Device::g_original_ID3D11DeviceContext_OMSetRenderTargets = nullptr;
     PFN_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews
         D3D11Device::g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews = nullptr;
+    PFN_ID3D11DeviceContext_CopyResource D3D11Device::g_original_ID3D11DeviceContext_CopyResource = nullptr;
+    PFN_ID3D11DeviceContext_CopySubresourceRegion D3D11Device::g_original_ID3D11DeviceContext_CopySubresourceRegion =
+        nullptr;
 
     typedef HRESULT (*PFN_D3D11CreateDevice)(IDXGIAdapter*,
                                              D3D_DRIVER_TYPE,

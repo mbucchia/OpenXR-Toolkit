@@ -96,6 +96,11 @@ namespace toolkit {
                              std::shared_ptr<IDevice> graphicsDevice,
                              const std::string& shaderFile);
 
+        std::shared_ptr<IFrameAnalyzer>
+        CreateFrameAnalyzer(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                            std::shared_ptr<IDevice> graphicsDevice,
+                            uint32_t displayWidth,
+                            uint32_t displayHeight);
         std::shared_ptr<IVariableRateShader>
         CreateVariableRateShader(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                  std::shared_ptr<IDevice> graphicsDevice,
