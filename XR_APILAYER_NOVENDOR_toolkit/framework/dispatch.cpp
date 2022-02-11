@@ -80,7 +80,7 @@ namespace LAYER_NAMESPACE {
 
                 // Skip all the Vive layers.
                 auto info = apiLayerInfo->nextInfo;
-                do {
+                while (info && info->next) {
                     if (std::string_view(info->next->layerName).substr(0, 17) == "XR_APILAYER_VIVE_") {
                         Log("Skipping unsupported layer: %s\n", info->next->layerName);
                         info->nextCreateApiLayerInstance = info->next->nextCreateApiLayerInstance;
@@ -90,7 +90,7 @@ namespace LAYER_NAMESPACE {
                         Log("Using layer: %s\n", info->next->layerName);
                         info = info->next;
                     }
-                } while (info && info->next);
+                }
             }
 
             // Call the chain to create the dummy instance.
