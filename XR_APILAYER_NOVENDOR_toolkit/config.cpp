@@ -156,6 +156,11 @@ namespace {
             return false;
         }
 
+        void deleteValue(const std::string& name) override {
+            RegDeleteValue(HKEY_CURRENT_USER, m_baseKey, std::wstring(name.begin(), name.end()));
+            m_values.erase(name);
+        }
+
         void resetToDefaults() override {
             // TODO: For now we do the same as a hard reset. Ideally, we wish to exclude `first_run' from this.
             hardReset();

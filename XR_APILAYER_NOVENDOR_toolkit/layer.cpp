@@ -190,6 +190,15 @@ namespace {
                 m_configManager->setEnumDefault(config::SettingMotionReprojectionRate,
                                                 config::MotionReprojectionRate::Off);
 
+                // Workaround: the first versions of the toolkit used a different representation for the world scale.
+                // Migrate the value upon first run.
+                m_configManager->setDefault("icd", 0);
+                if (m_configManager->getValue("icd") != 0) {
+                    const int migratedValue = 1'000'000 / m_configManager->getValue("icd");
+                    m_configManager->setValue(config::SettingICD, migratedValue, true);
+                    m_configManager->deleteValue("icd");
+                }
+
                 // Remember the XrSystemId to use.
                 m_vrSystemId = *systemId;
             }

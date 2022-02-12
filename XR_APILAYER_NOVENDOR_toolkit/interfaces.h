@@ -73,7 +73,7 @@ namespace toolkit {
         const std::string SettingScaling = "scaling";
         const std::string SettingAnamorphic = "anamorphic";
         const std::string SettingSharpness = "sharpness";
-        const std::string SettingICD = "icd";
+        const std::string SettingICD = "world_scale";
         const std::string SettingFOV = "fov";
         const std::string SettingHandTrackingEnabled = "enable_hand_tracking";
         const std::string SettingHandVisibilityAndSkinTone = "hand_visibility";
@@ -103,6 +103,7 @@ namespace toolkit {
             virtual void setValue(const std::string& name, int value, bool noCommitDelay = false) = 0;
             virtual bool hasChanged(const std::string& name) const = 0;
 
+            virtual void deleteValue(const std::string& name) = 0;
             virtual void resetToDefaults() = 0;
 
             virtual void hardReset() = 0;
