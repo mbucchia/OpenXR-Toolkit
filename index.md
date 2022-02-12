@@ -16,7 +16,9 @@ DISCLAIMER: This software is distributed as-is, without any warranties or condit
 
 ## Downloads
 
-[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/0.9.6/OpenXR-Toolkit.msi){: .btn .btn-blue }
+Current version: **Beta #2 Hotfix #3 (0.9.7)**
+
+[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/0.9.7/OpenXR-Toolkit.msi){: .btn .btn-blue }
 
 ...or expore [all versions](https://github.com/mbucchia/OpenXR-Toolkit/releases).
 
@@ -28,7 +30,6 @@ This software may be used with any brand of VR headset as long as the target app
 
 + This software was only extensively tested with Microsoft Flight Simulator 2020, it appears to work with War Thunder as well. Other applications are untested.
   + Contrary to popular belief, this software will not work with OpenVR-based games, like the majority of games you can find on Steam.
-+ The HTC Vive Pro 2 and Vive Cosmos headsets are not supported (but the original Vive Pro was reported to work);
 + The menu does not display correctly on Pimax headsets;
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
@@ -91,7 +92,7 @@ See [Features](features) for more details.
 - **Factor** (only when _Upscaling_ is enabled): The upscaling factor (ie: the percentage of magnification of the rendering resolution). The resolution displayed next to the percentage is the effective resolution that the application sees. Requires to restart the VR session.
 - **Sharpness** (only when _Upscaling_ is enabled): The sharpness factor. Has a different scale/effect between NIS and FSR.
 - **World scale**: The Inter-Camera Distance override, which can be used to alter the world scale.
-- **Prediction dampening**: The prediction override, which can be use to dampen the prediction for head, controllers, and hand movements.
+- **Prediction dampening** (only when supported by the system): The prediction override, which can be use to dampen the prediction for head, controllers, and hand movements.
 - **Hand tracking** (only when hand tracking is supported by the system): Enable the use of hand tracking in place of the VR controller. Requires a compatible device, such as the Leap Motion. Either or both hands can be enabled at the same time. Requires to restart the VR session when toggling on or off. 
 - **Hands visibility** (only when _Hand tracking_ is enabled): Whether the hands are displayed and what color tone to use.
 - **Hands timeout** (only when _Hand tracking_ is enabled): The amount of time after losing track of the hands before simulator shutdown of the simulated VR controller.

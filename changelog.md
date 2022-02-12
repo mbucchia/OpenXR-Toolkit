@@ -35,6 +35,15 @@ nav_order: 6
 - Fix frequent `XR_ERROR_LIMIT_REACHED` error when using the OpenXR Developer Tools for Windows Mixed Reality.
 - Hotfix #1: Fix issue with AMD graphic cards.
 - Hotfix #2: Fix issue with Varjo Aero headset.
+- Hotfix #3: Fix issue with Vive Pro 2 and Vive Cosmos headsets.
+- Hotfix #3: Changed world scale setting to follow what SteamVR does (lower percentage means smaller scaler and vice-versa).
+- Hotfix #3: Fixed Ctrl+Alt custom key support.
+- Hotfix #3: Improvements to the menu (highlights, display).
+- Hotfix #3: Display the current version in the menu and the Companion app.
+- Hotfix #3: Disable the use of Prediction Dampening with Varjo heasets (Varjo runtime bug).
+- Hotfix #3: Change the menu offset range from +/- 500 to +/- 3000.
+- Hotfix #3: Fallback to Arial font when Segoe UI Symbol is not installed.
+- Hotfix #3: Installer is now digitally signed.
 
 ## Initial OpenXR NIS Scaler
 
