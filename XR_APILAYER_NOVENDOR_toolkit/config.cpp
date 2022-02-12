@@ -32,6 +32,7 @@ namespace {
     using namespace toolkit;
     using namespace toolkit::config;
     using namespace toolkit::log;
+    using namespace toolkit::utilities;
 
     constexpr unsigned int WriteDelay = 22; // 1s in bad VR.
 
@@ -56,6 +57,10 @@ namespace {
 
     void RegDeleteKey(HKEY hKey, const std::wstring& subKey) {
         ::RegDeleteKey(hKey, subKey.c_str());
+    }
+
+    void RegDeleteValue(HKEY hKey, const std::wstring& subKey, const std::wstring& value) {
+        ::RegDeleteKeyValue(hKey, subKey.c_str(), value.c_str());
     }
 
     struct ConfigValue {
