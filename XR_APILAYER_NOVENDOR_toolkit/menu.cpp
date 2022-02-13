@@ -83,10 +83,12 @@ namespace {
                     std::vector<int>& keyModifiers,
                     bool isHandTrackingSupported,
                     bool isPredictionDampeningSupported,
-                    bool isMotionReprojectionRateSupported)
+                    bool isMotionReprojectionRateSupported,
+                    uint8_t variableRateShaderMaxDownsamplePow2)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
               m_displayHeight(displayHeight), m_keyModifiers(keyModifiers),
-              m_isHandTrackingSupported(isHandTrackingSupported) {
+              m_isHandTrackingSupported(isHandTrackingSupported),
+              m_variableRateShaderMaxDownsamplePow2(variableRateShaderMaxDownsamplePow2) {
             m_lastInput = std::chrono::steady_clock::now();
 
             // We display the hint for menu hotkeys for the first few runs.
@@ -183,6 +185,90 @@ namespace {
                                          return fmt::format("{}%", value);
                                      }});
             m_upscalingGroup.end = m_menuEntries.size();
+
+            // VRS group
+            m_menuEntries.push_back({"Fixed foveated rendering",
+                                     MenuEntryType::Choice,
+                                     SettingVRS,
+                                     0,
+                                     (int)VariableShadingRateType::MaxValue - 1,
+                                     [&](int value) {
+                                         const std::string_view labels[] = {"Off", "VRS", "VRS Custom"};
+                                         return std::string(labels[value]);
+                                     },
+                                     !!m_variableRateShaderMaxDownsamplePow2});
+            m_variableRateShaderPresetGroup.start = m_menuEntries.size();
+            m_menuEntries.push_back({"Quality",
+                                     MenuEntryType::Slider,
+                                     SettingVRSQuality,
+                                     0,
+                                     (int)VariableShadingRateQuality::MaxValue - 1,
+                                     [&](int value) {
+                                         const std::string_view labels[] = {"Performance", "Balanced", "Quality"};
+                                         return std::string(labels[value]);
+                                     },
+                                     !!m_variableRateShaderMaxDownsamplePow2});
+            m_menuEntries.push_back({"Pattern",
+                                     MenuEntryType::Slider,
+                                     SettingVRSPattern,
+                                     0,
+                                     (int)VariableShadingRatePattern::MaxValue - 1,
+                                     [&](int value) {
+                                         const std::string_view labels[] = {"Wide", "Balanced", "Narrow"};
+                                         return std::string(labels[value]);
+                                     },
+                                     !!m_variableRateShaderMaxDownsamplePow2});
+            m_variableRateShaderPresetGroup.end = m_menuEntries.size();
+            m_variableRateShaderCustomGroup.start = m_menuEntries.size();
+            {
+                static auto samplePow2ToString = [](int value) -> std::string {
+                    switch (value) {
+                    case 0:
+                        return "1x";
+                    default:
+                        return fmt::format("1/{}x", 1 << value);
+                    case 5:
+                        return "Cull";
+                    }
+                };
+                static auto radiusToString = [](int value) { return fmt::format("{}%", value); };
+                m_menuEntries.push_back({"Inner sampling",
+                                         MenuEntryType::Slider,
+                                         SettingVRSInner,
+                                         0,
+                                         m_variableRateShaderMaxDownsamplePow2,
+                                         samplePow2ToString,
+                                         !!m_variableRateShaderMaxDownsamplePow2});
+                m_menuEntries.push_back({"Inner radius",
+                                         MenuEntryType::Slider,
+                                         SettingVRSInnerRadius,
+                                         0,
+                                         100,
+                                         radiusToString,
+                                         !!m_variableRateShaderMaxDownsamplePow2});
+                m_menuEntries.push_back({"Middle sampling",
+                                         MenuEntryType::Slider,
+                                         SettingVRSMiddle,
+                                         0,
+                                         m_variableRateShaderMaxDownsamplePow2,
+                                         samplePow2ToString,
+                                         !!m_variableRateShaderMaxDownsamplePow2});
+                m_menuEntries.push_back({"Outer radius",
+                                         MenuEntryType::Slider,
+                                         SettingVRSOuterRadius,
+                                         0,
+                                         100,
+                                         radiusToString,
+                                         !!m_variableRateShaderMaxDownsamplePow2});
+                m_menuEntries.push_back({"Outer sampling",
+                                         MenuEntryType::Slider,
+                                         SettingVRSOuter,
+                                         0,
+                                         m_variableRateShaderMaxDownsamplePow2,
+                                         samplePow2ToString,
+                                         !!m_variableRateShaderMaxDownsamplePow2});
+            }
+            m_variableRateShaderCustomGroup.end = m_menuEntries.size();
 
             // View control group.
             m_menuEntries.push_back({"", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
@@ -413,6 +499,12 @@ namespace {
                 updateGroupVisibility(m_proportionalGroup, m_useAnamorphic == 0);
                 updateGroupVisibility(m_anamorphicGroup, m_useAnamorphic != 0);
             }
+            updateGroupVisibility(m_variableRateShaderPresetGroup,
+                                  m_configManager->peekEnumValue<VariableShadingRateType>(SettingVRS) ==
+                                      VariableShadingRateType::Preset);
+            updateGroupVisibility(m_variableRateShaderCustomGroup,
+                                  m_configManager->peekEnumValue<VariableShadingRateType>(SettingVRS) ==
+                                      VariableShadingRateType::Custom);
             updateGroupVisibility(m_handTrackingGroup, isHandTrackingEnabled());
         }
 
@@ -674,6 +766,17 @@ namespace {
                         TIMING_STAT("hnd CPU", handTrackingCpuTimeUs);
                     }
 
+                    m_device->drawString(fmt::format("{}{} / {}{}",
+                                                     m_stats.hasColorBuffer[0] ? "C" : "_",
+                                                     m_stats.hasDepthBuffer[0] ? "D" : "_",
+                                                     m_stats.hasColorBuffer[1] ? "C" : "_",
+                                                     m_stats.hasDepthBuffer[1] ? "D" : "_"),
+                                         OVERLAY_COMMON);
+                    top += 1.05f * fontSize;
+
+                    m_device->drawString(fmt::format("VRS RTV: {}", m_stats.numRenderTargetsWithVRS), OVERLAY_COMMON);
+                    top += 1.05f * fontSize;
+
 #undef TIMING_STAT
 
                     top += 1.05f * fontSize;
@@ -708,7 +811,7 @@ namespace {
             }
         }
 
-        void updateStatistics(const LayerStatistics& stats) override {
+        void updateStatistics(const MenuStatistics& stats) override {
             m_stats = stats;
         }
 
@@ -772,7 +875,8 @@ namespace {
         const uint32_t m_displayWidth;
         const uint32_t m_displayHeight;
         const bool m_isHandTrackingSupported;
-        LayerStatistics m_stats{};
+        const uint8_t m_variableRateShaderMaxDownsamplePow2;
+        MenuStatistics m_stats{};
         GesturesState m_gesturesState{};
 
         std::vector<int> m_keyModifiers;
@@ -799,6 +903,8 @@ namespace {
         MenuGroup m_upscalingGroup;
         MenuGroup m_proportionalGroup;
         MenuGroup m_anamorphicGroup;
+        MenuGroup m_variableRateShaderPresetGroup;
+        MenuGroup m_variableRateShaderCustomGroup;
         MenuGroup m_handTrackingGroup;
 
         ScalingType m_originalScalingType{ScalingType::None};
@@ -825,7 +931,8 @@ namespace toolkit::menu {
                                                     std::vector<int>& keyModifiers,
                                                     bool isHandTrackingSupported,
                                                     bool isPredictionDampeningSupported,
-                                                    bool isMotionReprojectionRateSupported) {
+                                                    bool isMotionReprojectionRateSupported,
+                                                    uint8_t variableRateShaderMaxDownsamplePow2) {
         return std::make_shared<MenuHandler>(configManager,
                                              device,
                                              displayWidth,
@@ -833,7 +940,8 @@ namespace toolkit::menu {
                                              keyModifiers,
                                              isHandTrackingSupported,
                                              isPredictionDampeningSupported,
-                                             isMotionReprojectionRateSupported);
+                                             isMotionReprojectionRateSupported,
+                                             variableRateShaderMaxDownsamplePow2);
     }
 
 } // namespace toolkit::menu

@@ -25,20 +25,10 @@
 
 namespace toolkit {
 
-    struct LayerStatistics {
-        float fps{0.0f};
-        uint64_t appCpuTimeUs{0};
-        uint64_t appGpuTimeUs{0};
-        uint64_t endFrameCpuTimeUs{0};
-        uint64_t preProcessorGpuTimeUs{0};
-        uint64_t upscalerGpuTimeUs{0};
-        uint64_t postProcessorGpuTimeUs{0};
-        uint64_t overlayCpuTimeUs{0};
-        uint64_t overlayGpuTimeUs{0};
-        uint64_t handTrackingCpuTimeUs{0};
-
-        uint64_t predictionTimeUs{0};
-        float icd{0.0f};
+    struct FeatureNotSupported : public std::exception {
+        const char* what() const throw() {
+            return "Feature is not supported";
+        }
     };
 
     namespace {
@@ -85,6 +75,14 @@ namespace toolkit {
         const std::string SettingPredictionDampen = "prediction_dampen";
         const std::string SettingBypassMsftHandInteractionCheck = "allow_msft_hand_interaction";
         const std::string SettingMotionReprojectionRate = "motion_reprojection_rate";
+        const std::string SettingVRS = "vrs";
+        const std::string SettingVRSQuality = "vrs_quality";
+        const std::string SettingVRSPattern = "vrs_pattern";
+        const std::string SettingVRSOuter = "vrs_outer";
+        const std::string SettingVRSOuterRadius = "vrs_outer_radius";
+        const std::string SettingVRSMiddle = "vrs_middle";
+        const std::string SettingVRSInnerRadius = "vrs_inner_radius";
+        const std::string SettingVRSInner = "vrs_inner";
 
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
@@ -92,6 +90,9 @@ namespace toolkit {
         enum class ScalingType { None = 0, NIS, FSR, MaxValue };
         enum class HandTrackingEnabled { Off = 0, Both, Left, Right, MaxValue };
         enum class MotionReprojectionRate { Off = 1, R_45Hz, R_30Hz, R_22Hz, MaxValue };
+        enum class VariableShadingRateType { None = 0, Preset, Custom, MaxValue };
+        enum class VariableShadingRateQuality { Performance = 0, Balanced, Quality, MaxValue };
+        enum class VariableShadingRatePattern { Wide = 0, Balanced, Narrow, MaxValue };
 
         struct IConfigManager {
             virtual ~IConfigManager() = default;
@@ -589,6 +590,29 @@ namespace toolkit {
             virtual std::optional<utilities::Eye> getEyeHint() const = 0;
         };
 
+        // A Variable Rate Shader (VRS) control implementation.
+        struct IVariableRateShader {
+            virtual ~IVariableRateShader() = default;
+
+            virtual void update() = 0;
+
+            virtual bool onSetRenderTarget(std::shared_ptr<IContext> context,
+                                           std::shared_ptr<ITexture> renderTarget,
+                                           std::optional<utilities::Eye> eyeHint) = 0;
+            virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
+            virtual void disable(std::shared_ptr<graphics::IContext> context = nullptr) = 0;
+
+            virtual void
+            setViewProjectionCenters(float leftCenterX, float leftCenterY, float rightCenterX, float rightCenterY) = 0;
+
+            virtual uint8_t getMaxDownsamplePow2() const = 0;
+
+#ifdef _DEBUG
+            virtual void startCapture() = 0;
+            virtual void stopCapture() = 0;
+#endif
+        };
+
     } // namespace graphics
 
     namespace input {
@@ -646,13 +670,33 @@ namespace toolkit {
 
     namespace menu {
 
+        struct MenuStatistics {
+            float fps{0.0f};
+            uint64_t appCpuTimeUs{0};
+            uint64_t appGpuTimeUs{0};
+            uint64_t endFrameCpuTimeUs{0};
+            uint64_t preProcessorGpuTimeUs{0};
+            uint64_t upscalerGpuTimeUs{0};
+            uint64_t postProcessorGpuTimeUs{0};
+            uint64_t overlayCpuTimeUs{0};
+            uint64_t overlayGpuTimeUs{0};
+            uint64_t handTrackingCpuTimeUs{0};
+
+            uint64_t predictionTimeUs{0};
+            float icd{0.0f};
+
+            bool hasColorBuffer[utilities::ViewCount]{false, false};
+            bool hasDepthBuffer[utilities::ViewCount]{false, false};
+            uint32_t numRenderTargetsWithVRS{0};
+        };
+
         // A menu handler.
         struct IMenuHandler {
             virtual ~IMenuHandler() = default;
 
             virtual void handleInput() = 0;
             virtual void render(utilities::Eye eye, std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
-            virtual void updateStatistics(const LayerStatistics& stats) = 0;
+            virtual void updateStatistics(const MenuStatistics& stats) = 0;
             virtual void updateGesturesState(const input::GesturesState& state) = 0;
         };
 
