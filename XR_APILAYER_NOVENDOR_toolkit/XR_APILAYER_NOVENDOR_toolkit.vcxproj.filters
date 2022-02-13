@@ -127,6 +127,9 @@
     <ClCompile Include="d3d12.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="vrs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="frameanalyzer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

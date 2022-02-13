@@ -211,6 +211,7 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     </ClCompile>
     <ClCompile Include="imageprocess.cpp" />
     <ClCompile Include="utilities.cpp" />
+    <ClCompile Include="vrs.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-code-fsr-v1.20210629.patch" />

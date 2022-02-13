@@ -192,6 +192,16 @@ namespace {
                 m_configManager->setDefault(config::SettingPredictionDampen, 100);
                 m_configManager->setEnumDefault(config::SettingMotionReprojectionRate,
                                                 config::MotionReprojectionRate::Off);
+                m_configManager->setEnumDefault(config::SettingVRS, config::VariableShadingRateType::None);
+                m_configManager->setEnumDefault(config::SettingVRSQuality,
+                                                config::VariableShadingRateQuality::Balanced);
+                m_configManager->setEnumDefault(config::SettingVRSPattern,
+                                                config::VariableShadingRatePattern::Balanced);
+                m_configManager->setDefault(config::SettingVRSInner, 0); // 1x
+                m_configManager->setDefault(config::SettingVRSInnerRadius, 25);
+                m_configManager->setDefault(config::SettingVRSMiddle, 2); // 1/4x
+                m_configManager->setDefault(config::SettingVRSOuter, 4);  // 1/16x
+                m_configManager->setDefault(config::SettingVRSOuterRadius, 50);
 
                 // Workaround: the first versions of the toolkit used a different representation for the world scale.
                 // Migrate the value upon first run.
@@ -328,6 +338,8 @@ namespace {
                     if (!m_configManager->getValue("disable_frame_analyzer")) {
                         m_frameAnalyzer = graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice);
                     }
+                    m_variableRateShader =
+                        graphics::CreateVariableRateShader(m_configManager, m_graphicsDevice, inputWidth, inputHeight);
 
                     // Register intercepted events.
                     m_graphicsDevice->registerSetRenderTargetEvent(
@@ -339,6 +351,18 @@ namespace {
 
                             if (m_frameAnalyzer) {
                                 m_frameAnalyzer->onSetRenderTarget(context, renderTarget);
+                                const auto& eyeHint = m_frameAnalyzer->getEyeHint();
+                                if (eyeHint.has_value()) {
+                                    m_stats.hasColorBuffer[(int)eyeHint.value()] = true;
+                                }
+                            }
+                            if (m_variableRateShader) {
+                                if (m_variableRateShader->onSetRenderTarget(
+                                        context,
+                                        renderTarget,
+                                        m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt)) {
+                                    m_stats.numRenderTargetsWithVRS++;
+                                }
                             }
                         });
                     m_graphicsDevice->registerUnsetRenderTargetEvent([&](std::shared_ptr<graphics::IContext> context) {
@@ -348,6 +372,9 @@ namespace {
 
                         if (m_frameAnalyzer) {
                             m_frameAnalyzer->onUnsetRenderTarget(context);
+                        }
+                        if (m_variableRateShader) {
+                            m_variableRateShader->onUnsetRenderTarget(context);
                         }
                     });
                     m_graphicsDevice->registerCopyTextureEvent([&](std::shared_ptr<graphics::IContext> context,
@@ -381,14 +408,16 @@ namespace {
                             xrConvertWin32PerformanceCounterToTimeKHR != nullptr;
                         const bool isMotionReprojectionRateSupported =
                             m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
-                        m_menuHandler = menu::CreateMenuHandler(m_configManager,
-                                                                m_graphicsDevice,
-                                                                m_displayWidth,
-                                                                m_displayHeight,
-                                                                m_keyModifiers,
-                                                                m_supportHandTracking,
-                                                                isPredictionDampeningSupported,
-                                                                isMotionReprojectionRateSupported);
+                        m_menuHandler = menu::CreateMenuHandler(
+                            m_configManager,
+                            m_graphicsDevice,
+                            m_displayWidth,
+                            m_displayHeight,
+                            m_keyModifiers,
+                            m_supportHandTracking,
+                            isPredictionDampeningSupported,
+                            isMotionReprojectionRateSupported,
+                            m_variableRateShader ? m_variableRateShader->getMaxDownsamplePow2() : 0);
                     }
 
                     // Create a reference space to calculate projection views.
@@ -433,6 +462,7 @@ namespace {
                 m_preProcessor.reset();
                 m_postProcessor.reset();
                 m_frameAnalyzer.reset();
+                m_variableRateShader.reset();
                 for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
                     m_performanceCounters.appGpuTimer[i].reset();
                     m_performanceCounters.overlayGpuTimer[i].reset();
@@ -875,22 +905,26 @@ namespace {
                                                  leftView.m[2][1] * rightView.m[2][1] +
                                                  leftView.m[2][2] * rightView.m[2][2];
 
-                        int projCenterX[utilities::ViewCount];
-                        int projCenterY[utilities::ViewCount];
+                        // In NDC.
+                        float projCenterX[utilities::ViewCount];
+                        float projCenterY[utilities::ViewCount];
                         for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                             const auto& fov = eyeInViewSpace[eye].fov;
                             const float cantedAngle = std::abs(std::acosf(dotForward) / 2) * (eye ? -1 : 1);
                             const float canted = std::tanf(cantedAngle);
-                            projCenterX[eye] = (int)(m_displayWidth * 0.5f *
-                                                     (1.f + (fov.angleRight + fov.angleLeft - 2 * canted) /
-                                                                (fov.angleLeft - fov.angleRight)));
+                            projCenterX[eye] = 0.5f * (1.f + (fov.angleRight + fov.angleLeft - 2 * canted) /
+                                                                 (fov.angleLeft - fov.angleRight));
                             projCenterY[eye] =
-                                (int)(m_displayHeight * 0.5f *
-                                      (1.f + (fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown)));
+                                0.5f * (1.f + (fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown));
                         }
 
                         // TODO: Not sure why doubling the value is needed, it works on HP Reverb and Varjo Aero.
-                        m_configManager->setDefault(config::SettingOverlayEyeOffset, projCenterX[1] - projCenterX[0]);
+                        m_configManager->setDefault(config::SettingOverlayEyeOffset,
+                                                    (int)(m_displayWidth * 2.f * (projCenterX[1] - projCenterX[0])));
+                        if (m_variableRateShader) {
+                            m_variableRateShader->setViewProjectionCenters(
+                                projCenterX[0], projCenterY[0], projCenterX[1], projCenterY[1]);
+                        }
 
                         m_needCalibrateEyeProjections = false;
                     }
@@ -1106,6 +1140,11 @@ namespace {
             if (m_handTracker && m_menuHandler) {
                 m_menuHandler->updateGesturesState(m_handTracker->getGesturesState());
             }
+
+            for (unsigned int eye = 0; eye < utilities::ViewCount; eye++) {
+                m_stats.hasColorBuffer[eye] = m_stats.hasDepthBuffer[eye] = false;
+            }
+            m_stats.numRenderTargetsWithVRS = 0;
         }
 
         void updateConfiguration() {
@@ -1121,6 +1160,9 @@ namespace {
             }
             if (m_postProcessor) {
                 m_postProcessor->update();
+            }
+            if (m_variableRateShader) {
+                m_variableRateShader->update();
             }
         }
 
@@ -1166,6 +1208,12 @@ namespace {
 
             if (m_frameAnalyzer) {
                 m_frameAnalyzer->prepareForEndFrame();
+            }
+            if (m_variableRateShader) {
+                m_variableRateShader->disable();
+#ifdef _DEBUG
+                m_variableRateShader->stopCapture();
+#endif
             }
 
             // TODO: Ensure restoreContext() even on error.
@@ -1273,6 +1321,8 @@ namespace {
                                         depthSwapchainState.images[depthSwapchainState.acquiredImageIndex].chain[0];
                                     nearFar.Near = depth->nearZ;
                                     nearFar.Far = depth->farZ;
+
+                                    m_stats.hasDepthBuffer[eye] = true;
                                 }
                                 break;
                             }
@@ -1458,6 +1508,12 @@ namespace {
 
             if (textureForOverlay[0] && requestScreenshot) {
                 takeScreenshot(textureForOverlay[0]);
+
+#ifdef _DEBUG
+                if (m_variableRateShader) {
+                    m_variableRateShader->startCapture();
+                }
+#endif
             }
 
             m_graphicsDevice->restoreContext();
@@ -1527,6 +1583,7 @@ namespace {
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
 
         std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;
+        std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;
 
         std::shared_ptr<input::IHandTracker> m_handTracker;
 
@@ -1548,7 +1605,7 @@ namespace {
             uint32_t numFrames{0};
         } m_performanceCounters;
 
-        LayerStatistics m_stats{};
+        menu::MenuStatistics m_stats{};
 
         // TODO: These should be auto-generated and accessible via OpenXrApi.
         PFN_xrConvertWin32PerformanceCounterToTimeKHR xrConvertWin32PerformanceCounterToTimeKHR{nullptr};
