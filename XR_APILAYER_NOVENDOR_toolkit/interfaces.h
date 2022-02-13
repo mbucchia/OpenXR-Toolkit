@@ -57,6 +57,10 @@ namespace toolkit {
 
     namespace utilities {
 
+        // 2 views to process, one per eye.
+        constexpr uint32_t ViewCount = 2;
+        enum class Eye : uint32_t { Left, Right };
+
         // A CPU synchronous timer.
         struct ICpuTimer : public ITimer {};
 
@@ -589,13 +593,7 @@ namespace toolkit {
             virtual ~IMenuHandler() = default;
 
             virtual void handleInput() = 0;
-            virtual void calibrate(const XrPosef& poseLeft,
-                                   const XrFovf& fovLeft,
-                                   const XrSwapchainCreateInfo& leftImageInfo,
-                                   const XrPosef& poseRight,
-                                   const XrFovf& fovRight,
-                                   const XrSwapchainCreateInfo& rightImageInfo) = 0;
-            virtual void render(uint32_t eye,
+            virtual void render(utilities::Eye eye,
                                 const XrPosef& pose,
                                 std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
             virtual void updateStatistics(const LayerStatistics& stats) = 0;

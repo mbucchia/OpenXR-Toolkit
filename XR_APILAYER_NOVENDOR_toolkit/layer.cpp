@@ -32,9 +32,6 @@
 
 namespace {
 
-    // 2 views to process, one per eye.
-    constexpr uint32_t ViewCount = 2;
-
     // The xrWaitFrame() loop might cause to have 2 frames in-flight, so we want to delay the GPU timer re-use by those
     // 2 frames.
     constexpr uint32_t GpuTimerLatency = 2;
@@ -47,9 +44,9 @@ namespace {
     struct SwapchainImages {
         std::vector<std::shared_ptr<graphics::ITexture>> chain;
 
-        std::shared_ptr<graphics::IGpuTimer> upscalerGpuTimer[ViewCount];
-        std::shared_ptr<graphics::IGpuTimer> preProcessorGpuTimer[ViewCount];
-        std::shared_ptr<graphics::IGpuTimer> postProcessorGpuTimer[ViewCount];
+        std::shared_ptr<graphics::IGpuTimer> upscalerGpuTimer[utilities::ViewCount];
+        std::shared_ptr<graphics::IGpuTimer> preProcessorGpuTimer[utilities::ViewCount];
+        std::shared_ptr<graphics::IGpuTimer> postProcessorGpuTimer[utilities::ViewCount];
     };
 
     struct SwapchainState {
@@ -138,11 +135,15 @@ namespace {
             const XrResult result = OpenXrApi::xrGetSystem(instance, getInfo, systemId);
             if (XR_SUCCEEDED(result) && getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY) {
                 // Store the actual OpenXR resolution.
-                XrViewConfigurationView views[ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW},
-                                                            {XR_TYPE_VIEW_CONFIGURATION_VIEW}};
+                XrViewConfigurationView views[utilities::ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW},
+                                                                       {XR_TYPE_VIEW_CONFIGURATION_VIEW}};
                 uint32_t viewCount;
-                CHECK_XRCMD(OpenXrApi::xrEnumerateViewConfigurationViews(
-                    instance, *systemId, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, ViewCount, &viewCount, views));
+                CHECK_XRCMD(OpenXrApi::xrEnumerateViewConfigurationViews(instance,
+                                                                         *systemId,
+                                                                         XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+                                                                         utilities::ViewCount,
+                                                                         &viewCount,
+                                                                         views));
 
                 m_displayWidth = views[0].recommendedImageRectWidth;
                 m_displayHeight = views[0].recommendedImageRectHeight;
@@ -344,6 +345,14 @@ namespace {
                                                                 isPredictionDampeningSupported,
                                                                 isMotionReprojectionRateSupported);
                     }
+
+                    // Create a reference space to calculate projection views.
+                    {
+                        XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+                        referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
+                        referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
+                        CHECK_XRCMD(xrCreateReferenceSpace(*session, &referenceSpaceCreateInfo, &m_viewSpace));
+                    }
                 } else {
                     Log("Unsupported graphics runtime.\n");
                 }
@@ -367,6 +376,10 @@ namespace {
                     m_graphicsDevice->flushContext(true);
                 }
 
+                if (m_viewSpace != XR_NULL_HANDLE) {
+                    xrDestroySpace(m_viewSpace);
+                    m_viewSpace = XR_NULL_HANDLE;
+                }
                 if (m_handTracker) {
                     m_handTracker->endSession();
                 }
@@ -780,7 +793,54 @@ namespace {
                 OpenXrApi::xrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
             if (XR_SUCCEEDED(result) && isVrSession(session) &&
                 viewLocateInfo->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
-                assert(*viewCountOutput == ViewCount);
+                assert(*viewCountOutput == utilities::ViewCount);
+
+                // Calibrate the projection center for each eye.
+                if (m_needCalibrateEyeProjections) {
+                    XrViewLocateInfo info = *viewLocateInfo;
+                    info.space = m_viewSpace;
+
+                    XrViewState state{XR_TYPE_VIEW_STATE, nullptr};
+                    XrView eyeInViewSpace[2] = {{XR_TYPE_VIEW, nullptr}, {XR_TYPE_VIEW, nullptr}};
+                    CHECK_HRCMD(OpenXrApi::xrLocateViews(
+                        session, &info, &state, viewCapacityInput, viewCountOutput, eyeInViewSpace));
+
+                    if (Pose::IsPoseValid(state.viewStateFlags)) {
+                        DirectX::XMFLOAT4X4 leftView, rightView;
+                        {
+                            const auto tmp = LoadXrPose(eyeInViewSpace[0].pose);
+                            DirectX::XMStoreFloat4x4(&leftView, tmp);
+                        }
+                        {
+                            const auto tmp = LoadXrPose(eyeInViewSpace[1].pose);
+                            DirectX::XMStoreFloat4x4(&rightView, tmp);
+                        }
+
+                        // https://github.com/fholger/vrperfkit/blob/master/src/openvr/openvr_manager.cpp
+                        const float dotForward = leftView.m[2][0] * rightView.m[2][0] +
+                                                 leftView.m[2][1] * rightView.m[2][1] +
+                                                 leftView.m[2][2] * rightView.m[2][2];
+
+                        int projCenterX[utilities::ViewCount];
+                        int projCenterY[utilities::ViewCount];
+                        for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
+                            const auto& fov = eyeInViewSpace[eye].fov;
+                            const float cantedAngle = std::abs(std::acosf(dotForward) / 2) * (eye ? -1 : 1);
+                            const float canted = std::tanf(cantedAngle);
+                            projCenterX[eye] = (int)(m_displayWidth * 0.5f *
+                                                     (1.f + (fov.angleRight + fov.angleLeft - 2 * canted) /
+                                                                (fov.angleLeft - fov.angleRight)));
+                            projCenterY[eye] =
+                                (int)(m_displayHeight * 0.5f *
+                                      (1.f + (fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown)));
+                        }
+
+                        // TODO: Not sure why doubling the value is needed, it works on HP Reverb and Varjo Aero.
+                        m_configManager->setDefault(config::SettingOverlayEyeOffset, projCenterX[1] - projCenterX[0]);
+
+                        m_needCalibrateEyeProjections = false;
+                    }
+                }
 
                 const auto vec = views[1].pose.position - views[0].pose.position;
                 const auto ipd = Length(vec);
@@ -1074,7 +1134,7 @@ namespace {
             // Unbind all textures from the render targets.
             m_graphicsDevice->unsetRenderTargets();
 
-            std::shared_ptr<graphics::ITexture> textureForOverlay[ViewCount] = {};
+            std::shared_ptr<graphics::ITexture> textureForOverlay[utilities::ViewCount] = {};
             XrCompositionLayerProjectionView* viewsForOverlay = nullptr;
             XrSpace spaceForOverlay = XR_NULL_HANDLE;
 
@@ -1105,11 +1165,12 @@ namespace {
                                                         .data();
 
                     // For VPRT, we need to handle texture arrays.
-                    static_assert(ViewCount == 2);
+                    static_assert(utilities::ViewCount == 2);
                     const bool useVPRT = proj->views[0].subImage.swapchain == proj->views[1].subImage.swapchain;
+                    // TODO: We need to use subImage.imageArrayIndex instead of assuming 0/left and 1/right.
 
-                    assert(proj->viewCount == ViewCount);
-                    for (uint32_t eye = 0; eye < ViewCount; eye++) {
+                    assert(proj->viewCount == utilities::ViewCount);
+                    for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                         const XrCompositionLayerProjectionView& view = proj->views[eye];
 
                         auto swapchainIt = m_swapchains.find(view.subImage.swapchain);
@@ -1234,19 +1295,9 @@ namespace {
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
                 }
 
-                if (m_menuHandler && m_needCalibrateEyeOffsets) {
-                    m_menuHandler->calibrate(viewsForOverlay[0].pose,
-                                             viewsForOverlay[0].fov,
-                                             textureForOverlay[0]->getInfo(),
-                                             viewsForOverlay[1].pose,
-                                             viewsForOverlay[1].fov,
-                                             textureForOverlay[1]->getInfo());
-                    m_needCalibrateEyeOffsets = false;
-                }
-
                 // Render the hands.
                 if (m_handTracker) {
-                    for (uint32_t eye = 0; eye < ViewCount; eye++) {
+                    for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                         if (!useVPRT) {
                             m_graphicsDevice->setRenderTargets({textureForOverlay[eye]});
                         } else {
@@ -1266,7 +1317,7 @@ namespace {
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                         m_graphicsDevice->flushContext();
                     }
-                    for (uint32_t eye = 0; eye < ViewCount; eye++) {
+                    for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                         if (!useVPRT) {
                             m_graphicsDevice->setRenderTargets({textureForOverlay[eye]});
                         } else {
@@ -1274,7 +1325,7 @@ namespace {
                         }
 
                         m_graphicsDevice->beginText();
-                        m_menuHandler->render(eye, viewsForOverlay[eye].pose, textureForOverlay[eye]);
+                        m_menuHandler->render((utilities::Eye)eye, viewsForOverlay[eye].pose, textureForOverlay[eye]);
                         m_graphicsDevice->flushText();
                     }
                 }
@@ -1339,6 +1390,8 @@ namespace {
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;
         bool m_sendInterationProfileEvent{false};
+        XrSpace m_viewSpace{XR_NULL_HANDLE};
+        bool m_needCalibrateEyeProjections{true};
 
         std::shared_ptr<config::IConfigManager> m_configManager;
 
@@ -1358,7 +1411,6 @@ namespace {
         int m_keyScreenshot{VK_F12};
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
         bool m_requestScreenShotKeyState{false};
-        bool m_needCalibrateEyeOffsets{true};
 
         struct {
             std::shared_ptr<utilities::ICpuTimer> appCpuTimer;
