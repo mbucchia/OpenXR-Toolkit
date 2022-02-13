@@ -193,6 +193,7 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     <ClCompile Include="config.cpp" />
     <ClCompile Include="d3d11.cpp" />
     <ClCompile Include="d3d12.cpp" />
+    <ClCompile Include="frameanalyzer.cpp" />
     <ClCompile Include="framework\dispatch.cpp" />
     <ClCompile Include="framework\dispatch.gen.cpp" />
     <ClCompile Include="framework\entry.cpp" />

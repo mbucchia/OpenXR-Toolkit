@@ -96,6 +96,9 @@ namespace toolkit {
                              std::shared_ptr<IDevice> graphicsDevice,
                              const std::string& shaderFile);
 
+        std::shared_ptr<IFrameAnalyzer> CreateFrameAnalyzer(
+            std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
+
     } // namespace graphics
 
     namespace input {
