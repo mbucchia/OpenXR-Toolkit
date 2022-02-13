@@ -399,6 +399,57 @@ namespace {
             return getDepthStencilViewInternal(m_depthStencilSubView[slice], slice);
         }
 
+        void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) override {
+            assert(!(rowPitch % m_device->getTextureAlignmentConstraint()));
+
+            // Create an upload buffer if we don't have one already
+            if (!m_uploadBuffer) {
+                m_uploadSize =
+                    Align((UINT)m_textureDesc.Width, m_device->getTextureAlignmentConstraint()) * m_textureDesc.Height;
+                const auto& heapType = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+                const auto stagingDesc = CD3DX12_RESOURCE_DESC::Buffer(m_uploadSize);
+                CHECK_HRCMD(m_device->getNative<D3D12>()->CreateCommittedResource(&heapType,
+                                                                                  D3D12_HEAP_FLAG_NONE,
+                                                                                  &stagingDesc,
+                                                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                                                  nullptr,
+                                                                                  IID_PPV_ARGS(set(m_uploadBuffer))));
+            }
+
+            // Copy to the upload buffer.
+            {
+                void* mappedBuffer = nullptr;
+                m_uploadBuffer->Map(0, nullptr, &mappedBuffer);
+                memcpy(mappedBuffer, buffer, m_uploadSize);
+                m_uploadBuffer->Unmap(0, nullptr);
+            }
+
+            // Do the upload now.
+            auto context = m_device->getContext<D3D12>();
+            {
+                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                    get(m_texture), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+                context->ResourceBarrier(1, &barrier);
+            }
+            {
+                D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+                ZeroMemory(&footprint, sizeof(footprint));
+                footprint.Footprint.Width = (UINT)m_textureDesc.Width;
+                footprint.Footprint.Height = m_textureDesc.Height;
+                footprint.Footprint.Depth = 1;
+                footprint.Footprint.RowPitch = rowPitch;
+                footprint.Footprint.Format = m_textureDesc.Format;
+                CD3DX12_TEXTURE_COPY_LOCATION src(get(m_uploadBuffer), footprint);
+                CD3DX12_TEXTURE_COPY_LOCATION dst(get(m_texture), 0);
+                context->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+            }
+            {
+                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                    get(m_texture), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
+                context->ResourceBarrier(1, &barrier);
+            }
+        }
+
         void saveToFile(const std::string& path) const override {
             // TODO: Implement this.
         }
@@ -527,6 +578,8 @@ namespace {
         const D3D12_RESOURCE_DESC m_textureDesc;
         const ComPtr<ID3D12Resource> m_texture;
 
+        ComPtr<ID3D12Resource> m_uploadBuffer;
+        UINT m_uploadSize{0};
         std::shared_ptr<ITexture> m_interopTexture;
 
         D3D12Heap& m_rtvHeap;
