@@ -218,7 +218,7 @@ namespace {
                                      (int)MotionReprojectionRate::Off,
                                      (int)MotionReprojectionRate::MaxValue - 1,
                                      [&](int value) {
-                                         std::string_view labels[] = {"Off", "45 Hz", "30 Hz", "22.5 Hz"};
+                                         std::string_view labels[] = {"Unlocked", "1/half", "1/third", "1/quarter"};
                                          return std::string(labels[value - 1]);
                                      },
                                      isMotionReprojectionRateSupported});
