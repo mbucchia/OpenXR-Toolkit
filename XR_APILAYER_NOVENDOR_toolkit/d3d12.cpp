@@ -39,6 +39,10 @@ namespace {
     constexpr size_t MaxGpuTimers = 32;
     constexpr size_t MaxModelBuffers = 128;
 
+    auto descriptorCompare = [](const D3D12_CPU_DESCRIPTOR_HANDLE& left, const D3D12_CPU_DESCRIPTOR_HANDLE& right) {
+        return left.ptr < right.ptr;
+    };
+
     struct D3D12Heap {
         void initialize(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT numDescriptors = 32) {
             D3D12_DESCRIPTOR_HEAP_DESC desc;
@@ -761,6 +765,30 @@ namespace {
         const UINT m_stopIndex;
     };
 
+    // Wrap a device context.
+    class D3D12Context : public graphics::IContext {
+      public:
+        D3D12Context(std::shared_ptr<IDevice> device, ID3D12GraphicsCommandList* context)
+            : m_device(device), m_context(context) {
+        }
+
+        Api getApi() const override {
+            return Api::D3D12;
+        }
+
+        std::shared_ptr<IDevice> getDevice() const override {
+            return m_device;
+        }
+
+        void* getNativePtr() const override {
+            return get(m_context);
+        }
+
+      private:
+        const std::shared_ptr<IDevice> m_device;
+        const ComPtr<ID3D12GraphicsCommandList> m_context;
+    };
+
     class D3D12Device : public IDevice, public std::enable_shared_from_this<D3D12Device> {
       private:
         // OpenXR will not allow more than 2 frames in-flight, so 2 would be sufficient, however we might split the
@@ -897,11 +925,13 @@ namespace {
 
             CHECK_HRCMD(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(set(m_fence))));
 
+            initializeInterceptor();
             initializeShadingResources();
             initializeMeshResources();
         }
 
         ~D3D12Device() override {
+            uninitializeInterceptor();
             Log("D3D12Device destroyed\n");
         }
 
@@ -1744,6 +1774,26 @@ namespace {
             m_queryReadbackBuffer->Unmap(0, nullptr);
         }
 
+        void blockCallbacks() override {
+            m_blockEvents = true;
+        }
+
+        void unblockCallbacks() override {
+            m_blockEvents = false;
+        }
+
+        void registerSetRenderTargetEvent(SetRenderTargetEvent event) override {
+            m_setRenderTargetEvent = event;
+        }
+
+        void registerUnsetRenderTargetEvent(UnsetRenderTargetEvent event) override {
+            m_unsetRenderTargetEvent = event;
+        }
+
+        void registerCopyTextureEvent(CopyTextureEvent event) override {
+            m_copyTextureEvent = event;
+        }
+
         uint32_t getBufferAlignmentConstraint() const override {
             return D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
         }
@@ -1761,6 +1811,47 @@ namespace {
         }
 
       private:
+        void initializeInterceptor() {
+            g_instance = this;
+
+            // Hook to the Direct3D device and command list  to intercept preparation for the rendering.
+            DetourMethodAttach(get(m_context),
+                               // Method offset is 10 + method index (0-based) for ID3D12GraphicsCommandList.
+                               46,
+                               hooked_ID3D12GraphicsCommandList_OMSetRenderTargets,
+                               g_original_ID3D12GraphicsCommandList_OMSetRenderTargets);
+            DetourMethodAttach(get(m_device),
+                               // Method offset is 7 + method index (0-based) for ID3D12Device.
+                               20,
+                               hooked_ID3D12Device_CreateRenderTargetView,
+                               g_original_ID3D12Device_CreateRenderTargetView);
+            DetourMethodAttach(get(m_context),
+                               // Method offset is 10 + method index (0-based) for ID3D12GraphicsCommandList.
+                               16,
+                               hooked_ID3D12GraphicsCommandList_CopyTextureRegion,
+                               g_original_ID3D12GraphicsCommandList_CopyTextureRegion);
+        }
+
+        void uninitializeInterceptor() {
+            DetourMethodDetach(get(m_context),
+                               // Method offset is 10 + method index (0-based) for ID3D12GraphicsCommandList.
+                               46,
+                               hooked_ID3D12GraphicsCommandList_OMSetRenderTargets,
+                               g_original_ID3D12GraphicsCommandList_OMSetRenderTargets);
+            DetourMethodDetach(get(m_device),
+                               // Method offset is 7 + method index (0-based) for ID3D12Device.
+                               20,
+                               hooked_ID3D12Device_CreateRenderTargetView,
+                               g_original_ID3D12Device_CreateRenderTargetView);
+            DetourMethodDetach(get(m_context),
+                               // Method offset is 10 + method index (0-based) for ID3D12GraphicsCommandList.
+                               16,
+                               hooked_ID3D12GraphicsCommandList_CopyTextureRegion,
+                               g_original_ID3D12GraphicsCommandList_CopyTextureRegion);
+
+            g_instance = nullptr;
+        }
+
         // Initialize the resources needed for dispatchShader() and related calls.
         void initializeShadingResources() {
             {
@@ -1894,6 +1985,105 @@ namespace {
             return ((m_queryBuffer[stopIndex] - m_queryBuffer[startIndex]) * 1000000) / m_gpuTickFrequency;
         }
 
+        void registerRenderTargetView(ID3D12Resource* resource,
+                                      const D3D12_RENDER_TARGET_VIEW_DESC* desc,
+                                      D3D12_CPU_DESCRIPTOR_HANDLE handle) {
+            ComPtr<ID3D12Device> device;
+            CHECK_HRCMD(resource->GetDevice(IID_PPV_ARGS(set(device))));
+            if (device != m_device) {
+                return;
+            }
+
+            D3D12_RESOURCE_DESC resourceDesc = resource->GetDesc();
+            if (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+                const size_t sizeBefore = m_renderTargetResourceDescriptors.size();
+                m_renderTargetResourceDescriptors.insert_or_assign(handle, resource);
+                if (sizeBefore && !(sizeBefore % 100) && m_renderTargetResourceDescriptors.size() != sizeBefore) {
+                    Log("Dictionary of render target resource descriptor now at %zu elements\n", sizeBefore + 1);
+                }
+            }
+        }
+
+#define INVOKE_EVENT(event, ...)                                                                                       \
+    do {                                                                                                               \
+        if (!m_blockEvents && m_##event) {                                                                             \
+            m_##event(##__VA_ARGS__);                                                                                  \
+        }                                                                                                              \
+    } while (0);
+
+        void onSetRenderTargets(ID3D12GraphicsCommandList* context,
+                                UINT numRenderTargetDescriptors,
+                                const D3D12_CPU_DESCRIPTOR_HANDLE* renderTargetHandles,
+                                BOOL singleHandleToDescriptorRange,
+                                const D3D12_CPU_DESCRIPTOR_HANDLE* depthStencilHandle) {
+            ComPtr<ID3D12Device> device;
+            CHECK_HRCMD(context->GetDevice(IID_PPV_ARGS(set(device))));
+            if (device != m_device) {
+                return;
+            }
+
+            auto wrappedContext = std::make_shared<D3D12Context>(shared_from_this(), context);
+
+            if (!numRenderTargetDescriptors) {
+                INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
+                return;
+            }
+
+            auto it = m_renderTargetResourceDescriptors.find(renderTargetHandles[0]);
+            if (it == m_renderTargetResourceDescriptors.cend()) {
+                INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
+                return;
+            }
+
+            ID3D12Resource* const resource = it->second;
+            const D3D12_RESOURCE_DESC& resourceDesc = resource->GetDesc();
+
+            auto renderTarget = std::make_shared<D3D12Texture>(shared_from_this(),
+                                                               getTextureInfo(resourceDesc),
+                                                               resourceDesc,
+                                                               resource,
+                                                               m_rtvHeap,
+                                                               m_dsvHeap,
+                                                               m_rvHeap);
+            INVOKE_EVENT(setRenderTargetEvent, wrappedContext, renderTarget);
+        }
+
+        void onCopyTexture(ID3D12GraphicsCommandList* context,
+                           ID3D12Resource* pSrcResource,
+                           ID3D12Resource* pDstResource,
+                           UINT SrcSubresource = 0,
+                           UINT DstSubresource = 0) {
+            ComPtr<ID3D12Device> device;
+            CHECK_HRCMD(context->GetDevice(IID_PPV_ARGS(set(device))));
+            if (device != m_device) {
+                return;
+            }
+
+            auto wrappedContext = std::make_shared<D3D12Context>(shared_from_this(), context);
+
+            const D3D12_RESOURCE_DESC& sourceTextureDesc = pSrcResource->GetDesc();
+            auto source = std::make_shared<D3D12Texture>(shared_from_this(),
+                                                         getTextureInfo(sourceTextureDesc),
+                                                         sourceTextureDesc,
+                                                         pSrcResource,
+                                                         m_rtvHeap,
+                                                         m_dsvHeap,
+                                                         m_rvHeap);
+
+            const D3D12_RESOURCE_DESC& destinationTextureDesc = pSrcResource->GetDesc();
+            auto destination = std::make_shared<D3D12Texture>(shared_from_this(),
+                                                              getTextureInfo(destinationTextureDesc),
+                                                              destinationTextureDesc,
+                                                              pDstResource,
+                                                              m_rtvHeap,
+                                                              m_dsvHeap,
+                                                              m_rvHeap);
+
+            INVOKE_EVENT(copyTextureEvent, wrappedContext, source, destination, SrcSubresource, DstSubresource);
+        }
+
+#undef INVOKE_EVENT
+
         ComPtr<ID3D12Device> m_device;
         ComPtr<ID3D12CommandQueue> m_queue;
         std::string m_deviceName;
@@ -1947,11 +2137,124 @@ namespace {
 
         ComPtr<ID3D12InfoQueue> m_infoQueue;
 
+        SetRenderTargetEvent m_setRenderTargetEvent;
+        UnsetRenderTargetEvent m_unsetRenderTargetEvent;
+        CopyTextureEvent m_copyTextureEvent;
+        std::atomic<bool> m_blockEvents{false};
+
+        std::map<D3D12_CPU_DESCRIPTOR_HANDLE, ID3D12Resource*, decltype(descriptorCompare)>
+            m_renderTargetResourceDescriptors{descriptorCompare};
+
         friend std::shared_ptr<ITexture>
         toolkit::graphics::WrapD3D12Texture(std::shared_ptr<IDevice> device,
                                             const XrSwapchainCreateInfo& info,
                                             ID3D12Resource* texture,
                                             const std::optional<std::string>& debugName);
+
+        static XrSwapchainCreateInfo getTextureInfo(const D3D12_RESOURCE_DESC& resourceDesc) {
+            XrSwapchainCreateInfo info;
+            ZeroMemory(&info, sizeof(info));
+            info.format = (int64_t)resourceDesc.Format;
+            info.width = (uint32_t)resourceDesc.Width;
+            info.height = resourceDesc.Height;
+            info.arraySize = resourceDesc.DepthOrArraySize;
+            info.mipCount = resourceDesc.MipLevels;
+            info.sampleCount = resourceDesc.SampleDesc.Count;
+            if (resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+            }
+            if (resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            }
+            if (!(resourceDesc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE)) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+            }
+            if (resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) {
+                info.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+            }
+
+            return info;
+        }
+
+        static inline D3D12Device* g_instance = nullptr;
+
+        typedef void (*PFN_ID3D12Device_CreateRenderTargetView)(ID3D12Device*,
+                                                                ID3D12Resource*,
+                                                                const D3D12_RENDER_TARGET_VIEW_DESC*,
+                                                                D3D12_CPU_DESCRIPTOR_HANDLE);
+        static inline PFN_ID3D12Device_CreateRenderTargetView g_original_ID3D12Device_CreateRenderTargetView = nullptr;
+        static void hooked_ID3D12Device_CreateRenderTargetView(ID3D12Device* device,
+                                                               ID3D12Resource* pResource,
+                                                               const D3D12_RENDER_TARGET_VIEW_DESC* pDesc,
+                                                               D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor) {
+            DebugLog("--> ID3D12Device_CreateRenderTargetView\n");
+
+            assert(g_instance);
+            g_instance->registerRenderTargetView(pResource, pDesc, DestDescriptor);
+
+            assert(g_original_ID3D12Device_CreateRenderTargetView);
+            g_original_ID3D12Device_CreateRenderTargetView(device, pResource, pDesc, DestDescriptor);
+
+            DebugLog("<-- ID3D12Device_CreateRenderTargetView\n");
+        }
+
+        typedef void (*PFN_ID3D12GraphicsCommandList_OMSetRenderTargets)(ID3D12GraphicsCommandList*,
+                                                                         UINT,
+                                                                         const D3D12_CPU_DESCRIPTOR_HANDLE*,
+                                                                         BOOL,
+                                                                         const D3D12_CPU_DESCRIPTOR_HANDLE*);
+        static inline PFN_ID3D12GraphicsCommandList_OMSetRenderTargets g_original_ID3D12GraphicsCommandList_OMSetRenderTargets = nullptr;
+        static void hooked_ID3D12GraphicsCommandList_OMSetRenderTargets(
+            ID3D12GraphicsCommandList* context,
+            UINT NumRenderTargetDescriptors,
+            const D3D12_CPU_DESCRIPTOR_HANDLE* pRenderTargetDescriptors,
+            BOOL RTsSingleHandleToDescriptorRange,
+            const D3D12_CPU_DESCRIPTOR_HANDLE* pDepthStencilDescriptor) {
+            DebugLog("--> ID3D12GraphicsCommandList_OMSetRenderTargets\n");
+
+            assert(g_instance);
+            g_instance->onSetRenderTargets(context,
+                                           NumRenderTargetDescriptors,
+                                           pRenderTargetDescriptors,
+                                           RTsSingleHandleToDescriptorRange,
+                                           pDepthStencilDescriptor);
+
+            assert(g_original_ID3D12GraphicsCommandList_OMSetRenderTargets);
+            g_original_ID3D12GraphicsCommandList_OMSetRenderTargets(context,
+                                                                    NumRenderTargetDescriptors,
+                                                                    pRenderTargetDescriptors,
+                                                                    RTsSingleHandleToDescriptorRange,
+                                                                    pDepthStencilDescriptor);
+
+            DebugLog("<-- ID3D12GraphicsCommandList_OMSetRenderTargets\n");
+        }
+
+        typedef void (*PFN_ID3D12GraphicsCommandList_CopyTextureRegion)(ID3D12GraphicsCommandList*,
+                                                                        const D3D12_TEXTURE_COPY_LOCATION*,
+                                                                        UINT,
+                                                                        UINT,
+                                                                        UINT,
+                                                                        const D3D12_TEXTURE_COPY_LOCATION*,
+                                                                        const D3D12_BOX*);
+        static inline PFN_ID3D12GraphicsCommandList_CopyTextureRegion g_original_ID3D12GraphicsCommandList_CopyTextureRegion = nullptr;
+        static void hooked_ID3D12GraphicsCommandList_CopyTextureRegion(ID3D12GraphicsCommandList* context,
+                                                                       const D3D12_TEXTURE_COPY_LOCATION* pDst,
+                                                                       UINT DstX,
+                                                                       UINT DstY,
+                                                                       UINT DstZ,
+                                                                       const D3D12_TEXTURE_COPY_LOCATION* pSrc,
+                                                                       const D3D12_BOX* pSrcBox) {
+            DebugLog("--> ID3D12GraphicsCommandList_CopyTextureRegion\n");
+
+            assert(g_instance);
+            g_instance->onCopyTexture(
+                context, pSrc->pResource, pDst->pResource, pSrc->SubresourceIndex, pDst->SubresourceIndex);
+
+            assert(g_original_ID3D12GraphicsCommandList_OMSetRenderTargets);
+            g_original_ID3D12GraphicsCommandList_CopyTextureRegion(context, pDst, DstX, DstY, DstZ, pSrc, pSrcBox);
+
+            DebugLog("<-- ID3D12GraphicsCommandList_CopyTextureRegion\n");
+        }
     };
 
 } // namespace
