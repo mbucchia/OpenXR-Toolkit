@@ -48,7 +48,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrPollEvent(instance, eventData);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -68,7 +68,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrGetSystem(instance, getInfo, systemId);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -88,7 +88,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrCreateSession(instance, createInfo, session);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -108,7 +108,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrDestroySession(session);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -128,7 +128,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrCreateActionSpace(session, createInfo, space);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -148,7 +148,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrLocateSpace(space, baseSpace, time, location);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -168,7 +168,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrDestroySpace(space);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -188,7 +188,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrEnumerateViewConfigurationViews(instance, systemId, viewConfigurationType, viewCapacityInput, viewCountOutput, views);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -208,7 +208,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrCreateSwapchain(session, createInfo, swapchain);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -228,7 +228,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrDestroySwapchain(swapchain);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -248,7 +248,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrEnumerateSwapchainImages(swapchain, imageCapacityInput, imageCountOutput, images);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -268,7 +268,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrAcquireSwapchainImage(swapchain, acquireInfo, index);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -288,7 +288,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrReleaseSwapchainImage(swapchain, releaseInfo);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -308,7 +308,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrWaitFrame(session, frameWaitInfo, frameState);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -328,7 +328,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrBeginFrame(session, frameBeginInfo);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -348,7 +348,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrEndFrame(session, frameEndInfo);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -368,7 +368,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -388,7 +388,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrCreateAction(actionSet, createInfo, action);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -408,7 +408,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrDestroyAction(action);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -428,7 +428,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrSuggestInteractionProfileBindings(instance, suggestedBindings);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -448,7 +448,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrGetCurrentInteractionProfile(session, topLevelUserPath, interactionProfile);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -468,7 +468,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrGetActionStateBoolean(session, getInfo, state);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -488,7 +488,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrGetActionStateFloat(session, getInfo, state);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -508,7 +508,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrGetActionStatePose(session, getInfo, state);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -528,7 +528,7 @@ namespace LAYER_NAMESPACE
 		{
 			result = LAYER_NAMESPACE::GetInstance()->xrSyncActions(session, syncInfo);
 		}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{
 			Log("%s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -690,31 +690,31 @@ namespace LAYER_NAMESPACE
     {
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrGetInstanceProperties", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrGetInstanceProperties))))
 		{
-			throw new std::runtime_error("Failed to resolve xrGetInstanceProperties");
+			throw std::runtime_error("Failed to resolve xrGetInstanceProperties");
 		}
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrGetSystemProperties", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrGetSystemProperties))))
 		{
-			throw new std::runtime_error("Failed to resolve xrGetSystemProperties");
+			throw std::runtime_error("Failed to resolve xrGetSystemProperties");
 		}
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrCreateReferenceSpace", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateReferenceSpace))))
 		{
-			throw new std::runtime_error("Failed to resolve xrCreateReferenceSpace");
+			throw std::runtime_error("Failed to resolve xrCreateReferenceSpace");
 		}
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrEnumerateViewConfigurationViews", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrEnumerateViewConfigurationViews))))
 		{
-			throw new std::runtime_error("Failed to resolve xrEnumerateViewConfigurationViews");
+			throw std::runtime_error("Failed to resolve xrEnumerateViewConfigurationViews");
 		}
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrEnumerateSwapchainImages", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrEnumerateSwapchainImages))))
 		{
-			throw new std::runtime_error("Failed to resolve xrEnumerateSwapchainImages");
+			throw std::runtime_error("Failed to resolve xrEnumerateSwapchainImages");
 		}
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrStringToPath", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrStringToPath))))
 		{
-			throw new std::runtime_error("Failed to resolve xrStringToPath");
+			throw std::runtime_error("Failed to resolve xrStringToPath");
 		}
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrPathToString", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrPathToString))))
 		{
-			throw new std::runtime_error("Failed to resolve xrPathToString");
+			throw std::runtime_error("Failed to resolve xrPathToString");
 		}
 		m_applicationName = createInfo->applicationInfo.applicationName;
 		return XR_SUCCESS;

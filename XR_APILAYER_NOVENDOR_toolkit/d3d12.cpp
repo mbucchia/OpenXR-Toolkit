@@ -412,7 +412,7 @@ namespace {
         getShaderInputViewInternal(std::shared_ptr<D3D12ResourceView>& shaderResourceView, uint32_t slice = 0) const {
             if (!shaderResourceView) {
                 if (m_textureDesc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) {
-                    throw new std::runtime_error("Texture was created with D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE");
+                    throw std::runtime_error("Texture was created with D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE");
                 }
 
                 auto device = m_device->getNative<D3D12>();
@@ -440,7 +440,7 @@ namespace {
             std::shared_ptr<D3D12ResourceView>& unorderedAccessView, uint32_t slice = 0) const {
             if (!unorderedAccessView) {
                 if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS");
                 }
 
@@ -467,7 +467,7 @@ namespace {
         getRenderTargetViewInternal(std::shared_ptr<D3D12ResourceView>& renderTargetView, uint32_t slice = 0) const {
             if (!renderTargetView) {
                 if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET");
                 }
 
@@ -494,7 +494,7 @@ namespace {
         getDepthStencilViewInternal(std::shared_ptr<D3D12ResourceView>& depthStencilView, uint32_t slice = 0) const {
             if (!depthStencilView) {
                 if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL");
                 }
 
@@ -590,7 +590,7 @@ namespace {
 
         void uploadData(const void* buffer, size_t count) override {
             if (!m_uploadBuffer) {
-                throw new std::runtime_error("Texture is immutable");
+                throw std::runtime_error("Texture is immutable");
             }
             uploadData(buffer, count, get(m_uploadBuffer));
         }
@@ -912,7 +912,7 @@ namespace {
                 return (int64_t)DXGI_FORMAT_R8G8B8A8_UNORM;
 
             default:
-                throw new std::runtime_error("Unknown texture format");
+                throw std::runtime_error("Unknown texture format");
             };
         }
 
@@ -1312,7 +1312,7 @@ namespace {
         void setShaderOutput(uint32_t slot, std::shared_ptr<ITexture> output, int32_t slice) override {
             if (m_currentQuadShader) {
                 if (slot) {
-                    throw new std::runtime_error("Only use slot 0 for IQuadShader");
+                    throw std::runtime_error("Only use slot 0 for IQuadShader");
                 }
                 if (slice == -1) {
                     setRenderTargets({output}, nullptr);
@@ -1923,7 +1923,7 @@ namespace toolkit::graphics {
                                                ID3D12Resource* texture,
                                                const std::optional<std::string>& debugName) {
         if (device->getApi() != Api::D3D12) {
-            throw new std::runtime_error("Not a D3D12 device");
+            throw std::runtime_error("Not a D3D12 device");
         }
         auto d3d12Device = dynamic_cast<D3D12Device*>(device.get());
 
