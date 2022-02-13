@@ -84,7 +84,7 @@ namespace {
     class D3D12Shader {
       public:
         D3D12Shader(std::shared_ptr<IDevice> device, ID3DBlob* shaderBytes, const std::optional<std::string>& debugName)
-            : m_device(device), m_shaderBytes(shaderBytes), m_debugName(debugName) {
+            : m_device(device), m_shaderBytes(shaderBytes), m_debugName(debugName), m_shaderData{} {
         }
 
         virtual ~D3D12Shader() = default;
@@ -440,8 +440,7 @@ namespace {
             std::shared_ptr<D3D12ResourceView>& unorderedAccessView, uint32_t slice = 0) const {
             if (!unorderedAccessView) {
                 if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)) {
-                    throw std::runtime_error(
-                        "Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS");
+                    throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS");
                 }
 
                 auto device = m_device->getNative<D3D12>();
@@ -467,8 +466,7 @@ namespace {
         getRenderTargetViewInternal(std::shared_ptr<D3D12ResourceView>& renderTargetView, uint32_t slice = 0) const {
             if (!renderTargetView) {
                 if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)) {
-                    throw std::runtime_error(
-                        "Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET");
+                    throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET");
                 }
 
                 auto device = m_device->getNative<D3D12>();
@@ -494,8 +492,7 @@ namespace {
         getDepthStencilViewInternal(std::shared_ptr<D3D12ResourceView>& depthStencilView, uint32_t slice = 0) const {
             if (!depthStencilView) {
                 if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)) {
-                    throw std::runtime_error(
-                        "Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL");
+                    throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL");
                 }
 
                 auto device = m_device->getNative<D3D12>();
@@ -1189,12 +1186,14 @@ namespace {
 
         std::shared_ptr<IGpuTimer> createTimer() override {
             assert(m_nextGpuTimestampIndex < ARRAYSIZE(m_queryBuffer));
+            const UINT startGpuTimestampIndex = m_nextGpuTimestampIndex++;
+            const UINT stopGpuTimestampIndex = m_nextGpuTimestampIndex++;
             return std::make_shared<D3D12GpuTimer>(
                 shared_from_this(),
                 get(m_queryHeap),
                 [&](UINT startIndex, UINT stopIndex) { return queryTimeStampDelta(startIndex, stopIndex); },
-                m_nextGpuTimestampIndex++,
-                m_nextGpuTimestampIndex++);
+                startGpuTimestampIndex,
+                stopGpuTimestampIndex);
         }
 
         void setShader(std::shared_ptr<IQuadShader> shader) override {

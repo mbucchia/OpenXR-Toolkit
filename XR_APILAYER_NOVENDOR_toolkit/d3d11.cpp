@@ -1652,17 +1652,7 @@ namespace {
         mutable uint32_t m_currentShaderHighestRTV;
     };
 
-    typedef HRESULT (*PFN_D3D11CreateDevice)(IDXGIAdapter*,
-                                             D3D_DRIVER_TYPE,
-                                             HMODULE,
-                                             UINT,
-                                             const D3D_FEATURE_LEVEL*,
-                                             UINT,
-                                             UINT,
-                                             ID3D11Device**,
-                                             D3D_FEATURE_LEVEL*,
-                                             ID3D11DeviceContext**);
-    PFN_D3D11CreateDevice g_original_D3D11CreateDevice = nullptr;
+    decltype(&D3D11CreateDevice) g_original_D3D11CreateDevice = nullptr;
 
     HRESULT Hooked_D3D11CreateDevice(IDXGIAdapter* pAdapter,
                                      D3D_DRIVER_TYPE DriverType,
