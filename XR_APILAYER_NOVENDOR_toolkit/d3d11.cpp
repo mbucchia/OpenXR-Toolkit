@@ -1473,7 +1473,7 @@ namespace {
             {
                 ComPtr<ID3DBlob> errors;
                 ComPtr<ID3DBlob> vsBytes;
-                HRESULT hr = D3DCompile(QuadVertexShader.c_str(),
+                HRESULT hr = D3DCompile(QuadVertexShader.data(),
                                         QuadVertexShader.length(),
                                         nullptr,
                                         nullptr,
@@ -1493,9 +1493,9 @@ namespace {
                 CHECK_HRCMD(m_device->CreateVertexShader(
                     vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, set(m_quadVertexShader)));
                 {
-                    const std::string debugName = "Quad PS";
+                    const std::string_view debugName = "Quad PS";
                     m_quadVertexShader->SetPrivateData(
-                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
+                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
                 }
             }
         }
@@ -1505,7 +1505,7 @@ namespace {
             {
                 ComPtr<ID3DBlob> errors;
                 ComPtr<ID3DBlob> vsBytes;
-                HRESULT hr = D3DCompile(MeshShaders.c_str(),
+                HRESULT hr = D3DCompile(MeshShaders.data(),
                                         MeshShaders.length(),
                                         nullptr,
                                         nullptr,
@@ -1525,9 +1525,9 @@ namespace {
                 CHECK_HRCMD(m_device->CreateVertexShader(
                     vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, set(m_meshVertexShader)));
                 {
-                    const std::string debugName = "SimpleMesh VS";
+                    const std::string_view debugName = "SimpleMesh VS";
                     m_meshVertexShader->SetPrivateData(
-                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
+                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
                 }
 
                 const D3D11_INPUT_ELEMENT_DESC vertexDesc[] = {
@@ -1556,7 +1556,7 @@ namespace {
             {
                 ComPtr<ID3DBlob> errors;
                 ComPtr<ID3DBlob> psBytes;
-                HRESULT hr = D3DCompile(MeshShaders.c_str(),
+                HRESULT hr = D3DCompile(MeshShaders.data(),
                                         MeshShaders.length(),
                                         nullptr,
                                         nullptr,
@@ -1576,9 +1576,9 @@ namespace {
                 CHECK_HRCMD(m_device->CreatePixelShader(
                     psBytes->GetBufferPointer(), psBytes->GetBufferSize(), nullptr, set(m_meshPixelShader)));
                 {
-                    const std::string debugName = "SimpleMesh PS";
+                    const std::string_view debugName = "SimpleMesh PS";
                     m_meshPixelShader->SetPrivateData(
-                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str());
+                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
                 }
             }
             {

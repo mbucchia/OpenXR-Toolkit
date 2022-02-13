@@ -11,7 +11,7 @@ namespace toolkit::graphics::d3dcommon {
         DirectX::XMFLOAT4X4 ViewProjection;
     };
 
-    const std::string MeshShaders = R"_(
+    const std::string_view MeshShaders = R"_(
 struct VSOutput {
     float4 Pos : SV_POSITION;
     float3 Color : COLOR0;
@@ -39,7 +39,7 @@ float4 psMain(VSOutput input) : SV_TARGET {
 }
 )_";
 
-    const std::string QuadVertexShader = R"_(
+    const std::string_view QuadVertexShader = R"_(
 void vsMain(in uint id : SV_VertexID, out float4 position : SV_Position, out float2 texcoord : TEXCOORD0)
 {
     texcoord = float2((id == 1) ? 2.0 : 0.0, (id == 2) ? 2.0 : 0.0);
