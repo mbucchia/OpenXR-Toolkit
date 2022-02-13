@@ -916,6 +916,8 @@ namespace {
                                                 uint32_t rowPitch = 0,
                                                 uint32_t imageSize = 0,
                                                 const void* initialData = nullptr) override {
+            assert(!(rowPitch % getTextureAlignmentConstraint()));
+
             D3D11_TEXTURE2D_DESC desc;
             ZeroMemory(&desc, sizeof(desc));
             desc.Format = (DXGI_FORMAT)info.format;
@@ -1209,7 +1211,7 @@ namespace {
         void unsetRenderTargets() override {
             std::vector<ID3D11RenderTargetView*> rtvs;
 
-            for (int i = 0; i < 8; i++) {
+            for (int i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
                 rtvs.push_back(nullptr);
             }
 

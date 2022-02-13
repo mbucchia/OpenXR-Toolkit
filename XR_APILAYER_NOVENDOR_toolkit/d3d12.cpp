@@ -756,6 +756,19 @@ namespace {
                 if (SUCCEEDED(m_device->QueryInterface(__uuidof(ID3D12InfoQueue),
                                                        reinterpret_cast<void**>(set(m_infoQueue))))) {
                     Log("D3D12 Debug layer is enabled\n");
+
+                    // Disable some common warnings.
+                    D3D12_MESSAGE_ID messages[] = {
+                        D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
+                        D3D12_MESSAGE_ID_CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE,
+                        D3D12_MESSAGE_ID_CREATERESOURCE_CLEARVALUEDENORMFLUSH,
+                        D3D12_MESSAGE_ID_REFLECTSHAREDPROPERTIES_INVALIDOBJECT, // Caused by D3D11on12.
+                    };
+                    D3D12_INFO_QUEUE_FILTER filter;
+                    ZeroMemory(&filter, sizeof(filter));
+                    filter.DenyList.NumIDs = ARRAYSIZE(messages);
+                    filter.DenyList.pIDList = messages;
+                    m_infoQueue->AddStorageFilterEntries(&filter);
                 } else {
                     Log("Failed to enable debug layer - please check that the 'Graphics Tools' feature of Windows is "
                         "installed\n");
@@ -798,7 +811,7 @@ namespace {
                                                                  IID_PPV_ARGS(&m_commandAllocator[i])));
                     CHECK_HRCMD(m_device->CreateCommandList(0,
                                                             D3D12_COMMAND_LIST_TYPE_DIRECT,
-                                                            m_commandAllocator[i].Get(),
+                                                            get(m_commandAllocator[i]),
                                                             nullptr,
                                                             IID_PPV_ARGS(&m_commandList[i])));
 
@@ -957,7 +970,7 @@ namespace {
                 m_currentContext = 0;
             }
             CHECK_HRCMD(m_commandAllocator[m_currentContext]->Reset());
-            CHECK_HRCMD(m_commandList[m_currentContext]->Reset(m_commandAllocator[m_currentContext].Get(), nullptr));
+            CHECK_HRCMD(m_commandList[m_currentContext]->Reset(get(m_commandAllocator[m_currentContext]), nullptr));
             m_context = m_commandList[m_currentContext];
 
             // Log any messages from the Debug layer.
@@ -982,6 +995,8 @@ namespace {
                                                 uint32_t rowPitch = 0,
                                                 uint32_t imageSize = 0,
                                                 const void* initialData = nullptr) override {
+            assert(!(rowPitch % getTextureAlignmentConstraint()));
+
             auto desc = CD3DX12_RESOURCE_DESC::Tex2D(
                 (DXGI_FORMAT)info.format, info.width, info.height, info.arraySize, info.mipCount, info.sampleCount);
 
@@ -1038,7 +1053,7 @@ namespace {
                     footprint.Footprint.Width = (UINT)desc.Width;
                     footprint.Footprint.Height = desc.Height;
                     footprint.Footprint.Depth = 1;
-                    footprint.Footprint.RowPitch = Align(rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+                    footprint.Footprint.RowPitch = rowPitch;
                     footprint.Footprint.Format = desc.Format;
                     CD3DX12_TEXTURE_COPY_LOCATION src(get(uploadBuffer), footprint);
                     CD3DX12_TEXTURE_COPY_LOCATION dst(get(texture), 0);
