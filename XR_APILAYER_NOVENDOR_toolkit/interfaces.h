@@ -564,6 +564,26 @@ namespace toolkit {
                                  int32_t slice = -1) = 0;
         };
 
+        struct IFrameAnalyzer {
+            virtual ~IFrameAnalyzer() = default;
+
+            virtual void registerColorSwapchainImage(std::shared_ptr<ITexture> source, utilities::Eye eye) = 0;
+
+            virtual void resetForFrame() = 0;
+            virtual void prepareForEndFrame() = 0;
+
+            virtual void onSetRenderTarget(std::shared_ptr<IContext> context,
+                                           std::shared_ptr<ITexture> renderTarget) = 0;
+            virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
+
+            virtual void onCopyTexture(std::shared_ptr<ITexture> source,
+                                       std::shared_ptr<ITexture> destination,
+                                       int sourceSlice = -1,
+                                       int destinationSlice = -1) = 0;
+
+            virtual std::optional<utilities::Eye> getEyeHint() const = 0;
+        };
+
     } // namespace graphics
 
     namespace input {

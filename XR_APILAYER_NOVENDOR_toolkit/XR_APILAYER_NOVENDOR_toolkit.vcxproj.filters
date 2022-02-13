@@ -127,6 +127,9 @@
     <ClCompile Include="d3d12.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="frameanalyzer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="XR_APILAYER_NOVENDOR_toolkit.json" />

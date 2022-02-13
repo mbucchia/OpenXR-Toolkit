@@ -53,6 +53,8 @@ namespace {
         std::vector<SwapchainImages> images;
         uint32_t acquiredImageIndex{0};
         bool delayedRelease{false};
+
+        bool registeredWithFrameAnalyzer{false};
     };
 
     class OpenXrLayer : public toolkit::OpenXrApi {
@@ -289,23 +291,26 @@ namespace {
 
                 if (m_graphicsDevice) {
                     // Initialize the other resources.
+
+                    uint32_t inputWidth = m_displayWidth;
+                    uint32_t inputHeight = m_displayHeight;
+
                     m_upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
+                    if (m_upscaleMode != config::ScalingType::None) {
+                        std::tie(inputWidth, inputHeight) =
+                            config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
+                        m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
+                    }
 
                     switch (m_upscaleMode) {
                     case config::ScalingType::FSR:
                         m_upscaler = graphics::CreateFSRUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
-
-                        // Latch this value now.
-                        m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
                         break;
 
                     case config::ScalingType::NIS:
                         m_upscaler = graphics::CreateNISUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
-
-                        // Latch this value now.
-                        m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
                         break;
 
                     case config::ScalingType::None:
@@ -318,6 +323,46 @@ namespace {
 
                     m_postProcessor =
                         graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
+
+                    m_configManager->setDefault("disable_frame_analyzer", 0);
+                    if (!m_configManager->getValue("disable_frame_analyzer")) {
+                        m_frameAnalyzer = graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice);
+                    }
+
+                    // Register intercepted events.
+                    m_graphicsDevice->registerSetRenderTargetEvent(
+                        [&](std::shared_ptr<graphics::IContext> context,
+                            std::shared_ptr<graphics::ITexture> renderTarget) {
+                            if (!m_isInFrame) {
+                                return;
+                            }
+
+                            if (m_frameAnalyzer) {
+                                m_frameAnalyzer->onSetRenderTarget(context, renderTarget);
+                            }
+                        });
+                    m_graphicsDevice->registerUnsetRenderTargetEvent([&](std::shared_ptr<graphics::IContext> context) {
+                        if (!m_isInFrame) {
+                            return;
+                        }
+
+                        if (m_frameAnalyzer) {
+                            m_frameAnalyzer->onUnsetRenderTarget(context);
+                        }
+                    });
+                    m_graphicsDevice->registerCopyTextureEvent([&](std::shared_ptr<graphics::IContext> context,
+                                                                   std::shared_ptr<graphics::ITexture> source,
+                                                                   std::shared_ptr<graphics::ITexture> destination,
+                                                                   int sourceSlice,
+                                                                   int destinationSlice) {
+                        if (!m_isInFrame) {
+                            return;
+                        }
+
+                        if (m_frameAnalyzer) {
+                            m_frameAnalyzer->onCopyTexture(source, destination, sourceSlice, destinationSlice);
+                        }
+                    });
 
                     m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.endFrameCpuTimer = utilities::CreateCpuTimer();
@@ -387,6 +432,7 @@ namespace {
                 m_upscaler.reset();
                 m_preProcessor.reset();
                 m_postProcessor.reset();
+                m_frameAnalyzer.reset();
                 for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
                     m_performanceCounters.appGpuTimer[i].reset();
                     m_performanceCounters.overlayGpuTimer[i].reset();
@@ -994,6 +1040,7 @@ namespace {
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 // Record the predicted display time.
                 m_begunFrameTime = m_waitedFrameTime;
+                m_isInFrame = true;
 
                 if (m_graphicsDevice) {
                     m_performanceCounters.appCpuTimer->start();
@@ -1004,6 +1051,10 @@ namespace {
                     // With D3D12, we want to make sure the query is enqueued now.
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                         m_graphicsDevice->flushContext();
+                    }
+
+                    if (m_frameAnalyzer) {
+                        m_frameAnalyzer->resetForFrame();
                     }
                 }
             }
@@ -1091,6 +1142,8 @@ namespace {
                 return OpenXrApi::xrEndFrame(session, frameEndInfo);
             }
 
+            m_isInFrame = false;
+
             updateStatisticsForFrame();
 
             m_performanceCounters.appCpuTimer->stop();
@@ -1103,6 +1156,10 @@ namespace {
             // Toggle to the next set of GPU timers.
             m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
             m_graphicsDevice->resolveQueries();
+
+            if (m_frameAnalyzer) {
+                m_frameAnalyzer->prepareForEndFrame();
+            }
 
             // TODO: Ensure restoreContext() even on error.
             m_graphicsDevice->blockCallbacks();
@@ -1186,6 +1243,17 @@ namespace {
                         uint32_t lastImage = 0;
                         uint32_t gpuTimerIndex = useVPRT ? eye : 0;
 
+                        // Now that we know what eye the swapchain is used for, register it.
+                        // TODO: We always assume that if VPRT is used, left eye is texture 0 and right eye is
+                        // texture 1. I'm sure this holds in like 99% of the applications, but still not very clean to
+                        // assume.
+                        if (m_frameAnalyzer && !useVPRT && !swapchainState.registeredWithFrameAnalyzer) {
+                            for (const auto& image : swapchainState.images) {
+                                m_frameAnalyzer->registerColorSwapchainImage(image.chain[0], (utilities::Eye)eye);
+                            }
+                            swapchainState.registeredWithFrameAnalyzer = true;
+                        }
+
                         // Insert processing below.
                         //
                         // The pattern typically follows these steps:
@@ -1196,7 +1264,7 @@ namespace {
                         // - Stop the timer;
                         // - Advanced to the right source and/or destination image;
 
-                        // Perform post-processing.
+                        // Perform pre-processing.
                         if (m_preProcessor) {
                             nextImage++;
 
@@ -1398,6 +1466,7 @@ namespace {
 
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;
+        bool m_isInFrame{false};
         bool m_sendInterationProfileEvent{false};
         XrSpace m_viewSpace{XR_NULL_HANDLE};
         bool m_needCalibrateEyeProjections{true};
@@ -1413,6 +1482,8 @@ namespace {
 
         std::shared_ptr<graphics::IImageProcessor> m_preProcessor;
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
+
+        std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;
 
         std::shared_ptr<input::IHandTracker> m_handTracker;
 
