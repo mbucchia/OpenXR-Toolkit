@@ -120,6 +120,11 @@ namespace toolkit {
             T getEnumValue(const std::string& name) const {
                 return (T)getValue(name);
             }
+
+            template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
+            T peekEnumValue(const std::string& name) const {
+                return (T)peekValue(name);
+            }
         };
 
     } // namespace config
