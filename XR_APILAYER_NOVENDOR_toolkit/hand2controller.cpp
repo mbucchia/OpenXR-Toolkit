@@ -291,7 +291,7 @@ namespace {
                         continue;
                     }
 
-                    static std::string systemClickPath = "/input/system/click";
+                    static std::string_view systemClickPath = "/input/system/click";
                     // Keep track of the /input/system/click
                     // path.endswith("/input/system/click")
                     if (fullPath.rfind(systemClickPath) == fullPath.length() - systemClickPath.length()) {
@@ -476,7 +476,7 @@ namespace {
 
                 const auto& subAction = *action.second.subActions.cbegin();
                 const auto& path = subAction.second.path;
-                static std::string systemClickPath = "/input/system/click";
+                static std::string_view systemClickPath = "/input/system/click";
                 // Keep track of the /input/system/click
                 // path.endswith("/input/system/click")
                 if (path.rfind(systemClickPath) == path.length() - systemClickPath.length()) {

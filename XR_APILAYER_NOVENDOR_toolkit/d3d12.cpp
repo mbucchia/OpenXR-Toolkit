@@ -1739,7 +1739,7 @@ namespace {
             }
             {
                 ComPtr<ID3DBlob> errors;
-                const HRESULT hr = D3DCompile(QuadVertexShader.c_str(),
+                const HRESULT hr = D3DCompile(QuadVertexShader.data(),
                                               QuadVertexShader.length(),
                                               nullptr,
                                               nullptr,
@@ -1763,7 +1763,7 @@ namespace {
         void initializeMeshResources() {
             {
                 ComPtr<ID3DBlob> errors;
-                const HRESULT hr = D3DCompile(MeshShaders.c_str(),
+                const HRESULT hr = D3DCompile(MeshShaders.data(),
                                               MeshShaders.length(),
                                               nullptr,
                                               nullptr,
@@ -1783,7 +1783,7 @@ namespace {
             }
             {
                 ComPtr<ID3DBlob> errors;
-                const HRESULT hr = D3DCompile(MeshShaders.c_str(),
+                const HRESULT hr = D3DCompile(MeshShaders.data(),
                                               MeshShaders.length(),
                                               nullptr,
                                               nullptr,
