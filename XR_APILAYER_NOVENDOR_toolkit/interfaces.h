@@ -389,6 +389,24 @@ namespace toolkit {
             virtual std::shared_ptr<IDevice> getDevice() const = 0;
         };
 
+        // A graphics execution context (eg: command list).
+        struct IContext {
+            virtual ~IContext() = default;
+
+            virtual Api getApi() const = 0;
+            virtual std::shared_ptr<IDevice> getDevice() const = 0;
+
+            virtual void* getNativePtr() const = 0;
+
+            template <typename ApiTraits>
+            typename ApiTraits::Context getNative() const {
+                if (ApiTraits::Api != getApi()) {
+                    throw std::runtime_error("Api mismatch");
+                }
+                return reinterpret_cast<typename ApiTraits::Context>(getNativePtr());
+            }
+        };
+
         // A graphics device.
         struct IDevice {
             virtual ~IDevice() = default;
@@ -479,6 +497,21 @@ namespace toolkit {
             virtual void flushText() = 0;
 
             virtual void resolveQueries() = 0;
+
+            virtual void blockCallbacks() = 0;
+            virtual void unblockCallbacks() = 0;
+
+            using SetRenderTargetEvent =
+                std::function<void(std::shared_ptr<IContext>, std::shared_ptr<ITexture> renderTarget)>;
+            virtual void registerSetRenderTargetEvent(SetRenderTargetEvent event) = 0;
+            using UnsetRenderTargetEvent = std::function<void(std::shared_ptr<IContext>)>;
+            virtual void registerUnsetRenderTargetEvent(UnsetRenderTargetEvent event) = 0;
+            using CopyTextureEvent = std::function<void(std::shared_ptr<IContext> /* context */,
+                                                        std::shared_ptr<ITexture> /* source */,
+                                                        std::shared_ptr<ITexture> /* destination */,
+                                                        int /* sourceSlice */,
+                                                        int /* destinationSlice */)>;
+            virtual void registerCopyTextureEvent(CopyTextureEvent event) = 0;
 
             virtual void shutdown() = 0;
 

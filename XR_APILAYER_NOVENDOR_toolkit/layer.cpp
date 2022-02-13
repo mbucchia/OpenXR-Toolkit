@@ -373,6 +373,7 @@ namespace {
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 // Wait for any pending operation to complete.
                 if (m_graphicsDevice) {
+                    m_graphicsDevice->blockCallbacks();
                     m_graphicsDevice->flushContext(true);
                 }
 
@@ -1103,6 +1104,8 @@ namespace {
             m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
             m_graphicsDevice->resolveQueries();
 
+            // TODO: Ensure restoreContext() even on error.
+            m_graphicsDevice->blockCallbacks();
             m_graphicsDevice->saveContext();
 
             // Handle inputs.
@@ -1358,7 +1361,13 @@ namespace {
                 }
             }
 
-            return OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
+            {
+                const auto result = OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
+
+                m_graphicsDevice->unblockCallbacks();
+
+                return result;
+            }
         }
 
       private:
