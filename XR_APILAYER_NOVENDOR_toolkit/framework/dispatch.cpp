@@ -193,7 +193,7 @@ namespace LAYER_NAMESPACE {
             // Forward the xrCreateInstance() call to the layer.
             try {
                 result = LAYER_NAMESPACE::GetInstance()->xrCreateInstance(instanceCreateInfo);
-            } catch (std::runtime_error exc) {
+            } catch (std::runtime_error& exc) {
                 Log("%s\n", exc.what());
             }
 
@@ -222,7 +222,7 @@ namespace LAYER_NAMESPACE {
             if (XR_SUCCEEDED(result)) {
                 LAYER_NAMESPACE::ResetInstance();
             }
-        } catch (std::runtime_error exc) {
+        } catch (std::runtime_error& exc) {
             Log("%s\n", exc.what());
             result = XR_ERROR_RUNTIME_FAILURE;
         }
@@ -236,7 +236,7 @@ namespace LAYER_NAMESPACE {
     XrResult xrGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function) {
         try {
             return LAYER_NAMESPACE::GetInstance()->xrGetInstanceProcAddr(instance, name, function);
-        } catch (std::runtime_error exc) {
+        } catch (std::runtime_error& exc) {
             Log("%s\n", exc.what());
             return XR_ERROR_RUNTIME_FAILURE;
         }

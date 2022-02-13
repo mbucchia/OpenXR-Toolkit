@@ -501,7 +501,7 @@ namespace {
             std::shared_ptr<D3D11ShaderResourceView>& shaderResourceView, uint32_t slice = 0) const {
             if (!shaderResourceView) {
                 if (!(m_textureDesc.BindFlags & D3D11_BIND_SHADER_RESOURCE)) {
-                    throw new std::runtime_error("Texture was not created with D3D11_BIND_SHADER_RESOURCE");
+                    throw std::runtime_error("Texture was not created with D3D11_BIND_SHADER_RESOURCE");
                 }
 
                 auto device = m_device->getNative<D3D11>();
@@ -528,7 +528,7 @@ namespace {
             std::shared_ptr<D3D11UnorderedAccessView>& unorderedAccessView, uint32_t slice = 0) const {
             if (!unorderedAccessView) {
                 if (!(m_textureDesc.BindFlags & D3D11_BIND_UNORDERED_ACCESS)) {
-                    throw new std::runtime_error("Texture was not created with D3D11_BIND_UNORDERED_ACCESS");
+                    throw std::runtime_error("Texture was not created with D3D11_BIND_UNORDERED_ACCESS");
                 }
 
                 auto device = m_device->getNative<D3D11>();
@@ -554,7 +554,7 @@ namespace {
             std::shared_ptr<D3D11RenderTargetView>& renderTargetView, uint32_t slice = 0) const {
             if (!renderTargetView) {
                 if (!(m_textureDesc.BindFlags & D3D11_BIND_RENDER_TARGET)) {
-                    throw new std::runtime_error("Texture was not created with D3D11_BIND_RENDER_TARGET");
+                    throw std::runtime_error("Texture was not created with D3D11_BIND_RENDER_TARGET");
                 }
 
                 auto device = m_device->getNative<D3D11>();
@@ -580,7 +580,7 @@ namespace {
             std::shared_ptr<D3D11DepthStencilView>& depthStencilView, uint32_t slice = 0) const {
             if (!depthStencilView) {
                 if (!(m_textureDesc.BindFlags & D3D11_BIND_DEPTH_STENCIL)) {
-                    throw new std::runtime_error("Texture was not created with D3D11_BIND_DEPTH_STENCIL");
+                    throw std::runtime_error("Texture was not created with D3D11_BIND_DEPTH_STENCIL");
                 }
 
                 auto device = m_device->getNative<D3D11>();
@@ -634,7 +634,7 @@ namespace {
 
         void uploadData(const void* buffer, size_t count) override {
             if (m_bufferDesc.ByteWidth != count) {
-                throw new std::runtime_error("Upload size mismatch");
+                throw std::runtime_error("Upload size mismatch");
             }
 
             auto context = m_device->getContext<D3D11>();
@@ -853,7 +853,7 @@ namespace {
                 return (int64_t)DXGI_FORMAT_R8G8B8A8_UNORM;
 
             default:
-                throw new std::runtime_error("Unknown texture format");
+                throw std::runtime_error("Unknown texture format");
             };
         }
 
@@ -1136,7 +1136,7 @@ namespace {
         void setShaderOutput(uint32_t slot, std::shared_ptr<ITexture> output, int32_t slice) override {
             if (m_currentQuadShader) {
                 if (slot) {
-                    throw new std::runtime_error("Only use slot 0 for IQuadShader");
+                    throw std::runtime_error("Only use slot 0 for IQuadShader");
                 }
                 if (slice == -1) {
                     setRenderTargets({output}, nullptr);
@@ -1715,7 +1715,7 @@ namespace toolkit::graphics {
                                                ID3D11Texture2D* texture,
                                                const std::optional<std::string>& debugName) {
         if (device->getApi() != Api::D3D11) {
-            throw new std::runtime_error("Not a D3D11 device");
+            throw std::runtime_error("Not a D3D11 device");
         }
 
         if (debugName) {

@@ -205,7 +205,7 @@ namespace toolkit {
             template <typename ApiTraits>
             typename ApiTraits::PixelShader getNative() const {
                 if (ApiTraits::Api != getApi()) {
-                    throw new std::runtime_error("Api mismatch");
+                    throw std::runtime_error("Api mismatch");
                 }
                 return reinterpret_cast<typename ApiTraits::PixelShader>(getNativePtr());
             }
@@ -226,7 +226,7 @@ namespace toolkit {
             template <typename ApiTraits>
             typename ApiTraits::ComputeShader getNative() const {
                 if (ApiTraits::Api != getApi()) {
-                    throw new std::runtime_error("Api mismatch");
+                    throw std::runtime_error("Api mismatch");
                 }
                 return reinterpret_cast<typename ApiTraits::ComputeShader>(getNativePtr());
             }
@@ -244,7 +244,7 @@ namespace toolkit {
             template <typename ApiTraits>
             typename ApiTraits::ShaderInputView getNative() const {
                 if (ApiTraits::Api != getApi()) {
-                    throw new std::runtime_error("Api mismatch");
+                    throw std::runtime_error("Api mismatch");
                 }
                 return reinterpret_cast<typename ApiTraits::ShaderInputView>(getNativePtr());
             }
@@ -262,7 +262,7 @@ namespace toolkit {
             template <typename ApiTraits>
             typename ApiTraits::ComputeShaderOutputView getNative() const {
                 if (ApiTraits::Api != getApi()) {
-                    throw new std::runtime_error("Api mismatch");
+                    throw std::runtime_error("Api mismatch");
                 }
                 return reinterpret_cast<typename ApiTraits::ComputeShaderOutputView>(getNativePtr());
             }
@@ -280,7 +280,7 @@ namespace toolkit {
             template <typename ApiTraits>
             typename ApiTraits::RenderTargetView getNative() const {
                 if (ApiTraits::Api != getApi()) {
-                    throw new std::runtime_error("Api mismatch");
+                    throw std::runtime_error("Api mismatch");
                 }
                 return reinterpret_cast<typename ApiTraits::RenderTargetView>(getNativePtr());
             }
@@ -298,7 +298,7 @@ namespace toolkit {
             template <typename ApiTraits>
             typename ApiTraits::DepthStencilView getNative() const {
                 if (ApiTraits::Api != getApi()) {
-                    throw new std::runtime_error("Api mismatch");
+                    throw std::runtime_error("Api mismatch");
                 }
                 return reinterpret_cast<typename ApiTraits::DepthStencilView>(getNativePtr());
             }
@@ -329,7 +329,7 @@ namespace toolkit {
             template <typename ApiTraits>
             typename ApiTraits::Texture getNative() const {
                 if (ApiTraits::Api != getApi()) {
-                    throw new std::runtime_error("Api mismatch");
+                    throw std::runtime_error("Api mismatch");
                 }
                 return reinterpret_cast<typename ApiTraits::Texture>(getNativePtr());
             }
@@ -349,7 +349,7 @@ namespace toolkit {
             template <typename ApiTraits>
             typename ApiTraits::Buffer getNative() const {
                 if (ApiTraits::Api != getApi()) {
-                    throw new std::runtime_error("Api mismatch");
+                    throw std::runtime_error("Api mismatch");
                 }
                 return reinterpret_cast<typename ApiTraits::Buffer>(getNativePtr());
             }
@@ -372,7 +372,7 @@ namespace toolkit {
             template <typename ApiTraits>
             typename ApiTraits::Mesh getNative() const {
                 if (ApiTraits::Api != getApi()) {
-                    throw new std::runtime_error("Api mismatch");
+                    throw std::runtime_error("Api mismatch");
                 }
                 return reinterpret_cast<typename ApiTraits::Mesh>(getNativePtr());
             }
@@ -492,7 +492,7 @@ namespace toolkit {
             template <typename ApiTraits>
             typename ApiTraits::Device getNative() const {
                 if (ApiTraits::Api != getApi()) {
-                    throw new std::runtime_error("Api mismatch");
+                    throw std::runtime_error("Api mismatch");
                 }
                 return reinterpret_cast<typename ApiTraits::Device>(getNativePtr());
             }
@@ -500,7 +500,7 @@ namespace toolkit {
             template <typename ApiTraits>
             typename ApiTraits::Context getContext() const {
                 if (ApiTraits::Api != getApi()) {
-                    throw new std::runtime_error("Api mismatch");
+                    throw std::runtime_error("Api mismatch");
                 }
                 return reinterpret_cast<typename ApiTraits::Context>(getContextPtr());
             }

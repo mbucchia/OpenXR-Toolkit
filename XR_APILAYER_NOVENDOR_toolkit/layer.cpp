@@ -234,7 +234,7 @@ namespace {
                     break;
 
                 default:
-                    throw new std::runtime_error("Unknown scaling type");
+                    throw std::runtime_error("Unknown scaling type");
                     break;
                 }
 
@@ -311,7 +311,7 @@ namespace {
                         break;
 
                     default:
-                        throw new std::runtime_error("Unknown scaling type");
+                        throw std::runtime_error("Unknown scaling type");
                         break;
                     }
 
@@ -528,7 +528,7 @@ namespace {
                         swapchainState.images.push_back(images);
                     }
                 } else {
-                    throw new std::runtime_error("Unsupported graphics runtime");
+                    throw std::runtime_error("Unsupported graphics runtime");
                 }
 
                 for (uint32_t i = 0; i < imageCount; i++) {
@@ -696,7 +696,7 @@ namespace {
                             d3dImages[i].texture = swapchainState.images[i].chain[0]->getNative<graphics::D3D12>();
                         }
                     } else {
-                        throw new std::runtime_error("Unsupported graphics runtime");
+                        throw std::runtime_error("Unsupported graphics runtime");
                     }
                 }
             }
@@ -1114,7 +1114,7 @@ namespace {
 
                         auto swapchainIt = m_swapchains.find(view.subImage.swapchain);
                         if (swapchainIt == m_swapchains.end()) {
-                            throw new std::runtime_error("Swapchain is not registered");
+                            throw std::runtime_error("Swapchain is not registered");
                         }
                         auto swapchainState = swapchainIt->second;
                         auto swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
@@ -1184,7 +1184,7 @@ namespace {
 
                         // Make sure the chain was completed.
                         if (nextImage != swapchainImages.chain.size() - 1) {
-                            throw new std::runtime_error("Processing chain incomplete!");
+                            throw std::runtime_error("Processing chain incomplete!");
                         }
 
                         textureForOverlay[eye] = swapchainImages.chain.back();

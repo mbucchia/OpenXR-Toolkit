@@ -170,7 +170,7 @@ namespace LAYER_NAMESPACE
 		{{
 			result = LAYER_NAMESPACE::GetInstance()->{cur_cmd.name}({arguments_list});
 		}}
-		catch (std::exception exc)
+		catch (std::exception& exc)
 		{{
 			Log("%s\\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
@@ -191,7 +191,7 @@ namespace LAYER_NAMESPACE
 		{{
 			LAYER_NAMESPACE::GetInstance()->{cur_cmd.name}({arguments_list});
 		}}
-		catch (std::runtime_error exc)
+		catch (std::runtime_error& exc)
 		{{
 			Log("%s\\n", exc.what());
 		}}
@@ -211,7 +211,7 @@ namespace LAYER_NAMESPACE
             if cur_cmd.name in layer_apis.requested_functions:
                 generated += f'''		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "{cur_cmd.name}", reinterpret_cast<PFN_xrVoidFunction*>(&m_{cur_cmd.name}))))
 		{{
-			throw new std::runtime_error("Failed to resolve {cur_cmd.name}");
+			throw std::runtime_error("Failed to resolve {cur_cmd.name}");
 		}}
 '''
 
