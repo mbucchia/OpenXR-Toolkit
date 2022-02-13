@@ -482,6 +482,18 @@ namespace {
             return getDepthStencilViewInternal(m_depthStencilSubView[slice], slice);
         }
 
+        void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) override {
+            assert(!(rowPitch % m_device->getTextureAlignmentConstraint()));
+
+            m_device->getContext<D3D11>()->UpdateSubresource(
+                get(m_texture),
+                D3D11CalcSubresource(0, std::max(0, slice), m_textureDesc.MipLevels),
+                nullptr,
+                buffer,
+                rowPitch,
+                0);
+        }
+
         void saveToFile(const std::string& path) const override {
             const HRESULT hr =
                 D3DX11SaveTextureToFileA(m_device->getContext<D3D11>(), get(m_texture), D3DX11_IFF_DDS, path.c_str());
