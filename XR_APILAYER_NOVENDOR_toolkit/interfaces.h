@@ -543,7 +543,7 @@ namespace toolkit {
             float indexTipTapValue[2]{NAN, NAN};
             float custom1Value[2]{NAN, NAN};
 
-            uint32_t numTrackingLosses[2];
+            uint32_t numTrackingLosses[2]{0, 0};
         };
 
         struct IHandTracker {

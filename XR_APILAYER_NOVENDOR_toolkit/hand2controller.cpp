@@ -515,7 +515,7 @@ namespace {
 
                 if (didChange && value) {
                     INPUT input[2];
-                    ZeroMemory(&input, sizeof(INPUT));
+                    ZeroMemory(input, sizeof(input));
                     input[0].type = INPUT_KEYBOARD;
                     input[0].ki.wVk = VK_LWIN;
                     input[1].type = INPUT_KEYBOARD;
