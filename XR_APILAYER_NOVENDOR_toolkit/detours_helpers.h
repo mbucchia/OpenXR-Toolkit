@@ -50,9 +50,9 @@ void DetourFunctionDetach(TMethod target, TMethod hooked, TMethod& original) {
     DetourUpdateThread(GetCurrentThread());
 
     DetourDetach((PVOID*)&original, hooked);
-    original = nullptr;
-
     CHECK_MSG(DetourTransactionCommit() == NO_ERROR, "Detour failed");
+
+    original = nullptr;
 }
 
 // Helper to detour a function in a DLL.
@@ -87,9 +87,9 @@ void DetourDllDetach(const char* dll, const char* target, TMethod hooked, TMetho
     DetourUpdateThread(GetCurrentThread());
 
     DetourDetach((PVOID*)&original, hooked);
-    original = nullptr;
-
     CHECK_MSG(DetourTransactionCommit() == NO_ERROR, "Detour failed");
+
+    original = nullptr;
 }
 
 // Helper to detour a class method.
@@ -126,7 +126,7 @@ void DetourMethodDetach(T* instance, unsigned int methodOffset, TMethod hooked, 
     DetourUpdateThread(GetCurrentThread());
 
     DetourDetach((PVOID*)&original, hooked);
-    original = nullptr;
-
     CHECK_MSG(DetourTransactionCommit() == NO_ERROR, "Detour failed");
+
+    original = nullptr;
 }

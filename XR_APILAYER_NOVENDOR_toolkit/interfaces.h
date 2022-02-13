@@ -519,7 +519,8 @@ namespace toolkit {
             virtual void blockCallbacks() = 0;
             virtual void unblockCallbacks() = 0;
 
-            using SetRenderTargetEvent = std::function<void(std::shared_ptr<IContext>, std::shared_ptr<ITexture> renderTarget)>;
+            using SetRenderTargetEvent =
+                std::function<void(std::shared_ptr<IContext>, std::shared_ptr<ITexture> renderTarget)>;
             virtual void registerSetRenderTargetEvent(SetRenderTargetEvent event) = 0;
             using UnsetRenderTargetEvent = std::function<void(std::shared_ptr<IContext>)>;
             virtual void registerUnsetRenderTargetEvent(UnsetRenderTargetEvent event) = 0;
@@ -617,6 +618,11 @@ namespace toolkit {
             setViewProjectionCenters(int leftCenterX, int leftCenterY, int rightCenterX, int rightCenterY) = 0;
 
             virtual uint8_t getMaxDownsamplePow2() const = 0;
+
+#ifdef _DEBUG
+            virtual void startCapture() = 0;
+            virtual void stopCapture() = 0;
+#endif
         };
 
     } // namespace graphics

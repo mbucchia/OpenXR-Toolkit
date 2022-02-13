@@ -341,6 +341,10 @@ namespace {
                     m_graphicsDevice->registerSetRenderTargetEvent(
                         [&](std::shared_ptr<graphics::IContext> context,
                             std::shared_ptr<graphics::ITexture> renderTarget) {
+                            if (!m_isInFrame) {
+                                return;
+                            }
+
                             if (m_frameAnalyzer) {
                                 m_frameAnalyzer->onSetRenderTarget(context, renderTarget);
                             }
@@ -354,6 +358,10 @@ namespace {
                             }
                         });
                     m_graphicsDevice->registerUnsetRenderTargetEvent([&](std::shared_ptr<graphics::IContext> context) {
+                        if (!m_isInFrame) {
+                            return;
+                        }
+
                         if (m_frameAnalyzer) {
                             m_frameAnalyzer->onUnsetRenderTarget(context);
                         }
@@ -366,6 +374,10 @@ namespace {
                                                                    std::shared_ptr<graphics::ITexture> destination,
                                                                    int sourceSlice,
                                                                    int destinationSlice) {
+                        if (!m_isInFrame) {
+                            return;
+                        }
+
                         if (m_frameAnalyzer) {
                             m_frameAnalyzer->onCopyTexture(source, destination, sourceSlice, destinationSlice);
                         }
@@ -1054,6 +1066,7 @@ namespace {
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 // Record the predicted display time.
                 m_begunFrameTime = m_waitedFrameTime;
+                m_isInFrame = true;
 
                 if (m_graphicsDevice) {
                     m_performanceCounters.appCpuTimer->start();
@@ -1160,6 +1173,8 @@ namespace {
                 return OpenXrApi::xrEndFrame(session, frameEndInfo);
             }
 
+            m_isInFrame = false;
+
             updateStatisticsForFrame();
 
             m_performanceCounters.appCpuTimer->stop();
@@ -1178,6 +1193,9 @@ namespace {
             }
             if (m_variableRateShader) {
                 m_variableRateShader->disable();
+#ifdef _DEBUG
+                m_variableRateShader->stopCapture();
+#endif
             }
 
             // TODO: Ensure restoreContext() even on error.
@@ -1434,6 +1452,12 @@ namespace {
 
             if (textureForOverlay[0] && requestScreenshot) {
                 takeScreenshot(textureForOverlay[0]);
+
+#ifdef _DEBUG
+                if (m_variableRateShader) {
+                    m_variableRateShader->startCapture();
+                }
+#endif
             }
 
             m_graphicsDevice->restoreContext();
@@ -1485,6 +1509,7 @@ namespace {
 
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;
+        bool m_isInFrame{false};
         bool m_sendInterationProfileEvent{false};
         XrSpace m_viewSpace{XR_NULL_HANDLE};
         bool m_needCalibrateEyeProjections{true};

@@ -24,6 +24,7 @@
 
 #include "factories.h"
 #include "interfaces.h"
+#include "layer.h"
 #include "log.h"
 
 #define CHECK_NVCMD(cmd) xr::detail::_CheckNVResult(cmd, #cmd, FILE_AND_LINE)
@@ -127,6 +128,8 @@ namespace {
                 }
                 m_shadingRateMaskGeneric = m_device->createTexture(info, "VRS Generic TEX2D");
 
+                // TODO: This is a problem for DX12 support. The mask cannot be an array texture. I don't know how to
+                // make this work for VPRT. Good thing is FS2020 does not use arrays.
                 info.arraySize = 2;
                 m_shadingRateMaskVPRT = m_device->createTexture(info, "VRS VPRT TEX2D");
             }
@@ -322,7 +325,7 @@ namespace {
                 return false;
             }
 
-            DebugLog("VRS: enable\n");
+            DebugLog("VRS: Enable\n");
             if (m_device->getApi() == Api::D3D11) {
                 // We set VRS on 2 viewports in case the stereo view is rendred in parallel.
                 NV_D3D11_VIEWPORT_SHADING_RATE_DESC viewports[2];
@@ -345,6 +348,11 @@ namespace {
                                                    : m_d3d11Resources.shadingRateResourceViewGeneric;
 
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context->getNative<D3D11>(), get(mask)));
+
+#ifdef _DEBUG
+                doD3D11Capture(context /* post */);
+                doD3D11Capture(context, renderTarget, eyeHint);
+#endif
             } else if (m_device->getApi() == Api::D3D12) {
                 ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
                 if (FAILED(context->getNative<D3D12>()->QueryInterface(
@@ -372,7 +380,7 @@ namespace {
         }
 
         void disable(std::shared_ptr<graphics::IContext> context = nullptr) override {
-            DebugLog("VRS: disable\n");
+            DebugLog("VRS: Disable\n");
             if (m_device->getApi() == Api::D3D11) {
                 auto nativeContext = context ? context->getNative<D3D11>() : m_device->getContext<D3D11>();
 
@@ -381,6 +389,10 @@ namespace {
                 desc.version = NV_D3D11_VIEWPORTS_SHADING_RATE_DESC_VER;
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(nativeContext, &desc));
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(nativeContext, nullptr));
+
+#ifdef _DEBUG
+                doD3D11Capture(context /* post */);
+#endif
             } else if (m_device->getApi() == Api::D3D12) {
                 auto nativeContext = context ? context->getNative<D3D12>() : m_device->getContext<D3D12>();
 
@@ -407,6 +419,101 @@ namespace {
         uint8_t getMaxDownsamplePow2() const override {
             return m_maxDownsamplePow2;
         }
+
+#ifdef _DEBUG
+        void startCapture() override {
+            DebugLog("VRS: Start capture\n");
+            m_captureID++;
+            m_captureFileIndex = 0;
+            m_isCapturing = true;
+        }
+
+        void stopCapture() override {
+            DebugLog("VRS: Stop capture\n");
+            m_isCapturing = false;
+        }
+
+        void doD3D11Capture(std::shared_ptr<graphics::IContext> context,
+                            std::shared_ptr<ITexture> renderTarget = nullptr,
+                            std::optional<Eye> eyeHint = std::nullopt) {
+            if (m_isCapturing) {
+                auto nativeContext = context ? context->getNative<D3D11>() : m_device->getContext<D3D11>();
+
+                if (renderTarget) {
+                    const auto& info = renderTarget->getInfo();
+
+                    // At the beginning of the frame, capture all the masks too.
+                    if (!m_captureFileIndex) {
+                        D3DX11SaveTextureToFileA(
+                            nativeContext,
+                            m_shadingRateMask[0]->getNative<D3D11>(),
+                            D3DX11_IFF_DDS,
+                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_left.dds", m_captureID))
+                                .string()
+                                .c_str());
+                        D3DX11SaveTextureToFileA(
+                            nativeContext,
+                            m_shadingRateMask[1]->getNative<D3D11>(),
+                            D3DX11_IFF_DDS,
+                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_right.dds", m_captureID))
+                                .string()
+                                .c_str());
+                        D3DX11SaveTextureToFileA(
+                            nativeContext,
+                            m_shadingRateMaskGeneric->getNative<D3D11>(),
+                            D3DX11_IFF_DDS,
+                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_generic.dds", m_captureID))
+                                .string()
+                                .c_str());
+                        D3DX11SaveTextureToFileA(
+                            nativeContext,
+                            m_shadingRateMaskVPRT->getNative<D3D11>(),
+                            D3DX11_IFF_DDS,
+                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_vprt.dds", m_captureID))
+                                .string()
+                                .c_str());
+                    }
+
+                    DebugLog("VRS: Capturing file ID: %d\n", m_captureFileIndex);
+
+                    D3DX11SaveTextureToFileA(
+                        nativeContext,
+                        renderTarget->getNative<D3D11>(),
+                        D3DX11_IFF_DDS,
+                        (localAppData / "screenshots" /
+                         fmt::format("vrs_{}_{}_{}_pre.dds",
+                                     m_captureID,
+                                     m_captureFileIndex,
+                                     info.arraySize == 2   ? "dual"
+                                     : eyeHint.has_value() ? eyeHint.value() == Eye::Left ? "left" : "right"
+                                                           : "generic"))
+                            .string()
+                            .c_str());
+
+                    m_currentRenderTarget = renderTarget;
+                    m_currentEyeHint = eyeHint;
+                } else if (m_currentRenderTarget) {
+                    const auto& info = m_currentRenderTarget->getInfo();
+
+                    D3DX11SaveTextureToFileA(nativeContext,
+                                             m_currentRenderTarget->getNative<D3D11>(),
+                                             D3DX11_IFF_DDS,
+                                             (localAppData / "screenshots" /
+                                              fmt::format("vrs_{}_{}_{}_post.dds",
+                                                          m_captureID,
+                                                          m_captureFileIndex++,
+                                                          info.arraySize == 2 ? "dual"
+                                                          : m_currentEyeHint.has_value()
+                                                              ? m_currentEyeHint.value() == Eye::Left ? "left" : "right"
+                                                              : "generic"))
+                                                 .string()
+                                                 .c_str());
+
+                    m_currentRenderTarget = nullptr;
+                }
+            }
+        }
+#endif
 
       private:
         void generateFoveationPattern(std::vector<uint8_t>& pattern,
@@ -452,16 +559,20 @@ namespace {
 
         bool isVariableRateShadingCandidate(const XrSwapchainCreateInfo& info) const {
             // Check for proportionality with the size of our render target.
-            DebugLog("VRS: textureDesc.Width=%u textureDesc.Height=%u\n", info.width, info.height);
+            // Also check that the texture is not under 50% of the render scale. We expect that no one should use in-app
+            // render scale that is so small.
+            DebugLog("VRS: info.width=%u info.height=%u\n", info.width, info.height);
             const float aspectRatio = (float)info.width / info.height;
-            if (std::abs(aspectRatio - m_targetAspectRatio) > 0.01f) {
+            if (std::abs(aspectRatio - m_targetAspectRatio) > 0.01f || info.width < (50 * m_targetWidth) / 100) {
                 return false;
             }
 
-            DebugLog("VRS: textureDesc.ArraySize=%u\n", info.arraySize);
+            DebugLog("VRS: info.arraySize=%u\n", info.arraySize);
             if (info.arraySize > 2) {
                 return false;
             }
+
+            DebugLog("VRS: info.format=%u\n", info.format);
 
             return true;
         }
@@ -493,6 +604,15 @@ namespace {
         std::shared_ptr<ITexture> m_shadingRateMask[ViewCount];
         std::shared_ptr<ITexture> m_shadingRateMaskGeneric;
         std::shared_ptr<ITexture> m_shadingRateMaskVPRT;
+
+#ifdef _DEBUG
+        bool m_isCapturing{false};
+        uint32_t m_captureID{0};
+        uint32_t m_captureFileIndex;
+
+        std::shared_ptr<ITexture> m_currentRenderTarget;
+        std::optional<Eye> m_currentEyeHint;
+#endif
 
         // Must appear last.
         struct DeferredNvAPI_Unload {

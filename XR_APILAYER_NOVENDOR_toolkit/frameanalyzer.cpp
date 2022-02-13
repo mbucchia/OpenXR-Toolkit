@@ -67,11 +67,13 @@ namespace {
 
             // Handle when the application uses the swapchain image directly.
             if (m_eyeSwapchainImages[0].find(nativePtr) != m_eyeSwapchainImages[0].cend()) {
+                DebugLog("Detected setting RTV to left eye\n");
                 m_eyePrediction = Eye::Left;
 
                 // We are confident our prediction is accurate.
                 m_shouldPredictEye = true;
             } else if (m_eyeSwapchainImages[1].find(nativePtr) != m_eyeSwapchainImages[1].cend()) {
+                DebugLog("Detected setting RTV to right eye\n");
                 m_eyePrediction = Eye::Right;
 
                 // We are confident our prediction is accurate.
@@ -95,12 +97,19 @@ namespace {
             // Handle when the application copies the texture to the swapchain image mid-pass. Assumes left eye is
             // always first (hence we only detect changes to switch to right eye). This is what FS2020 does.
             if (m_eyeSwapchainImages[0].find(nativePtr) != m_eyeSwapchainImages[0].cend()) {
+                DebugLog("Detected copy-out to left eye\n");
+
                 // Switch to right eye now.
                 m_eyePrediction = Eye::Right;
 
                 // We are confident our prediction is accurate.
                 m_shouldPredictEye = true;
             }
+#ifdef _DEBUG
+            else if (m_eyeSwapchainImages[1].find(nativePtr) != m_eyeSwapchainImages[1].cend()) {
+                DebugLog("Detected copy-out to right eye\n");
+            }
+#endif
         }
 
         std::optional<Eye> getEyeHint() const override {
