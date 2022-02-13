@@ -382,7 +382,9 @@ namespace {
                 m_performanceCounters.overlayCpuTimer.reset();
                 m_swapchains.clear();
                 m_menuHandler.reset();
-                m_graphicsDevice->shutdown();
+                if (m_graphicsDevice) {
+                    m_graphicsDevice->shutdown();
+                }
                 m_graphicsDevice.reset();
                 m_vrSession = XR_NULL_HANDLE;
                 // A good check to ensure there are no resources leak is to confirm that the graphics device is
