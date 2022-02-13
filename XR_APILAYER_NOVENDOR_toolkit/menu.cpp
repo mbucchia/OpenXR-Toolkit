@@ -365,7 +365,7 @@ namespace {
 
                     // When changing anamorphic setting, toggle the config value sign.
                     if (menuEntry.title == "Anamorphic") {
-                        auto value = m_configManager->getValue(SettingAnamorphic);
+                        auto value = m_configManager->peekValue(SettingAnamorphic);
 
                         // Fail safe: ensure there is a valid condition tp toggle the sign of the value.
                         // However in this case, since useAnamorphic is binary, we could also toggle the sign of the
@@ -768,20 +768,20 @@ namespace {
         }
 
         bool isHandTrackingEnabled() const {
-            return m_isHandTrackingSupported && m_configManager->getEnumValue<HandTrackingEnabled>(
+            return m_isHandTrackingSupported && m_configManager->peekEnumValue<HandTrackingEnabled>(
                                                     SettingHandTrackingEnabled) != HandTrackingEnabled::Off;
         }
 
         int getCurrentScaling() const {
-            return m_configManager->getValue(SettingScaling);
+            return m_configManager->peekValue(SettingScaling);
         }
 
         int getCurrentAnamorphic() const {
-            return m_configManager->getValue(SettingAnamorphic);
+            return m_configManager->peekValue(SettingAnamorphic);
         }
 
         ScalingType getCurrentScalingType() const {
-            return m_configManager->getEnumValue<ScalingType>(SettingScalingType);
+            return m_configManager->peekEnumValue<ScalingType>(SettingScalingType);
         }
 
         bool checkNeedRestartCondition() const {
