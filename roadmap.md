@@ -16,12 +16,12 @@ nav_order: 5
 | Prediction dampening                 | [Stable](){: .btn .btn-green }          | Jan 2022        |
 | Anamorphic upscaling                 | [Ready](){: .btn .btn-blue }            | Feb 2022        |
 | Lock Motion Reprojection rate (WMR)  | [Ready](){: .btn .btn-blue }            | Feb 2022        |
-| Hand tracking haptics cues           | [Implementation](){: .btn .btn-blue }   | Feb 2022?       |
+| Fixed foveated rendering (VRS)       | [Ready](){: .btn .btn-blue }            | Feb 2022        |
+| Hand tracking haptics cues           | [Implementation](){: .btn .btn-blue }   | Mar 2022?       |
 | Brightness/exposure control          | [Implementation](){: .btn .btn-blue }   | Mar 2022?       |
-| Fixed foveated rendering (VRS)       | [Implementation](){: .btn .btn-blue }   | Mar 2022?       |
+| Texture LOD biasing                  | [Investigation](){: .btn .btn-outline } | Feb 2022?       |
 | FOV override                         | [Investigation](){: .btn .btn-blue }    |                 |
 | Zoom-in                              | [Investigation](){: .btn .btn-blue }    |                 |
-| Texture LOD biasing                  | [Not started](){: .btn .btn-outline }   |                 |
 | Per-application disable setting      | [Not started](){: .btn .btn-outline }   |                 |
 | DLSS                                 | [Blocked](){: .btn .btn-primary }       |                 |
 | Motion compensation                  | [Not started](){: .btn .btn-outline }   |                 |
