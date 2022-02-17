@@ -83,6 +83,7 @@ namespace toolkit {
         const std::string SettingVRSMiddle = "vrs_middle";
         const std::string SettingVRSInnerRadius = "vrs_inner_radius";
         const std::string SettingVRSInner = "vrs_inner";
+        const std::string SettingMipMapBias = "mipmap_bias";
 
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
@@ -93,6 +94,7 @@ namespace toolkit {
         enum class VariableShadingRateType { None = 0, Preset, Custom, MaxValue };
         enum class VariableShadingRateQuality { Performance = 0, Balanced, Quality, MaxValue };
         enum class VariableShadingRatePattern { Wide = 0, Balanced, Narrow, MaxValue };
+        enum class MipMapBias { Off = 0, Anisotropic, All, MaxValue };
 
         struct IConfigManager {
             virtual ~IConfigManager() = default;
@@ -502,6 +504,9 @@ namespace toolkit {
             virtual void beginText() = 0;
             virtual void flushText() = 0;
 
+            virtual void setMipMapBias(config::MipMapBias biasing, float bias = 0.f) = 0;
+            virtual uint32_t getNumBiasedSamplersThisFrame() const = 0;
+
             virtual void resolveQueries() = 0;
 
             virtual void blockCallbacks() = 0;
@@ -688,6 +693,7 @@ namespace toolkit {
 
             bool hasColorBuffer[utilities::ViewCount]{false, false};
             bool hasDepthBuffer[utilities::ViewCount]{false, false};
+            uint32_t numBiasedSamplers{0};
             uint32_t numRenderTargetsWithVRS{0};
         };
 

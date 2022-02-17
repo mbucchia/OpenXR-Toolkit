@@ -575,6 +575,8 @@ namespace {
                                          OVERLAY_COMMON);
                     top += 1.05f * fontSize;
 
+                    m_device->drawString(fmt::format("biased: {}", m_stats.numBiasedSamplers), OVERLAY_COMMON);
+                    top += 1.05f * fontSize;
                     m_device->drawString(fmt::format("VRS RTV: {}", m_stats.numRenderTargetsWithVRS), OVERLAY_COMMON);
                     top += 1.05f * fontSize;
 
@@ -705,6 +707,15 @@ namespace {
                 {SubGroupIndent + "Sharpness", MenuEntryType::Slider, SettingSharpness, 0, 100, [](int value) {
                      return fmt::format("{}%", value);
                  }});
+            m_menuEntries.push_back({SubGroupIndent + "Mip-map bias",
+                                     MenuEntryType::Slider,
+                                     SettingMipMapBias,
+                                     0,
+                                     (int)MipMapBias::MaxValue - 1,
+                                     [](int value) {
+                                         const std::string_view labels[] = {"Off", "Conservative", "All"};
+                                         return std::string(labels[value]);
+                                     }});
             upscalingGroup.finalize();
 
             // Motion Reprojection Settings.

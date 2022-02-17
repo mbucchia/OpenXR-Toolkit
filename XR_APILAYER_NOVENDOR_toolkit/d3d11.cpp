@@ -1453,6 +1453,15 @@ namespace {
             m_context->Flush();
         }
 
+        void setMipMapBias(config::MipMapBias biasing, float bias = 0.f) override {
+            m_mipMapBiasingType = biasing;
+            m_mipMapBias = bias;
+        }
+
+        uint32_t getNumBiasedSamplersThisFrame() const override {
+            return std::exchange(m_numBiasedSamplersThisFrame, 0);
+        }
+
         void resolveQueries() override {
         }
 
@@ -1517,6 +1526,11 @@ namespace {
                                46,
                                hooked_ID3D11DeviceContext_CopySubresourceRegion,
                                g_original_ID3D11DeviceContext_CopySubresourceRegion);
+            DetourMethodAttach(get(m_context),
+                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
+                               10,
+                               hooked_ID3D11DeviceContext_PSSetSamplers,
+                               g_original_ID3D11DeviceContext_PSSetSamplers);
         }
 
         void uninitializeInterceptor() {
@@ -1540,6 +1554,11 @@ namespace {
                                46,
                                hooked_ID3D11DeviceContext_CopySubresourceRegion,
                                g_original_ID3D11DeviceContext_CopySubresourceRegion);
+            DetourMethodDetach(get(m_context),
+                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
+                               10,
+                               hooked_ID3D11DeviceContext_PSSetSamplers,
+                               g_original_ID3D11DeviceContext_PSSetSamplers);
 
             g_instance = nullptr;
         }
@@ -1736,6 +1755,10 @@ namespace {
                                 UINT numViews,
                                 ID3D11RenderTargetView* const* renderTargetViews,
                                 ID3D11DepthStencilView* depthStencilView) {
+            if (m_blockEvents) {
+                return;
+            }
+
             ComPtr<ID3D11Device> device;
             context->GetDevice(set(device));
             if (device != m_device) {
@@ -1783,6 +1806,10 @@ namespace {
                             ID3D11Resource* pDstResource,
                             UINT SrcSubresource = 0,
                             UINT DstSubresource = 0) {
+            if (m_blockEvents) {
+                return;
+            }
+
             ComPtr<ID3D11Device> device;
             context->GetDevice(set(device));
             if (device != m_device) {
@@ -1822,6 +1849,68 @@ namespace {
 
 #undef INVOKE_EVENT
 
+        void patchSamplers(ID3D11DeviceContext* context, ID3D11SamplerState** samplers, size_t numSamplers) {
+            if (m_blockEvents || m_mipMapBiasingType == config::MipMapBias::Off) {
+                return;
+            }
+
+            ComPtr<ID3D11Device> device;
+            context->GetDevice(set(device));
+            if (device != m_device) {
+                return;
+            }
+
+            for (size_t i = 0; i < numSamplers; i++) {
+                if (!samplers[i]) {
+                    continue;
+                }
+
+                bool needUpdate = false;
+
+                // Retrieve any previously biased sampler.
+                ComPtr<ID3D11SamplerState> biasedSampler;
+                UINT nDataSize = sizeof(ID3D11SamplerState*);
+                if (SUCCEEDED(
+                        samplers[i]->GetPrivateData(__uuidof(ID3D11SamplerState), &nDataSize, set(biasedSampler))) &&
+                    biasedSampler) {
+                    // Check if the sampler needs to be updated again.
+                    D3D11_SAMPLER_DESC desc;
+                    biasedSampler->GetDesc(&desc);
+                    needUpdate = std::abs(desc.MipLODBias - m_mipMapBias) > FLT_EPSILON;
+                }
+
+                bool needBiasing = biasedSampler;
+
+                // Create or update the biased sampler.
+                if (!biasedSampler || needUpdate) {
+                    D3D11_SAMPLER_DESC desc;
+                    samplers[i]->GetDesc(&desc);
+
+                    needBiasing = m_mipMapBiasingType == config::MipMapBias::All ||
+                                  (desc.Filter == D3D11_FILTER_ANISOTROPIC ||
+                                   desc.Filter == D3D11_FILTER_COMPARISON_ANISOTROPIC ||
+                                   desc.Filter == D3D11_FILTER_MINIMUM_ANISOTROPIC ||
+                                   desc.Filter == D3D11_FILTER_MAXIMUM_ANISOTROPIC);
+
+                    if (needBiasing) {
+                        // Bias the LOD.
+                        desc.MipLODBias += m_mipMapBias;
+                        
+                        // Allow negative LOD.
+                        desc.MinLOD -= std::ceilf(m_mipMapBias);
+
+                        CHECK_HRCMD(m_device->CreateSamplerState(&desc, set(biasedSampler)));
+                        samplers[i]->SetPrivateDataInterface(__uuidof(ID3D11SamplerState), get(biasedSampler));
+                    }
+                }
+
+                if (needBiasing) {
+                    samplers[i] = biasedSampler.Get();
+                    m_numBiasedSamplersThisFrame++;
+                }
+            }
+        }
+
         const ComPtr<ID3D11Device> m_device;
         ComPtr<ID3D11DeviceContext> m_context;
         D3D11ContextState m_state;
@@ -1851,6 +1940,10 @@ namespace {
         std::shared_ptr<ISimpleMesh> m_currentMesh;
 
         ComPtr<ID3D11InfoQueue> m_infoQueue;
+
+        config::MipMapBias m_mipMapBiasingType{config::MipMapBias::Off};
+        float m_mipMapBias{0.f};
+        mutable uint32_t m_numBiasedSamplersThisFrame{0};
 
         SetRenderTargetEvent m_setRenderTargetEvent;
         UnsetRenderTargetEvent m_unsetRenderTargetEvent;
@@ -1989,6 +2082,31 @@ namespace {
                 context, pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
 
             DebugLog("<-- ID3D11DeviceContext_CopySubresourceRegion\n");
+        }
+
+        typedef void (*PFN_ID3D11DeviceContext_PSSetSamplers)(ID3D11DeviceContext*,
+                                                              UINT,
+                                                              UINT,
+                                                              ID3D11SamplerState* const*);
+        static inline PFN_ID3D11DeviceContext_PSSetSamplers g_original_ID3D11DeviceContext_PSSetSamplers = nullptr;
+        static void hooked_ID3D11DeviceContext_PSSetSamplers(ID3D11DeviceContext* context,
+                                                             UINT StartSlot,
+                                                             UINT NumSamplers,
+                                                             ID3D11SamplerState* const* ppSamplers) {
+            DebugLog("--> ID3D11DeviceContext_PSSetSamplers\n");
+
+            ID3D11SamplerState* updatedSamplers[D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT];
+            for (UINT i = 0; i < NumSamplers; i++) {
+                updatedSamplers[i] = ppSamplers[i];
+            }
+
+            assert(g_instance);
+            g_instance->patchSamplers(context, updatedSamplers, NumSamplers);
+
+            assert(g_original_ID3D11DeviceContext_PSSetSamplers);
+            g_original_ID3D11DeviceContext_PSSetSamplers(context, StartSlot, NumSamplers, updatedSamplers);
+
+            DebugLog("<-- ID3D11DeviceContext_PSSetSamplers\n");
         }
     };
 
