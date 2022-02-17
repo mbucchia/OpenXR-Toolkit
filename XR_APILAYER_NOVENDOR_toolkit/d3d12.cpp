@@ -1761,6 +1761,15 @@ namespace {
             m_isRenderingText = false;
         }
 
+        void setMipMapBias(config::MipMapBias biasing, float bias = 0.f) override {
+            // TODO: Implement mip-map bias.
+        }
+
+        uint32_t getNumBiasedSamplersThisFrame() const override {
+            // TODO: Implement mip-map bias.
+            return 0;
+        }
+
         void resolveQueries() override {
             if (m_nextGpuTimestampIndex == 0) {
                 return;

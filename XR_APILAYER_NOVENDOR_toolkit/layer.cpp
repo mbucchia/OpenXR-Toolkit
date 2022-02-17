@@ -202,6 +202,7 @@ namespace {
                 m_configManager->setDefault(config::SettingVRSMiddle, 2); // 1/4x
                 m_configManager->setDefault(config::SettingVRSOuter, 4);  // 1/16x
                 m_configManager->setDefault(config::SettingVRSOuterRadius, 50);
+                m_configManager->setEnumDefault(config::SettingMipMapBias, config::MipMapBias::Anisotropic);
 
                 // Workaround: the first versions of the toolkit used a different representation for the world scale.
                 // Migrate the value upon first run.
@@ -330,6 +331,10 @@ namespace {
                         throw std::runtime_error("Unknown scaling type");
                         break;
                     }
+
+                    // Per NIS SDK documentation.
+                    m_mipMapBiasForUpscaling = -std::log2f((float)m_displayWidth / inputWidth);
+                    Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
 
                     m_postProcessor =
                         graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
@@ -1109,6 +1114,10 @@ namespace {
             const auto now = std::chrono::steady_clock::now();
             const auto numFrames = ++m_performanceCounters.numFrames;
 
+            if (m_graphicsDevice) {
+                m_stats.numBiasedSamplers = m_graphicsDevice->getNumBiasedSamplersThisFrame();
+            }
+
             if ((now - m_performanceCounters.lastWindowStart) >= std::chrono::seconds(1)) {
                 m_performanceCounters.numFrames = 0;
                 m_performanceCounters.lastWindowStart = now;
@@ -1165,6 +1174,14 @@ namespace {
             }
             if (m_variableRateShader) {
                 m_variableRateShader->update();
+            }
+            if (m_configManager->hasChanged(config::SettingMipMapBias) ||
+                m_configManager->hasChanged(config::SettingScalingType)) {
+                const auto biasing = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType) !=
+                                             config::ScalingType::None
+                                         ? m_configManager->getEnumValue<config::MipMapBias>(config::SettingMipMapBias)
+                                         : config::MipMapBias::Off;
+                m_graphicsDevice->setMipMapBias(biasing, m_mipMapBiasForUpscaling);
             }
         }
 
@@ -1580,6 +1597,7 @@ namespace {
         std::shared_ptr<graphics::IUpscaler> m_upscaler;
         config::ScalingType m_upscaleMode{config::ScalingType::None};
         uint32_t m_upscalingFactor{100};
+        float m_mipMapBiasForUpscaling{0.f};
 
         std::shared_ptr<graphics::IImageProcessor> m_preProcessor;
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
