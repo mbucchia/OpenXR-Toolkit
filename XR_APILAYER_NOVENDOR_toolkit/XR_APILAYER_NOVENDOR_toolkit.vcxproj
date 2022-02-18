@@ -78,7 +78,7 @@ copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
 copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
 md $(OutDir)\shaders
 copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
-type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-1.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
+type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-2.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_a.h $(OutDir)\shaders
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h $(OutDir)\shaders
 type $(SolutionDir)\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-code-fsr-v1.20210629.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
@@ -133,7 +133,7 @@ copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
 copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
 md $(OutDir)\shaders
 copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
-type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-1.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
+type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-2.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_a.h $(OutDir)\shaders
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h $(OutDir)\shaders
 type $(SolutionDir)\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-code-fsr-v1.20210629.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
