@@ -28,15 +28,15 @@
 #include "interfaces.h"
 #include "layer.h"
 #include "log.h"
-#include "postprocess.h"
 
 namespace {
 
     using namespace toolkit;
     using namespace toolkit::config;
     using namespace toolkit::graphics;
-    using namespace toolkit::graphics;
     using namespace toolkit::log;
+
+    __declspec(align(256)) struct ImageProcessorConfig { DirectX::XMFLOAT4X4 BrightnessContrastSaturationMatrix; };
 
     class ImageProcessor : public IImageProcessor {
       public:
@@ -47,20 +47,67 @@ namespace {
             const auto shadersDir = dllHome / "shaders";
             const auto shaderPath = shadersDir / shaderFile;
             m_shader = m_device->createQuadShader(
-                shaderPath.string(), "main", "Post-process PS", nullptr, shadersDir.string());
+                shaderPath.string(), "main", "Image Processor PS", nullptr, shadersDir.string());
 
             utilities::shader::Defines defines;
             defines.add("VPRT", true);
             m_shaderVPRT = m_device->createQuadShader(
-                shaderPath.string(), "main", "Post-process VPRT PS", defines.get(), shadersDir.string());
+                shaderPath.string(), "main", "Image Processor VPRT PS", defines.get(), shadersDir.string());
 
             // TODO: For now, we're going to require that all image processing shaders share the same configuration
             // structure.
-            m_configBuffer = m_device->createBuffer(sizeof(PostProcessConfig), "Post-process Configuration CB");
+            m_configBuffer = m_device->createBuffer(sizeof(ImageProcessorConfig), "Image Processor Configuration CB");
         }
 
         void update() override {
-            // TODO: Future usage: check configManager, then upload new parameters to m_configBuffer.
+            if (m_configManager->hasChanged(SettingBrightness) || m_configManager->hasChanged(SettingContrast) ||
+                m_configManager->hasChanged(SettingSaturation)) {
+                // 0 -> -1, 500 -> 0, 1000 -> 1
+                const float brightness = 1.f + 2.f * (m_configManager->getValue(SettingBrightness) - 500) / 1000.f;
+                const float contrast = 2.f * (m_configManager->getValue(SettingContrast) - 500) / 1000.f;
+                const float saturation = 1.f + 2.f * (m_configManager->getValue(SettingSaturation) - 500) / 1000.f;
+
+                // http://www.graficaobscura.com/matrix/
+                DirectX::XMMATRIX brightnessMatrix;
+                {
+                    // clang-format off
+                    brightnessMatrix = DirectX::XMMatrixSet(brightness, 0.f, 0.f, 0.f,
+                                                            0.f, brightness, 0.f, 0.f,
+                                                            0.f, 0.f, brightness, 0.f,
+                                                            0.f, 0.f, 0.f, 1.f);
+                    // clang-format on
+                }
+                DirectX::XMMATRIX contrastMatrix;
+                {
+                    // clang-format off
+                    contrastMatrix = DirectX::XMMatrixSet(1.f, 0.f, 0.f, 0.f,
+                                                          0.f, 1.f, 0.f, 0.f,
+                                                          0.f, 0.f, 1.f, 0.f,
+                                                          contrast, contrast, contrast, 1.f);
+                    // clang-format on
+                }
+                DirectX::XMMATRIX saturationMatrix;
+                {
+                    const float oneMinusSat = 1.f - saturation;
+                    float red[] = {saturation + 0.3086f * oneMinusSat, 0.3086f * oneMinusSat, 0.3086f * oneMinusSat};
+                    float green[] = {0.6094f * oneMinusSat, saturation + 0.6094f * oneMinusSat, 0.6094f * oneMinusSat};
+                    float blue[] = {0.0820f * oneMinusSat, 0.0820f * oneMinusSat, saturation + 0.0820f * oneMinusSat};
+
+                    // clang-format off
+                    saturationMatrix = DirectX::XMMatrixSet(red[0], red[1], red[2], 0.f,
+                                                            green[0], green[1], green[2], 0.f,
+                                                            blue[0], blue[1], blue[2], 0.f,
+                                                            0.f, 0.f, 0.f, 1.f);
+                    // clang-format on
+                }
+
+                ImageProcessorConfig staging;
+                DirectX::XMStoreFloat4x4(&staging.BrightnessContrastSaturationMatrix,
+                    DirectX::XMMatrixMultiply(brightnessMatrix,
+                                              DirectX::XMMatrixMultiply(contrastMatrix, saturationMatrix))
+                );
+                m_configBuffer->uploadData(&staging, sizeof(staging));
+            }
         }
 
         void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {

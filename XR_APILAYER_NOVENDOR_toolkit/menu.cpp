@@ -832,6 +832,21 @@ namespace {
                 [&] { return m_currentTab == MenuTab::Appearance; } /* visible condition */,
                 true /* isTab */);
             m_menuEntries.push_back(
+                {OptionIndent + "Brightness", MenuEntryType::Slider, SettingBrightness, 0, 1000, [](int value) {
+                     return fmt::format("{:.1f}", value / 10.f);
+                 }});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back(
+                {OptionIndent + "Contrast", MenuEntryType::Slider, SettingContrast, 0, 1000, [](int value) {
+                     return fmt::format("{:.1f}", value / 10.f);
+                 }});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back(
+                {OptionIndent + "Saturation", MenuEntryType::Slider, SettingSaturation, 0, 1000, [](int value) {
+                     return fmt::format("{:.1f}", value / 10.f);
+                 }});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back(
                 {OptionIndent + "World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
                      return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.f, m_stats.icd * 1000);
                  }});

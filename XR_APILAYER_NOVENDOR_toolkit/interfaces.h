@@ -84,6 +84,9 @@ namespace toolkit {
         const std::string SettingVRSInnerRadius = "vrs_inner_radius";
         const std::string SettingVRSInner = "vrs_inner";
         const std::string SettingMipMapBias = "mipmap_bias";
+        const std::string SettingBrightness = "brightness";
+        const std::string SettingContrast = "contrast";
+        const std::string SettingSaturation = "saturation";
 
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
