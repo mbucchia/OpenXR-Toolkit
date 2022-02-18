@@ -85,7 +85,7 @@ type $(SolutionDir)\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-cod
 copy $(ProjectDir)\NIS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\FSR.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
-copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
+</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy dependencies...</Message>
@@ -140,7 +140,7 @@ type $(SolutionDir)\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-cod
 copy $(ProjectDir)\NIS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\FSR.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
-copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
+</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy dependencies...</Message>
@@ -176,12 +176,6 @@ copy $(ProjectDir)\postprocess.h $(OutDir)\shaders</Command>
     </ClInclude>
     <ClInclude Include="d3dcommon.h" />
     <ClInclude Include="detours_helpers.h" />
-    <ClInclude Include="postprocess.h">
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </DeploymentContent>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </DeploymentContent>
-    </ClInclude>
     <ClInclude Include="shader_utilities.h" />
     <ClInclude Include="factories.h" />
     <ClInclude Include="framework\dispatch.gen.h" />

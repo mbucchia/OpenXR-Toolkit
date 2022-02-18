@@ -21,9 +21,6 @@
     <Filter Include="Header Files\FSR">
       <UniqueIdentifier>{2BFA8683-39CE-4F87-9CA4-AD6FC81A838E}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\PostProcess">
-      <UniqueIdentifier>{71c2b74e-024a-4829-a66d-951e36521380}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Shader Files\NIS">
       <UniqueIdentifier>{333f1c24-08c0-41f5-a1e9-9a3d8f26c3ae}</UniqueIdentifier>
     </Filter>
@@ -64,9 +61,6 @@
     </ClInclude>
     <ClInclude Include="..\external\NVIDIAImageScaling\NIS\NIS_Scaler.h">
       <Filter>Shader Files\NIS</Filter>
-    </ClInclude>
-    <ClInclude Include="postprocess.h">
-      <Filter>Header Files\PostProcess</Filter>
     </ClInclude>
     <ClInclude Include="..\external\FidelityFX-FSR\ffx-fsr\ffx_a.h">
       <Filter>Shader Files\FSR</Filter>

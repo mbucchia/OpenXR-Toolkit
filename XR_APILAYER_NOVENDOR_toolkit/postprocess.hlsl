@@ -20,22 +20,23 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "postprocess.h"
-
 cbuffer config : register(b0) {
-    POST_PROCESS_CONFIG;
+    float4x4 BrightnessContrastSaturationMatrix;
 };
 SamplerState samplerLinearClamp : register(s0);
 
 #ifndef VPRT
-#define SAMPLE_TEXTURE(source, texcoord) sourceTexture.Sample(samplerLinearClamp, (texcoord))
+#define SAMPLE_TEXTURE(source, texcoord) source.Sample(samplerLinearClamp, (texcoord))
 Texture2D sourceTexture : register(t0);
 #else
-#define SAMPLE_TEXTURE(source, texcoord) sourceTexture.Sample(samplerLinearClamp, float3((texcoord), 0))
+#define SAMPLE_TEXTURE(source, texcoord) source.Sample(samplerLinearClamp, float3((texcoord), 0))
 Texture2DArray sourceTexture : register(t0);
 #endif
 
 // For now, our shader only does a copy, effectively allowing Direct3D to convert between color formats.
 float4 main(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
-    return SAMPLE_TEXTURE(sourceTexture, texcoord);
+    float4 inputColor = SAMPLE_TEXTURE(sourceTexture, texcoord);
+    float4 outputColor = mul(BrightnessContrastSaturationMatrix, inputColor);
+    outputColor.a = inputColor.a;
+    return outputColor;
 }
