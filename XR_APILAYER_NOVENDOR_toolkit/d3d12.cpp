@@ -1531,7 +1531,7 @@ namespace {
             m_currentMesh.reset();
         }
 
-        void clearColor(float top, float left, float bottom, float right, XrColor4f& color) const override {
+        void clearColor(float top, float left, float bottom, float right, const XrColor4f& color) const override {
             if (!m_currentDrawRenderTarget) {
                 return;
             }
