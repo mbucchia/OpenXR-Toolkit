@@ -919,7 +919,7 @@ namespace {
                         }
 
                         // TODO: Not sure why doubling the value is needed, it works on HP Reverb and Varjo Aero.
-                        m_configManager->setDefault(config::SettingOverlayEyeOffset,
+                        m_configManager->setDefault(config::SettingMenuEyeOffset,
                                                     (int)(m_displayWidth * 2.f * (projCenterX[1] - projCenterX[0])));
                         if (m_variableRateShader) {
                             m_variableRateShader->setViewProjectionCenters(

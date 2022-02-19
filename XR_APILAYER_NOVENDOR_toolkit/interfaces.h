@@ -59,7 +59,7 @@ namespace toolkit {
     namespace config {
 
         const std::string SettingScreenshotEnabled = "enable_screenshot";
-        const std::string SettingOverlayEyeOffset = "overlay_eye_offset";
+        const std::string SettingMenuEyeOffset = "menu_eye_offset";
         const std::string SettingOverlayType = "overlay";
         const std::string SettingMenuFontSize = "font_size";
         const std::string SettingMenuTimeout = "menu_timeout";
@@ -473,7 +473,7 @@ namespace toolkit {
             virtual void setRenderTargets(std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargets,
                                           std::pair<std::shared_ptr<ITexture>, int32_t> depthBuffer = {}) = 0;
 
-            virtual void clearColor(float top, float left, float bottom, float right, XrColor4f& color) const = 0;
+            virtual void clearColor(float top, float left, float bottom, float right, const XrColor4f& color) const = 0;
             virtual void clearDepth(float value) = 0;
 
             virtual void setViewProjection(const View& view) = 0;
