@@ -158,7 +158,7 @@ namespace {
                 std::vector<uint32_t> m_coefAligned;
                 createAlignedCoefficients((uint32_t*)coef_usm, m_coefAligned, rowPitchAligned);
                 m_coefUSM = m_device->createTexture(
-                    info, "NIS USM Coefficients TEX2D", rowPitch, coefSize, (void*)m_coefAligned.data());
+                    info, "NIS USM Coefficients TEX2D", rowPitchAligned, coefSize, (void*)m_coefAligned.data());
             }
         }
 
