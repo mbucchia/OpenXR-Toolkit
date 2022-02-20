@@ -6,22 +6,24 @@ nav_order: 5
 
 | Feature                              | Status                                  | Planned release |
 |:-------------------------------------|:----------------------------------------|:----------------|
-| Direct3D 11                          | [Stable](){: .btn .btn-green }          | Dec 2021        |
-| Direct3D 12                          | [Experimental](){: .btn .btn-purple }   | Jan 2022        |
-| In-headset menu                      | [Stable](){: .btn .btn-green }          | Jan 2022        |
-| NIS upscaling                        | [Stable](){: .btn .btn-green }          | Dec 2021        |
-| FSR upscaling                        | [Stable](){: .btn .btn-green }          | Jan 2022        |
-| Hand tracking                        | [Experimental](){: .btn .btn-purple }   | Dec 2021        |
-| World Scale override                 | [Stable](){: .btn .btn-green }          | Jan 2022        |
-| Prediction dampening                 | [Stable](){: .btn .btn-green }          | Jan 2022        |
-| Anamorphic upscaling                 | [Ready](){: .btn .btn-blue }            | Feb 2022        |
-| Lock Motion Reprojection rate (WMR)  | [Ready](){: .btn .btn-blue }            | Feb 2022        |
-| Fixed foveated rendering (VRS)       | [Ready](){: .btn .btn-blue }            | Feb 2022        |
+| Direct3D 11                          | [Stable](){: .btn .btn-green }          | Released        |
+| Direct3D 12                          | [Experimental](){: .btn .btn-purple }   | Released        |
+| In-headset menu                      | [Stable](){: .btn .btn-green }          | Released        |
+| NIS upscaling                        | [Stable](){: .btn .btn-green }          | Released        |
+| FSR upscaling                        | [Stable](){: .btn .btn-green }          | Released        |
+| Hand tracking                        | [Experimental](){: .btn .btn-purple }   | Released        |
+| World Scale override                 | [Stable](){: .btn .btn-green }          | Released        |
+| Prediction dampening                 | [Stable](){: .btn .btn-green }          | Released        |
+| Anamorphic upscaling                 | [Stable](){: .btn .btn-green }          | Feb 2022        |
+| Lock Motion Reprojection rate (WMR)  | [Stable](){: .btn .btn-green }          | Feb 2022        |
+| Fixed foveated rendering (VRS)       | [Experimental](){: .btn .btn-purple }   | Feb 2022        |
+| Brightness/contrast/saturation       | [Stable](){: .btn .btn-green }          | Feb 2022        |
+| Texture LOD biasing                  | [Stable](){: .btn .btn-green }          | Feb 2022        |
+| Field of view override               | [Experimental](){: .btn .btn-purple}    | Feb 2022        |
 | Hand tracking haptics cues           | [Implementation](){: .btn .btn-blue }   | Mar 2022?       |
-| Brightness/exposure control          | [Implementation](){: .btn .btn-blue }   | Mar 2022?       |
-| Texture LOD biasing                  | [Investigation](){: .btn .btn-outline } | Feb 2022?       |
-| FOV override                         | [Investigation](){: .btn .btn-blue }    |                 |
-| Zoom-in                              | [Investigation](){: .btn .btn-blue }    |                 |
+| Color correction/dithering           | [Implementation](){: .btn .btn-blue }   | Mar 2022?       |
+| Exposure control                     | [Investigation](){: .btn .btn-blue }    |                 |
+| Field of view override v2 / zoom     | [Investigation](){: .btn .btn-blue }    |                 |
 | Per-application disable setting      | [Not started](){: .btn .btn-outline }   |                 |
 | DLSS                                 | [Blocked](){: .btn .btn-primary }       |                 |
 | Motion compensation                  | [Not started](){: .btn .btn-outline }   |                 |
