@@ -196,12 +196,12 @@ namespace {
                 m_configManager->setEnumDefault(config::SettingVRSQuality,
                                                 config::VariableShadingRateQuality::Performance);
                 m_configManager->setEnumDefault(config::SettingVRSPattern,
-                                                config::VariableShadingRatePattern::Balanced);
+                                                config::VariableShadingRatePattern::Wide);
                 m_configManager->setDefault(config::SettingVRSInner, 0); // 1x
-                m_configManager->setDefault(config::SettingVRSInnerRadius, 25);
+                m_configManager->setDefault(config::SettingVRSInnerRadius, 55);
                 m_configManager->setDefault(config::SettingVRSMiddle, 2); // 1/4x
                 m_configManager->setDefault(config::SettingVRSOuter, 4);  // 1/16x
-                m_configManager->setDefault(config::SettingVRSOuterRadius, 50);
+                m_configManager->setDefault(config::SettingVRSOuterRadius, 80);
                 m_configManager->setEnumDefault(config::SettingMipMapBias, config::MipMapBias::Anisotropic);
                 m_configManager->setDefault(config::SettingBrightness, 500);
                 m_configManager->setDefault(config::SettingContrast, 500);
