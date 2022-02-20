@@ -641,10 +641,8 @@ namespace {
         static std::tuple<int, int, int> getShadingRateForQuality(VariableShadingRateQuality quality) {
             switch (quality) {
             case VariableShadingRateQuality::Performance:
-                return std::make_tuple(0 /* 1x */, 2 /* 1/4x */, 4 /* 1/16x */);
-            case VariableShadingRateQuality::Balanced:
             default:
-                return std::make_tuple(0 /* 1x */, 1 /* 1/2x */, 4 /* 1/16x */);
+                return std::make_tuple(0 /* 1x */, 2 /* 1/4x */, 4 /* 1/16x */);
             case VariableShadingRateQuality::Quality:
                 return std::make_tuple(0 /* 1x */, 1 /* 1/2x */, 2 /* 1/8x */);
             }
@@ -657,9 +655,9 @@ namespace {
                 return std::make_tuple(55, 80);
             case VariableShadingRatePattern::Balanced:
             default:
-                return std::make_tuple(30, 55);
+                return std::make_tuple(50, 60);
             case VariableShadingRatePattern::Narrow:
-                return std::make_tuple(20, 40);
+                return std::make_tuple(30, 55);
             }
         }
 

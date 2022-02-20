@@ -750,13 +750,13 @@ namespace {
                     return m_configManager->peekEnumValue<VariableShadingRateType>(SettingVRS) ==
                            VariableShadingRateType::Preset;
                 } /* visible condition */);
-                m_menuEntries.push_back({SubGroupIndent + "Quality",
+                m_menuEntries.push_back({SubGroupIndent + "Mode",
                                          MenuEntryType::Slider,
                                          SettingVRSQuality,
                                          0,
                                          (int)VariableShadingRateQuality::MaxValue - 1,
                                          [&](int value) {
-                                             const std::string_view labels[] = {"Performance", "Balanced", "Quality"};
+                                             const std::string_view labels[] = {"Performance", "Quality"};
                                              return std::string(labels[value]);
                                          }});
                 m_menuEntries.push_back({SubGroupIndent + "Pattern",

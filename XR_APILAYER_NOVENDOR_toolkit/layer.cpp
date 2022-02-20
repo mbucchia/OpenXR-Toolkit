@@ -194,7 +194,7 @@ namespace {
                                                 config::MotionReprojectionRate::Off);
                 m_configManager->setEnumDefault(config::SettingVRS, config::VariableShadingRateType::None);
                 m_configManager->setEnumDefault(config::SettingVRSQuality,
-                                                config::VariableShadingRateQuality::Balanced);
+                                                config::VariableShadingRateQuality::Performance);
                 m_configManager->setEnumDefault(config::SettingVRSPattern,
                                                 config::VariableShadingRatePattern::Balanced);
                 m_configManager->setDefault(config::SettingVRSInner, 0); // 1x
