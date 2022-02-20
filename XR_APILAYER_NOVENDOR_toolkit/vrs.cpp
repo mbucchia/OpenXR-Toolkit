@@ -170,6 +170,13 @@ namespace {
 
         ~VariableRateShader() override {
             disable();
+
+            // TODO: Releasing the NVAPI resources sometimes leads to a crash... We leak them for now.
+            for (uint32_t i = 0; i < ViewCount; i++) {
+                m_d3d11Resources.shadingRateResourceView[i].Detach();
+            }
+            m_d3d11Resources.shadingRateResourceViewGeneric.Detach();
+            m_d3d11Resources.shadingRateResourceViewVPRT.Detach();
         }
 
         void update() override {
