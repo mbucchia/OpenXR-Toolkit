@@ -826,8 +826,8 @@ namespace {
                  }});
             m_menuEntries.back().acceleration = 5;
             m_menuEntries.push_back(
-                {OptionIndent + "Field of view", MenuEntryType::Slider, SettingFOV, 50, 150, [](int value) {
-                     return fmt::format("{}%", value);
+                {OptionIndent + "Field of view", MenuEntryType::Slider, SettingFOV, 50, 150, [&](int value) {
+                     return fmt::format("{}% ({:.1f} deg)", value, m_stats.totalFov * 180.0f / M_PI);
                  }});
 
             // Must be kept last.
