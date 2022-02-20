@@ -64,7 +64,7 @@ namespace {
                 m_configManager->hasChanged(SettingSaturation)) {
                 // 0 -> -1, 500 -> 0, 1000 -> 1
                 const float brightness = 1.f + 2.f * (m_configManager->getValue(SettingBrightness) - 500) / 1000.f;
-                const float contrast = 2.f * (m_configManager->getValue(SettingContrast) - 500) / 1000.f;
+                const float contrast = 2.f * -(m_configManager->getValue(SettingContrast) - 500) / 1000.f;
                 const float saturation = 1.f + 2.f * (m_configManager->getValue(SettingSaturation) - 500) / 1000.f;
 
                 // http://www.graficaobscura.com/matrix/
