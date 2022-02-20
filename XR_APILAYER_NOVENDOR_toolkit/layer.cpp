@@ -961,6 +961,8 @@ namespace {
                     views[1].fov.angleLeft *= multiplier;
                     views[1].fov.angleRight *= multiplier;
                 }
+
+                m_stats.totalFov = -views[0].fov.angleLeft + views[1].fov.angleRight;
             }
 
             return result;

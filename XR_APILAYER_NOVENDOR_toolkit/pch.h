@@ -29,6 +29,8 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <cstdarg>
 #include <ctime>
 #include <deque>
