@@ -179,6 +179,22 @@ namespace {
                 m_configManager->setValue("first_run", firstRun + 1);
             }
 
+            m_configManager->setDefault("menu_eye", 0); // Both
+            switch (m_configManager->getValue("menu_eye")) {
+            case 0:
+            default:
+                m_displayLeftEye = m_displayRightEye = true;
+                break;
+            case 1:
+                m_displayLeftEye = true;
+                m_displayRightEye = false;
+                break;
+            case 2:
+                m_displayLeftEye = false;
+                m_displayRightEye = true;
+                break;
+            }
+
             if (std::count(m_keyModifiers.cbegin(), m_keyModifiers.cend(), VK_CONTROL)) {
                 m_keyModifiersLabel += L"CTRL+";
             }
@@ -188,12 +204,19 @@ namespace {
             m_configManager->setDefault("key_left", m_keyLeft);
             m_configManager->setDefault("key_right", m_keyRight);
             m_configManager->setDefault("key_menu", m_keyMenu);
+            m_configManager->setDefault("key_up", m_keyUp);
             m_keyLeft = m_configManager->getValue("key_left");
             m_keyLeftLabel = keyToString(m_keyLeft);
             m_keyRight = m_configManager->getValue("key_right");
             m_keyRightLabel = keyToString(m_keyRight);
             m_keyMenu = m_configManager->getValue("key_menu");
             m_keyMenuLabel = keyToString(m_keyMenu);
+            m_keyUp = m_configManager->getValue("key_up");
+            if (m_keyUp) {
+                m_keyUpLabel = keyToString(m_keyUp);
+            } else {
+                m_keyUpLabel = L"SHIFT+" + m_keyMenuLabel;
+            }
 
             // Prepare the tabs.
             static const std::string_view tabs[] = {"Performance", "Appearance", "Inputs", "Menu"};
@@ -225,22 +248,25 @@ namespace {
             const bool moveLeft = UpdateKeyState(m_moveLeftKeyState, m_keyModifiers, m_keyLeft, isRepeat);
             const bool moveRight = UpdateKeyState(m_moveRightKeyState, m_keyModifiers, m_keyRight, isRepeat);
             const bool menuControl = UpdateKeyState(m_menuControlKeyState, m_keyModifiers, m_keyMenu, false);
+            const bool moveUp = m_keyUp ? UpdateKeyState(m_moveUpKeyState, m_keyModifiers, m_keyUp, false)
+                                        : menuControl && m_isAccelerating;
 
-            if (menuControl) {
-                if (m_state != MenuState::Visible) {
+            if (menuControl || moveUp) {
+                if (menuControl && m_state != MenuState::Visible) {
                     m_state = MenuState::Visible;
 
                     m_needRestart = checkNeedRestartCondition();
                     m_menuEntriesTitleWidth = 0.0f;
                     m_menuEntriesWidth = m_menuEntriesHeight = m_menuHeaderHeight = 0.0f;
 
-                } else {
+                } else if (m_state == MenuState::Visible) {
                     do {
                         static_assert(std::is_unsigned_v<decltype(m_selectedItem)>);
 
-                        m_selectedItem += m_isAccelerating ? -1 : 1;
-                        if (m_selectedItem >= m_menuEntries.size())
-                            m_selectedItem = m_isAccelerating ? m_menuEntries.size() - 1 : 0;
+                        m_selectedItem += moveUp ? -1 : 1;
+                        if (m_selectedItem >= m_menuEntries.size()) {
+                            m_selectedItem = moveUp ? m_menuEntries.size() - 1 : 0;
+                        }
 
                     } while (m_menuEntries[m_selectedItem].type == MenuEntryType::Separator ||
                              !m_menuEntries[m_selectedItem].visible);
@@ -322,6 +348,12 @@ namespace {
         }
 
         void render(Eye eye, std::shared_ptr<ITexture> renderTarget) const override {
+            if ((eye == Eye::Left && !m_displayLeftEye) || (eye == Eye::Right && !m_displayRightEye)) {
+                return;
+            }
+
+            const bool measureWidth = eye == Eye::Left || !m_displayLeftEye;
+
             const float leftEyeOffset = 0.0f;
             const float rightEyeOffset = (float)m_configManager->getValue(SettingMenuEyeOffset);
             const float eyeOffset = eye == Eye::Left ? leftEyeOffset : rightEyeOffset;
@@ -407,14 +439,8 @@ namespace {
 
                 float top = topAlign;
 
-                m_device->drawString(toolkit::LayerPrettyNameFull,
-                                     TextStyle::Bold,
-                                     fontSize * 0.75f,
-                                     centerAlign,
-                                     top,
-                                     textColorNormal,
-                                     measure,
-                                     FW1_CENTER);
+                m_device->drawString(
+                    toolkit::LayerPrettyNameFull, TextStyle::Bold, fontSize * 0.75f, leftAlign, top, textColorHint);
 
                 top += 1.2f * fontSize;
 
@@ -516,8 +542,8 @@ namespace {
 
                     top += 1.5f * fontSize;
 
-                    if (eye == Eye::Left) {
-                        m_menuEntriesWidth = std::max(m_menuEntriesWidth, left - leftAlign);
+                    if (measureWidth) {
+                        m_menuEntriesWidth = std::max(m_menuEntriesWidth, left - leftAlign - eyeOffset);
                     }
 
                     if (menuEntry.type == MenuEntryType::Tabs) {
@@ -530,23 +556,23 @@ namespace {
                     if (m_configManager->isSafeMode()) {
                         top += fontSize;
 
-                        left += m_device->drawString(L"\x26A0  Running in safe mode, settings are cleared when "
-                                                     L"restarting the VR session \x26A0",
-                                                     TextStyle::Bold,
-                                                     fontSize,
-                                                     left,
-                                                     top,
-                                                     textColorWarning,
-                                                     measure);
+                        left +=
+                            m_device->drawString(L"\x26A0  Running in safe mode with defaults settings  \x26A0",
+                                                 TextStyle::Bold,
+                                                 fontSize,
+                                                 leftAlign,
+                                                 top,
+                                                 textColorWarning,
+                                                 measure);
 
                         top += 1.05f * fontSize;
                     } else if (m_needRestart) {
                         top += fontSize;
 
-                        left += m_device->drawString(L"\x26A0  Restart the VR session to apply changes \x26A0",
+                        left += m_device->drawString(L"\x26A0  Restart the VR session to apply changes  \x26A0",
                                                      TextStyle::Bold,
                                                      fontSize,
-                                                     left,
+                                                     leftAlign,
                                                      top,
                                                      textColorWarning,
                                                      measure);
@@ -554,35 +580,42 @@ namespace {
                         top += 1.05f * fontSize;
                     }
 
+                    if (measureWidth) {
+                        m_menuEntriesWidth = std::max(m_menuEntriesWidth, left - leftAlign - eyeOffset);
+                    }
+                }
+
+                {
+                    float left = leftAlign;
+
                     // Create a little spacing.
                     top += 10;
 
-                    m_device->drawString(fmt::format(L"\xE2B6 : {0}{1}   {4} : {0}{2}   \xE2B7 : {0}{3}",
-                                                     m_keyModifiersLabel,
-                                                     m_keyLeftLabel,
-                                                     m_keyMenuLabel,
-                                                     m_keyRightLabel,
-                                                     m_isAccelerating ? L"\xE1FE" : L"\xE1FC"),
-                                         TextStyle::Normal,
-                                         fontSize * 0.75f,
-                                         rightAlign,
-                                         top,
-                                         textColorHint,
-                                         measure,
-                                         FW1_RIGHT);
+                    left += m_device->drawString(
+                        fmt::format(L"{0}  ( {1} : \xE2B6 )   ( {2} : \xE1FE)   ( {3} : \xE1FC)   ( {4} : \xE2B7 )",
+                                    m_keyModifiersLabel,
+                                    m_keyLeftLabel,
+                                    m_keyUpLabel,
+                                    m_keyMenuLabel,
+                                    m_keyRightLabel),
+                        TextStyle::Normal,
+                        fontSize * 0.75f,
+                        leftAlign,
+                        top,
+                        textColorHint,
+                        measure);
                     top += 0.8f * fontSize;
+
                     m_device->drawString(L"Change values faster with SHIFT",
                                          TextStyle::Normal,
                                          fontSize * 0.75f,
-                                         rightAlign,
+                                         leftAlign,
                                          top,
-                                         textColorHint,
-                                         measure,
-                                         FW1_RIGHT);
+                                         textColorHint);
                     top += 0.8f * fontSize;
 
-                    if (eye == Eye::Left) {
-                        m_menuEntriesWidth = std::max(m_menuEntriesWidth, left - leftAlign);
+                    if (measureWidth) {
+                        m_menuEntriesWidth = std::max(m_menuEntriesWidth, left - leftAlign - eyeOffset);
                     }
                 }
                 m_menuEntriesHeight = (top + fontSize * 0.2f) - topAlign;
@@ -1095,6 +1128,9 @@ namespace {
         MenuStatistics m_stats{};
         GesturesState m_gesturesState{};
 
+        bool m_displayLeftEye{true};
+        bool m_displayRightEye{true};
+
         std::vector<int> m_keyModifiers;
         std::wstring m_keyModifiersLabel;
         int m_keyLeft{VK_F1};
@@ -1103,6 +1139,8 @@ namespace {
         std::wstring m_keyRightLabel;
         int m_keyMenu{VK_F2};
         std::wstring m_keyMenuLabel;
+        int m_keyUp{0};
+        std::wstring m_keyUpLabel;
 
         int m_numSplashLeft;
         std::vector<MenuEntry> m_menuEntries;
@@ -1113,6 +1151,7 @@ namespace {
         bool m_moveLeftKeyState{false};
         bool m_moveRightKeyState{false};
         bool m_menuControlKeyState{false};
+        bool m_moveUpKeyState{false};
         bool m_resetArmed{false};
 
         // animation control
