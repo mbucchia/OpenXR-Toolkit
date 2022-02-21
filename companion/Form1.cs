@@ -58,6 +58,7 @@ namespace companion
 
             InitializeKeyList(leftKey);
             InitializeKeyList(nextKey);
+            InitializeKeyList(previousKey);
             InitializeKeyList(rightKey);
             InitializeKeyList(screenshotKey);
 
@@ -72,10 +73,12 @@ namespace companion
                 safemodeCheckbox.Checked = (int)key.GetValue("safe_mode", 0) == 1 ? true : false;
                 experimentalCheckbox.Checked = (int)key.GetValue("enable_experimental", 0) == 1 ? true : false;
                 screenshotCheckbox.Checked = (int)key.GetValue("enable_screenshot", 0) == 1 ? true : false;
+                menuVisibility.SelectedIndex = (int)key.GetValue("menu_eye", 0);
                 ctrlModifierCheckbox.Checked = (int)key.GetValue("ctrl_modifier", 1) == 1 ? true : false;
                 altModifierCheckbox.Checked = (int)key.GetValue("alt_modifier", 0) == 1 ? true : false;
                 SelectKey(leftKey, (int)key.GetValue("key_left", KeyInterop.VirtualKeyFromKey(Key.F1)));
                 SelectKey(nextKey, (int)key.GetValue("key_menu", KeyInterop.VirtualKeyFromKey(Key.F2)));
+                SelectKey(previousKey, (int)key.GetValue("key_up", 0));
                 SelectKey(rightKey, (int)key.GetValue("key_right", KeyInterop.VirtualKeyFromKey(Key.F3)));
                 SelectKey(screenshotKey, (int)key.GetValue("key_screenshot", KeyInterop.VirtualKeyFromKey(Key.F12)));
             }
@@ -151,6 +154,7 @@ namespace companion
                 }
             }
 
+            box.Items.Add("");
             foreach (var entry in VirtualKeys)
             {
                 box.Items.Add(entry.Item1);
@@ -159,6 +163,11 @@ namespace companion
 
         private void SelectKey(ComboBox box, int virtualKey)
         {
+            if (virtualKey == 0)
+            {
+                box.SelectedIndex = 0;
+            }
+
             string keyText = "";
             foreach (var key in VirtualKeys)
             {
@@ -169,7 +178,7 @@ namespace companion
                 }
             }
 
-            foreach(var item in box.Items)
+            foreach (var item in box.Items)
             {
                 if ((string)item == keyText)
                 {
@@ -255,7 +264,7 @@ namespace companion
                         disableCheckbox.Checked = false;
                         loading = wasLoading;
                     }
-                    safemodeCheckbox.Enabled = experimentalCheckbox.Enabled = screenshotCheckbox.Enabled = leftKey.Enabled = nextKey.Enabled = rightKey.Enabled =
+                    safemodeCheckbox.Enabled = experimentalCheckbox.Enabled = screenshotCheckbox.Enabled = leftKey.Enabled = nextKey.Enabled = previousKey.Enabled = rightKey.Enabled =
                         screenshotKey.Enabled = ctrlModifierCheckbox.Enabled = altModifierCheckbox.Enabled = !disableCheckbox.Checked;
                 }
                 else
@@ -385,89 +394,75 @@ namespace companion
             WriteSetting("enable_screenshot", screenshotCheckbox.Checked ? 1 : 0);
         }
 
-        private void leftKey_SelectedIndexChanged(object sender, EventArgs e)
+        private void menuVisibility_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (loading)
             {
                 return;
             }
-            if (leftKey.SelectedItem == rightKey.SelectedItem || leftKey.SelectedItem == nextKey.SelectedItem || leftKey.SelectedItem == screenshotKey.SelectedItem)
-            {
-                MessageBox.Show("Please make the key assignments unique.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-            foreach (var key in VirtualKeys)
-            {
-                if (key.Item1 == (string)leftKey.SelectedItem)
-                {
-                    WriteSetting("key_left", key.Item2);
-                    break;
-                }
-            }
+            WriteSetting("menu_eye", menuVisibility.SelectedIndex);
+        }
+
+        private void leftKey_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            AssignKey(leftKey, "key_left", new ComboBox[] { previousKey, nextKey, rightKey, screenshotKey });
         }
 
         private void nextKey_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (loading)
-            {
-                return;
-            }
-            if (nextKey.SelectedItem == leftKey.SelectedItem || nextKey.SelectedItem == rightKey.SelectedItem || nextKey.SelectedItem == screenshotKey.SelectedItem)
-            {
-                MessageBox.Show("Please make the key assignments unique.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-            foreach (var key in VirtualKeys)
-            {
-                if (key.Item1 == (string)nextKey.SelectedItem)
-                {
-                    WriteSetting("key_menu", key.Item2);
-                    break;
-                }
-            }
+            AssignKey(nextKey, "key_menu", new ComboBox[] { leftKey, previousKey, rightKey, screenshotKey });
+        }
+
+        private void previousKey_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            AssignKey(previousKey, "key_up", new ComboBox[] { leftKey, nextKey, rightKey, screenshotKey });
         }
 
         private void rightKey_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (loading)
-            {
-                return;
-            }
-            if (rightKey.SelectedItem == leftKey.SelectedItem || rightKey.SelectedItem == nextKey.SelectedItem || rightKey.SelectedItem == screenshotKey.SelectedItem)
-            {
-                MessageBox.Show("Please make the key assignments unique.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-            foreach (var key in VirtualKeys)
-            {
-                if (key.Item1 == (string)rightKey.SelectedItem)
-                {
-                    WriteSetting("key_right", key.Item2);
-                    break;
-                }
-            }
+            AssignKey(rightKey, "key_right", new ComboBox[] { leftKey, previousKey, nextKey, screenshotKey });
         }
 
         private void screenshotKey_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            AssignKey(screenshotKey, "key_screenshot", new ComboBox[] { leftKey, previousKey, nextKey, rightKey });
+        }
+
+        private void AssignKey(ComboBox key, string setting, ComboBox[] otherKeys)
         {
             if (loading)
             {
                 return;
             }
-            if (screenshotKey.SelectedItem == leftKey.SelectedItem || screenshotKey.SelectedItem == nextKey.SelectedItem || screenshotKey.SelectedItem == rightKey.SelectedItem)
+
+            if (key.SelectedIndex > 0)
             {
-                MessageBox.Show("Please make the key assignments unique.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-            foreach (var key in VirtualKeys)
-            {
-                if (key.Item1 == (string)screenshotKey.SelectedItem)
+                foreach (var other in otherKeys)
                 {
-                    WriteSetting("key_screenshot", key.Item2);
-                    break;
+                    if (key.SelectedItem == other.SelectedItem)
+                    {
+                        MessageBox.Show("Please make the key assignments unique.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                }
+
+                foreach (var k in VirtualKeys)
+                {
+                    if (k.Item1 == (string)key.SelectedItem)
+                    {
+                        WriteSetting(setting, k.Item2);
+                        break;
+                    }
                 }
             }
+            else
+            {
+                WriteSetting(setting, 0);
+            }
         }
+
+
 
         private void ctrlModifierCheckbox_CheckedChanged(object sender, EventArgs e)
         {
