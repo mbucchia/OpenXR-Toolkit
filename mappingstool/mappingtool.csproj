@@ -127,4 +127,12 @@
     <PostBuildEvent>
     </PostBuildEvent>
   </PropertyGroup>
+  <PropertyGroup>
+    <PreBuildEvent>if not exist $(SolutionDir)\version.info goto :skip_version
+for /f "delims== tokens=1,2" %25%25G in ($(SolutionDir)\version.info) do set %25%25G=%25%25H
+$(SolutionDir)\patches\sed.exe -i "s/^\[assembly: AssemblyVersion(\".*\")\]$/\[assembly: AssemblyVersion(\"%25major%25.%25minor%25.%25patch%25.0\")\]/g" $(ProjectDir)\Properties\AssemblyInfo.cs
+$(SolutionDir)\patches\sed.exe -i "s/^\[assembly: AssemblyFileVersion(\".*\")\]$/\[assembly: AssemblyFileVersion(\"%25major%25.%25minor%25.%25patch%25.0\")\]/g" $(ProjectDir)\Properties\AssemblyInfo.cs
+:skip_version
+</PreBuildEvent>
+  </PropertyGroup>
 </Project>
