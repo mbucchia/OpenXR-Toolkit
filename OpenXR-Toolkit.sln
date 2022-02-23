@@ -13,6 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution 
 		LICENSE = LICENSE
 		README.md = README.md
 		RELEASING.md = RELEASING.md
+		version.info = version.info
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scripts", "Scripts", "{1E41057B-9167-4ED0-A3FA-6F2CA6B55922}"
@@ -22,10 +23,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scripts", "Scripts", "{1E41
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "companion", "companion\companion.csproj", "{69C43742-D646-44B8-A869-3D8016D525CE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{93D573D0-634F-4BA0-8FE0-FB63D7D00A05} = {93D573D0-634F-4BA0-8FE0-FB63D7D00A05}
+	EndProjectSection
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Setup", "installer\installer.vdproj", "{9D1EF86B-6B13-4C14-BBD7-E70CF7DD48DE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mappingtool", "mappingstool\mappingtool.csproj", "{F64486BA-421E-43A7-8E97-DC9981EA5C6F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{93D573D0-634F-4BA0-8FE0-FB63D7D00A05} = {93D573D0-634F-4BA0-8FE0-FB63D7D00A05}
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GitHub", "GitHub", "{3F9F661B-0558-4FF0-862C-4D1920CC2782}"
 	ProjectSection(SolutionItems) = preProject

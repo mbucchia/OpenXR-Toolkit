@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("OpenXR-Toolkit")]
-[assembly: AssemblyCopyright("Copyright ©2021 Matthieu Bucchianeri")]
+[assembly: AssemblyCopyright("Copyright ©2021-2022 Matthieu Bucchianeri")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

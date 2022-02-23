@@ -99,10 +99,18 @@ copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
       </Message>
     </PreLinkEvent>
     <PreBuildEvent>
-      <Command>python $(ProjectDir)\framework\dispatch_generator.py</Command>
+      <Command>python $(ProjectDir)\framework\dispatch_generator.py
+if not exist $(SolutionDir)\version.info goto :skip_version
+for /f "delims== tokens=1,2" %%G in ($(SolutionDir)\version.info) do set %%G=%%H
+$(SolutionDir)\patches\sed.exe -i "s/const std::string LayerPrettyNameFull = \"OpenXR Toolkit - .*\";$/const std::string LayerPrettyNameFull = \"OpenXR Toolkit - %pretty_name% (v%major%.%minor%.%patch%)\";/g" $(ProjectDir)\layer.h
+$(SolutionDir)\patches\sed.exe -i "s/FILEVERSION .*$/FILEVERSION %major%,%minor%,%patch%,0/g" $(ProjectDir)\resource.rc
+$(SolutionDir)\patches\sed.exe -i "s/PRODUCTVERSION .*$/PRODUCTVERSION %major%,%minor%,%patch%,0/g" $(ProjectDir)\resource.rc
+$(SolutionDir)\patches\sed.exe -i "s/VALUE \"FileVersion\", \".*\"$/VALUE \"FileVersion\", \"%major%.%minor%.%patch%.0\"/g" $(ProjectDir)\resource.rc
+$(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"ProductVersion\", \"%major%.%minor%.%patch%.0\"/g" $(ProjectDir)\resource.rc
+:skip_version</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Generating layer dispatcher...</Message>
+      <Message>Generating layer dispatcher and version info...</Message>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -154,10 +162,18 @@ copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
       </Message>
     </PreLinkEvent>
     <PreBuildEvent>
-      <Command>python $(ProjectDir)\framework\dispatch_generator.py</Command>
+      <Command>python $(ProjectDir)\framework\dispatch_generator.py
+if not exist $(SolutionDir)\version.info goto :skip_version
+for /f "delims== tokens=1,2" %%G in ($(SolutionDir)\version.info) do set %%G=%%H
+$(SolutionDir)\patches\sed.exe -i "s/const std::string LayerPrettyNameFull = \"OpenXR Toolkit - .*\";$/const std::string LayerPrettyNameFull = \"OpenXR Toolkit - %pretty_name% (v%major%.%minor%.%patch%)\";/g" $(ProjectDir)\layer.h
+$(SolutionDir)\patches\sed.exe -i "s/FILEVERSION .*$/FILEVERSION %major%,%minor%,%patch%,0/g" $(ProjectDir)\resource.rc
+$(SolutionDir)\patches\sed.exe -i "s/PRODUCTVERSION .*$/PRODUCTVERSION %major%,%minor%,%patch%,0/g" $(ProjectDir)\resource.rc
+$(SolutionDir)\patches\sed.exe -i "s/VALUE \"FileVersion\", \".*\"$/VALUE \"FileVersion\", \"%major%.%minor%.%patch%.0\"/g" $(ProjectDir)\resource.rc
+$(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"ProductVersion\", \"%major%.%minor%.%patch%.0\"/g" $(ProjectDir)\resource.rc
+:skip_version</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Generating layer dispatcher...</Message>
+      <Message>Generating layer dispatcher and version info...</Message>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -176,6 +192,7 @@ copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
     </ClInclude>
     <ClInclude Include="d3dcommon.h" />
     <ClInclude Include="detours_helpers.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="shader_utilities.h" />
     <ClInclude Include="factories.h" />
     <ClInclude Include="framework\dispatch.gen.h" />
@@ -245,6 +262,9 @@ copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </DeploymentContent>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="resource.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

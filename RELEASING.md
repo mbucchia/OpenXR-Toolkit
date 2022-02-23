@@ -2,31 +2,16 @@ In order to make a release with number X.Y.Z:
 
 1) Create or update the branch `release/x.y`
 
-2) Update the definitions in `XR_APILAYER_NOVENDOR_toolkit/layer.h`:
+2) Create or update the definitions in `version.info`, eg:
 
 ```
-    const uint32_t VersionMajor = 0;
-    const uint32_t VersionMinor = 0;
-    const uint32_t VersionPatch = 0;
-    const std::string VersionString = "Unreleased";
+major=0
+minor=9
+patch=4
+pretty_name=Beta-2
 ```
 
-eg:
-
-```
-    const uint32_t VersionMajor = 0;
-    const uint32_t VersionMinor = 9;
-    const uint32_t VersionPatch = 4;
-    const std::string VersionString = "Beta-2";
-```
-
-3) Update the label in `installer/README.rtf`:
-
-```
-OpenXR Toolkit - Development Build (v0.0.0)
-```
-
-eg:
+3) Update the label in `installer/README.rtf`, eg:
 
 ```
 OpenXR Toolkit - Beta-2 (v0.9.4)
