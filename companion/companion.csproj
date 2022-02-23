@@ -169,7 +169,15 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy $(ProjectDir)\openxr_loader.dll $(TargetDir)</PostBuildEvent>
+    <PostBuildEvent>if not defined PFX_PASSWORD goto skip_signing
+if not defined PFX_NAME set PFX_NAME=selfsigncert
+$(SolutionDir)\installer\signtool.exe sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f $(SolutionDir)\installer\%25PFX_NAME%25.pfx /p "%25PFX_PASSWORD%25" /v $(TargetPath)
+REM The installer picks up the file from obj... Sign this one too.
+$(SolutionDir)\installer\signtool.exe sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f $(SolutionDir)\installer\%25PFX_NAME%25.pfx /p "%25PFX_PASSWORD%25" /v $(ProjectDir)\obj\$(ConfigurationName)\$(TargetFilename)
+:skip_signing
+
+copy $(ProjectDir)\openxr_loader.dll $(TargetDir)
+</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
     <PreBuildEvent>if not exist $(SolutionDir)\version.info goto :skip_version
