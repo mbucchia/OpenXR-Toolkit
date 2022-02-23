@@ -63,7 +63,7 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
         $pfxName = if ($env:PFX_NAME) { $env:PFX_NAME } else { "selfsigncert" };
-        & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f installer/$pfxName.pfx /p "$env:PFX_PASSWORD" /v installer/output/OpenXR-Toolkit.msi
+        installer/signtool.exe sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f installer/$pfxName.pfx /p "$env:PFX_PASSWORD" /v installer/output/OpenXR-Toolkit.msi
 
     - name: Publish
       uses: actions/upload-artifact@v2

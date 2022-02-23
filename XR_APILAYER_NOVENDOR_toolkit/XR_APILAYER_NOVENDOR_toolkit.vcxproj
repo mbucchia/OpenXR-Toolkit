@@ -73,7 +73,14 @@
       <AdditionalLibraryDirectories>$(SolutionDir)\external\NVAPI\amd64</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(ProjectDir)\$(ProjectName).json $(OutDir)
+      <Command>REM Sign the DLL.
+if not defined PFX_PASSWORD goto skip_signing
+if not defined PFX_NAME set PFX_NAME=selfsigncert
+$(SolutionDir)\installer\signtool.exe sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f $(SolutionDir)\installer\%PFX_NAME%.pfx /p "%PFX_PASSWORD%" /v $(TargetPath)
+:skip_signing
+
+REM Copy all dependencies.
+copy $(ProjectDir)\$(ProjectName).json $(OutDir)
 copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
 copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
 md $(OutDir)\shaders
@@ -136,7 +143,14 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
       <AdditionalLibraryDirectories>$(SolutionDir)\external\NVAPI\amd64</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(ProjectDir)\$(ProjectName).json $(OutDir)
+      <Command>REM Sign the DLL.
+if not defined PFX_PASSWORD goto skip_signing
+if not defined PFX_NAME set PFX_NAME=selfsigncert
+$(SolutionDir)\installer\signtool.exe sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f $(SolutionDir)\installer\%PFX_NAME%.pfx /p "%PFX_PASSWORD%" /v $(TargetPath)
+:skip_signing
+
+REM Copy all dependencies.
+copy $(ProjectDir)\$(ProjectName).json $(OutDir)
 copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
 copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
 md $(OutDir)\shaders
