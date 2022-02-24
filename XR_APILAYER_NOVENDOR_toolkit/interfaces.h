@@ -84,6 +84,8 @@ namespace toolkit {
         const std::string SettingVRSMiddle = "vrs_middle";
         const std::string SettingVRSInnerRadius = "vrs_inner_radius";
         const std::string SettingVRSInner = "vrs_inner";
+        const std::string SettingVRSXOffset = "vrs_x_offset";
+        const std::string SettingVRSYOffset = "vrs_y_offset";
         const std::string SettingMipMapBias = "mipmap_bias";
         const std::string SettingBrightness = "brightness";
         const std::string SettingContrast = "contrast";
