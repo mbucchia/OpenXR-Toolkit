@@ -192,7 +192,9 @@ namespace {
                 bool needRegeneratePattern =
                     hasModeChanged || m_hasProjCenterChanged ||
                     (mode == VariableShadingRateType::Preset && m_configManager->hasChanged(SettingVRSPattern)) ||
-                    (mode == VariableShadingRateType::Custom && (hasInnerRadiusChanged || hasOuterRadiusChanged)) ||
+                    (mode == VariableShadingRateType::Custom && (hasInnerRadiusChanged || hasOuterRadiusChanged ||
+                                                                 m_configManager->hasChanged(SettingVRSXOffset) ||
+                                                                 m_configManager->hasChanged(SettingVRSYOffset))) ||
                     (m_device->getApi() == Api::D3D12 &&
                      ((mode == VariableShadingRateType::Preset && m_configManager->hasChanged(SettingVRSQuality)) ||
                       (mode == VariableShadingRateType::Custom &&
@@ -248,6 +250,9 @@ namespace {
                         }
                     }
 
+                    const auto xOffset = m_configManager->getValue(SettingVRSXOffset);
+                    const auto yOffset = m_configManager->getValue(SettingVRSYOffset);
+
                     const int rowPitch = Align(m_targetWidth, m_tileSize) / m_tileSize;
                     const int rowPitchAligned = Align(rowPitch, m_device->getTextureAlignmentConstraint());
 
@@ -255,8 +260,8 @@ namespace {
                     std::vector<uint8_t> leftPattern;
                     generateFoveationPattern(leftPattern,
                                              rowPitchAligned,
-                                             m_projCenterX[0],
-                                             m_projCenterY[0],
+                                             m_projCenterX[0] + xOffset,
+                                             m_projCenterY[0] + yOffset,
                                              innerRadius / 100.f,
                                              outerRadius / 100.f,
                                              innerValue,
@@ -266,8 +271,8 @@ namespace {
                     std::vector<uint8_t> rightPattern;
                     generateFoveationPattern(rightPattern,
                                              rowPitchAligned,
-                                             m_projCenterX[1],
-                                             m_projCenterY[1],
+                                             m_projCenterX[1] - xOffset,
+                                             m_projCenterY[1] + yOffset,
                                              innerRadius / 100.f,
                                              outerRadius / 100.f,
                                              innerValue,

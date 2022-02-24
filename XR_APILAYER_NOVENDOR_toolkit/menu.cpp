@@ -947,6 +947,22 @@ namespace {
                                              1, // Exclude 1x to discourage people from using poor settings!
                                              variableRateShaderMaxDownsamplePow2,
                                              samplePow2ToString});
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Horizontal offset",
+                                             MenuEntryType::Slider,
+                                             SettingVRSXOffset,
+                                             -3000,
+                                             3000,
+                                             [](int value) { return fmt::format("{} pixels", value); }});
+                    m_menuEntries.back().expert = true;
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Vertical offset",
+                                             MenuEntryType::Slider,
+                                             SettingVRSYOffset,
+                                             -3000,
+                                             3000,
+                                             [](int value) { return fmt::format("{} pixels", value); }});
+                    m_menuEntries.back().expert = true;
                 }
                 variableRateShaderCustomGroup.finalize();
             }
