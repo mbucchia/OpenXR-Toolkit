@@ -421,8 +421,8 @@ namespace {
                 // Measurements must be done in 2 steps: first mesure the necessary spacing for alignment of the values,
                 // then measure the background area.
                 const bool measureEntriesTitleWidth = m_resetTextLayout;
-                const bool measureBackgroundWidth = !measureEntriesTitleWidth && m_resetBackgroundLayout &&
-                                                    (eye == Eye::Left || !m_displayLeftEye);
+                const bool measureBackgroundWidth =
+                    !measureEntriesTitleWidth && m_resetBackgroundLayout && (eye == Eye::Left || !m_displayLeftEye);
 
                 const bool showExpert = m_configManager->getValue(SettingMenuExpert);
 
@@ -990,14 +990,60 @@ namespace {
                      return fmt::format("{:.1f}", value / 10.f);
                  }});
             m_menuEntries.back().acceleration = 5;
+
             m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Saturation mode",
+                                     MenuEntryType::Choice,
+                                     SettingSaturationPerChannel,
+                                     0,
+                                     1,
+                                     [&](int value) {
+                                         const std::string_view labels[] = {"All", "Per-channel"};
+                                         return std::string(labels[value]);
+                                     }});
+
+            MenuGroup saturationAllGroup(m_menuGroups, m_menuEntries, [&] {
+                return !m_configManager->peekValue(SettingSaturationPerChannel);
+            } /* visible condition */);
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Saturation",
                                      MenuEntryType::Slider,
-                                     SettingSaturation,
+                                     SettingSaturationRed,
                                      0,
                                      1000,
                                      [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
             m_menuEntries.back().acceleration = 5;
+            saturationAllGroup.finalize();
+
+            MenuGroup saturationChannelsGroup(m_menuGroups, m_menuEntries, [&] {
+                return m_configManager->peekValue(SettingSaturationPerChannel);
+            } /* visible condition */);
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Saturation (red)",
+                                     MenuEntryType::Slider,
+                                     SettingSaturationRed,
+                                     0,
+                                     1000,
+                                     [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Saturation (green)",
+                                     MenuEntryType::Slider,
+                                     SettingSaturationGreen,
+                                     0,
+                                     1000,
+                                     [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Saturation (blue)",
+                                     MenuEntryType::Slider,
+                                     SettingSaturationBlue,
+                                     0,
+                                     1000,
+                                     [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
+            m_menuEntries.back().acceleration = 5;
+            saturationChannelsGroup.finalize();
+
             m_menuEntries.push_back(
                 {MenuIndent::OptionIndent, "World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
                      return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.f, m_stats.icd * 1000);
