@@ -207,7 +207,9 @@ namespace {
                 m_configManager->setEnumDefault(config::SettingMipMapBias, config::MipMapBias::Anisotropic);
                 m_configManager->setDefault(config::SettingBrightness, 500);
                 m_configManager->setDefault(config::SettingContrast, 500);
-                m_configManager->setDefault(config::SettingSaturation, 500);
+                m_configManager->setDefault(config::SettingSaturationRed, 500);
+                m_configManager->setDefault(config::SettingSaturationGreen, 500);
+                m_configManager->setDefault(config::SettingSaturationBlue, 500);
 
                 // Workaround: the first versions of the toolkit used a different representation for the world scale.
                 // Migrate the value upon first run.

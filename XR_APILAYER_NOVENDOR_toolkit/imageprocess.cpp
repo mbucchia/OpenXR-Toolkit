@@ -61,11 +61,25 @@ namespace {
 
         void update() override {
             if (m_configManager->hasChanged(SettingBrightness) || m_configManager->hasChanged(SettingContrast) ||
-                m_configManager->hasChanged(SettingSaturation)) {
+                m_configManager->hasChanged(SettingSaturationPerChannel) ||
+                m_configManager->hasChanged(SettingSaturationRed) ||
+                m_configManager->hasChanged(SettingSaturationGreen) ||
+                m_configManager->hasChanged(SettingSaturationBlue)) {
                 // 0 -> -1, 500 -> 0, 1000 -> 1
                 const float brightness = 1.f + 2.f * (m_configManager->getValue(SettingBrightness) - 500) / 1000.f;
                 const float contrast = 2.f * -(m_configManager->getValue(SettingContrast) - 500) / 1000.f;
-                const float saturation = 1.f + 2.f * (m_configManager->getValue(SettingSaturation) - 500) / 1000.f;
+
+                const auto saturationValue = m_configManager->getValue(SettingSaturationRed);
+                const float saturationRed = 1.f + 2.f * (saturationValue - 500) / 1000.f;
+                // Lock the channel values if needed.
+                if (!m_configManager->peekValue(SettingSaturationPerChannel)) {
+                    m_configManager->setValue(SettingSaturationGreen, saturationValue);
+                    m_configManager->setValue(SettingSaturationBlue, saturationValue);
+                }
+                const float saturationGreen =
+                    1.f + 2.f * (m_configManager->getValue(SettingSaturationGreen) - 500) / 1000.f;
+                const float saturationBlue =
+                    1.f + 2.f * (m_configManager->getValue(SettingSaturationBlue) - 500) / 1000.f;
 
                 // http://www.graficaobscura.com/matrix/
                 DirectX::XMMATRIX brightnessMatrix;
@@ -88,10 +102,15 @@ namespace {
                 }
                 DirectX::XMMATRIX saturationMatrix;
                 {
-                    const float oneMinusSat = 1.f - saturation;
-                    float red[] = {saturation + 0.3086f * oneMinusSat, 0.3086f * oneMinusSat, 0.3086f * oneMinusSat};
-                    float green[] = {0.6094f * oneMinusSat, saturation + 0.6094f * oneMinusSat, 0.6094f * oneMinusSat};
-                    float blue[] = {0.0820f * oneMinusSat, 0.0820f * oneMinusSat, saturation + 0.0820f * oneMinusSat};
+                    float red[] = {saturationRed + 0.3086f * (1.f - saturationRed),
+                                   0.3086f * (1.f - saturationRed),
+                                   0.3086f * (1.f - saturationRed)};
+                    float green[] = {0.6094f * (1.f - saturationGreen),
+                                     saturationGreen + 0.6094f * (1.f - saturationGreen),
+                                     0.6094f * (1.f - saturationGreen)};
+                    float blue[] = {0.0820f * (1.f - saturationBlue),
+                                    0.0820f * (1.f - saturationBlue),
+                                    saturationBlue + 0.0820f * (1.f - saturationBlue)};
 
                     // clang-format off
                     saturationMatrix = DirectX::XMMatrixSet(red[0], red[1], red[2], 0.f,
@@ -102,10 +121,10 @@ namespace {
                 }
 
                 ImageProcessorConfig staging;
-                DirectX::XMStoreFloat4x4(&staging.BrightnessContrastSaturationMatrix,
+                DirectX::XMStoreFloat4x4(
+                    &staging.BrightnessContrastSaturationMatrix,
                     DirectX::XMMatrixMultiply(brightnessMatrix,
-                                              DirectX::XMMatrixMultiply(contrastMatrix, saturationMatrix))
-                );
+                                              DirectX::XMMatrixMultiply(contrastMatrix, saturationMatrix)));
                 m_configBuffer->uploadData(&staging, sizeof(staging));
             }
         }

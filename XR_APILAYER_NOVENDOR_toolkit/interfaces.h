@@ -89,7 +89,10 @@ namespace toolkit {
         const std::string SettingMipMapBias = "mipmap_bias";
         const std::string SettingBrightness = "brightness";
         const std::string SettingContrast = "contrast";
-        const std::string SettingSaturation = "saturation";
+        const std::string SettingSaturationPerChannel = "saturation_mode";
+        const std::string SettingSaturationRed = "saturation_red";
+        const std::string SettingSaturationGreen = "saturation_green";
+        const std::string SettingSaturationBlue = "saturation_blue";
 
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
