@@ -85,14 +85,14 @@ namespace {
     constexpr uint32_t ValueSpacing = 20;
     constexpr uint32_t SelectionHorizontalSpacing = 8;
     constexpr uint32_t SelectionVerticalSpacing = 5;
-    const uint32_t OptionIndent = 0;
-    const uint32_t SubGroupIndent = 20;
+
+    enum class MenuIndent { NoIndent = 0, OptionIndent = 0, SubGroupIndent = 20 };
 
     enum class MenuState { Splash, NotVisible, Visible };
     enum class MenuEntryType { Tabs, Slider, Choice, Separator, RestoreDefaultsButton, ExitButton };
 
     struct MenuEntry {
-        uint32_t indent;
+        MenuIndent indent;
         std::string title;
         MenuEntryType type;
 #define BUTTON_OR_SEPARATOR "", 0, 0, [](int value) { return ""; }
@@ -110,6 +110,7 @@ namespace {
         // Some entries are not attached to config values. Use a direct pointer in this case.
         int* pValue{nullptr};
 
+        bool expert{false};
         bool visible{false};
     };
 
@@ -220,13 +221,14 @@ namespace {
 
             // Prepare the tabs.
             static const std::string_view tabs[] = {"Performance", "Appearance", "Inputs", "Menu"};
-            m_menuEntries.push_back({0, "", MenuEntryType::Tabs, "", 0, ARRAYSIZE(tabs) - 1, [&](int value) {
-                                         return std::string(tabs[value]);
-                                     }});
+            m_menuEntries.push_back(
+                {MenuIndent::NoIndent, "", MenuEntryType::Tabs, "", 0, ARRAYSIZE(tabs) - 1, [&](int value) {
+                     return std::string(tabs[value]);
+                 }});
             m_menuEntries.back().pValue = reinterpret_cast<int*>(&m_currentTab);
             m_menuEntries.back().visible = true; /* Always visible. */
 
-            m_menuEntries.push_back({0, "", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
+            m_menuEntries.push_back({MenuIndent::NoIndent, "", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
             m_menuEntries.back().visible = true; /* Always visible. */
 
             setupPerformanceTab(isMotionReprojectionRateSupported, variableRateShaderMaxDownsamplePow2);
@@ -234,7 +236,8 @@ namespace {
             setupInputsTab(isPredictionDampeningSupported);
             setupMenuTab();
 
-            m_menuEntries.push_back({0, "Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
+            m_menuEntries.push_back(
+                {MenuIndent::NoIndent, "Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
             m_menuEntries.back().visible = true; /* Always visible. */
         }
 
@@ -256,8 +259,7 @@ namespace {
                     m_state = MenuState::Visible;
 
                     m_needRestart = checkNeedRestartCondition();
-                    m_menuEntriesTitleWidth = 0.0f;
-                    m_menuEntriesWidth = m_menuEntriesHeight = m_menuHeaderHeight = 0.0f;
+                    m_resetTextLayout = m_resetBackgroundLayout = true;
 
                 } else if (m_state == MenuState::Visible) {
                     do {
@@ -288,8 +290,7 @@ namespace {
                         m_configManager->resetToDefaults();
 
                         m_needRestart = checkNeedRestartCondition();
-                        m_menuEntriesTitleWidth = 0.0f;
-                        m_menuEntriesWidth = m_menuEntriesHeight = m_menuHeaderHeight = 0.0f;
+                        m_resetTextLayout = m_resetBackgroundLayout = true;
                         m_resetArmed = false;
                     } else {
                         m_resetArmed = true;
@@ -322,12 +323,13 @@ namespace {
                     // When changing some settings, display the warning that the session must be restarted.
                     const bool wasRestartNeeded = std::exchange(m_needRestart, checkNeedRestartCondition());
 
-                    // When changing the font size or displaying the restart banner, force re-alignment/re-size.
-                    if ((menuEntry.configName == SettingMenuFontSize &&
-                         previousValue != m_configManager->peekValue(SettingMenuFontSize)) ||
+                    // When switching tab, changing the font size, switching expert menu or displaying the restart
+                    // banner, force re-alignment/re-size.
+                    if (((menuEntry.configName == SettingMenuFontSize || menuEntry.type == MenuEntryType::Tabs ||
+                          menuEntry.configName == SettingMenuExpert) &&
+                         previousValue != peekEntryValue(menuEntry)) ||
                         wasRestartNeeded != m_needRestart) {
-                        m_menuEntriesTitleWidth = 0.0f;
-                        m_menuEntriesWidth = m_menuEntriesHeight = m_menuHeaderHeight = 0.0f;
+                        m_resetTextLayout = m_resetBackgroundLayout = true;
                     }
 
                     break;
@@ -352,16 +354,14 @@ namespace {
                 return;
             }
 
-            const bool measureWidth = eye == Eye::Left || !m_displayLeftEye;
-
             const float leftEyeOffset = 0.0f;
             const float rightEyeOffset = (float)m_configManager->getValue(SettingMenuEyeOffset);
             const float eyeOffset = eye == Eye::Left ? leftEyeOffset : rightEyeOffset;
 
-            const float leftAnchor = (renderTarget->getInfo().width - m_menuEntriesWidth) / 2;
+            const float leftAnchor = (renderTarget->getInfo().width - m_menuBackgroundWidth) / 2;
             const float leftAlign = leftAnchor + eyeOffset;
-            const float centerAlign = leftAnchor + m_menuEntriesWidth / 2 + eyeOffset;
-            const float rightAlign = leftAnchor + m_menuEntriesWidth + eyeOffset;
+            const float centerAlign = leftAnchor + m_menuBackgroundWidth / 2 + eyeOffset;
+            const float rightAlign = leftAnchor + m_menuBackgroundWidth + eyeOffset;
             const float overlayAlign = (2 * renderTarget->getInfo().width / 3.0f) + eyeOffset;
             const float topAlign = renderTarget->getInfo().height / 3.0f;
 
@@ -418,33 +418,50 @@ namespace {
                 const auto textColorHint = COLOR_TO_TEXT_COLOR(ColorHint) | (alpha << 24);
                 const auto textColorWarning = COLOR_TO_TEXT_COLOR(ColorWarning) | (alpha << 24);
 
-                const bool measure = m_menuEntriesWidth == 0.0f;
-                if (!measure) {
+                // Measurements must be done in 2 steps: first mesure the necessary spacing for alignment of the values,
+                // then measure the background area.
+                const bool measureEntriesTitleWidth = m_resetTextLayout;
+                const bool measureBackgroundWidth = !measureEntriesTitleWidth && m_resetBackgroundLayout &&
+                                                    (eye == Eye::Left || !m_displayLeftEye);
+
+                const bool showExpert = m_configManager->getValue(SettingMenuExpert);
+
+                // Draw the background.
+                if (!measureEntriesTitleWidth && !measureBackgroundWidth) {
                     m_device->clearColor(topAlign - BorderVerticalSpacing,
                                          leftAlign - BorderHorizontalSpacing,
                                          topAlign + m_menuHeaderHeight,
-                                         leftAlign + m_menuEntriesWidth + BorderHorizontalSpacing,
+                                         leftAlign + m_menuBackgroundWidth + BorderHorizontalSpacing,
                                          ColorHeader);
                     m_device->clearColor(topAlign + m_menuHeaderHeight,
                                          leftAlign - BorderHorizontalSpacing,
                                          topAlign + m_menuHeaderHeight + HeaderLineWeight,
-                                         leftAlign + m_menuEntriesWidth + BorderHorizontalSpacing,
+                                         leftAlign + m_menuBackgroundWidth + BorderHorizontalSpacing,
                                          ColorHeaderSeparator);
                     m_device->clearColor(topAlign + m_menuHeaderHeight + HeaderLineWeight,
                                          leftAlign - BorderHorizontalSpacing,
-                                         topAlign + m_menuEntriesHeight + BorderVerticalSpacing,
-                                         leftAlign + m_menuEntriesWidth + BorderHorizontalSpacing,
+                                         topAlign + m_menuBackgroundHeight + BorderVerticalSpacing,
+                                         leftAlign + m_menuBackgroundWidth + BorderHorizontalSpacing,
                                          ColorBackground);
+                }
+
+                // To avoid flickering, we do this after drawing the background.
+                if (measureEntriesTitleWidth) {
+                    m_menuEntriesTitleWidth = 0.f;
+                    m_resetTextLayout = false;
+                }
+                if (measureBackgroundWidth) {
+                    m_menuBackgroundWidth = m_menuBackgroundHeight = m_menuHeaderHeight = 0.f;
+                    m_resetBackgroundLayout = false;
                 }
 
                 float top = topAlign;
 
+                // This is the title.
                 m_device->drawString(
                     toolkit::LayerPrettyNameFull, TextStyle::Bold, fontSize * 0.75f, leftAlign, top, textColorHint);
 
                 top += 1.2f * fontSize;
-
-                float menuEntriesTitleWidth = m_menuEntriesTitleWidth;
 
                 // Display each menu entry.
                 for (unsigned int i = 0; i < m_menuEntries.size(); i++) {
@@ -453,17 +470,17 @@ namespace {
                                             ? "Confirm?"
                                             : menuEntry.title;
 
-                    float left = leftAlign + menuEntry.indent;
+                    float left = leftAlign + (int)menuEntry.indent;
 
                     // Always account for entries, even invisible ones, when calculating the alignment.
                     float entryWidth = 0.0f;
-                    if (menuEntriesTitleWidth == 0.0f) {
-                        entryWidth = menuEntry.indent + m_device->measureString(title, TextStyle::Bold, fontSize) +
+                    if (measureEntriesTitleWidth) {
+                        entryWidth = (int)menuEntry.indent + m_device->measureString(title, TextStyle::Bold, fontSize) +
                                      OptionSpacing;
                         m_menuEntriesTitleWidth = std::max(m_menuEntriesTitleWidth, entryWidth);
                     }
 
-                    if (!menuEntry.visible) {
+                    if (!menuEntry.visible || (!showExpert && menuEntry.expert)) {
                         continue;
                     }
 
@@ -471,10 +488,10 @@ namespace {
 
                     if (menuEntry.type != MenuEntryType::Tabs) {
                         m_device->drawString(title, TextStyle::Bold, fontSize, left, top, entryColor);
-                        if (menuEntriesTitleWidth == 0.0f) {
+                        if (measureEntriesTitleWidth) {
                             left += entryWidth;
                         } else {
-                            left += menuEntriesTitleWidth;
+                            left += m_menuEntriesTitleWidth;
                         }
                     }
 
@@ -483,13 +500,21 @@ namespace {
                     // Display the current value.
                     switch (menuEntry.type) {
                     case MenuEntryType::Slider:
-                        left += m_device->drawString(menuEntry.valueToString(value),
-                                                     TextStyle::Normal,
-                                                     fontSize,
-                                                     left,
-                                                     top,
-                                                     entryColor,
-                                                     measure);
+                        // clang-format off
+                        {
+                            // clang-format on
+                            std::string label;
+                            try {
+                                label = menuEntry.valueToString(value);
+                            } catch (std::exception&) {
+                                label = "Error";
+                            }
+                            left += m_device->drawString(
+                                label, TextStyle::Normal, fontSize, left, top, entryColor, measureBackgroundWidth);
+                        }
+
+                        left += ValueSpacing;
+
                         break;
 
                     case MenuEntryType::Tabs:
@@ -535,15 +560,15 @@ namespace {
                                                          left,
                                                          top,
                                                          entryColor,
-                                                         measure);
+                                                         measureBackgroundWidth);
                         }
                         break;
                     }
 
                     top += 1.5f * fontSize;
 
-                    if (measureWidth) {
-                        m_menuEntriesWidth = std::max(m_menuEntriesWidth, left - leftAlign - eyeOffset);
+                    if (measureBackgroundWidth) {
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - eyeOffset);
                     }
 
                     if (menuEntry.type == MenuEntryType::Tabs) {
@@ -556,14 +581,13 @@ namespace {
                     if (m_configManager->isSafeMode()) {
                         top += fontSize;
 
-                        left +=
-                            m_device->drawString(L"\x26A0  Running in safe mode with defaults settings  \x26A0",
-                                                 TextStyle::Bold,
-                                                 fontSize,
-                                                 leftAlign,
-                                                 top,
-                                                 textColorWarning,
-                                                 measure);
+                        left += m_device->drawString(L"\x26A0  Running in safe mode with defaults settings  \x26A0",
+                                                     TextStyle::Bold,
+                                                     fontSize,
+                                                     leftAlign,
+                                                     top,
+                                                     textColorWarning,
+                                                     measureBackgroundWidth);
 
                         top += 1.05f * fontSize;
                     } else if (m_needRestart) {
@@ -575,13 +599,13 @@ namespace {
                                                      leftAlign,
                                                      top,
                                                      textColorWarning,
-                                                     measure);
+                                                     measureBackgroundWidth);
 
                         top += 1.05f * fontSize;
                     }
 
-                    if (measureWidth) {
-                        m_menuEntriesWidth = std::max(m_menuEntriesWidth, left - leftAlign - eyeOffset);
+                    if (measureBackgroundWidth) {
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - eyeOffset);
                     }
                 }
 
@@ -603,7 +627,7 @@ namespace {
                         leftAlign,
                         top,
                         textColorHint,
-                        measure);
+                        measureBackgroundWidth);
                     top += 0.8f * fontSize;
 
                     m_device->drawString(L"Change values faster with SHIFT",
@@ -614,11 +638,11 @@ namespace {
                                          textColorHint);
                     top += 0.8f * fontSize;
 
-                    if (measureWidth) {
-                        m_menuEntriesWidth = std::max(m_menuEntriesWidth, left - leftAlign - eyeOffset);
+                    if (measureBackgroundWidth) {
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - eyeOffset);
                     }
                 }
-                m_menuEntriesHeight = (top + fontSize * 0.2f) - topAlign;
+                m_menuBackgroundHeight = (top + fontSize * 0.2f) - topAlign;
             }
 
             auto overlayType = m_configManager->getEnumValue<OverlayType>(SettingOverlayType);
@@ -716,7 +740,7 @@ namespace {
                 true /* isTab */);
 
             // Performance Overlay Settings.
-            m_menuEntries.push_back({OptionIndent,
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Overlay",
                                      MenuEntryType::Choice,
                                      SettingOverlayType,
@@ -734,7 +758,7 @@ namespace {
             m_originalAnamorphicValue = getCurrentAnamorphic();
             m_useAnamorphic = m_originalAnamorphicValue > 0 ? 1 : 0;
 
-            m_menuEntries.push_back({OptionIndent,
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Upscaling",
                                      MenuEntryType::Choice,
                                      SettingScalingType,
@@ -750,10 +774,11 @@ namespace {
             MenuGroup upscalingGroup(m_menuGroups, m_menuEntries, [&] {
                 return getCurrentScalingType() != ScalingType::None;
             } /* visible condition */);
-            m_menuEntries.push_back({SubGroupIndent, "Anamorphic", MenuEntryType::Choice, "", 0, 1, [](int value) {
-                                         const std::string_view labels[] = {"Off", "On"};
-                                         return std::string(labels[value]);
-                                     }});
+            m_menuEntries.push_back(
+                {MenuIndent::SubGroupIndent, "Anamorphic", MenuEntryType::Choice, "", 0, 1, [](int value) {
+                     const std::string_view labels[] = {"Off", "On"};
+                     return std::string(labels[value]);
+                 }});
             m_menuEntries.back().noCommitDelay = true;
             m_menuEntries.back().pValue = &m_useAnamorphic;
 
@@ -762,7 +787,7 @@ namespace {
                 return getCurrentScalingType() != ScalingType::None && !m_useAnamorphic;
             } /* visible condition */);
             m_menuEntries.push_back(
-                {SubGroupIndent, "Size", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
+                {MenuIndent::SubGroupIndent, "Size", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
                      // We don't even use value, the utility function below will query it.
                      return fmt::format("{}% ({}x{})",
                                         value,
@@ -777,23 +802,32 @@ namespace {
                 return getCurrentScalingType() != ScalingType::None && m_useAnamorphic;
             } /* visible condition */);
             m_menuEntries.push_back(
-                {SubGroupIndent, "Width", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
+                {MenuIndent::SubGroupIndent, "Width", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
                      return fmt::format("{}% ({} pixels)", value, GetScaledInputSize(m_displayWidth, value, 2));
                  }});
             m_menuEntries.back().noCommitDelay = true;
 
-            m_menuEntries.push_back(
-                {SubGroupIndent, "Height", MenuEntryType::Slider, SettingAnamorphic, 25, 400, [&](int value) {
-                     return fmt::format("{}% ({} pixels)", value, GetScaledInputSize(m_displayHeight, value, 2));
-                 }});
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Height",
+                                     MenuEntryType::Slider,
+                                     SettingAnamorphic,
+                                     25,
+                                     400,
+                                     [&](int value) {
+                                         return fmt::format(
+                                             "{}% ({} pixels)", value, GetScaledInputSize(m_displayHeight, value, 2));
+                                     }});
             m_menuEntries.back().noCommitDelay = true;
             anamorphicGroup.finalize();
 
-            m_menuEntries.push_back(
-                {SubGroupIndent, "Sharpness", MenuEntryType::Slider, SettingSharpness, 0, 100, [](int value) {
-                     return fmt::format("{}%", value);
-                 }});
-            m_menuEntries.push_back({SubGroupIndent,
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Sharpness",
+                                     MenuEntryType::Slider,
+                                     SettingSharpness,
+                                     0,
+                                     100,
+                                     [](int value) { return fmt::format("{}%", value); }});
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Mip-map bias",
                                      MenuEntryType::Slider,
                                      SettingMipMapBias,
@@ -803,11 +837,12 @@ namespace {
                                          const std::string_view labels[] = {"Off", "Conservative", "All"};
                                          return std::string(labels[value]);
                                      }});
+            m_menuEntries.back().expert = true;
             upscalingGroup.finalize();
 
             // Motion Reprojection Settings.
             if (isMotionReprojectionRateSupported) {
-                m_menuEntries.push_back({OptionIndent,
+                m_menuEntries.push_back({MenuIndent::OptionIndent,
                                          "Lock motion reprojection",
                                          MenuEntryType::Slider,
                                          SettingMotionReprojectionRate,
@@ -821,7 +856,7 @@ namespace {
 
             // Fixed Foveated Rendering (VRS) Settings.
             if (variableRateShaderMaxDownsamplePow2) {
-                m_menuEntries.push_back({OptionIndent,
+                m_menuEntries.push_back({MenuIndent::OptionIndent,
                                          "Fixed foveated rendering",
                                          MenuEntryType::Choice,
                                          SettingVRS,
@@ -837,7 +872,7 @@ namespace {
                     return m_configManager->peekEnumValue<VariableShadingRateType>(SettingVRS) ==
                            VariableShadingRateType::Preset;
                 } /* visible condition */);
-                m_menuEntries.push_back({SubGroupIndent,
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Mode",
                                          MenuEntryType::Slider,
                                          SettingVRSQuality,
@@ -847,7 +882,7 @@ namespace {
                                              const std::string_view labels[] = {"Performance", "Quality"};
                                              return std::string(labels[value]);
                                          }});
-                m_menuEntries.push_back({SubGroupIndent,
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Pattern",
                                          MenuEntryType::Slider,
                                          SettingVRSPattern,
@@ -876,35 +911,36 @@ namespace {
                         }
                     };
                     static auto radiusToString = [](int value) { return fmt::format("{}%", value); };
-                    m_menuEntries.push_back({SubGroupIndent,
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Inner resolution",
                                              MenuEntryType::Slider,
                                              SettingVRSInner,
                                              0,
                                              variableRateShaderMaxDownsamplePow2,
                                              samplePow2ToString});
-                    m_menuEntries.push_back({SubGroupIndent,
+                    m_menuEntries.back().expert = true;
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Inner ring size",
                                              MenuEntryType::Slider,
                                              SettingVRSInnerRadius,
                                              0,
                                              100,
                                              radiusToString});
-                    m_menuEntries.push_back({SubGroupIndent,
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Middle resolution",
                                              MenuEntryType::Slider,
                                              SettingVRSMiddle,
                                              1, // Exclude 1x to discourage people from using poor settings!
                                              variableRateShaderMaxDownsamplePow2,
                                              samplePow2ToString});
-                    m_menuEntries.push_back({SubGroupIndent,
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Outer ring size",
                                              MenuEntryType::Slider,
                                              SettingVRSOuterRadius,
                                              0,
                                              100,
                                              radiusToString});
-                    m_menuEntries.push_back({SubGroupIndent,
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Outer resolution",
                                              MenuEntryType::Slider,
                                              SettingVRSOuter,
@@ -925,28 +961,34 @@ namespace {
                 m_menuEntries,
                 [&] { return m_currentTab == MenuTab::Appearance; } /* visible condition */,
                 true /* isTab */);
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Brightness",
+                                     MenuEntryType::Slider,
+                                     SettingBrightness,
+                                     0,
+                                     1000,
+                                     [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
+            m_menuEntries.back().acceleration = 5;
             m_menuEntries.push_back(
-                {OptionIndent, "Brightness", MenuEntryType::Slider, SettingBrightness, 0, 1000, [](int value) {
+                {MenuIndent::OptionIndent, "Contrast", MenuEntryType::Slider, SettingContrast, 400, 600, [](int value) {
                      return fmt::format("{:.1f}", value / 10.f);
                  }});
             m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back(
-                {OptionIndent, "Contrast", MenuEntryType::Slider, SettingContrast, 0, 1000, [](int value) {
-                     return fmt::format("{:.1f}", value / 10.f);
-                 }});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Saturation",
+                                     MenuEntryType::Slider,
+                                     SettingSaturation,
+                                     0,
+                                     1000,
+                                     [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
             m_menuEntries.back().acceleration = 5;
             m_menuEntries.push_back(
-                {OptionIndent, "Saturation", MenuEntryType::Slider, SettingSaturation, 0, 1000, [](int value) {
-                     return fmt::format("{:.1f}", value / 10.f);
-                 }});
-            m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back(
-                {OptionIndent, "World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
+                {MenuIndent::OptionIndent, "World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
                      return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.f, m_stats.icd * 1000);
                  }});
             m_menuEntries.back().acceleration = 5;
             m_menuEntries.push_back(
-                {OptionIndent, "Field of view", MenuEntryType::Slider, SettingFOV, 50, 150, [&](int value) {
+                {MenuIndent::OptionIndent, "Field of view", MenuEntryType::Slider, SettingFOV, 50, 150, [&](int value) {
                      return fmt::format("{}% ({:.1f} deg)", value, m_stats.totalFov * 180.0f / M_PI);
                  }});
 
@@ -962,7 +1004,7 @@ namespace {
                 true /* isTab */);
 
             if (isPredictionDampeningSupported) {
-                m_menuEntries.push_back({OptionIndent,
+                m_menuEntries.push_back({MenuIndent::OptionIndent,
                                          "Shaking attenuation",
                                          MenuEntryType::Slider,
                                          SettingPredictionDampen,
@@ -980,7 +1022,7 @@ namespace {
             }
 
             if (m_isHandTrackingSupported) {
-                m_menuEntries.push_back({OptionIndent,
+                m_menuEntries.push_back({MenuIndent::OptionIndent,
                                          "Controller emulation",
                                          MenuEntryType::Choice,
                                          SettingHandTrackingEnabled,
@@ -995,17 +1037,17 @@ namespace {
                 MenuGroup handTrackingGroup(
                     m_menuGroups, m_menuEntries, [&] { return isHandTrackingEnabled(); } /* visible condition */);
                 m_menuEntries.push_back(
-                    {SubGroupIndent,
+                    {MenuIndent::SubGroupIndent,
                      "Hand skeleton",
                      MenuEntryType::Slider,
                      SettingHandVisibilityAndSkinTone,
                      0,
-                     4,
+                     (int)HandTrackingVisibility::MaxValue - 1,
                      [](int value) {
                          const std::string_view labels[] = {"Hidden", "Bright", "Medium", "Dark", "Darker"};
                          return std::string(labels[value]);
                      }});
-                m_menuEntries.push_back({SubGroupIndent,
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Controller timeout",
                                          MenuEntryType::Slider,
                                          SettingHandTimeout,
@@ -1032,7 +1074,18 @@ namespace {
                 [&] { return m_currentTab == MenuTab::Menu; } /* visible condition */,
                 true /* isTab */);
 
-            m_menuEntries.push_back({OptionIndent,
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Show expert settings",
+                                     MenuEntryType::Choice,
+                                     SettingMenuExpert,
+                                     0,
+                                     1,
+                                     [](int value) {
+                                         const std::string_view labels[] = {"No", "Yes"};
+                                         return std::string(labels[value]);
+                                     }});
+            m_configManager->setDefault(SettingMenuExpert, 0);
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Font size",
                                      MenuEntryType::Slider,
                                      SettingMenuFontSize,
@@ -1043,7 +1096,7 @@ namespace {
                                          return std::string(labels[value]);
                                      }});
             m_configManager->setEnumDefault(SettingMenuFontSize, MenuFontSize::Medium);
-            m_menuEntries.push_back({OptionIndent,
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Menu timeout",
                                      MenuEntryType::Slider,
                                      SettingMenuTimeout,
@@ -1054,7 +1107,7 @@ namespace {
                                          return std::string(labels[value]);
                                      }});
             m_configManager->setEnumDefault(SettingMenuTimeout, MenuTimeout::Medium);
-            m_menuEntries.push_back({OptionIndent,
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Menu eye offset",
                                      MenuEntryType::Slider,
                                      SettingMenuEyeOffset,
@@ -1063,8 +1116,10 @@ namespace {
                                      [](int value) { return fmt::format("{} pixels", value); }});
             m_menuEntries.back().acceleration = 10;
 
-            m_menuEntries.push_back(
-                {OptionIndent, "Restore defaults", MenuEntryType::RestoreDefaultsButton, BUTTON_OR_SEPARATOR});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Restore defaults",
+                                     MenuEntryType::RestoreDefaultsButton,
+                                     BUTTON_OR_SEPARATOR});
 
             // Must be kept last.
             menuTab.finalize();
@@ -1167,9 +1222,11 @@ namespace {
 
         mutable MenuState m_state{MenuState::NotVisible};
         mutable float m_menuEntriesTitleWidth{0.0f};
-        mutable float m_menuEntriesWidth{0.0f};
-        mutable float m_menuEntriesHeight{0.0f};
+        mutable float m_menuBackgroundWidth{0.0f};
+        mutable float m_menuBackgroundHeight{0.0f};
         mutable float m_menuHeaderHeight{0.0f};
+        mutable bool m_resetTextLayout{true};
+        mutable bool m_resetBackgroundLayout{true};
     };
 
 } // namespace
