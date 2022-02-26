@@ -520,5 +520,24 @@ namespace companion
             checkUpdatesLink.LinkVisited = true;
             System.Diagnostics.Process.Start(homepage);
         }
+
+        private void licences_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            var assembly = Assembly.GetAssembly(GetType());
+            var installPath = Path.GetDirectoryName(assembly.Location);
+
+            var processInfo = new ProcessStartInfo();
+            processInfo.Verb = "Open";
+            processInfo.FileName = "notepad";
+            processInfo.Arguments = installPath + "\\THIRD_PARTY";
+            try
+            {
+                Process.Start(processInfo);
+                licences.LinkVisited = true;
+            }
+            catch (Win32Exception)
+            {
+            }
+        }
     }
 }

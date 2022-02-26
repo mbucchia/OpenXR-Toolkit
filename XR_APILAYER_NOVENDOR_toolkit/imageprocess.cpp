@@ -84,6 +84,7 @@ namespace {
                 // Contrast is also inverted.
                 const float contrast = 2.f * -(m_configManager->getValue(SettingContrast) - 500) / 1000.f;
 
+                // This code is based on the article from Paul Haeberli.
                 // http://www.graficaobscura.com/matrix/
                 DirectX::XMMATRIX brightnessMatrix;
                 {
