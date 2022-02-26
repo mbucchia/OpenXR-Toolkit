@@ -43,39 +43,32 @@ namespace {
     constexpr auto KeyRepeatDelay = 200ms;
 
     // Utility macros/functions for color manipulation.
-#define COLOR_TO_TEXT_COLOR(color)                                                                                     \
-    ((((uint8_t)((color.r) * 255)) << 0) | (((uint8_t)((color.g) * 255)) << 8) | (((uint8_t)((color.b) * 255)) << 16))
+    constexpr uint8_t MakeColorU8(float c) {
+        return static_cast<uint8_t>(c * 255.f + 0.5f);
+    }
+    constexpr uint32_t MakeRGB24(const XrColor4f& color) {
+        return (MakeColorU8(color.r) << 0) | (MakeColorU8(color.g) << 8) | (MakeColorU8(color.b) << 16);
+    }
 
-    constexpr XrColor4f sRGBToLinear(uint8_t r, uint8_t g, uint8_t b) {
-        auto sRGBToLinearComponent = [](float x) {
-            if (x <= 0.0f)
-                return 0.0f;
-            else if (x >= 1.0f)
-                return 1.0f;
-            else if (x < 0.04045f)
-                return x / 12.92f;
-            else
-                return std::pow((x + 0.055f) / 1.055f, 2.4f);
-        };
-
-        return XrColor4f({sRGBToLinearComponent(r / 255.f),
-                          sRGBToLinearComponent(g / 255.f),
-                          sRGBToLinearComponent(b / 255.f),
-                          1.f});
+    constexpr float sRGBToLinear(float c) {
+        return std::clamp(c <= 0.04045f ? c * (1 / 12.92f) : pow((c + 0.055f) * (1.f / 1.055f), 2.4f), 0.f, 1.f);
+    }
+    constexpr XrColor4f sRGBToLinear(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) {
+        return XrColor4f({sRGBToLinear(r / 255.f), sRGBToLinear(g / 255.f), sRGBToLinear(b / 255.f), a / 255.f});
     }
 
     // Text colors
-    const XrColor4f ColorWhite = sRGBToLinear(255, 255, 255);
-    const XrColor4f ColorOverlay = sRGBToLinear(247, 198, 20);
-    const XrColor4f ColorHint = sRGBToLinear(163, 163, 163);
-    const XrColor4f ColorWarning = sRGBToLinear(255, 0, 0);
-    const XrColor4f ColorHighlight = sRGBToLinear(88, 67, 98);
-    const XrColor4f ColorSelected = sRGBToLinear(119, 114, 188);
+    const auto ColorWhite = sRGBToLinear(255, 255, 255);
+    const auto ColorOverlay = sRGBToLinear(247, 198, 20);
+    const auto ColorHint = sRGBToLinear(163, 163, 163);
+    const auto ColorWarning = sRGBToLinear(255, 0, 0);
+    const auto ColorHighlight = sRGBToLinear(88, 67, 98);
+    const auto ColorSelected = sRGBToLinear(119, 114, 188);
 
     // Shape colors.
-    const XrColor4f ColorBackground = sRGBToLinear(40, 44, 50);
-    const XrColor4f ColorHeader = sRGBToLinear(60, 63, 73);
-    const XrColor4f ColorHeaderSeparator = sRGBToLinear(120, 126, 145);
+    const auto ColorBackground = sRGBToLinear(40, 44, 50);
+    const auto ColorHeader = sRGBToLinear(60, 63, 73);
+    const auto ColorHeaderSeparator = sRGBToLinear(120, 126, 145);
     constexpr float HeaderLineWeight = 1.f;
 
     // Spacing and indentation.
@@ -387,8 +380,8 @@ namespace {
             const auto duration = std::chrono::duration<double>(now - m_lastInput).count();
 
             // Apply menu fade.
-            const auto alpha = (unsigned int)(std::clamp(timeout - duration, 0.0, 1.0) * 255.0);
-            const auto textColorOverlay = COLOR_TO_TEXT_COLOR(ColorOverlay) | (alpha << 24);
+            const auto alpha = static_cast<uint32_t>(std::clamp(timeout - duration, 0.0, 1.0) * 255.0) << 24;
+            const auto textColorOverlay = MakeRGB24(ColorOverlay) | alpha;
 
             // Leave upon timeout.
             if (duration >= timeout) {
@@ -419,11 +412,11 @@ namespace {
                 // The actual menu.
 
                 // Apply menu fade.
-                const auto textColorNormal = COLOR_TO_TEXT_COLOR(ColorWhite) | (alpha << 24);
-                const auto textColorHighlight = COLOR_TO_TEXT_COLOR(ColorHighlight) | (alpha << 24);
-                const auto textColorSelected = COLOR_TO_TEXT_COLOR(ColorSelected) | (alpha << 24);
-                const auto textColorHint = COLOR_TO_TEXT_COLOR(ColorHint) | (alpha << 24);
-                const auto textColorWarning = COLOR_TO_TEXT_COLOR(ColorWarning) | (alpha << 24);
+                const auto textColorNormal = MakeRGB24(ColorWhite) | alpha;
+                const auto textColorHighlight = MakeRGB24(ColorHighlight) | alpha;
+                const auto textColorSelected = MakeRGB24(ColorSelected) | alpha;
+                const auto textColorHint = MakeRGB24(ColorHint) | alpha;
+                const auto textColorWarning = MakeRGB24(ColorWarning) | alpha;
 
                 // Measurements must be done in 2 steps: first mesure the necessary spacing for alignment of the values,
                 // then measure the background area.
@@ -652,7 +645,7 @@ namespace {
 
             auto overlayType = m_configManager->getEnumValue<OverlayType>(SettingOverlayType);
             if (m_state != MenuState::Splash && overlayType != OverlayType::None) {
-                const auto textColorOverlayNoFade = COLOR_TO_TEXT_COLOR(ColorOverlay) | (0xff << 24);
+                const auto textColorOverlayNoFade = MakeRGB24(ColorOverlay) | 0xff000000;
 
                 float top =
                     m_state != MenuState::Visible ? topAlign : topAlign - BorderVerticalSpacing - 1.1f * fontSize;
