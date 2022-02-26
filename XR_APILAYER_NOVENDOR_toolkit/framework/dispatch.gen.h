@@ -263,6 +263,22 @@ namespace LAYER_NAMESPACE
 		PFN_xrPathToString m_xrPathToString{ nullptr };
 
 	public:
+		virtual XrResult xrCreateActionSet(XrInstance instance, const XrActionSetCreateInfo* createInfo, XrActionSet* actionSet)
+		{
+			return m_xrCreateActionSet(instance, createInfo, actionSet);
+		}
+	private:
+		PFN_xrCreateActionSet m_xrCreateActionSet{ nullptr };
+
+	public:
+		virtual XrResult xrDestroyActionSet(XrActionSet actionSet)
+		{
+			return m_xrDestroyActionSet(actionSet);
+		}
+	private:
+		PFN_xrDestroyActionSet m_xrDestroyActionSet{ nullptr };
+
+	public:
 		virtual XrResult xrCreateAction(XrActionSet actionSet, const XrActionCreateInfo* createInfo, XrAction* action)
 		{
 			return m_xrCreateAction(actionSet, createInfo, action);
@@ -285,6 +301,14 @@ namespace LAYER_NAMESPACE
 		}
 	private:
 		PFN_xrSuggestInteractionProfileBindings m_xrSuggestInteractionProfileBindings{ nullptr };
+
+	public:
+		virtual XrResult xrAttachSessionActionSets(XrSession session, const XrSessionActionSetsAttachInfo* attachInfo)
+		{
+			return m_xrAttachSessionActionSets(session, attachInfo);
+		}
+	private:
+		PFN_xrAttachSessionActionSets m_xrAttachSessionActionSets{ nullptr };
 
 	public:
 		virtual XrResult xrGetCurrentInteractionProfile(XrSession session, XrPath topLevelUserPath, XrInteractionProfileState* interactionProfile)
