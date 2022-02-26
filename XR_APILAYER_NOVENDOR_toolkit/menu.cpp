@@ -116,12 +116,13 @@ namespace {
 
     class MenuGroup {
       public:
-        MenuGroup(std::vector<MenuGroup>& menuGroups,
+        MenuGroup(std::shared_ptr<IConfigManager> configManager,
+                  std::vector<MenuGroup>& menuGroups,
                   std::vector<MenuEntry>& menuEntries,
                   std::function<bool()> isVisible,
                   bool isTab = false)
-            : m_menuGroups(&menuGroups), m_menuEntries(&menuEntries), m_isVisible(isVisible),
-              m_start(menuEntries.size()), m_end(menuEntries.size()), m_isTab(isTab) {
+            : m_configManager(configManager), m_menuGroups(&menuGroups), m_menuEntries(&menuEntries),
+              m_isVisible(isVisible), m_start(menuEntries.size()), m_end(menuEntries.size()), m_isTab(isTab) {
         }
 
         MenuGroup& operator=(const MenuGroup&) = default;
@@ -138,12 +139,16 @@ namespace {
         }
 
         void updateVisibility() const {
+            const bool showExpert = m_configManager->getValue(SettingMenuExpert);
+
             for (size_t i = m_start; i < m_end; i++) {
-                (*m_menuEntries)[i].visible = (m_isTab || (*m_menuEntries)[i].visible) && m_isVisible();
+                (*m_menuEntries)[i].visible = (m_isTab || (*m_menuEntries)[i].visible) &&
+                                              (!(*m_menuEntries)[i].expert || showExpert) && m_isVisible();
             }
         };
 
       private:
+        std::shared_ptr<IConfigManager> m_configManager;
         std::vector<MenuGroup>* m_menuGroups;
         std::vector<MenuEntry>* m_menuEntries;
         std::function<bool()> m_isVisible;
@@ -257,6 +262,8 @@ namespace {
             if (menuControl || moveUp) {
                 if (menuControl && m_state != MenuState::Visible) {
                     m_state = MenuState::Visible;
+
+                    Log("Opening menu\n");
 
                     m_needRestart = checkNeedRestartCondition();
                     m_resetTextLayout = m_resetBackgroundLayout = true;
@@ -424,8 +431,6 @@ namespace {
                 const bool measureBackgroundWidth =
                     !measureEntriesTitleWidth && m_resetBackgroundLayout && (eye == Eye::Left || !m_displayLeftEye);
 
-                const bool showExpert = m_configManager->getValue(SettingMenuExpert);
-
                 // Draw the background.
                 if (!measureEntriesTitleWidth && !measureBackgroundWidth) {
                     m_device->clearColor(topAlign - BorderVerticalSpacing,
@@ -480,7 +485,7 @@ namespace {
                         m_menuEntriesTitleWidth = std::max(m_menuEntriesTitleWidth, entryWidth);
                     }
 
-                    if (!menuEntry.visible || (!showExpert && menuEntry.expert)) {
+                    if (!menuEntry.visible) {
                         continue;
                     }
 
@@ -734,6 +739,7 @@ namespace {
       private:
         void setupPerformanceTab(bool isMotionReprojectionRateSupported, uint8_t variableRateShaderMaxDownsamplePow2) {
             MenuGroup performanceTab(
+                m_configManager,
                 m_menuGroups,
                 m_menuEntries,
                 [&] { return m_currentTab == MenuTab::Performance; } /* visible condition */,
@@ -771,7 +777,7 @@ namespace {
             m_menuEntries.back().noCommitDelay = true;
 
             // Scaling sub-group.
-            MenuGroup upscalingGroup(m_menuGroups, m_menuEntries, [&] {
+            MenuGroup upscalingGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
                 return getCurrentScalingType() != ScalingType::None;
             } /* visible condition */);
             m_menuEntries.push_back(
@@ -783,7 +789,7 @@ namespace {
             m_menuEntries.back().pValue = &m_useAnamorphic;
 
             // Proportional sub-group.
-            MenuGroup proportionalGroup(m_menuGroups, m_menuEntries, [&] {
+            MenuGroup proportionalGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
                 return getCurrentScalingType() != ScalingType::None && !m_useAnamorphic;
             } /* visible condition */);
             m_menuEntries.push_back(
@@ -798,7 +804,7 @@ namespace {
             proportionalGroup.finalize();
 
             // Anamorphic sub-group.
-            MenuGroup anamorphicGroup(m_menuGroups, m_menuEntries, [&] {
+            MenuGroup anamorphicGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
                 return getCurrentScalingType() != ScalingType::None && m_useAnamorphic;
             } /* visible condition */);
             m_menuEntries.push_back(
@@ -868,7 +874,7 @@ namespace {
                                          }});
 
                 // Preset sub-group.
-                MenuGroup variableRateShaderPresetGroup(m_menuGroups, m_menuEntries, [&] {
+                MenuGroup variableRateShaderPresetGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
                     return m_configManager->peekEnumValue<VariableShadingRateType>(SettingVRS) ==
                            VariableShadingRateType::Preset;
                 } /* visible condition */);
@@ -895,7 +901,7 @@ namespace {
                 variableRateShaderPresetGroup.finalize();
 
                 // Custom sub-group.
-                MenuGroup variableRateShaderCustomGroup(m_menuGroups, m_menuEntries, [&] {
+                MenuGroup variableRateShaderCustomGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
                     return m_configManager->peekEnumValue<VariableShadingRateType>(SettingVRS) ==
                            VariableShadingRateType::Custom;
                 } /* visible condition */);
@@ -981,6 +987,7 @@ namespace {
 
         void setupAppearanceTab() {
             MenuGroup appearanceTab(
+                m_configManager,
                 m_menuGroups,
                 m_menuEntries,
                 [&] { return m_currentTab == MenuTab::Appearance; } /* visible condition */,
@@ -1010,7 +1017,7 @@ namespace {
                                          return std::string(labels[value]);
                                      }});
 
-            MenuGroup saturationAllGroup(m_menuGroups, m_menuEntries, [&] {
+            MenuGroup saturationAllGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
                 return !m_configManager->peekValue(SettingSaturationPerChannel);
             } /* visible condition */);
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
@@ -1023,7 +1030,7 @@ namespace {
             m_menuEntries.back().acceleration = 5;
             saturationAllGroup.finalize();
 
-            MenuGroup saturationChannelsGroup(m_menuGroups, m_menuEntries, [&] {
+            MenuGroup saturationChannelsGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
                 return m_configManager->peekValue(SettingSaturationPerChannel);
             } /* visible condition */);
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
@@ -1068,6 +1075,7 @@ namespace {
 
         void setupInputsTab(bool isPredictionDampeningSupported) {
             MenuGroup inputsTab(
+                m_configManager,
                 m_menuGroups,
                 m_menuEntries,
                 [&] { return m_currentTab == MenuTab::Inputs; } /* visible condition */,
@@ -1104,8 +1112,9 @@ namespace {
                                          }});
                 m_originalHandTrackingEnabled = isHandTrackingEnabled();
 
-                MenuGroup handTrackingGroup(
-                    m_menuGroups, m_menuEntries, [&] { return isHandTrackingEnabled(); } /* visible condition */);
+                MenuGroup handTrackingGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+                    return isHandTrackingEnabled();
+                } /* visible condition */);
                 m_menuEntries.push_back(
                     {MenuIndent::SubGroupIndent,
                      "Hand skeleton",
@@ -1139,6 +1148,7 @@ namespace {
 
         void setupMenuTab() {
             MenuGroup menuTab(
+                m_configManager,
                 m_menuGroups,
                 m_menuEntries,
                 [&] { return m_currentTab == MenuTab::Menu; } /* visible condition */,
