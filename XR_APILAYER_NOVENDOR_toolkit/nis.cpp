@@ -42,7 +42,7 @@ namespace {
     using namespace toolkit::log;
     using namespace toolkit::utilities;
 
-    class NISUpscaler : public IUpscaler {
+    class NISUpscaler : public IImageProcessor {
       public:
         NISUpscaler(std::shared_ptr<IConfigManager> configManager,
                     std::shared_ptr<IDevice> graphicsDevice,
@@ -64,7 +64,7 @@ namespace {
             }
         }
 
-        void upscale(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice = -1) override {
+        void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice = -1) override {
             m_device->setShader(!input->isArray() ? m_shader : m_shaderVPRT);
             m_device->setShaderInput(0, m_configBuffer);
             m_device->setShaderInput(0, input, slice);
@@ -230,10 +230,10 @@ namespace {
 
 namespace toolkit::graphics {
 
-    std::shared_ptr<IUpscaler> CreateNISUpscaler(std::shared_ptr<IConfigManager> configManager,
-                                                 std::shared_ptr<IDevice> graphicsDevice,
-                                                 uint32_t outputWidth,
-                                                 uint32_t outputHeight) {
+    std::shared_ptr<IImageProcessor> CreateNISUpscaler(std::shared_ptr<IConfigManager> configManager,
+                                                       std::shared_ptr<IDevice> graphicsDevice,
+                                                       uint32_t outputWidth,
+                                                       uint32_t outputHeight) {
         return std::make_shared<NISUpscaler>(configManager, graphicsDevice, outputWidth, outputHeight);
     }
 

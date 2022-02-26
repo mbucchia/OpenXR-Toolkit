@@ -1415,7 +1415,7 @@ namespace {
                                 m_stats.upscalerGpuTimeUs += swapchainImages.upscalerGpuTimer[gpuTimerIndex]->query();
                                 swapchainImages.upscalerGpuTimer[gpuTimerIndex]->start();
 
-                                m_upscaler->upscale(swapchainImages.chain[lastImage],
+                                m_upscaler->process(swapchainImages.chain[lastImage],
                                                     swapchainImages.chain[nextImage],
                                                     useVPRT ? eye : -1);
                                 swapchainImages.upscalerGpuTimer[gpuTimerIndex]->stop();
@@ -1612,13 +1612,13 @@ namespace {
         std::shared_ptr<graphics::IDevice> m_graphicsDevice;
         std::map<XrSwapchain, SwapchainState> m_swapchains;
 
-        std::shared_ptr<graphics::IUpscaler> m_upscaler;
+        std::shared_ptr<graphics::IImageProcessor> m_preProcessor;
+        std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
+        std::shared_ptr<graphics::IImageProcessor> m_upscaler;
         config::ScalingType m_upscaleMode{config::ScalingType::None};
         uint32_t m_upscalingFactor{100};
         float m_mipMapBiasForUpscaling{0.f};
 
-        std::shared_ptr<graphics::IImageProcessor> m_preProcessor;
-        std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
 
         std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;
         std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;

@@ -47,7 +47,7 @@ namespace {
         uint32_t Const4[4];
     };
 
-    class FSRUpscaler : public IUpscaler {
+    class FSRUpscaler : public IImageProcessor {
       public:
         FSRUpscaler(std::shared_ptr<IConfigManager> configManager,
                     std::shared_ptr<IDevice> graphicsDevice,
@@ -69,7 +69,7 @@ namespace {
             }
         }
 
-        void upscale(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice = -1) override {
+        void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice = -1) override {
             if (!m_intermediary) {
                 const auto& infos = output->getInfo();
                 initializeIntermediary(infos.width, infos.height, 0 /* infos.format */);
@@ -203,10 +203,10 @@ namespace {
 
 namespace toolkit::graphics {
 
-    std::shared_ptr<IUpscaler> CreateFSRUpscaler(std::shared_ptr<IConfigManager> configManager,
-                                                 std::shared_ptr<IDevice> graphicsDevice,
-                                                 uint32_t outputWidth,
-                                                 uint32_t outputHeight) {
+    std::shared_ptr<IImageProcessor> CreateFSRUpscaler(std::shared_ptr<IConfigManager> configManager,
+                                                       std::shared_ptr<IDevice> graphicsDevice,
+                                                       uint32_t outputWidth,
+                                                       uint32_t outputHeight) {
         return std::make_shared<FSRUpscaler>(configManager, graphicsDevice, outputWidth, outputHeight);
     }
 

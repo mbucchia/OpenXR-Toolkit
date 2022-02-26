@@ -568,16 +568,6 @@ namespace toolkit {
             }
         };
 
-        // A texture upscaler (such as NIS).
-        struct IUpscaler {
-            virtual ~IUpscaler() = default;
-
-            virtual void update() = 0;
-            virtual void upscale(std::shared_ptr<ITexture> input,
-                                 std::shared_ptr<ITexture> output,
-                                 int32_t slice = -1) = 0;
-        };
-
         // A texture post-processor.
         struct IImageProcessor {
             virtual ~IImageProcessor() = default;
