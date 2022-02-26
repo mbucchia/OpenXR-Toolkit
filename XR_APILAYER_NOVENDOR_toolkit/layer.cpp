@@ -195,8 +195,7 @@ namespace {
                 m_configManager->setEnumDefault(config::SettingVRS, config::VariableShadingRateType::None);
                 m_configManager->setEnumDefault(config::SettingVRSQuality,
                                                 config::VariableShadingRateQuality::Performance);
-                m_configManager->setEnumDefault(config::SettingVRSPattern,
-                                                config::VariableShadingRatePattern::Wide);
+                m_configManager->setEnumDefault(config::SettingVRSPattern, config::VariableShadingRatePattern::Wide);
                 m_configManager->setDefault(config::SettingVRSInner, 0); // 1x
                 m_configManager->setDefault(config::SettingVRSInnerRadius, 55);
                 m_configManager->setDefault(config::SettingVRSMiddle, 2); // 1/4x
@@ -244,18 +243,15 @@ namespace {
 
                 switch (upscaleMode) {
                 case config::ScalingType::FSR:
-                    [[fallthrough]];
-
                 case config::ScalingType::NIS: {
                     std::tie(inputWidth, inputHeight) =
                         config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
                 } break;
 
-                case config::ScalingType::None:
-                    break;
-
                 default:
-                    throw std::runtime_error("Unknown scaling type");
+                    Log("Unknown upscaling type, falling back to no upscaling\n");
+                    [[fallthrough]];
+                case config::ScalingType::None:
                     break;
                 }
 
@@ -310,15 +306,7 @@ namespace {
                 if (m_graphicsDevice) {
                     // Initialize the other resources.
 
-                    uint32_t inputWidth = m_displayWidth;
-                    uint32_t inputHeight = m_displayHeight;
-
                     m_upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
-                    if (m_upscaleMode != config::ScalingType::None) {
-                        std::tie(inputWidth, inputHeight) =
-                            config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
-                        m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
-                    }
 
                     switch (m_upscaleMode) {
                     case config::ScalingType::FSR:
@@ -331,12 +319,20 @@ namespace {
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
                         break;
 
+                    default:
+                        Log("Unknown upscaling type, falling back to no upscaling\n");
+                        m_upscaleMode = config::ScalingType::None;
+                        [[fallthrough]];
                     case config::ScalingType::None:
                         break;
+                    }
 
-                    default:
-                        throw std::runtime_error("Unknown scaling type");
-                        break;
+                    uint32_t inputWidth = m_displayWidth;
+                    uint32_t inputHeight = m_displayHeight;
+                    if (m_upscaleMode != config::ScalingType::None) {
+                        std::tie(inputWidth, inputHeight) =
+                            config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
+                        m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
                     }
 
                     // Per NIS SDK documentation.
