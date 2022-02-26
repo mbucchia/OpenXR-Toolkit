@@ -833,17 +833,20 @@ namespace {
                                      0,
                                      100,
                                      [](int value) { return fmt::format("{}%", value); }});
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Mip-map bias",
-                                     MenuEntryType::Slider,
-                                     SettingMipMapBias,
-                                     0,
-                                     (int)MipMapBias::MaxValue - 1,
-                                     [](int value) {
-                                         const std::string_view labels[] = {"Off", "Conservative", "All"};
-                                         return std::string(labels[value]);
-                                     }});
-            m_menuEntries.back().expert = true;
+            // TODO: Mip-map biasing is only support on D3D11.
+            if (m_device->getApi() == Api::D3D11) {
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                         "Mip-map bias",
+                                         MenuEntryType::Slider,
+                                         SettingMipMapBias,
+                                         0,
+                                         (int)MipMapBias::MaxValue - 1,
+                                         [](int value) {
+                                             const std::string_view labels[] = {"Off", "Conservative", "All"};
+                                             return std::string(labels[value]);
+                                         }});
+                m_menuEntries.back().expert = true;
+            }
             upscalingGroup.finalize();
 
             // Motion Reprojection Settings.
