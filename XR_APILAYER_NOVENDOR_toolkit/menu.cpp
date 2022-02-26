@@ -164,10 +164,11 @@ namespace {
                     bool isHandTrackingSupported,
                     bool isPredictionDampeningSupported,
                     bool isMotionReprojectionRateSupported,
-                    uint8_t variableRateShaderMaxDownsamplePow2)
+                    uint8_t variableRateShaderMaxDownsamplePow2,
+                    bool isEyeTrackingSupported)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
               m_displayHeight(displayHeight), m_keyModifiers(keyModifiers),
-              m_isHandTrackingSupported(isHandTrackingSupported) {
+              m_isHandTrackingSupported(isHandTrackingSupported), m_isEyeTrackingSupported(isEyeTrackingSupported) {
             m_lastInput = std::chrono::steady_clock::now();
 
             // We display the hint for menu hotkeys for the first few runs.
@@ -725,6 +726,20 @@ namespace {
                     }
 
 #undef GESTURE_STATE
+
+                    if (isEyeTrackingEnabled()) {
+                        m_device->drawString(fmt::format("e.yaw: {:.1f}", m_eyeGazeState.yaw), OVERLAY_COMMON);
+                        top += 1.05f * fontSize;
+                        m_device->drawString(fmt::format("e.pch: {:.1f}", m_eyeGazeState.pitch), OVERLAY_COMMON);
+                        top += 1.05f * fontSize;
+
+                        m_device->drawString(fmt::format("{:.3f}, {:.3f}, {:.3f}",
+                                                         m_eyeGazeState.origin.x,
+                                                         m_eyeGazeState.origin.y,
+                                                         m_eyeGazeState.origin.z),
+                                             OVERLAY_COMMON);
+                        top += 1.05f * fontSize;
+                    }
                 }
 #undef OVERLAY_COMMON
             }
@@ -736,6 +751,10 @@ namespace {
 
         void updateGesturesState(const GesturesState& state) override {
             m_gesturesState = state;
+        }
+
+        void updateEyeGazeState(const input::EyeGazeState& state) override {
+            m_eyeGazeState = state;
         }
 
         void setViewProjectionCenters(float leftCenterX,
@@ -878,7 +897,7 @@ namespace {
             // Fixed Foveated Rendering (VRS) Settings.
             if (variableRateShaderMaxDownsamplePow2) {
                 m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                         "Fixed foveated rendering",
+                                         !m_isEyeTrackingSupported ? "Fixed foveated rendering" : "Foveated rendering",
                                          MenuEntryType::Choice,
                                          SettingVRS,
                                          0,
@@ -887,6 +906,33 @@ namespace {
                                              const std::string_view labels[] = {"Off", "Preset", "Custom"};
                                              return std::string(labels[value]);
                                          }});
+
+                if (m_isEyeTrackingSupported) {
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Eye tracking",
+                                             MenuEntryType::Choice,
+                                             SettingEyeTrackingEnabled,
+                                             0,
+                                             1,
+                                             [&](int value) {
+                                                 const std::string_view labels[] = {"Off", "On"};
+                                                 return std::string(labels[value]);
+                                             }});
+                    m_originalEyeTrackingEnabled = isEyeTrackingEnabled();
+                    // Eye tracking sub-group.
+                    MenuGroup variableRateShaderEyeTrackingGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+                        return m_configManager->peekValue(SettingEyeTrackingEnabled);
+                    } /* visible condition */);
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Eye projection distance",
+                                             MenuEntryType::Slider,
+                                             SettingEyeProjectionDistance,
+                                             10,
+                                             300,
+                                             [](int value) { return fmt::format("{:.2f}m", value / 100.f); }});
+                    m_menuEntries.back().acceleration = 5;
+                    variableRateShaderEyeTrackingGroup.finalize();
+                }
 
                 // Preset sub-group.
                 MenuGroup variableRateShaderPresetGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
@@ -969,14 +1015,6 @@ namespace {
                                              variableRateShaderMaxDownsamplePow2,
                                              samplePow2ToString});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                             "Horizontal offset",
-                                             MenuEntryType::Slider,
-                                             SettingVRSXOffset,
-                                             -100,
-                                             100,
-                                             [](int value) { return fmt::format("{}%", value); }});
-                    m_menuEntries.back().expert = true;
-                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Horizontal scale",
                                              MenuEntryType::Slider,
                                              SettingVRSXScale,
@@ -984,14 +1022,33 @@ namespace {
                                              200,
                                              [](int value) { return fmt::format("{}%", value); }});
                     m_menuEntries.back().expert = true;
-                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                             "Vertical offset",
-                                             MenuEntryType::Slider,
-                                             SettingVRSYOffset,
-                                             -100,
-                                             100,
-                                             [](int value) { return fmt::format("{}%", value); }});
-                    m_menuEntries.back().expert = true;
+#if 0
+                    // Fixed mode sub-group.
+                    MenuGroup variableRateShaderFixedModeGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+                        return !m_configManager->peekValue(SettingEyeTrackingEnabled);
+                    } /* visible condition */);
+#endif
+                    {
+                        m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                                 "Horizontal offset",
+                                                 MenuEntryType::Slider,
+                                                 SettingVRSXOffset,
+                                                 -100,
+                                                 100,
+                                                 [](int value) { return fmt::format("{}%", value); }});
+                        m_menuEntries.back().expert = true;
+                        m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                                 "Vertical offset",
+                                                 MenuEntryType::Slider,
+                                                 SettingVRSYOffset,
+                                                 -100,
+                                                 100,
+                                                 [](int value) { return fmt::format("{}%", value); }});
+                        m_menuEntries.back().expert = true;
+                    }
+#if 0
+                    variableRateShaderFixedModeGroup.finalize();
+#endif
                 }
                 variableRateShaderCustomGroup.finalize();
             }
@@ -1244,6 +1301,10 @@ namespace {
                                                     SettingHandTrackingEnabled) != HandTrackingEnabled::Off;
         }
 
+        bool isEyeTrackingEnabled() const {
+            return m_isEyeTrackingSupported && m_configManager->peekValue(SettingEyeTrackingEnabled);
+        }
+
         int getCurrentScaling() const {
             return m_configManager->peekValue(SettingScaling);
         }
@@ -1258,7 +1319,8 @@ namespace {
 
         bool checkNeedRestartCondition() const {
             if (m_originalHandTrackingEnabled != isHandTrackingEnabled() ||
-                m_originalScalingType != getCurrentScalingType()) {
+                m_originalScalingType != getCurrentScalingType() ||
+                m_originalEyeTrackingEnabled != isEyeTrackingEnabled()) {
                 return true;
             }
 
@@ -1275,8 +1337,10 @@ namespace {
         const uint32_t m_displayWidth;
         const uint32_t m_displayHeight;
         const bool m_isHandTrackingSupported;
+        const bool m_isEyeTrackingSupported;
         MenuStatistics m_stats{};
         GesturesState m_gesturesState{};
+        EyeGazeState m_eyeGazeState{};
 
         bool m_displayLeftEye{true};
         bool m_displayRightEye{true};
@@ -1316,6 +1380,7 @@ namespace {
         int m_useAnamorphic{0};
 
         bool m_originalHandTrackingEnabled{false};
+        bool m_originalEyeTrackingEnabled{false};
         bool m_needRestart{false};
 
         mutable MenuState m_state{MenuState::NotVisible};
@@ -1338,7 +1403,8 @@ namespace toolkit::menu {
                                                     bool isHandTrackingSupported,
                                                     bool isPredictionDampeningSupported,
                                                     bool isMotionReprojectionRateSupported,
-                                                    uint8_t variableRateShaderMaxDownsamplePow2) {
+                                                    uint8_t variableRateShaderMaxDownsamplePow2,
+                                                    bool isEyeTrackingSupported) {
         return std::make_shared<MenuHandler>(configManager,
                                              device,
                                              displayWidth,
@@ -1347,7 +1413,8 @@ namespace toolkit::menu {
                                              isHandTrackingSupported,
                                              isPredictionDampeningSupported,
                                              isMotionReprojectionRateSupported,
-                                             variableRateShaderMaxDownsamplePow2);
+                                             variableRateShaderMaxDownsamplePow2,
+                                             isEyeTrackingSupported);
     }
 
 } // namespace toolkit::menu

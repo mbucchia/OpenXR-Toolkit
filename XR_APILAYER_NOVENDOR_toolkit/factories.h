@@ -98,6 +98,7 @@ namespace toolkit {
         std::shared_ptr<IVariableRateShader>
         CreateVariableRateShader(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                  std::shared_ptr<IDevice> graphicsDevice,
+                                 std::shared_ptr<input::IEyeTracker> eyeTracker,
                                  uint32_t targetWidth,
                                  uint32_t targetHeight);
 
@@ -113,6 +114,9 @@ namespace toolkit {
         std::shared_ptr<input::IHandTracker>
         CreateHandTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
 
+        std::shared_ptr<input::IEyeTracker>
+        CreateEyeTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
+
     } // namespace input
 
     namespace menu {
@@ -125,7 +129,8 @@ namespace toolkit {
                                                         bool isHandTrackingSupported,
                                                         bool isPredictionDampeningSupported,
                                                         bool isMotionReprojectionRateSupported,
-                                                        uint8_t variableRateShaderMaxDownsamplePow2);
+                                                        uint8_t variableRateShaderMaxDownsamplePow2,
+                                                        bool isEyeTrackingSupported);
 
     } // namespace menu
 

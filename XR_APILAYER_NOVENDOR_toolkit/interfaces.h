@@ -76,6 +76,7 @@ namespace toolkit {
         const std::string SettingHandTimeout = "hand_timeout";
         const std::string SettingPredictionDampen = "prediction_dampen";
         const std::string SettingBypassMsftHandInteractionCheck = "allow_msft_hand_interaction";
+        const std::string SettingBypassMsftEyeGazeInteractionCheck = "allow_msft_eye_gaze_interaction";
         const std::string SettingMotionReprojectionRate = "motion_reprojection_rate";
         const std::string SettingVRS = "vrs";
         const std::string SettingVRSQuality = "vrs_quality";
@@ -96,6 +97,10 @@ namespace toolkit {
         const std::string SettingSaturationRed = "saturation_red";
         const std::string SettingSaturationGreen = "saturation_green";
         const std::string SettingSaturationBlue = "saturation_blue";
+        const std::string SettingEyeTrackingEnabled = "eye_tracking";
+        const std::string SettingEyeProjectionDistance = "eye_projection";
+        const std::string SettingEyeDebug = "eye_debug";
+        const std::string SettingEyeDebugWithController = "eye_controller_debug";
 
         enum class OverlayType { None = 0, FPS, Advanced, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
@@ -604,13 +609,14 @@ namespace toolkit {
         struct IVariableRateShader {
             virtual ~IVariableRateShader() = default;
 
+            virtual void beginFrame(XrTime frameTime) = 0;
+            virtual void endFrame() = 0;
             virtual void update() = 0;
 
             virtual bool onSetRenderTarget(std::shared_ptr<IContext> context,
                                            std::shared_ptr<ITexture> renderTarget,
                                            std::optional<utilities::Eye> eyeHint) = 0;
             virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
-            virtual void disable(std::shared_ptr<graphics::IContext> context = nullptr) = 0;
 
             virtual void
             setViewProjectionCenters(float leftCenterX, float leftCenterY, float rightCenterX, float rightCenterY) = 0;
@@ -680,6 +686,30 @@ namespace toolkit {
             virtual const GesturesState& getGesturesState() const = 0;
         };
 
+        struct EyeGazeState {
+            float yaw{0.f};
+            float pitch{0.f};
+
+            XrVector3f origin{0.f, 0.f, 0.f};
+        };
+
+        struct IEyeTracker {
+            virtual ~IEyeTracker() = default;
+
+            virtual void beginSession(XrSession session) = 0;
+            virtual void endSession() = 0;
+
+            virtual void beginFrame(XrTime frameTime) = 0;
+            virtual void endFrame() = 0;
+            virtual void update() = 0;
+
+            virtual XrActionSet getActionSet() const = 0;
+            virtual bool getProjectedGaze(float gazeX[utilities::ViewCount],
+                                          float gazeY[utilities::ViewCount]) const = 0;
+
+            virtual const EyeGazeState& getEyeGazeState() const = 0;
+        };
+
     } // namespace input
 
     namespace menu {
@@ -714,6 +744,7 @@ namespace toolkit {
             virtual void render(utilities::Eye eye, std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
             virtual void updateStatistics(const MenuStatistics& stats) = 0;
             virtual void updateGesturesState(const input::GesturesState& state) = 0;
+            virtual void updateEyeGazeState(const input::EyeGazeState& state) = 0;
 
             virtual void
             setViewProjectionCenters(float leftCenterX, float leftCenterY, float rightCenterX, float rightCenterY) = 0;

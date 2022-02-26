@@ -68,7 +68,7 @@ namespace {
             m_applicationName = createInfo->applicationInfo.applicationName;
 
             // Dump the OpenXR runtime information to help debugging customer issues.
-            XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES};
+            XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES, nullptr};
             CHECK_XRCMD(xrGetInstanceProperties(GetXrInstance(), &instanceProperties));
             m_runtimeName = fmt::format("{} {}.{}.{}",
                                         instanceProperties.runtimeName,
@@ -115,7 +115,7 @@ namespace {
             m_configManager->setDefault("key_screenshot", m_keyScreenshot);
             m_keyScreenshot = m_configManager->getValue("key_screenshot");
 
-            // We must initialize hand tracking early on, because the application can start creating actions etc
+            // We must initialize hand and eye tracking early on, because the application can start creating actions etc
             // before creating the session.
             m_configManager->setEnumDefault(config::SettingHandTrackingEnabled, config::HandTrackingEnabled::Off);
             m_configManager->setDefault(config::SettingHandVisibilityAndSkinTone, 2); // Visible - Medium
@@ -124,6 +124,11 @@ namespace {
                 config::HandTrackingEnabled::Off) {
                 m_handTracker = input::CreateHandTracker(*this, m_configManager);
                 m_sendInterationProfileEvent = true;
+            }
+
+            m_configManager->setDefault(config::SettingEyeTrackingEnabled, 0);
+            if (m_configManager->getValue(config::SettingEyeTrackingEnabled)) {
+                m_eyeTracker = input::CreateEyeTracker(*this, m_configManager);
             }
 
             return XR_SUCCESS;
@@ -137,8 +142,8 @@ namespace {
             const XrResult result = OpenXrApi::xrGetSystem(instance, getInfo, systemId);
             if (XR_SUCCEEDED(result) && getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY) {
                 // Store the actual OpenXR resolution.
-                XrViewConfigurationView views[utilities::ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW},
-                                                                       {XR_TYPE_VIEW_CONFIGURATION_VIEW}};
+                XrViewConfigurationView views[utilities::ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW, nullptr},
+                                                                       {XR_TYPE_VIEW_CONFIGURATION_VIEW, nullptr}};
                 uint32_t viewCount;
                 CHECK_XRCMD(OpenXrApi::xrEnumerateViewConfigurationViews(instance,
                                                                          *systemId,
@@ -150,18 +155,28 @@ namespace {
                 m_displayWidth = views[0].recommendedImageRectWidth;
                 m_displayHeight = views[0].recommendedImageRectHeight;
 
-                // Check for hand tracking support.
+                // Check for hand and eye tracking support.
                 XrSystemHandTrackingPropertiesEXT handTrackingSystemProperties{
-                    XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT};
+                    XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT, nullptr};
                 handTrackingSystemProperties.supportsHandTracking = false;
-                XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES, &handTrackingSystemProperties};
-                OpenXrApi::xrGetSystemProperties(instance, *systemId, &systemProperties);
+
+                XrSystemEyeGazeInteractionPropertiesEXT eyeTrackingSystemProperties{
+                    XR_TYPE_SYSTEM_EYE_GAZE_INTERACTION_PROPERTIES_EXT, &handTrackingSystemProperties};
+                eyeTrackingSystemProperties.supportsEyeGazeInteraction = false;
+
+                XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES, &eyeTrackingSystemProperties};
+                CHECK_XRCMD(OpenXrApi::xrGetSystemProperties(instance, *systemId, &systemProperties));
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
+
+                m_configManager->setDefault(config::SettingEyeDebugWithController, 0);
+                m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction ||
+                                       m_configManager->getValue(config::SettingEyeDebugWithController);
 
                 // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
                 // will (falsely) advertise hand tracking support. Check for the Ultraleap layer in this case.
                 m_configManager->setDefault(config::SettingBypassMsftHandInteractionCheck, 0);
-                if (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck) &&
+                if (m_supportHandTracking &&
+                    !m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck) &&
                     m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos) {
                     bool hasUltraleapLayer = false;
                     for (const auto& layer : GetUpstreamLayers()) {
@@ -175,11 +190,24 @@ namespace {
                     }
                 }
 
-                // We had to initialize the hand tracker early on. If we find out now that hand tracking is not
-                // supported, then destroy it. This could happen if the option was set while a hand tracking device was
-                // connected, but later the hand tracking device was disconnected.
+                // Workaround: the WMR runtime supports emulating eye tracking for development through
+                // XR_EXT_eye_gaze_interaction, which will (falsely) advertise eye tracking support. Disable it.
+                m_configManager->setDefault(config::SettingBypassMsftEyeGazeInteractionCheck, 0);
+                if (m_supportEyeTracking &&
+                    !m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck) &&
+                    m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos) {
+                    Log("Ignoring XR_EXT_eye_gaze_interaction for %s\n", m_runtimeName.c_str());
+                    m_supportEyeTracking = false;
+                }
+
+                // We had to initialize the hand and eye trackers early on. If we find out now that they are not
+                // supported, then destroy them. This could happen if the option was set while a hand tracking device
+                // was connected, but later the hand tracking device was disconnected.
                 if (!m_supportHandTracking) {
                     m_handTracker.reset();
+                }
+                if (!m_supportEyeTracking) {
+                    m_eyeTracker.reset();
                 }
 
                 // Set the default settings.
@@ -213,6 +241,8 @@ namespace {
                 m_configManager->setDefault(config::SettingSaturationGreen, 500);
                 m_configManager->setDefault(config::SettingSaturationBlue, 500);
                 m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
+                m_configManager->setDefault(config::SettingEyeProjectionDistance, 200); // 2m
+                m_configManager->setDefault(config::SettingEyeDebug, 0);
 
                 // Workaround: the first versions of the toolkit used a different representation for the world scale.
                 // Migrate the value upon first run.
@@ -353,8 +383,9 @@ namespace {
                     if (!m_configManager->getValue("disable_frame_analyzer")) {
                         m_frameAnalyzer = graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice);
                     }
-                    m_variableRateShader =
-                        graphics::CreateVariableRateShader(m_configManager, m_graphicsDevice, inputWidth, inputHeight);
+
+                    m_variableRateShader = graphics::CreateVariableRateShader(
+                        m_configManager, m_graphicsDevice, m_eyeTracker, inputWidth, inputHeight);
 
                     // Register intercepted events.
                     m_graphicsDevice->registerSetRenderTargetEvent(
@@ -432,12 +463,14 @@ namespace {
                             m_supportHandTracking,
                             isPredictionDampeningSupported,
                             isMotionReprojectionRateSupported,
-                            m_variableRateShader ? m_variableRateShader->getMaxDownsamplePow2() : 0);
+                            m_variableRateShader ? m_variableRateShader->getMaxDownsamplePow2() : 0,
+                            m_supportEyeTracking);
                     }
 
                     // Create a reference space to calculate projection views.
                     {
-                        XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+                        XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
+                                                                            nullptr};
                         referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
                         referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
                         CHECK_XRCMD(xrCreateReferenceSpace(*session, &referenceSpaceCreateInfo, &m_viewSpace));
@@ -448,6 +481,9 @@ namespace {
 
                 if (m_handTracker) {
                     m_handTracker->beginSession(*session, m_graphicsDevice);
+                }
+                if (m_eyeTracker) {
+                    m_eyeTracker->beginSession(*session);
                 }
 
                 // Remember the XrSession to use.
@@ -477,6 +513,9 @@ namespace {
                 m_preProcessor.reset();
                 m_postProcessor.reset();
                 m_frameAnalyzer.reset();
+                if (m_eyeTracker) {
+                    m_eyeTracker->endSession();
+                }
                 m_variableRateShader.reset();
                 for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
                     m_performanceCounters.appGpuTimer[i].reset();
@@ -744,12 +783,41 @@ namespace {
 
         XrResult xrSuggestInteractionProfileBindings(
             XrInstance instance, const XrInteractionProfileSuggestedBinding* suggestedBindings) override {
+            if (m_configManager->getValue(config::SettingEyeDebugWithController)) {
+                // We must drop calls to allow the controller override for debugging.
+                if (suggestedBindings->countSuggestedBindings > 1 ||
+                    getPath(suggestedBindings->interactionProfile) !=
+                        "/interaction_profiles/hp/mixed_reality_controller") {
+                    return XR_SUCCESS;
+                }
+            }
+
             const XrResult result = OpenXrApi::xrSuggestInteractionProfileBindings(instance, suggestedBindings);
             if (XR_SUCCEEDED(result) && m_handTracker) {
                 m_handTracker->registerBindings(*suggestedBindings);
             }
 
             return result;
+        }
+
+        XrResult xrAttachSessionActionSets(XrSession session,
+                                           const XrSessionActionSetsAttachInfo* attachInfo) override {
+            XrSessionActionSetsAttachInfo chainAttachInfo = *attachInfo;
+            std::vector<XrActionSet> newActionSets;
+            if (m_eyeTracker) {
+                newActionSets.resize(chainAttachInfo.countActionSets + 1);
+                memcpy(newActionSets.data(),
+                       chainAttachInfo.actionSets,
+                       chainAttachInfo.countActionSets * sizeof(XrActionSet));
+                uint32_t nextActionSetSlot = chainAttachInfo.countActionSets;
+
+                newActionSets[nextActionSetSlot++] = m_eyeTracker->getActionSet();
+
+                chainAttachInfo.actionSets = newActionSets.data();
+                chainAttachInfo.countActionSets++;
+            }
+
+            return OpenXrApi::xrAttachSessionActionSets(session, &chainAttachInfo);
         }
 
         XrResult xrCreateAction(XrActionSet actionSet,
@@ -944,6 +1012,9 @@ namespace {
                                                                  (fov.angleLeft - fov.angleRight));
                             projCenterY[eye] =
                                 0.5f * (1.f + (fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown));
+
+                            m_eyeGazeX[eye] = projCenterX[eye];
+                            m_eyeGazeY[eye] = projCenterY[eye];
                         }
 
                         if (m_menuHandler) {
@@ -1130,6 +1201,13 @@ namespace {
                         m_frameAnalyzer->resetForFrame();
                     }
                 }
+
+                if (m_eyeTracker) {
+                    m_eyeTracker->beginFrame(m_begunFrameTime);
+                }
+                if (m_variableRateShader) {
+                    m_variableRateShader->beginFrame(m_begunFrameTime);
+                }
             }
 
             return result;
@@ -1176,6 +1254,9 @@ namespace {
             if (m_handTracker && m_menuHandler) {
                 m_menuHandler->updateGesturesState(m_handTracker->getGesturesState());
             }
+            if (m_eyeTracker && m_menuHandler) {
+                m_menuHandler->updateEyeGazeState(m_eyeTracker->getEyeGazeState());
+            }
 
             for (unsigned int eye = 0; eye < utilities::ViewCount; eye++) {
                 m_stats.hasColorBuffer[eye] = m_stats.hasDepthBuffer[eye] = false;
@@ -1196,6 +1277,9 @@ namespace {
             }
             if (m_postProcessor) {
                 m_postProcessor->update();
+            }
+            if (m_eyeTracker) {
+                m_eyeTracker->update();
             }
             if (m_variableRateShader) {
                 m_variableRateShader->update();
@@ -1264,15 +1348,21 @@ namespace {
             if (m_frameAnalyzer) {
                 m_frameAnalyzer->prepareForEndFrame();
             }
+
+            // TODO: Ensure restoreContext() even on error.
+            m_graphicsDevice->blockCallbacks();
+
+            if (m_eyeTracker) {
+                m_eyeTracker->endFrame();
+            }
+
             if (m_variableRateShader) {
-                m_variableRateShader->disable();
+                m_variableRateShader->endFrame();
 #ifdef _DEBUG
                 m_variableRateShader->stopCapture();
 #endif
             }
 
-            // TODO: Ensure restoreContext() even on error.
-            m_graphicsDevice->blockCallbacks();
             m_graphicsDevice->saveContext();
 
             // Handle inputs.
@@ -1513,8 +1603,13 @@ namespace {
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
                 }
 
-                // Render the hands.
-                if (m_handTracker) {
+                // Render the hands or eye gaze helper.
+                if (m_handTracker || (m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug))) {
+                    bool isEyeGazeValid = false;
+                    if (m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGazeX, m_eyeGazeY)) {
+                        isEyeGazeValid = true;
+                    }
+
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                         if (!useVPRT) {
                             m_graphicsDevice->setRenderTargets({textureForOverlay[eye]}, depthForOverlay[eye]);
@@ -1524,8 +1619,18 @@ namespace {
                         }
                         m_graphicsDevice->setViewProjection(viewsForOverlay[eye]);
 
-                        m_handTracker->render(
-                            viewsForOverlay[eye].pose, spaceForOverlay, getTimeNow(), textureForOverlay[eye]);
+                        if (m_handTracker) {
+                            m_handTracker->render(
+                                viewsForOverlay[eye].pose, spaceForOverlay, getTimeNow(), textureForOverlay[eye]);
+                        }
+
+                        if (m_eyeTracker) {
+                            XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
+                            const auto centerX = m_displayWidth * m_eyeGazeX[eye];
+                            const auto centerY = m_displayHeight * m_eyeGazeY[eye];
+
+                            m_graphicsDevice->clearColor(centerY - 20, centerX - 20, centerY + 20, centerX + 20, color);
+                        }
                     }
                 }
 
@@ -1550,7 +1655,8 @@ namespace {
                     }
                 }
 
-                if (m_menuHandler || m_handTracker) {
+                if (m_menuHandler || m_handTracker ||
+                    (m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug))) {
                     m_performanceCounters.overlayCpuTimer->stop();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
                 }
@@ -1633,6 +1739,7 @@ namespace {
         uint32_t m_displayWidth{0};
         uint32_t m_displayHeight{0};
         bool m_supportHandTracking{false};
+        bool m_supportEyeTracking{false};
 
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;
@@ -1640,6 +1747,8 @@ namespace {
         bool m_sendInterationProfileEvent{false};
         XrSpace m_viewSpace{XR_NULL_HANDLE};
         bool m_needCalibrateEyeProjections{true};
+        float m_eyeGazeX[utilities::ViewCount];
+        float m_eyeGazeY[utilities::ViewCount];
 
         std::shared_ptr<config::IConfigManager> m_configManager;
 
@@ -1654,6 +1763,7 @@ namespace {
         float m_mipMapBiasForUpscaling{0.f};
 
         std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;
+        std::shared_ptr<input::IEyeTracker> m_eyeTracker;
         std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;
 
         std::shared_ptr<input::IHandTracker> m_handTracker;
