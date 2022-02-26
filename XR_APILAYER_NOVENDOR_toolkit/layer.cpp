@@ -910,6 +910,7 @@ namespace {
                             DirectX::XMStoreFloat4x4(&rightView, tmp);
                         }
 
+                        // This code is based on vrperfkit by Frydrych Holger.
                         // https://github.com/fholger/vrperfkit/blob/master/src/openvr/openvr_manager.cpp
                         const float dotForward = leftView.m[2][0] * rightView.m[2][0] +
                                                  leftView.m[2][1] * rightView.m[2][1] +
