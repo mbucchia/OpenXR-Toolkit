@@ -183,6 +183,7 @@ namespace {
                 }
 
                 // Set the default settings.
+                m_configManager->setDefault(config::SettingMenuEyeOffset, 0);
                 m_configManager->setEnumDefault(config::SettingScalingType, config::ScalingType::None);
                 m_configManager->setDefault(config::SettingScaling, 100);
                 m_configManager->setDefault(config::SettingAnamorphic, -100);
@@ -928,9 +929,10 @@ namespace {
                                 0.5f * (1.f + (fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown));
                         }
 
-                        // TODO: Not sure why doubling the value is needed, it works on HP Reverb and Varjo Aero.
-                        m_configManager->setDefault(config::SettingMenuEyeOffset,
-                                                    (int)(m_displayWidth * 2.f * (projCenterX[1] - projCenterX[0])));
+                        if (m_menuHandler) {
+                            m_menuHandler->setViewProjectionCenters(
+                                projCenterX[0], projCenterY[0], projCenterX[1], projCenterY[1]);
+                        }
                         if (m_variableRateShader) {
                             m_variableRateShader->setViewProjectionCenters(
                                 projCenterX[0], projCenterY[0], projCenterX[1], projCenterY[1]);

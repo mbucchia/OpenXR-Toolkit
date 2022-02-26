@@ -362,15 +362,16 @@ namespace {
             }
 
             const float leftEyeOffset = 0.0f;
-            const float rightEyeOffset = (float)m_configManager->getValue(SettingMenuEyeOffset);
+            const float rightEyeOffset =
+                2.f * (m_projCenterX[1] - m_projCenterX[0]) + m_configManager->getValue(SettingMenuEyeOffset);
             const float eyeOffset = eye == Eye::Left ? leftEyeOffset : rightEyeOffset;
 
-            const float leftAnchor = (renderTarget->getInfo().width - m_menuBackgroundWidth) / 2;
+            const float leftAnchor = m_projCenterX[0] - m_menuBackgroundWidth / 2;
             const float leftAlign = leftAnchor + eyeOffset;
             const float centerAlign = leftAnchor + m_menuBackgroundWidth / 2 + eyeOffset;
             const float rightAlign = leftAnchor + m_menuBackgroundWidth + eyeOffset;
             const float overlayAlign = (2 * renderTarget->getInfo().width / 3.0f) + eyeOffset;
-            const float topAlign = renderTarget->getInfo().height / 3.0f;
+            const float topAlign = m_projCenterY[0] - m_menuBackgroundHeight / 2;
 
             const float fontSizes[(int)MenuFontSize::MaxValue] = {
                 renderTarget->getInfo().height * 0.0075f,
@@ -397,13 +398,15 @@ namespace {
 
             if (m_state == MenuState::Splash) {
                 // The helper "splash screen".
-                m_device->drawString(fmt::format(L"Press {}{} to bring up the menu ({}s)",
-                                                 m_keyModifiersLabel,
-                                                 m_keyMenuLabel,
-                                                 (int)(std::ceil(timeout - duration))),
+                const auto banner = fmt::format(L"Press {}{} to bring up the menu ({}s)",
+                                                m_keyModifiersLabel,
+                                                m_keyMenuLabel,
+                                                (int)(std::ceil(timeout - duration)));
+                const auto width = m_device->measureString(banner, TextStyle::Normal, fontSize);
+                m_device->drawString(banner,
                                      TextStyle::Normal,
                                      fontSize,
-                                     leftAlign,
+                                     leftAlign - width / 2,
                                      topAlign,
                                      textColorOverlay);
 
@@ -412,7 +415,7 @@ namespace {
                                                  m_numSplashLeft == 1 ? "" : "s"),
                                      TextStyle::Normal,
                                      fontSize * 0.75f,
-                                     leftAlign,
+                                     leftAlign - width / 2,
                                      topAlign + 1.05f * fontSize,
                                      textColorOverlay);
             } else if (m_state == MenuState::Visible) {
@@ -734,6 +737,16 @@ namespace {
 
         void updateGesturesState(const GesturesState& state) override {
             m_gesturesState = state;
+        }
+
+        void setViewProjectionCenters(float leftCenterX,
+                                      float leftCenterY,
+                                      float rightCenterX,
+                                      float rightCenterY) override {
+            m_projCenterX[0] = (int)(m_displayWidth * leftCenterX);
+            m_projCenterY[0] = (int)(m_displayHeight * leftCenterY);
+            m_projCenterX[1] = (int)(m_displayWidth * rightCenterX);
+            m_projCenterY[1] = (int)(m_displayHeight * rightCenterY);
         }
 
       private:
@@ -1279,6 +1292,9 @@ namespace {
         std::wstring m_keyMenuLabel;
         int m_keyUp{0};
         std::wstring m_keyUpLabel;
+
+        int m_projCenterX[ViewCount];
+        int m_projCenterY[ViewCount];
 
         int m_numSplashLeft;
         std::vector<MenuEntry> m_menuEntries;

@@ -717,6 +717,9 @@ namespace toolkit {
             virtual void render(utilities::Eye eye, std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
             virtual void updateStatistics(const MenuStatistics& stats) = 0;
             virtual void updateGesturesState(const input::GesturesState& state) = 0;
+
+            virtual void
+            setViewProjectionCenters(float leftCenterX, float leftCenterY, float rightCenterX, float rightCenterY) = 0;
         };
 
     } // namespace menu
