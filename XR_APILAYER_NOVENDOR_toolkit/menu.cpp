@@ -956,6 +956,14 @@ namespace {
                                              [](int value) { return fmt::format("{} pixels", value); }});
                     m_menuEntries.back().expert = true;
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Horizontal scale",
+                                             MenuEntryType::Slider,
+                                             SettingVRSXScale,
+                                             10,
+                                             200,
+                                             [](int value) { return fmt::format("{}%", value); }});
+                    m_menuEntries.back().expert = true;
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Vertical offset",
                                              MenuEntryType::Slider,
                                              SettingVRSYOffset,

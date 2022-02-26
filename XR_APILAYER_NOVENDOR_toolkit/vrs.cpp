@@ -192,9 +192,10 @@ namespace {
                 bool needRegeneratePattern =
                     hasModeChanged || m_hasProjCenterChanged ||
                     (mode == VariableShadingRateType::Preset && m_configManager->hasChanged(SettingVRSPattern)) ||
-                    (mode == VariableShadingRateType::Custom && (hasInnerRadiusChanged || hasOuterRadiusChanged ||
-                                                                 m_configManager->hasChanged(SettingVRSXOffset) ||
-                                                                 m_configManager->hasChanged(SettingVRSYOffset))) ||
+                    (mode == VariableShadingRateType::Custom &&
+                     (hasInnerRadiusChanged || hasOuterRadiusChanged ||
+                      m_configManager->hasChanged(SettingVRSXOffset) || m_configManager->hasChanged(SettingVRSXScale) ||
+                      m_configManager->hasChanged(SettingVRSYOffset))) ||
                     (m_device->getApi() == Api::D3D12 &&
                      ((mode == VariableShadingRateType::Preset && m_configManager->hasChanged(SettingVRSQuality)) ||
                       (mode == VariableShadingRateType::Custom &&
@@ -252,6 +253,7 @@ namespace {
 
                     const auto xOffset = m_configManager->getValue(SettingVRSXOffset);
                     const auto yOffset = m_configManager->getValue(SettingVRSYOffset);
+                    const float semiMajorFactor = m_configManager->getValue(SettingVRSXScale) / 100.f;
 
                     const int rowPitch = Align(m_targetWidth, m_tileSize) / m_tileSize;
                     const int rowPitchAligned = Align(rowPitch, m_device->getTextureAlignmentConstraint());
@@ -264,6 +266,7 @@ namespace {
                                              m_projCenterY[0] + yOffset,
                                              innerRadius / 100.f,
                                              outerRadius / 100.f,
+                                             semiMajorFactor,
                                              innerValue,
                                              middleValue,
                                              outerValue);
@@ -275,6 +278,7 @@ namespace {
                                              m_projCenterY[1] + yOffset,
                                              innerRadius / 100.f,
                                              outerRadius / 100.f,
+                                             semiMajorFactor,
                                              innerValue,
                                              middleValue,
                                              outerValue);
@@ -286,6 +290,7 @@ namespace {
                                              m_targetHeight / 2,
                                              innerRadius / 100.f,
                                              outerRadius / 100.f,
+                                             semiMajorFactor,
                                              innerValue,
                                              middleValue,
                                              outerValue);
@@ -537,6 +542,7 @@ namespace {
                                       int projCenterY,
                                       float innerRadius,
                                       float outerRadius,
+                                      float semiMinorFactor,
                                       uint8_t innerValue,
                                       uint8_t middleValue,
                                       uint8_t outerValue) {
@@ -548,9 +554,9 @@ namespace {
             const int centerY = projCenterY / m_tileSize;
 
             const int innerSemiMinor = (int)(height * innerRadius / 2);
-            const int innerSemiMajor = (int)(1.25f * innerSemiMinor);
+            const int innerSemiMajor = (int)(semiMinorFactor * innerSemiMinor);
             const int outerSemiMinor = (int)(height * outerRadius / 2);
-            const int outerSemiMajor = (int)(1.25f * outerSemiMinor);
+            const int outerSemiMajor = (int)(semiMinorFactor * outerSemiMinor);
 
             // No shame in looking up basic maths :D
             // https://www.geeksforgeeks.org/check-if-a-point-is-inside-outside-or-on-the-ellipse/
