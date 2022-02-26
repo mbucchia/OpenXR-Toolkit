@@ -558,6 +558,7 @@ namespace {
                 CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(*swapchain, 0, &imageCount, nullptr));
 
                 SwapchainState swapchainState;
+                int64_t overrideFormat = 0;
                 if (m_graphicsDevice->getApi() == graphics::Api::D3D11) {
                     std::vector<XrSwapchainImageD3D11KHR> d3dImages(imageCount, {XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
                     CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(
@@ -582,6 +583,9 @@ namespace {
                             desc.BindFlags,
                             desc.CPUAccessFlags,
                             desc.MiscFlags);
+
+                        // Make sure to create the underlying texture typeless.
+                        overrideFormat = (int64_t)desc.Format;
                     }
 
                     for (uint32_t i = 0; i < imageCount; i++) {
@@ -615,6 +619,9 @@ namespace {
                             desc.Format);
                         Log("  mipCount=%u sampleCount=%u\n", desc.MipLevels, desc.SampleDesc.Count);
                         Log("  flags=0x%x\n", desc.Flags);
+
+                        // Make sure to create the underlying texture typeless.
+                        overrideFormat = (int64_t)desc.Format;
                     }
 
                     for (uint32_t i = 0; i < imageCount; i++) {
@@ -654,7 +661,7 @@ namespace {
                         }
 
                         auto inputTexture = m_graphicsDevice->createTexture(
-                            inputCreateInfo, fmt::format("Postprocess input swapchain {} TEX2D", i));
+                            inputCreateInfo, fmt::format("Postprocess input swapchain {} TEX2D", i), overrideFormat);
 
                         // We place the texture at the very front (app texture).
                         images.chain.insert(images.chain.begin(), inputTexture);
@@ -669,8 +676,8 @@ namespace {
                         // Create an app texture with the lower resolution.
                         XrSwapchainCreateInfo inputCreateInfo = *createInfo;
                         inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                        auto inputTexture =
-                            m_graphicsDevice->createTexture(inputCreateInfo, fmt::format("App swapchain {} TEX2D", i));
+                        auto inputTexture = m_graphicsDevice->createTexture(
+                            inputCreateInfo, fmt::format("App swapchain {} TEX2D", i), overrideFormat);
 
                         // We place the texture before the runtime texture, which means at the very front (app
                         // texture) or after the pre-processor.
@@ -696,9 +703,14 @@ namespace {
                                 intermediateCreateInfo.format =
                                     m_graphicsDevice->getTextureFormat(graphics::TextureFormat::R10G10B10A2_UNORM);
                             }
+
+                            // Don't override. This isn't the texture the app is going to see anyway.
+                            overrideFormat = 0;
                         }
-                        auto intermediateTexture = m_graphicsDevice->createTexture(
-                            intermediateCreateInfo, fmt::format("Postprocess input swapchain {} TEX2D", i));
+                        auto intermediateTexture =
+                            m_graphicsDevice->createTexture(intermediateCreateInfo,
+                                                            fmt::format("Postprocess input swapchain {} TEX2D", i),
+                                                            overrideFormat);
 
                         // We place the texture just before the runtime texture.
                         images.chain.insert(images.chain.end() - 1, intermediateTexture);

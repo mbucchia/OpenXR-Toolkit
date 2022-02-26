@@ -151,7 +151,7 @@ namespace {
             info.mipCount = 1;
             info.sampleCount = 1;
             info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
-            m_intermediary = m_device->createTexture(info, "FSR Intermediary TEX2D", 0, 0, nullptr);
+            m_intermediary = m_device->createTexture(info, "FSR Intermediary TEX2D");
         }
 
         void updateScaler(float sharpness) {

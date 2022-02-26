@@ -152,13 +152,13 @@ namespace {
                 std::vector<uint32_t> m_coefAligned;
                 createAlignedCoefficients((uint32_t*)coef_scale, m_coefAligned, rowPitchAligned);
                 m_coefScale = m_device->createTexture(
-                    info, "NIS Scale Coefficients TEX2D", rowPitchAligned, coefSize, (void*)m_coefAligned.data());
+                    info, "NIS Scale Coefficients TEX2D", 0, rowPitchAligned, coefSize, (void*)m_coefAligned.data());
             }
             {
                 std::vector<uint32_t> m_coefAligned;
                 createAlignedCoefficients((uint32_t*)coef_usm, m_coefAligned, rowPitchAligned);
                 m_coefUSM = m_device->createTexture(
-                    info, "NIS USM Coefficients TEX2D", rowPitchAligned, coefSize, (void*)m_coefAligned.data());
+                    info, "NIS USM Coefficients TEX2D", 0, rowPitchAligned, coefSize, (void*)m_coefAligned.data());
             }
         }
 
