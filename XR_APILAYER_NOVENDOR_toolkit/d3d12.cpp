@@ -1072,13 +1072,18 @@ namespace {
 
         std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
                                                 const std::optional<std::string>& debugName,
+                                                int64_t overrideFormat = 0,
                                                 uint32_t rowPitch = 0,
                                                 uint32_t imageSize = 0,
                                                 const void* initialData = nullptr) override {
             assert(!(rowPitch % getTextureAlignmentConstraint()));
 
-            auto desc = CD3DX12_RESOURCE_DESC::Tex2D(
-                (DXGI_FORMAT)info.format, info.width, info.height, info.arraySize, info.mipCount, info.sampleCount);
+            auto desc = CD3DX12_RESOURCE_DESC::Tex2D((DXGI_FORMAT)(!overrideFormat ? info.format : overrideFormat),
+                                                     info.width,
+                                                     info.height,
+                                                     info.arraySize,
+                                                     info.mipCount,
+                                                     info.sampleCount);
 
             D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
             if (info.usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT) {

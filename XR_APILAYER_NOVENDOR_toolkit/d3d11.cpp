@@ -951,6 +951,7 @@ namespace {
 
         std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
                                                 const std::optional<std::string>& debugName,
+                                                int64_t overrideFormat = 0,
                                                 uint32_t rowPitch = 0,
                                                 uint32_t imageSize = 0,
                                                 const void* initialData = nullptr) override {
@@ -958,7 +959,7 @@ namespace {
 
             D3D11_TEXTURE2D_DESC desc;
             ZeroMemory(&desc, sizeof(desc));
-            desc.Format = (DXGI_FORMAT)info.format;
+            desc.Format = (DXGI_FORMAT)(!overrideFormat ? info.format : overrideFormat);
             desc.Width = info.width;
             desc.Height = info.height;
             desc.ArraySize = info.arraySize;

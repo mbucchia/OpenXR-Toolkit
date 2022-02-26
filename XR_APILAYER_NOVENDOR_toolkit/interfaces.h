@@ -446,6 +446,7 @@ namespace toolkit {
 
             virtual std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
                                                             const std::optional<std::string>& debugName,
+                                                            int64_t overrideFormat = 0,
                                                             uint32_t rowPitch = 0,
                                                             uint32_t imageSize = 0,
                                                             const void* initialData = nullptr) = 0;
