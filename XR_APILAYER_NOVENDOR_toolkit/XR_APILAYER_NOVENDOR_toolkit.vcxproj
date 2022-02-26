@@ -222,6 +222,7 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
     <ClCompile Include="config.cpp" />
     <ClCompile Include="d3d11.cpp" />
     <ClCompile Include="d3d12.cpp" />
+    <ClCompile Include="eyetracker.cpp" />
     <ClCompile Include="frameanalyzer.cpp" />
     <ClCompile Include="framework\dispatch.cpp" />
     <ClCompile Include="framework\dispatch.gen.cpp" />

@@ -362,17 +362,17 @@ namespace {
         void beginSession(XrSession session, std::shared_ptr<toolkit::graphics::IDevice> graphicsDevice) override {
             m_graphicsDevice = graphicsDevice;
 
-            XrHandTrackerCreateInfoEXT leftTrackerCreateInfo{XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT};
+            XrHandTrackerCreateInfoEXT leftTrackerCreateInfo{XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT, nullptr};
             leftTrackerCreateInfo.hand = XR_HAND_LEFT_EXT;
             leftTrackerCreateInfo.handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT;
-            XrHandTrackerCreateInfoEXT rightTrackerCreateInfo{XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT};
+            XrHandTrackerCreateInfoEXT rightTrackerCreateInfo{XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT, nullptr};
             rightTrackerCreateInfo.hand = XR_HAND_RIGHT_EXT;
             rightTrackerCreateInfo.handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT;
 
             CHECK_XRCMD(xrCreateHandTrackerEXT(session, &leftTrackerCreateInfo, &m_handTracker[0]));
             CHECK_XRCMD(xrCreateHandTrackerEXT(session, &rightTrackerCreateInfo, &m_handTracker[1]));
 
-            XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+            XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO, nullptr};
             referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
             referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
             CHECK_XRCMD(m_openXR.xrCreateReferenceSpace(session, &referenceSpaceCreateInfo, &m_referenceSpace));
@@ -735,7 +735,7 @@ namespace {
                 locateInfo.time = std::max(time, now);
 
                 CacheEntry entry;
-                XrHandJointLocationsEXT locations{XR_TYPE_HAND_JOINT_LOCATIONS_EXT};
+                XrHandJointLocationsEXT locations{XR_TYPE_HAND_JOINT_LOCATIONS_EXT, nullptr};
                 locations.jointCount = XR_HAND_JOINT_COUNT_EXT;
                 locations.jointLocations = entry.second;
                 entry.first = time;
@@ -1177,8 +1177,9 @@ namespace {
 } // namespace
 
 namespace toolkit::input {
-    std::shared_ptr<input::IHandTracker>
-    CreateHandTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager) {
+
+    std::shared_ptr<IHandTracker> CreateHandTracker(toolkit::OpenXrApi& openXR,
+                                                    std::shared_ptr<toolkit::config::IConfigManager> configManager) {
         return std::make_shared<HandTracker>(openXR, configManager);
     }
 

@@ -439,6 +439,26 @@ namespace LAYER_NAMESPACE
 		return result;
 	}
 
+	XrResult xrAttachSessionActionSets(XrSession session, const XrSessionActionSetsAttachInfo* attachInfo)
+	{
+		DebugLog("--> xrAttachSessionActionSets\n");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrAttachSessionActionSets(session, attachInfo);
+		}
+		catch (std::exception& exc)
+		{
+			Log("%s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		DebugLog("<-- xrAttachSessionActionSets %d\n", result);
+
+		return result;
+	}
+
 	XrResult xrGetCurrentInteractionProfile(XrSession session, XrPath topLevelUserPath, XrInteractionProfileState* interactionProfile)
 	{
 		DebugLog("--> xrGetCurrentInteractionProfile\n");
@@ -654,6 +674,11 @@ namespace LAYER_NAMESPACE
 				m_xrSuggestInteractionProfileBindings = reinterpret_cast<PFN_xrSuggestInteractionProfileBindings>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrSuggestInteractionProfileBindings);
 			}
+			else if (apiName == "xrAttachSessionActionSets")
+			{
+				m_xrAttachSessionActionSets = reinterpret_cast<PFN_xrAttachSessionActionSets>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrAttachSessionActionSets);
+			}
 			else if (apiName == "xrGetCurrentInteractionProfile")
 			{
 				m_xrGetCurrentInteractionProfile = reinterpret_cast<PFN_xrGetCurrentInteractionProfile>(*function);
@@ -700,6 +725,18 @@ namespace LAYER_NAMESPACE
 		{
 			throw std::runtime_error("Failed to resolve xrCreateReferenceSpace");
 		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrCreateActionSpace", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateActionSpace))))
+		{
+			throw std::runtime_error("Failed to resolve xrCreateActionSpace");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrLocateSpace", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrLocateSpace))))
+		{
+			throw std::runtime_error("Failed to resolve xrLocateSpace");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrDestroySpace", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrDestroySpace))))
+		{
+			throw std::runtime_error("Failed to resolve xrDestroySpace");
+		}
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrEnumerateViewConfigurationViews", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrEnumerateViewConfigurationViews))))
 		{
 			throw std::runtime_error("Failed to resolve xrEnumerateViewConfigurationViews");
@@ -715,6 +752,30 @@ namespace LAYER_NAMESPACE
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrPathToString", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrPathToString))))
 		{
 			throw std::runtime_error("Failed to resolve xrPathToString");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrCreateActionSet", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateActionSet))))
+		{
+			throw std::runtime_error("Failed to resolve xrCreateActionSet");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrDestroyActionSet", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrDestroyActionSet))))
+		{
+			throw std::runtime_error("Failed to resolve xrDestroyActionSet");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrCreateAction", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateAction))))
+		{
+			throw std::runtime_error("Failed to resolve xrCreateAction");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrDestroyAction", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrDestroyAction))))
+		{
+			throw std::runtime_error("Failed to resolve xrDestroyAction");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrGetActionStatePose", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrGetActionStatePose))))
+		{
+			throw std::runtime_error("Failed to resolve xrGetActionStatePose");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrSyncActions", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrSyncActions))))
+		{
+			throw std::runtime_error("Failed to resolve xrSyncActions");
 		}
 		m_applicationName = createInfo->applicationInfo.applicationName;
 		return XR_SUCCESS;

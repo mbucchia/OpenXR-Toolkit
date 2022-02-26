@@ -165,10 +165,11 @@ namespace {
                     bool isPredictionDampeningSupported,
                     bool isMotionReprojectionRateSupported,
                     uint8_t displayRefreshRate,
-                    uint8_t variableRateShaderMaxDownsamplePow2)
+                    uint8_t variableRateShaderMaxDownsamplePow2,
+                    bool isEyeTrackingSupported)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
               m_displayHeight(displayHeight), m_keyModifiers(keyModifiers),
-              m_isHandTrackingSupported(isHandTrackingSupported) {
+              m_isHandTrackingSupported(isHandTrackingSupported), m_isEyeTrackingSupported(isEyeTrackingSupported) {
             m_lastInput = std::chrono::steady_clock::now();
 
             // We display the hint for menu hotkeys for the first few runs.
@@ -727,6 +728,20 @@ namespace {
                     }
 
 #undef GESTURE_STATE
+
+                    if (isEyeTrackingEnabled()) {
+                        m_device->drawString(fmt::format("e.yaw: {:.1f}", m_eyeGazeState.yaw), OVERLAY_COMMON);
+                        top += 1.05f * fontSize;
+                        m_device->drawString(fmt::format("e.pch: {:.1f}", m_eyeGazeState.pitch), OVERLAY_COMMON);
+                        top += 1.05f * fontSize;
+
+                        m_device->drawString(fmt::format("{:.3f}, {:.3f}, {:.3f}",
+                                                         m_eyeGazeState.origin.x,
+                                                         m_eyeGazeState.origin.y,
+                                                         m_eyeGazeState.origin.z),
+                                             OVERLAY_COMMON);
+                        top += 1.05f * fontSize;
+                    }
                 }
 #undef OVERLAY_COMMON
             }
@@ -738,6 +753,10 @@ namespace {
 
         void updateGesturesState(const GesturesState& state) override {
             m_gesturesState = state;
+        }
+
+        void updateEyeGazeState(const input::EyeGazeState& state) override {
+            m_eyeGazeState = state;
         }
 
         void setViewProjectionCenters(float leftCenterX,
@@ -883,7 +902,7 @@ namespace {
             // Fixed Foveated Rendering (VRS) Settings.
             if (variableRateShaderMaxDownsamplePow2) {
                 m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                         "Fixed foveated rendering",
+                                         !m_isEyeTrackingSupported ? "Fixed foveated rendering" : "Foveated rendering",
                                          MenuEntryType::Choice,
                                          SettingVRS,
                                          0,
@@ -892,6 +911,39 @@ namespace {
                                              const std::string_view labels[] = {"Off", "Preset", "Custom"};
                                              return std::string(labels[value]);
                                          }});
+
+                // Common sub-group.
+                MenuGroup variableRateShaderCommonGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+                    return m_configManager->peekEnumValue<VariableShadingRateType>(SettingVRS) !=
+                           VariableShadingRateType::None;
+                });
+                if (m_isEyeTrackingSupported) {
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Eye tracking",
+                                             MenuEntryType::Choice,
+                                             SettingEyeTrackingEnabled,
+                                             0,
+                                             1,
+                                             [&](int value) {
+                                                 const std::string_view labels[] = {"Off", "On"};
+                                                 return std::string(labels[value]);
+                                             }});
+                    m_originalEyeTrackingEnabled = isEyeTrackingEnabled();
+                    // Eye tracking sub-group.
+                    MenuGroup variableRateShaderEyeTrackingGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+                        return m_configManager->peekValue(SettingEyeTrackingEnabled);
+                    } /* visible condition */);
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Eye projection distance",
+                                             MenuEntryType::Slider,
+                                             SettingEyeProjectionDistance,
+                                             10,
+                                             10000,
+                                             [](int value) { return fmt::format("{:.2f}m", value / 100.f); }});
+                    m_menuEntries.back().acceleration = 5;
+                    variableRateShaderEyeTrackingGroup.finalize();
+                }
+                variableRateShaderCommonGroup.finalize();
 
                 // Preset sub-group.
                 MenuGroup variableRateShaderPresetGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
@@ -1259,6 +1311,10 @@ namespace {
                                                     SettingHandTrackingEnabled) != HandTrackingEnabled::Off;
         }
 
+        bool isEyeTrackingEnabled() const {
+            return m_isEyeTrackingSupported && m_configManager->peekValue(SettingEyeTrackingEnabled);
+        }
+
         int getCurrentScaling() const {
             return m_configManager->peekValue(SettingScaling);
         }
@@ -1273,7 +1329,8 @@ namespace {
 
         bool checkNeedRestartCondition() const {
             if (m_originalHandTrackingEnabled != isHandTrackingEnabled() ||
-                m_originalScalingType != getCurrentScalingType()) {
+                m_originalScalingType != getCurrentScalingType() ||
+                m_originalEyeTrackingEnabled != isEyeTrackingEnabled()) {
                 return true;
             }
 
@@ -1290,8 +1347,10 @@ namespace {
         const uint32_t m_displayWidth;
         const uint32_t m_displayHeight;
         const bool m_isHandTrackingSupported;
+        const bool m_isEyeTrackingSupported;
         MenuStatistics m_stats{};
         GesturesState m_gesturesState{};
+        EyeGazeState m_eyeGazeState{};
 
         bool m_displayLeftEye{true};
         bool m_displayRightEye{true};
@@ -1331,6 +1390,7 @@ namespace {
         int m_useAnamorphic{0};
 
         bool m_originalHandTrackingEnabled{false};
+        bool m_originalEyeTrackingEnabled{false};
         bool m_needRestart{false};
 
         mutable MenuState m_state{MenuState::NotVisible};
@@ -1354,7 +1414,8 @@ namespace toolkit::menu {
                                                     bool isPredictionDampeningSupported,
                                                     bool isMotionReprojectionRateSupported,
                                                     uint8_t displayRefreshRate,
-                                                    uint8_t variableRateShaderMaxDownsamplePow2) {
+                                                    uint8_t variableRateShaderMaxDownsamplePow2,
+                                                    bool isEyeTrackingSupported) {
         return std::make_shared<MenuHandler>(configManager,
                                              device,
                                              displayWidth,
@@ -1364,7 +1425,8 @@ namespace toolkit::menu {
                                              isPredictionDampeningSupported,
                                              isMotionReprojectionRateSupported,
                                              displayRefreshRate,
-                                             variableRateShaderMaxDownsamplePow2);
+                                             variableRateShaderMaxDownsamplePow2,
+                                             isEyeTrackingSupported);
     }
 
 } // namespace toolkit::menu

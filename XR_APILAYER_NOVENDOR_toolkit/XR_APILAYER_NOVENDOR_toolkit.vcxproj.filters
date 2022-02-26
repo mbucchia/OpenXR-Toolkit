@@ -139,6 +139,9 @@
     <ClCompile Include="frameanalyzer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="eyetracker.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="utils\ScreenGrab11.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
