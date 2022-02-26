@@ -202,6 +202,7 @@ namespace {
                 m_configManager->setDefault(config::SettingVRSOuter, 4);  // 1/16x
                 m_configManager->setDefault(config::SettingVRSOuterRadius, 80);
                 m_configManager->setDefault(config::SettingVRSXOffset, 0);
+                m_configManager->setDefault(config::SettingVRSXScale, 125);
                 m_configManager->setDefault(config::SettingVRSYOffset, 0);
                 m_configManager->setEnumDefault(config::SettingMipMapBias, config::MipMapBias::Anisotropic);
                 m_configManager->setDefault(config::SettingBrightness, 500);
