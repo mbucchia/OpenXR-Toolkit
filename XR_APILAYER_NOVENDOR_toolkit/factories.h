@@ -76,20 +76,17 @@ namespace toolkit {
                                                    ID3D12Resource* texture,
                                                    const std::optional<std::string>& debugName);
 
-        std::shared_ptr<IUpscaler> CreateNISUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                                                     std::shared_ptr<IDevice> graphicsDevice,
-                                                     uint32_t outputWidth,
-                                                     uint32_t outputHeight);
+        std::shared_ptr<IImageProcessor>
+        CreateNISUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                          std::shared_ptr<IDevice> graphicsDevice,
+                          uint32_t outputWidth,
+                          uint32_t outputHeight);
 
-        std::shared_ptr<IUpscaler> CreateFSRUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                                                     std::shared_ptr<IDevice> graphicsDevice,
-                                                     uint32_t outputWidth,
-                                                     uint32_t outputHeight);
-
-        bool IsDeviceSupportingFP16(std::shared_ptr<IDevice> device);
-
-        GpuArchitecture GetGpuArchitecture(UINT VendorId);
-        GpuArchitecture GetGpuArchitecture(std::shared_ptr<IDevice> device);
+        std::shared_ptr<IImageProcessor>
+        CreateFSRUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                          std::shared_ptr<IDevice> graphicsDevice,
+                          uint32_t outputWidth,
+                          uint32_t outputHeight);
 
         std::shared_ptr<IImageProcessor>
         CreateImageProcessor(std::shared_ptr<toolkit::config::IConfigManager> configManager,
@@ -103,6 +100,11 @@ namespace toolkit {
                                  std::shared_ptr<IDevice> graphicsDevice,
                                  uint32_t targetWidth,
                                  uint32_t targetHeight);
+
+        bool IsDeviceSupportingFP16(std::shared_ptr<IDevice> device);
+
+        GpuArchitecture GetGpuArchitecture(UINT VendorId);
+        GpuArchitecture GetGpuArchitecture(std::shared_ptr<IDevice> device);
 
     } // namespace graphics
 
