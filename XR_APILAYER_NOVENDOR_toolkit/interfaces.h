@@ -90,7 +90,8 @@ namespace toolkit {
         const std::string SettingMipMapBias = "mipmap_bias";
         const std::string SettingBrightness = "brightness";
         const std::string SettingContrast = "contrast";
-        const std::string SettingSaturationPerChannel = "saturation_mode";
+        const std::string SettingSaturationMode = "saturation_mode";
+        const std::string SettingSaturation = "saturation";
         const std::string SettingSaturationRed = "saturation_red";
         const std::string SettingSaturationGreen = "saturation_green";
         const std::string SettingSaturationBlue = "saturation_blue";

@@ -60,26 +60,29 @@ namespace {
         }
 
         void update() override {
+            const bool hasSaturationModeChanged = m_configManager->hasChanged(SettingSaturationMode);
+            const bool saturationPerChannel = m_configManager->getValue(SettingSaturationMode);
+
             if (m_configManager->hasChanged(SettingBrightness) || m_configManager->hasChanged(SettingContrast) ||
-                m_configManager->hasChanged(SettingSaturationPerChannel) ||
-                m_configManager->hasChanged(SettingSaturationRed) ||
-                m_configManager->hasChanged(SettingSaturationGreen) ||
-                m_configManager->hasChanged(SettingSaturationBlue)) {
+                hasSaturationModeChanged || (!saturationPerChannel && m_configManager->hasChanged(SettingSaturation)) ||
+                (saturationPerChannel && (m_configManager->hasChanged(SettingSaturationRed) ||
+                                          m_configManager->hasChanged(SettingSaturationGreen) ||
+                                          m_configManager->hasChanged(SettingSaturationBlue)))) {
+                const int saturationGlobal = m_configManager->getValue(SettingSaturation);
+                const int saturationRedValue =
+                    saturationPerChannel ? m_configManager->getValue(SettingSaturationRed) : saturationGlobal;
+                const int saturationGreenValue =
+                    saturationPerChannel ? m_configManager->getValue(SettingSaturationGreen) : saturationGlobal;
+                const int saturationBlueValue =
+                    saturationPerChannel ? m_configManager->getValue(SettingSaturationBlue) : saturationGlobal;
+
                 // 0 -> -1, 500 -> 0, 1000 -> 1
                 const float brightness = 1.f + 2.f * (m_configManager->getValue(SettingBrightness) - 500) / 1000.f;
+                const float saturationRed = 1.f + 2.f * (saturationRedValue - 500) / 1000.f;
+                const float saturationGreen = 1.f + 2.f * (saturationGreenValue - 500) / 1000.f;
+                const float saturationBlue = 1.f + 2.f * (saturationBlueValue - 500) / 1000.f;
+                // Contrast is also inverted.
                 const float contrast = 2.f * -(m_configManager->getValue(SettingContrast) - 500) / 1000.f;
-
-                const auto saturationValue = m_configManager->getValue(SettingSaturationRed);
-                const float saturationRed = 1.f + 2.f * (saturationValue - 500) / 1000.f;
-                // Lock the channel values if needed.
-                if (!m_configManager->peekValue(SettingSaturationPerChannel)) {
-                    m_configManager->setValue(SettingSaturationGreen, saturationValue);
-                    m_configManager->setValue(SettingSaturationBlue, saturationValue);
-                }
-                const float saturationGreen =
-                    1.f + 2.f * (m_configManager->getValue(SettingSaturationGreen) - 500) / 1000.f;
-                const float saturationBlue =
-                    1.f + 2.f * (m_configManager->getValue(SettingSaturationBlue) - 500) / 1000.f;
 
                 // http://www.graficaobscura.com/matrix/
                 DirectX::XMMATRIX brightnessMatrix;

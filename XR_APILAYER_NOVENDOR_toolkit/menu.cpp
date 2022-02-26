@@ -1010,23 +1010,23 @@ namespace {
             m_menuEntries.back().acceleration = 5;
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                     "Saturation mode",
+                                     "Saturation",
                                      MenuEntryType::Choice,
-                                     SettingSaturationPerChannel,
+                                     SettingSaturationMode,
                                      0,
                                      1,
                                      [&](int value) {
-                                         const std::string_view labels[] = {"All", "Per-channel"};
+                                         const std::string_view labels[] = {"Global", "Selective"};
                                          return std::string(labels[value]);
                                      }});
 
             MenuGroup saturationAllGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
-                return !m_configManager->peekValue(SettingSaturationPerChannel);
+                return !m_configManager->peekValue(SettingSaturationMode);
             } /* visible condition */);
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Saturation",
+                                     "Adjustment",
                                      MenuEntryType::Slider,
-                                     SettingSaturationRed,
+                                     SettingSaturation,
                                      0,
                                      1000,
                                      [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
@@ -1034,10 +1034,10 @@ namespace {
             saturationAllGroup.finalize();
 
             MenuGroup saturationChannelsGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
-                return m_configManager->peekValue(SettingSaturationPerChannel);
+                return m_configManager->peekValue(SettingSaturationMode);
             } /* visible condition */);
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Saturation (red)",
+                                     "Red",
                                      MenuEntryType::Slider,
                                      SettingSaturationRed,
                                      0,
@@ -1045,7 +1045,7 @@ namespace {
                                      [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
             m_menuEntries.back().acceleration = 5;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Saturation (green)",
+                                     "Green",
                                      MenuEntryType::Slider,
                                      SettingSaturationGreen,
                                      0,
@@ -1053,7 +1053,7 @@ namespace {
                                      [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
             m_menuEntries.back().acceleration = 5;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Saturation (blue)",
+                                     "Blue",
                                      MenuEntryType::Slider,
                                      SettingSaturationBlue,
                                      0,
@@ -1086,7 +1086,7 @@ namespace {
 
             if (isPredictionDampeningSupported) {
                 m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                         "Shaking attenuation",
+                                         "Shaking reduction",
                                          MenuEntryType::Slider,
                                          SettingPredictionDampen,
                                          0,
