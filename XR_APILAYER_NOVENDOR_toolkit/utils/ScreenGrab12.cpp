@@ -1146,6 +1146,8 @@ HRESULT DirectX::SaveWICTextureToFile(
     if (dstRowPitch > UINT32_MAX)
         return HRESULT_E_ARITHMETIC_OVERFLOW;
 
+    const_cast<D3D12_RESOURCE_DESC&>(desc).Format = EnsureNotTypeless(desc.Format); // HACK
+
     ComPtr<ID3D12Resource> pStaging;
     HRESULT hr = CaptureTexture(device.Get(), pCommandQ, pSource, dstRowPitch, desc, pStaging, beforeState, afterState);
     if (FAILED(hr))

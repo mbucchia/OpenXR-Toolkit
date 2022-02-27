@@ -29,6 +29,9 @@
 #include "interfaces.h"
 #include "log.h"
 
+#include "utils\ScreenGrab12.h"
+#include <wincodec.h>
+
 namespace {
 
     using namespace toolkit;
@@ -455,8 +458,21 @@ namespace {
         }
 
         void saveToFile(const std::filesystem::path& path) const override {
-            // TODO: Implement this.
-            Log("Screenshot not supported in DX12: %S\n", path.c_str());
+            const auto& fileFormat = path.extension() == ".png"   ? GUID_ContainerFormatPng
+                                     : path.extension() == ".bmp" ? GUID_ContainerFormatBmp
+                                     : path.extension() == ".jpg" ? GUID_ContainerFormatJpeg
+                                                                  : GUID_ContainerFormatDds;
+
+            ComPtr<ID3D12CommandQueue> commandQueue;
+            UINT size = sizeof(ID3D12CommandQueue*);
+            m_device->getNative<D3D12>()->GetPrivateData(IID_ID3D12CommandQueue, &size, set(commandQueue));
+            
+            const HRESULT hr = DirectX::SaveWICTextureToFile(get(commandQueue), get(m_texture), fileFormat, path.c_str());
+            if (SUCCEEDED(hr)) {
+                Log("Screenshot saved to %S\n", path.c_str());
+            } else {
+                Log("Failed to take screenshot: 0x%x\n", hr);
+            }
         }
 
         void* getNativePtr() const override {
@@ -803,6 +819,9 @@ namespace {
                     std::shared_ptr<config::IConfigManager> configManager)
             : m_device(device), m_queue(queue), m_gpuArchitecture(GpuArchitecture::Unknown) {
             {
+                // store a reference to the command queue for easier retrieval
+                m_device->SetPrivateDataInterface(IID_ID3D12CommandQueue, get(m_queue));
+
                 ComPtr<IDXGIFactory1> dxgiFactory;
                 CHECK_HRCMD(CreateDXGIFactory1(IID_PPV_ARGS(set(dxgiFactory))));
                 const LUID adapterLuid = m_device->GetAdapterLuid();
@@ -964,6 +983,8 @@ namespace {
             for (uint32_t i = 0; i < ARRAYSIZE(m_meshModelBuffer); i++) {
                 m_meshModelBuffer[i].reset();
             }
+
+            m_device->SetPrivateDataInterface(IID_ID3D12CommandQueue, nullptr);
         }
 
         Api getApi() const override {
