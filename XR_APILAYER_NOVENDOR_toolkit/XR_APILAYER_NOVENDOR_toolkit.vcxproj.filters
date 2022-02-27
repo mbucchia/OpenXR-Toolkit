@@ -30,6 +30,9 @@
     <Filter Include="Shader Files\FSR">
       <UniqueIdentifier>{207574d0-b8f5-4ade-b7eb-66a5aa987e51}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{5d576e4a-db5d-4e19-ae3a-10ed2642dcda}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -76,6 +79,12 @@
     </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\ScreenGrab11.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\ScreenGrab12.h">
+      <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -129,6 +138,12 @@
     </ClCompile>
     <ClCompile Include="frameanalyzer.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\ScreenGrab11.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\ScreenGrab12.cpp">
+      <Filter>Utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
