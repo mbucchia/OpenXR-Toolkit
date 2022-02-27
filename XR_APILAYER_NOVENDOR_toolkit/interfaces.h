@@ -59,6 +59,7 @@ namespace toolkit {
     namespace config {
 
         const std::string SettingScreenshotEnabled = "enable_screenshot";
+        const std::string SettingScreenshotFileFormat = "screenshot_fileformat";
         const std::string SettingMenuEyeOffset = "menu_eye_offset";
         const std::string SettingOverlayType = "overlay";
         const std::string SettingMenuFontSize = "font_size";
@@ -107,6 +108,7 @@ namespace toolkit {
         enum class VariableShadingRateQuality { Performance = 0, Quality, MaxValue };
         enum class VariableShadingRatePattern { Wide = 0, Balanced, Narrow, MaxValue };
         enum class MipMapBias { Off = 0, Anisotropic, All, MaxValue };
+        enum class ScreenshotFileFormat { DDS = 0, PNG, JPG, BMP };
 
         struct IConfigManager {
             virtual ~IConfigManager() = default;

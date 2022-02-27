@@ -211,6 +211,7 @@ namespace {
                 m_configManager->setDefault(config::SettingSaturationRed, 500);
                 m_configManager->setDefault(config::SettingSaturationGreen, 500);
                 m_configManager->setDefault(config::SettingSaturationBlue, 500);
+                m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
 
                 // Workaround: the first versions of the toolkit used a different representation for the world scale.
                 // Migrate the value upon first run.
@@ -1220,12 +1221,17 @@ namespace {
                            << m_configManager->getValue(config::SettingSharpness);
             }
 
+            const auto fileFormat =
+                m_configManager->getEnumValue<config::ScreenshotFileFormat>(config::SettingScreenshotFileFormat);
+
+            const auto fileExtension = fileFormat == config::ScreenshotFileFormat::DDS   ? ".dds"
+                                       : fileFormat == config::ScreenshotFileFormat::JPG ? ".jpg"
+                                       : fileFormat == config::ScreenshotFileFormat::BMP ? ".bmp"
+                                                                                         : ".png";
             // Using std::filesystem automatically filters out unwanted app name chars.
             auto path = localAppData / "screenshots" / (m_applicationName + parameters.str());
+            path.replace_extension(fileExtension);
 
-            // Save the screenshot in the PNG format, also supports: ".png", ".bmp", ".jpg" ".dds"
-            // TODO: add a user screenshot format preference setting.
-            path.replace_extension(".png");
             texture->saveToFile(path);
         }
 
