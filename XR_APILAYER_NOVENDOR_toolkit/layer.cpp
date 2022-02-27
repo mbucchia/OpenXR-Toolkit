@@ -1208,23 +1208,29 @@ namespace {
         }
 
         void takeScreenshot(std::shared_ptr<graphics::ITexture> texture) const {
+            SYSTEMTIME st;
+            ::GetLocalTime(&st);
+
             std::stringstream parameters;
+            parameters << '_' << ((st.wYear * 10000u) + (st.wMonth * 100u) + (st.wDay)) << '_'
+                       << ((st.wHour * 10000u) + (st.wMinute * 100u) + (st.wSecond));
+
             if (m_upscaleMode != config::ScalingType::None) {
                 // TODO: add a getUpscaleModeName() helper to keep enum and string in sync.
-                const auto upscaleName = m_upscaleMode == config::ScalingType::NIS   ? "NIS_"
-                                         : m_upscaleMode == config::ScalingType::FSR ? "FSR_"
-                                                                                     : "SCL_";
-
+                const auto upscaleName = m_upscaleMode == config::ScalingType::NIS   ? "_NIS_"
+                                         : m_upscaleMode == config::ScalingType::FSR ? "_FSR_"
+                                                                                     : "_SCL_";
                 parameters << upscaleName << m_upscalingFactor << "_"
                            << m_configManager->getValue(config::SettingSharpness);
             }
-            const std::time_t now = std::time(nullptr);
-            char datetime[1024];
-            std::strftime(datetime, sizeof(datetime), "%Y%m%d_%H%M%S_", std::localtime(&now));
-            const std::string screenshotFilename = m_applicationName + "_" + datetime + parameters.str() + ".dds";
-            std::string screenshotPath = (localAppData / "screenshots" / screenshotFilename).string();
 
-            texture->saveToFile(screenshotPath);
+            // Using std::filesystem automatically filters out unwanted app name chars.
+            auto path = localAppData / "screenshots" / (m_applicationName + parameters.str());
+
+            // Save the screenshot in the PNG format, also supports: ".png", ".bmp", ".jpg" ".dds"
+            // TODO: add a user screenshot format preference setting.
+            path.replace_extension(".png");
+            texture->saveToFile(path);
         }
 
         XrResult xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo) override {

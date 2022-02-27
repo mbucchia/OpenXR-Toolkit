@@ -29,6 +29,9 @@
 #include "interfaces.h"
 #include "log.h"
 
+#include "utils\ScreenGrab11.h"
+#include <wincodec.h>
+
 namespace {
 
     using namespace toolkit;
@@ -494,13 +497,17 @@ namespace {
                 0);
         }
 
-        void saveToFile(const std::string& path) const override {
+        void saveToFile(const std::filesystem::path& path) const override {
+            const auto& fileFormat = path.extension() == ".png"   ? GUID_ContainerFormatPng
+                                     : path.extension() == ".bmp" ? GUID_ContainerFormatBmp
+                                     : path.extension() == ".jpg" ? GUID_ContainerFormatJpeg
+                                                                  : GUID_ContainerFormatDds;
             const HRESULT hr =
-                D3DX11SaveTextureToFileA(m_device->getContext<D3D11>(), get(m_texture), D3DX11_IFF_DDS, path.c_str());
+                DirectX::SaveWICTextureToFile(m_device->getContext<D3D11>(), get(m_texture), fileFormat, path.c_str());
             if (SUCCEEDED(hr)) {
-                Log("Screenshot saved to %s\n", path.c_str());
+                Log("Screenshot saved to %S\n", path.c_str());
             } else {
-                Log("Failed to take screenshot: %d\n", hr);
+                Log("Failed to take screenshot: 0x%x\n", hr);
             }
         }
 
@@ -1896,7 +1903,7 @@ namespace {
                     if (needBiasing) {
                         // Bias the LOD.
                         desc.MipLODBias += m_mipMapBias;
-                        
+
                         // Allow negative LOD.
                         desc.MinLOD -= std::ceilf(m_mipMapBias);
 

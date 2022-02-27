@@ -454,8 +454,9 @@ namespace {
             }
         }
 
-        void saveToFile(const std::string& path) const override {
+        void saveToFile(const std::filesystem::path& path) const override {
             // TODO: Implement this.
+            Log("Screenshot not supported in DX12: %S\n", path.c_str());
         }
 
         void* getNativePtr() const override {
