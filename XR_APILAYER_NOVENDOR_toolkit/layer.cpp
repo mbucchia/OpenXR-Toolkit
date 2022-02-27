@@ -251,10 +251,11 @@ namespace {
                         config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
                 } break;
 
+                case config::ScalingType::None:
+                    break;
+
                 default:
                     Log("Unknown upscaling type, falling back to no upscaling\n");
-                    [[fallthrough]];
-                case config::ScalingType::None:
                     break;
                 }
 
@@ -322,11 +323,12 @@ namespace {
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
                         break;
 
+                    case config::ScalingType::None:
+                        break;
+
                     default:
                         Log("Unknown upscaling type, falling back to no upscaling\n");
                         m_upscaleMode = config::ScalingType::None;
-                        [[fallthrough]];
-                    case config::ScalingType::None:
                         break;
                     }
 
@@ -1620,7 +1622,6 @@ namespace {
         config::ScalingType m_upscaleMode{config::ScalingType::None};
         uint32_t m_upscalingFactor{100};
         float m_mipMapBiasForUpscaling{0.f};
-
 
         std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;
         std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;
