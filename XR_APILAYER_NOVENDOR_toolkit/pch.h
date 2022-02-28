@@ -84,7 +84,6 @@ T* detach(ComPtr<T>& object) {
 
 // Direct3D.
 #include <d3d11_1.h>
-#include <D3DX11tex.h>
 #include <d3d12.h>
 #include <d3dx12.h>
 #include <d3d11on12.h>
