@@ -73,6 +73,8 @@ namespace companion
                 safemodeCheckbox.Checked = (int)key.GetValue("safe_mode", 0) == 1 ? true : false;
                 experimentalCheckbox.Checked = (int)key.GetValue("enable_experimental", 0) == 1 ? true : false;
                 screenshotCheckbox.Checked = (int)key.GetValue("enable_screenshot", 0) == 1 ? true : false;
+                screenshotFormat.SelectedIndex = (int)key.GetValue("screenshot_fileformat", 1);
+                screenshotFormat.Enabled = screenshotCheckbox.Enabled && screenshotCheckbox.Checked;
                 menuVisibility.SelectedIndex = (int)key.GetValue("menu_eye", 0);
                 ctrlModifierCheckbox.Checked = (int)key.GetValue("ctrl_modifier", 1) == 1 ? true : false;
                 altModifierCheckbox.Checked = (int)key.GetValue("alt_modifier", 0) == 1 ? true : false;
@@ -264,8 +266,10 @@ namespace companion
                         disableCheckbox.Checked = false;
                         loading = wasLoading;
                     }
-                    safemodeCheckbox.Enabled = experimentalCheckbox.Enabled = screenshotCheckbox.Enabled = leftKey.Enabled = nextKey.Enabled = previousKey.Enabled = rightKey.Enabled =
-                        screenshotKey.Enabled = ctrlModifierCheckbox.Enabled = altModifierCheckbox.Enabled = !disableCheckbox.Checked;
+                    safemodeCheckbox.Enabled = experimentalCheckbox.Enabled = screenshotCheckbox.Enabled = screenshotFormat.Enabled = 
+                        menuVisibility.Enabled = leftKey.Enabled = nextKey.Enabled = previousKey.Enabled = rightKey.Enabled = screenshotKey.Enabled =
+                        ctrlModifierCheckbox.Enabled = altModifierCheckbox.Enabled = !disableCheckbox.Checked;
+                    screenshotFormat.Enabled = screenshotCheckbox.Enabled && screenshotCheckbox.Checked;
                 }
                 else
                 {
@@ -392,6 +396,7 @@ namespace companion
                 return;
             }
             WriteSetting("enable_screenshot", screenshotCheckbox.Checked ? 1 : 0);
+            screenshotFormat.Enabled = screenshotCheckbox.Checked;
         }
 
         private void menuVisibility_SelectedIndexChanged(object sender, EventArgs e)
@@ -538,6 +543,15 @@ namespace companion
             catch (Win32Exception)
             {
             }
+        }
+
+        private void screenshotFormat_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (loading)
+            {
+                return;
+            }
+            WriteSetting("screenshot_fileformat", screenshotFormat.SelectedIndex);
         }
     }
 }
