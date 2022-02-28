@@ -63,6 +63,7 @@ namespace companion
             this.menuVisibility = new System.Windows.Forms.ComboBox();
             this.label12 = new System.Windows.Forms.Label();
             this.licences = new System.Windows.Forms.LinkLabel();
+            this.screenshotFormat = new System.Windows.Forms.ComboBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -83,7 +84,7 @@ namespace companion
             this.reportIssuesLink.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.reportIssuesLink.Name = "reportIssuesLink";
             this.reportIssuesLink.Size = new System.Drawing.Size(71, 13);
-            this.reportIssuesLink.TabIndex = 27;
+            this.reportIssuesLink.TabIndex = 28;
             this.reportIssuesLink.TabStop = true;
             this.reportIssuesLink.Text = "Report issues";
             this.reportIssuesLink.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.reportIssuesLink_LinkClicked);
@@ -106,7 +107,7 @@ namespace companion
             this.checkUpdatesLink.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.checkUpdatesLink.Name = "checkUpdatesLink";
             this.checkUpdatesLink.Size = new System.Drawing.Size(131, 13);
-            this.checkUpdatesLink.TabIndex = 28;
+            this.checkUpdatesLink.TabIndex = 30;
             this.checkUpdatesLink.TabStop = true;
             this.checkUpdatesLink.Text = "Check for a newer version";
             this.checkUpdatesLink.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.checkUpdatesLink_LinkClicked);
@@ -184,7 +185,7 @@ namespace companion
             this.label4.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(360, 13);
-            this.label4.TabIndex = 8;
+            this.label4.TabIndex = 9;
             this.label4.Text = "Screenshots are stored in %LocalAppData%\\OpenXR-Toolkit\\screenshots.";
             // 
             // openLog
@@ -193,7 +194,7 @@ namespace companion
             this.openLog.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.openLog.Name = "openLog";
             this.openLog.Size = new System.Drawing.Size(150, 31);
-            this.openLog.TabIndex = 25;
+            this.openLog.TabIndex = 26;
             this.openLog.Text = "Open log file";
             this.openLog.UseVisualStyleBackColor = true;
             this.openLog.Click += new System.EventHandler(this.openLog_Click);
@@ -204,7 +205,7 @@ namespace companion
             this.openScreenshots.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.openScreenshots.Name = "openScreenshots";
             this.openScreenshots.Size = new System.Drawing.Size(150, 31);
-            this.openScreenshots.TabIndex = 26;
+            this.openScreenshots.TabIndex = 27;
             this.openScreenshots.Text = "Open screenshots folder";
             this.openScreenshots.UseVisualStyleBackColor = true;
             this.openScreenshots.Click += new System.EventHandler(this.openScreenshots_Click);
@@ -216,7 +217,7 @@ namespace companion
             this.leftKey.Location = new System.Drawing.Point(154, 451);
             this.leftKey.Name = "leftKey";
             this.leftKey.Size = new System.Drawing.Size(75, 21);
-            this.leftKey.TabIndex = 13;
+            this.leftKey.TabIndex = 14;
             this.leftKey.SelectedIndexChanged += new System.EventHandler(this.leftKey_SelectedIndexChanged);
             // 
             // nextKey
@@ -226,7 +227,7 @@ namespace companion
             this.nextKey.Location = new System.Drawing.Point(234, 451);
             this.nextKey.Name = "nextKey";
             this.nextKey.Size = new System.Drawing.Size(75, 21);
-            this.nextKey.TabIndex = 17;
+            this.nextKey.TabIndex = 18;
             this.nextKey.SelectedIndexChanged += new System.EventHandler(this.nextKey_SelectedIndexChanged);
             // 
             // rightKey
@@ -236,7 +237,7 @@ namespace companion
             this.rightKey.Location = new System.Drawing.Point(314, 451);
             this.rightKey.Name = "rightKey";
             this.rightKey.Size = new System.Drawing.Size(75, 21);
-            this.rightKey.TabIndex = 19;
+            this.rightKey.TabIndex = 20;
             this.rightKey.SelectedIndexChanged += new System.EventHandler(this.rightKey_SelectedIndexChanged);
             // 
             // label5
@@ -245,7 +246,7 @@ namespace companion
             this.label5.Location = new System.Drawing.Point(22, 454);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(125, 13);
-            this.label5.TabIndex = 11;
+            this.label5.TabIndex = 12;
             this.label5.Text = "On-screen menu hotkeys";
             // 
             // label6
@@ -254,7 +255,7 @@ namespace companion
             this.label6.Location = new System.Drawing.Point(93, 518);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(49, 13);
-            this.label6.TabIndex = 22;
+            this.label6.TabIndex = 23;
             this.label6.Text = "Modifiers";
             // 
             // ctrlModifierCheckbox
@@ -263,7 +264,7 @@ namespace companion
             this.ctrlModifierCheckbox.Location = new System.Drawing.Point(156, 518);
             this.ctrlModifierCheckbox.Name = "ctrlModifierCheckbox";
             this.ctrlModifierCheckbox.Size = new System.Drawing.Size(41, 17);
-            this.ctrlModifierCheckbox.TabIndex = 23;
+            this.ctrlModifierCheckbox.TabIndex = 24;
             this.ctrlModifierCheckbox.Text = "Ctrl";
             this.ctrlModifierCheckbox.UseVisualStyleBackColor = true;
             this.ctrlModifierCheckbox.CheckedChanged += new System.EventHandler(this.ctrlModifierCheckbox_CheckedChanged);
@@ -274,7 +275,7 @@ namespace companion
             this.altModifierCheckbox.Location = new System.Drawing.Point(207, 518);
             this.altModifierCheckbox.Name = "altModifierCheckbox";
             this.altModifierCheckbox.Size = new System.Drawing.Size(38, 17);
-            this.altModifierCheckbox.TabIndex = 24;
+            this.altModifierCheckbox.TabIndex = 25;
             this.altModifierCheckbox.Text = "Alt";
             this.altModifierCheckbox.UseVisualStyleBackColor = true;
             this.altModifierCheckbox.CheckedChanged += new System.EventHandler(this.altModifierCheckbox_CheckedChanged);
@@ -285,7 +286,7 @@ namespace companion
             this.label7.Location = new System.Drawing.Point(179, 435);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(21, 13);
-            this.label7.TabIndex = 12;
+            this.label7.TabIndex = 13;
             this.label7.Text = "left";
             // 
             // label8
@@ -294,7 +295,7 @@ namespace companion
             this.label8.Location = new System.Drawing.Point(254, 435);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(33, 13);
-            this.label8.TabIndex = 16;
+            this.label8.TabIndex = 17;
             this.label8.Text = "down";
             // 
             // label9
@@ -303,7 +304,7 @@ namespace companion
             this.label9.Location = new System.Drawing.Point(339, 435);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(27, 13);
-            this.label9.TabIndex = 18;
+            this.label9.TabIndex = 19;
             this.label9.Text = "right";
             // 
             // pictureBox1
@@ -312,7 +313,7 @@ namespace companion
             this.pictureBox1.Location = new System.Drawing.Point(0, 0);
             this.pictureBox1.Name = "pictureBox1";
             this.pictureBox1.Size = new System.Drawing.Size(413, 85);
-            this.pictureBox1.TabIndex = 35;
+            this.pictureBox1.TabIndex = 36;
             this.pictureBox1.TabStop = false;
             this.pictureBox1.Click += new System.EventHandler(this.pictureBox1_Click);
             // 
@@ -322,7 +323,7 @@ namespace companion
             this.label10.Location = new System.Drawing.Point(60, 481);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(87, 13);
-            this.label10.TabIndex = 20;
+            this.label10.TabIndex = 21;
             this.label10.Text = "Take screenshot";
             // 
             // screenshotKey
@@ -332,7 +333,7 @@ namespace companion
             this.screenshotKey.Location = new System.Drawing.Point(154, 478);
             this.screenshotKey.Name = "screenshotKey";
             this.screenshotKey.Size = new System.Drawing.Size(75, 21);
-            this.screenshotKey.TabIndex = 21;
+            this.screenshotKey.TabIndex = 22;
             this.screenshotKey.SelectedIndexChanged += new System.EventHandler(this.screenshotKey_SelectedIndexChanged);
             // 
             // label11
@@ -341,7 +342,7 @@ namespace companion
             this.label11.Location = new System.Drawing.Point(259, 397);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(19, 13);
-            this.label11.TabIndex = 14;
+            this.label11.TabIndex = 15;
             this.label11.Text = "up";
             // 
             // previousKey
@@ -351,7 +352,7 @@ namespace companion
             this.previousKey.Location = new System.Drawing.Point(234, 413);
             this.previousKey.Name = "previousKey";
             this.previousKey.Size = new System.Drawing.Size(75, 21);
-            this.previousKey.TabIndex = 15;
+            this.previousKey.TabIndex = 16;
             this.previousKey.SelectedIndexChanged += new System.EventHandler(this.previousKey_SelectedIndexChanged);
             // 
             // menuVisibility
@@ -366,7 +367,7 @@ namespace companion
             this.menuVisibility.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.menuVisibility.Name = "menuVisibility";
             this.menuVisibility.Size = new System.Drawing.Size(119, 21);
-            this.menuVisibility.TabIndex = 10;
+            this.menuVisibility.TabIndex = 11;
             this.menuVisibility.SelectedIndexChanged += new System.EventHandler(this.menuVisibility_SelectedIndexChanged);
             // 
             // label12
@@ -376,7 +377,7 @@ namespace companion
             this.label12.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(124, 13);
-            this.label12.TabIndex = 9;
+            this.label12.TabIndex = 10;
             this.label12.Text = "In-headset menu visibility";
             // 
             // licences
@@ -386,16 +387,32 @@ namespace companion
             this.licences.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.licences.Name = "licences";
             this.licences.Size = new System.Drawing.Size(94, 13);
-            this.licences.TabIndex = 36;
+            this.licences.TabIndex = 29;
             this.licences.TabStop = true;
             this.licences.Text = "3rd Party Licenses";
             this.licences.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.licences_LinkClicked);
+            // 
+            // screenshotFormat
+            // 
+            this.screenshotFormat.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.screenshotFormat.FormattingEnabled = true;
+            this.screenshotFormat.Items.AddRange(new object[] {
+            "DDS",
+            "PNG",
+            "JPG",
+            "BMP"});
+            this.screenshotFormat.Location = new System.Drawing.Point(143, 299);
+            this.screenshotFormat.Name = "screenshotFormat";
+            this.screenshotFormat.Size = new System.Drawing.Size(75, 21);
+            this.screenshotFormat.TabIndex = 8;
+            this.screenshotFormat.SelectedIndexChanged += new System.EventHandler(this.screenshotFormat_SelectedIndexChanged);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(411, 650);
+            this.Controls.Add(this.screenshotFormat);
             this.Controls.Add(this.licences);
             this.Controls.Add(this.label12);
             this.Controls.Add(this.menuVisibility);
@@ -471,6 +488,7 @@ namespace companion
         private System.Windows.Forms.ComboBox menuVisibility;
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.LinkLabel licences;
+        private System.Windows.Forms.ComboBox screenshotFormat;
     }
 }
 
