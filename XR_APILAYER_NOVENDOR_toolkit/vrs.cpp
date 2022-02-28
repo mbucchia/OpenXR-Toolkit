@@ -362,8 +362,8 @@ namespace {
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context->getNative<D3D11>(), get(mask)));
 
 #ifdef _DEBUG
-                doD3D11Capture(context /* post */);
-                doD3D11Capture(context, renderTarget, eyeHint);
+                doCapture(context /* post */);
+                doCapture(context, renderTarget, eyeHint);
 #endif
             } else if (m_device->getApi() == Api::D3D12) {
                 ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
@@ -405,7 +405,7 @@ namespace {
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(nativeContext, nullptr));
 
 #ifdef _DEBUG
-                doD3D11Capture(context /* post */);
+                doCapture(context /* post */);
 #endif
             } else if (m_device->getApi() == Api::D3D12) {
                 auto nativeContext = context ? context->getNative<D3D12>() : m_device->getContext<D3D12>();
@@ -453,53 +453,30 @@ namespace {
             }
         }
 
-        void doD3D11Capture(std::shared_ptr<graphics::IContext> context,
-                            std::shared_ptr<ITexture> renderTarget = nullptr,
-                            std::optional<Eye> eyeHint = std::nullopt) {
+        void doCapture(std::shared_ptr<graphics::IContext> context,
+                       std::shared_ptr<ITexture> renderTarget = nullptr,
+                       std::optional<Eye> eyeHint = std::nullopt) {
             if (m_isCapturing) {
-                auto nativeContext = context ? context->getNative<D3D11>() : m_device->getContext<D3D11>();
-
                 if (renderTarget) {
                     const auto& info = renderTarget->getInfo();
 
                     // At the beginning of the frame, capture all the masks too.
                     if (!m_captureFileIndex) {
-                        D3DX11SaveTextureToFileA(
-                            nativeContext,
-                            m_shadingRateMask[0]->getNative<D3D11>(),
-                            D3DX11_IFF_DDS,
-                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_left.dds", m_captureID))
-                                .string()
-                                .c_str());
-                        D3DX11SaveTextureToFileA(
-                            nativeContext,
-                            m_shadingRateMask[1]->getNative<D3D11>(),
-                            D3DX11_IFF_DDS,
+                        m_shadingRateMask[0]->saveToFile(
+                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_left.dds", m_captureID)).string());
+                        m_shadingRateMask[1]->saveToFile(
                             (localAppData / "screenshots" / fmt::format("vrs_{}_mask_right.dds", m_captureID))
-                                .string()
-                                .c_str());
-                        D3DX11SaveTextureToFileA(
-                            nativeContext,
-                            m_shadingRateMaskGeneric->getNative<D3D11>(),
-                            D3DX11_IFF_DDS,
+                                .string());
+                        m_shadingRateMaskGeneric->saveToFile(
                             (localAppData / "screenshots" / fmt::format("vrs_{}_mask_generic.dds", m_captureID))
-                                .string()
-                                .c_str());
-                        D3DX11SaveTextureToFileA(
-                            nativeContext,
-                            m_shadingRateMaskVPRT->getNative<D3D11>(),
-                            D3DX11_IFF_DDS,
-                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_vprt.dds", m_captureID))
-                                .string()
-                                .c_str());
+                                .string());
+                        m_shadingRateMaskVPRT->saveToFile(
+                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_vprt.dds", m_captureID)).string());
                     }
 
                     DebugLog("VRS: Capturing file ID: %d\n", m_captureFileIndex);
 
-                    D3DX11SaveTextureToFileA(
-                        nativeContext,
-                        renderTarget->getNative<D3D11>(),
-                        D3DX11_IFF_DDS,
+                    renderTarget->saveToFile(
                         (localAppData / "screenshots" /
                          fmt::format("vrs_{}_{}_{}_pre.dds",
                                      m_captureID,
@@ -507,27 +484,23 @@ namespace {
                                      info.arraySize == 2   ? "dual"
                                      : eyeHint.has_value() ? eyeHint.value() == Eye::Left ? "left" : "right"
                                                            : "generic"))
-                            .string()
-                            .c_str());
+                            .string());
 
                     m_currentRenderTarget = renderTarget;
                     m_currentEyeHint = eyeHint;
                 } else if (m_currentRenderTarget) {
                     const auto& info = m_currentRenderTarget->getInfo();
 
-                    D3DX11SaveTextureToFileA(nativeContext,
-                                             m_currentRenderTarget->getNative<D3D11>(),
-                                             D3DX11_IFF_DDS,
-                                             (localAppData / "screenshots" /
-                                              fmt::format("vrs_{}_{}_{}_post.dds",
-                                                          m_captureID,
-                                                          m_captureFileIndex++,
-                                                          info.arraySize == 2 ? "dual"
-                                                          : m_currentEyeHint.has_value()
-                                                              ? m_currentEyeHint.value() == Eye::Left ? "left" : "right"
-                                                              : "generic"))
-                                                 .string()
-                                                 .c_str());
+                    m_currentRenderTarget->saveToFile(
+                        (localAppData / "screenshots" /
+                         fmt::format("vrs_{}_{}_{}_post.dds",
+                                     m_captureID,
+                                     m_captureFileIndex++,
+                                     info.arraySize == 2 ? "dual"
+                                     : m_currentEyeHint.has_value()
+                                         ? m_currentEyeHint.value() == Eye::Left ? "left" : "right"
+                                         : "generic"))
+                            .string());
 
                     m_currentRenderTarget = nullptr;
                 }
