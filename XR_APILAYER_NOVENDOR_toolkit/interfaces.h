@@ -640,6 +640,8 @@ namespace toolkit {
             float indexTipTapValue[2]{NAN, NAN};
             float custom1Value[2]{NAN, NAN};
 
+            int64_t handposeAgeUs[2]{0, 0};
+            size_t cacheSize[2]{0, 0};
             uint32_t numTrackingLosses[2]{0, 0};
         };
 
@@ -663,10 +665,12 @@ namespace toolkit {
                                       std::shared_ptr<toolkit::graphics::IDevice> graphicsDevice) = 0;
             virtual void endSession() = 0;
 
-            virtual void sync(XrTime frameTime, const XrActionsSyncInfo& syncInfo) = 0;
-            virtual bool locate(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation& location) const = 0;
+            virtual void sync(XrTime frameTime, XrTime now, const XrActionsSyncInfo& syncInfo) = 0;
+            virtual bool
+            locate(XrSpace space, XrSpace baseSpace, XrTime time, XrTime now, XrSpaceLocation& location) const = 0;
             virtual void render(const XrPosef& pose,
                                 XrSpace baseSpace,
+                                XrTime time,
                                 std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
 
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateBoolean& state) const = 0;

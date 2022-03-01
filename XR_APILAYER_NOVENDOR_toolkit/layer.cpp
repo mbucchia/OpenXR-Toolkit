@@ -998,7 +998,8 @@ namespace {
 
         XrResult xrLocateSpace(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation* location) override {
             m_performanceCounters.handTrackingTimer->start();
-            if (m_handTracker && location && m_handTracker->locate(space, baseSpace, time, *location)) {
+            if (m_handTracker && location->type == XR_TYPE_SPACE_LOCATION &&
+                m_handTracker->locate(space, baseSpace, time, getTimeNow(), *location)) {
                 m_performanceCounters.handTrackingTimer->stop();
                 m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
                 return XR_SUCCESS;
@@ -1012,7 +1013,7 @@ namespace {
             if (XR_SUCCEEDED(result) && m_handTracker && isVrSession(session)) {
                 m_performanceCounters.handTrackingTimer->start();
 
-                m_handTracker->sync(m_begunFrameTime, *syncInfo);
+                m_handTracker->sync(m_begunFrameTime, getTimeNow(), *syncInfo);
 
                 m_performanceCounters.handTrackingTimer->stop();
                 m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
@@ -1522,7 +1523,8 @@ namespace {
                         }
                         m_graphicsDevice->setViewProjection(viewsForOverlay[eye]);
 
-                        m_handTracker->render(viewsForOverlay[eye].pose, spaceForOverlay, textureForOverlay[eye]);
+                        m_handTracker->render(
+                            viewsForOverlay[eye].pose, spaceForOverlay, getTimeNow(), textureForOverlay[eye]);
                     }
                 }
 
@@ -1608,6 +1610,19 @@ namespace {
             std::string str;
             str.assign(buf, count - 1);
             return str;
+        }
+
+        // Find the current time. Fallback to the frame time if we cannot query the actual time.
+        XrTime getTimeNow() const {
+            XrTime xrTimeNow = m_begunFrameTime;
+            if (xrConvertWin32PerformanceCounterToTimeKHR) {
+                LARGE_INTEGER qpcTimeNow;
+                QueryPerformanceCounter(&qpcTimeNow);
+
+                CHECK_XRCMD(xrConvertWin32PerformanceCounterToTimeKHR(GetXrInstance(), &qpcTimeNow, &xrTimeNow));
+            }
+
+            return xrTimeNow;
         }
 
         std::string m_applicationName;
