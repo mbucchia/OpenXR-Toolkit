@@ -18,13 +18,13 @@ nav_order: 6
 - Add support for anamorphic upscaling (independent upscaling of horizontal and vertical resolution).
 - Add support for adjusting brightness, contrast and color saturation.
 - Add an option to lock the motion reprojection rate (Windows Mixed Reality only).
-- Add mip-map Level Of Detail (LOD) biasing when using upscaling (improve texture quality).
-- Move the Field Of View (FOV) override feature out of experimental mode.
-- Re-design the in-headset, on-screen menu.
-- Save screenshots to different file formats.
-- Display the effective Field Of View (FOV) value in the menu.
-- Add a configurable hotkey to move up in the menu.
 - Add an option to only display the menu in one eye.
+- Add an option to save screenshots to different file formats.
+- Add a configurable hotkey to move up in the menu.
+- Add mip-map Level Of Detail (LOD) biasing when using upscaling (changes texture details slightly).
+- Re-design the in-headset, on-screen menu.
+- Move the Field Of View (FOV) override feature out of experimental mode.
+- Display the effective Field Of View (FOV) value in the menu.
 - Upgrade to NIS 1.0.2.
 - Fix crash with Unity applications.
 - Fix issue with the sharpening settings not being applied correctly.
