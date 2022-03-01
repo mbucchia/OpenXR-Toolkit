@@ -24,17 +24,19 @@ Current version: **Beta #2 Hotfix #3 (0.9.7)**
 
 ## Requirements
 
-This software may be used with any brand of VR headset as long as the target application is developed using OpenXR. This software may be used with any GPU compatible with DirectX 11 and above.
+This software may be used with any brand of VR headset as long as the target application uses any GPU compatible with DirectX 11 and above, and is developed using OpenXR.
 
-Fixed foveated rendering is only supported with the following GPUs:
+The following OpenXR ToolKit features have additional restrictions:
 
-* NVIDIA GeForce GTX 1600 series and RTX series, both DX11 and DX12.
-* AMD RX 6000 series, with DX12 only.
++ Fixed foveated rendering is only supported with the following GPUs:
+  + NVIDIA GeForce GTX 1600 series and RTX series, both DX11 and DX12.
+  + AMD RX 6000 series, with DX12 only.
 
 ## Limitations
 
-+ This software was only extensively tested with Microsoft Flight Simulator 2020, it appears to work with War Thunder as well. Other applications are untested.
-  + Contrary to popular belief, this software will not work with OpenVR-based games, like the majority of games you can find on Steam.
++ This software was only extensively tested with Microsoft Flight Simulator 2020.
++ Other applications are untested but it appears to work with War Thunder as well.
++ It is also expected this software should work with most Steam games if they are using OpenXR (instead of Steam's OpenVR).
 + The menu does not display correctly on Pimax headsets;
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
@@ -46,48 +48,60 @@ Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskyto
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/QelydCFe0aQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-**Note: if you use the previous NIS Scaler or Hand-To-Controller layer before, please uninstall them now**.
+#### ⚠️ if you are using the previous NIS Scaler or Hand-To-Controller layer before, please uninstall them now.
 
-Run the `OpenXR-Toolkit.msi` program.
+### 1. Run the `OpenXR-Toolkit.msi` program.
 
 ![Installer file](site/installer-file.png)
 
-You may be warned that this software is not signed. We are working on signing the software through a reputable organization, but in the meantime, you must bypass this warning ("More info" then "Run anyway").
+NOTE: _You may be warned that Windows protected your PC because this software is not signed yet. We are working on signing the software through a reputable organization and in the the meantime you can proceed with the following steps_.
 
-![Warning not signed](site/unsigned1.png)
+<details><summary>Proceed through the "Windows protected your PC" warning...</summary>
 
-![Warning not signed](site/unsigned2.png)
+#### Select `More info` then `Run anyway`
 
-Follow the instructions to complete the installation procedure.
+![Warning not signed](site/unsigned1.png) ![Warning not signed](site/unsigned2.png)
+
+</details>
+
+### 2. Follow the instructions to complete the installation procedure.
 
 ![Setup wizard](site/installer.png)
 
-Once installed, you can use the _OpenXR Toolkit Companion app_ (found on the desktop or Start menu) to confirm that the software is active.
+### 3. Launch the _OpenXR Toolkit Companion app_ to confirm that the software is active.
+
+<details><summary>You can use the shorcut found on the desktop or in the Start menu...</summary>
 
 ![Companion app shortcut](site/companion-start.png)
+  
+</details>
 
-The _OpenXR Toolkit Companion app_ will display a green or red status indicating whether the software is activated.
+The _OpenXR Toolkit Companion app_ may be used sporadically to enable or disable advanced features or perform recovery (see further below). The application displays a green or red status indicating whether the software OpenXR component is active:
 
 ![Companion app](site/companion.png)
 
-The companion app may be used sporadically to enable or disable advanced features or perform recovery (see further below). The actual settings for the toolkit are available from within your OpenXR application (see below). You do not need to open the companion app to use the software and to manage the settings.
+💡 You don't need to keep the companion app running in order to use the software: the actual settings for the toolkit are available from within your OpenXR application and display directly in the headset! (see below). 
 
 # Basic usage
 
-Once installed, please run the desired OpenXR application and use the Ctrl+F2 key combination to enter the configuration menu. **Note: the key combination may be changed from the _OpenXR Toolkit Companion app_**.
-
-The first few times a new application is started, a reminder message will appear on the screen: it confirms that the software is operating properly.
-
-![On-screen indicator](site/osd-indicator.png)
-
-Use Ctrl+F2 to move to the next option (next line) in the menu. Use Ctrl+F1 (respectively Ctrl+F3) to move selection left (respectively right) or decrease (respectively increase) the value of an option. **Note: the key combinations may be changed from the _OpenXR Toolkit Companion app_**.
-
-When changing the value for an option, hold Shift in addition to the Ctrl key in order to advance faster in the values.
-
-**Important: when starting an application for the first time, use the configuration menu to adjust the _Menu eye offset_ until the text appears correctly (eg: no "double vision")**:
+Once installed, please run the desired OpenXR application and use the `Ctrl+F2` key combination to enter the configuration menu:
 
 ![On-screen menu](site/osd-menu.jpg)
 
+Use `Ctrl+F2` to move to the next option (next line) in the menu. Use `Ctrl+F1` (respectively `Ctrl+F3`) to move selection left (respectively right) or decrease (respectively increase) the value of an option. When changing the value for an option, hold `Shift` in addition to the `Ctrl` key in order to advance faster in the values.
+
+💡 The shortcut keys may be changed from the _OpenXR Toolkit Companion app_
+
+💡 When starting an application for the first time, use the configuration menu to adjust the _Menu eye offset_ until the text appears correctly (eg: no "double vision"):
+
+NOTE: the first few times you're using the OpenXR Toolkit with a new application, a convenient reminder message will appear in the headset and confirms whether the software is operating properly.
+
+<details><summary>On-screen indicator...</summary>
+
+![On-screen indicator](site/osd-indicator.png)
+
+</details>
+  
 ## Available options
 
 See [Features](features) for more details.
