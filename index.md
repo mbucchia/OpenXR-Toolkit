@@ -84,15 +84,20 @@ The _OpenXR Toolkit Companion app_ may be used sporadically to enable or disable
 
 # Basic usage
 
-Once installed, please run the desired OpenXR application and use the `Ctrl+F2` key combination to enter the configuration menu:
+Once installed, please run the desired OpenXR application and use `CTRL+F2` to open the configuration menu:
 
 ![On-screen menu](site/osd-menu.jpg)
 
-Use `Ctrl+F2` to move to the next option (next line) in the menu. Use `Ctrl+F1` (respectively `Ctrl+F3`) to move selection left (respectively right) or decrease (respectively increase) the value of an option. When changing the value for an option, hold `Shift` in addition to the `Ctrl` key in order to advance faster in the values.
+In order to navigate the menu, select options and change values:
 
-💡 The shortcut keys may be changed from the _OpenXR Toolkit Companion app_
+- Use `CTRL+F2` to move to the next option (next line) in the menu.
+- Use `CTRL+F1` to move selection to the left / decrease the option value.
+- Use `CTRL+F3` to move selection to the right / increase the option value.
+- Hold both `SHIFT` and `CTRL` together to change values fasters.
 
-💡 When starting an application for the first time, use the configuration menu to adjust the _Menu eye offset_ until the text appears correctly (eg: no "double vision"):
+💡 Use the _OpenXR Toolkit Companion app_ to change the default shortcut keys.
+
+💡 When starting an application for the first time, use the configuration menu to adjust the _Menu eye offset_ until the text appears correctly (eg: no "double vision").
 
 NOTE: the first few times you're using the OpenXR Toolkit with a new application, a convenient reminder message will appear in the headset and confirms whether the software is operating properly.
 
