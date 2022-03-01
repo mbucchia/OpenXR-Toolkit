@@ -25,8 +25,8 @@ The prediction dampening allows to reduce the jitter that can be observed when h
 
 ## Screen capture
 
-**Note**: Screenshots currently only work with DX11 applications.
+In order to activate this feature, you must check the _Enable screenshot_ box in the _OpenXR Toolkit Companion app_, and select the image format you'll save the screenshots with. The OpenXR ToolKit supports the following formats: [DDS](https://en.wikipedia.org/wiki/DirectDraw_Surface)*, [PNG](https://en.wikipedia.org/wiki/Portable_Network_Graphics), [JPG](https://en.wikipedia.org/wiki/JPEG) and [BMP](https://en.wikipedia.org/wiki/BMP_file_format).
 
-In order to activate this feature, you must check the _Enable screenshot_ box in the _OpenXR Toolkit Companion app_. You may then press Ctrl+F12 to take a screenshot of the left-eye view that is rendered in the headset. Screenshots are saved under `%LocalAppData%\OpenXR-Toolkit\screenshots`. This folder may be opened from the _OpenXR Toolkit Companion app_ by clicking the _Open screenshots folder_ button.
+You may then press Ctrl+F12 to take a screenshot of the left-eye view that is rendered in the headset. Screenshots are saved under `%LocalAppData%\OpenXR-Toolkit\screenshots`. This folder may be opened from the _OpenXR Toolkit Companion app_ by clicking the _Open screenshots folder_ button.
 
-The screenshots are saved in the DDS format, which is a lossless format native to DirectX. Some tools might have issues opening DDS files, the tool that was confirmed to properly open them with the OpenXR Toolkit is [GIMP](https://www.gimp.org/).
+**The DDS format is a lossless format native to DirectX but some tools might have issues opening DDS files. The tools that were confirmed to properly open them with the OpenXR Toolkit are [GIMP](https://www.gimp.org/) and [Paint.net](https://github.com/paintdotnet/release/releases)*
