@@ -21,7 +21,7 @@ nav_order: 5
 | Texture LOD biasing                  | [Stable](){: .btn .btn-green }          | Mar 2022        |
 | Field of view override               | [Experimental](){: .btn .btn-purple}    | Mar 2022        |
 | Hand tracking haptics cues           | [Implementation](){: .btn .btn-blue }   | Apr 2022?       |
-| Color correction/dithering           | [Implementation](){: .btn .btn-blue }   | Apr 2022?       |
+| Post-processing enhancements         | [Implementation](){: .btn .btn-blue }   | Apr 2022?       |
 | Improved desktop companion app       | [Implementation](){: .btn .btn-blue }   | Apr 2022?       |
 | Exposure control                     | [Investigation](){: .btn .btn-blue }    |                 |
 | Field of view override v2 / zoom     | [Investigation](){: .btn .btn-blue }    |                 |
