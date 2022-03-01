@@ -1560,6 +1560,8 @@ namespace {
                 m_configManager->getValue(config::SettingScreenshotEnabled);
 
             if (textureForOverlay[0] && requestScreenshot) {
+                // TODO: this is capturing frame N-3
+                // review the command queues/lists and context flush
                 takeScreenshot(textureForOverlay[0]);
 
 #ifdef _DEBUG
