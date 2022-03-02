@@ -251,8 +251,11 @@ namespace {
                         }
                     }
 
-                    const auto xOffset = m_configManager->getValue(SettingVRSXOffset);
-                    const auto yOffset = m_configManager->getValue(SettingVRSYOffset);
+                    const auto xOffset =
+                        static_cast<int>(m_configManager->getValue(SettingVRSXOffset) * (m_targetWidth / 200.f));
+                    const auto yOffset =
+                        static_cast<int>(m_configManager->getValue(SettingVRSYOffset) * (m_targetHeight / 200.f));
+
                     const float semiMajorFactor = m_configManager->getValue(SettingVRSXScale) / 100.f;
 
                     const int rowPitch = Align(m_targetWidth, m_tileSize) / m_tileSize;
@@ -523,8 +526,8 @@ namespace {
             const auto height = Align(m_targetHeight, m_tileSize) / m_tileSize;
 
             pattern.resize(rowPitch * height);
-            const int centerX = projCenterX / m_tileSize;
-            const int centerY = projCenterY / m_tileSize;
+            const int centerX = std::clamp(projCenterX, 0, (int)m_targetWidth) / m_tileSize;
+            const int centerY = std::clamp(projCenterY, 0, (int)m_targetHeight) / m_tileSize;
 
             const int innerSemiMinor = (int)(height * innerRadius / 2);
             const int innerSemiMajor = (int)(semiMinorFactor * innerSemiMinor);

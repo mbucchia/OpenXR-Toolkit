@@ -396,12 +396,8 @@ namespace {
                                                 m_keyMenuLabel,
                                                 (int)(std::ceil(timeout - duration)));
                 const auto width = m_device->measureString(banner, TextStyle::Normal, fontSize);
-                m_device->drawString(banner,
-                                     TextStyle::Normal,
-                                     fontSize,
-                                     leftAlign - width / 2,
-                                     topAlign,
-                                     textColorOverlay);
+                m_device->drawString(
+                    banner, TextStyle::Normal, fontSize, leftAlign - width / 2, topAlign, textColorOverlay);
 
                 m_device->drawString(fmt::format("(this message will be displayed {} more time{})",
                                                  m_numSplashLeft,
@@ -977,9 +973,9 @@ namespace {
                                              "Horizontal offset",
                                              MenuEntryType::Slider,
                                              SettingVRSXOffset,
-                                             -3000,
-                                             3000,
-                                             [](int value) { return fmt::format("{} pixels", value); }});
+                                             -100,
+                                             100,
+                                             [](int value) { return fmt::format("{}%", value); }});
                     m_menuEntries.back().expert = true;
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Horizontal scale",
@@ -993,9 +989,9 @@ namespace {
                                              "Vertical offset",
                                              MenuEntryType::Slider,
                                              SettingVRSYOffset,
-                                             -3000,
-                                             3000,
-                                             [](int value) { return fmt::format("{} pixels", value); }});
+                                             -100,
+                                             100,
+                                             [](int value) { return fmt::format("{}%", value); }});
                     m_menuEntries.back().expert = true;
                 }
                 variableRateShaderCustomGroup.finalize();
