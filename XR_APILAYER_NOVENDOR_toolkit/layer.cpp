@@ -341,8 +341,9 @@ namespace {
                         m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
                     }
 
-                    // Per NIS SDK documentation.
-                    m_mipMapBiasForUpscaling = -std::log2f((float)m_displayWidth / inputWidth);
+                    // Per FSR SDK documentation.
+                    m_mipMapBiasForUpscaling =
+                        -std::log2f(static_cast<float>(m_displayWidth * m_displayHeight) / (inputWidth * inputHeight));
                     Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
 
                     m_postProcessor =
