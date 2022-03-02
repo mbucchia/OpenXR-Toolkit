@@ -645,7 +645,8 @@ namespace mappingtool
                 return;
             }
 
-            string line = property + "=" + value;
+            // Workaround to i18n issue: always write decimal values with a dot.
+            string line = property + "=" + value.Replace(',', '.');
 
             if (saveToFile == null)
             {
@@ -761,6 +762,19 @@ namespace mappingtool
             {
                 var configFile = new StreamReader(openFileDialog.FileName);
 
+                // Workaround to i18n issue: detect whether we need to use comma instead of dot.
+                bool convertDecimalSeparator = false;
+                try
+                {
+                    if (Math.Abs(1.1 - Double.Parse("1.1")) > Double.Epsilon) {
+                        throw new Exception();
+                    }
+                }
+                catch (Exception)
+                {
+                    convertDecimalSeparator = true;
+                }
+
                 try
                 {
                     while (true)
@@ -778,6 +792,10 @@ namespace mappingtool
                         }
                         var name = split[0];
                         var value = split[1];
+                        if (convertDecimalSeparator)
+                        {
+                            value = value.Replace('.', ',');
+                        }
 
                         switch (name)
                         {
