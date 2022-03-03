@@ -44,19 +44,19 @@ The following OpenXR ToolKit features have additional restrictions:
 
 For future plans, see the [Roadmap](roadmap).
 
+> ⚠️ **Warning:** if you are using the previous NIS Scaler or Hand-To-Controller layer before, please uninstall them now.
+
 ## Installation
 
 Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskytours):
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/QelydCFe0aQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-#### ⚠️ if you are using the previous NIS Scaler or Hand-To-Controller layer before, please uninstall them now.
-
 ### 1. Run the `OpenXR-Toolkit.msi` program.
 
 ![Installer file](site/installer-file.png)
 
-NOTE: _You may be warned that Windows protected your PC because this software is not signed yet. We are working on signing the software through a reputable organization and in the the meantime you can proceed with the following steps_.
+> 📝 **Note:** You may be warned that Windows protected your PC because this software is not signed yet. We are working on signing the software through a reputable organization and in the the meantime you can proceed with the following steps.
 
 <details>
   <summary>Proceed through the "Windows protected your PC" warning...</summary>
@@ -84,7 +84,7 @@ The _OpenXR Toolkit Companion app_ may be used sporadically to enable or disable
 
 ![Companion app](site/companion.png)
 
-💡 You don't need to keep the companion app running in order to use the software: the actual settings for the toolkit are available from within your OpenXR application and display directly in the headset! (see below). 
+> 💡 **Tip:** You don't need to keep the companion app running in order to use the software: the actual settings for the toolkit are available from within your OpenXR application and display directly in the headset! (see below). 
 
 # Basic usage
 
@@ -99,11 +99,11 @@ In order to navigate the menu, select options and change values:
 - Use `CTRL+F3` to move selection to the right / increase the option value.
 - Hold both `SHIFT` and `CTRL` together to change values fasters.
 
-💡 Use the _OpenXR Toolkit Companion app_ to change the default shortcut keys.
+> 💡 **Tip:** Use the _OpenXR Toolkit Companion app_ to change the default shortcut keys.
 
-💡 When starting an application for the first time, use the configuration menu to adjust the _Menu eye offset_ until the text appears correctly (eg: no "double vision").
+> 💡 **Tip:** When starting an application for the first time, use the configuration menu to adjust the _Menu eye offset_ until the text appears correctly (eg: no "double vision").
 
-NOTE: the first few times you're using the OpenXR Toolkit with a new application, a convenient reminder message will appear in the headset and confirms whether the software is operating properly.
+> 📝 **Note:** The first few times you're using the OpenXR Toolkit with a new application, a convenient reminder message will appear in the headset and confirms whether the software is operating properly.
 
 <details>
   <summary>On-screen indicator...</summary>
