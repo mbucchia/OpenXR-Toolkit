@@ -58,12 +58,12 @@ namespace {
     }
 
     // Text colors
-    const auto ColorWhite = sRGBToLinear(255, 255, 255);
+    const auto ColorNormal = sRGBToLinear(119, 114, 188);
     const auto ColorOverlay = sRGBToLinear(247, 198, 20);
     const auto ColorHint = sRGBToLinear(163, 163, 163);
     const auto ColorWarning = sRGBToLinear(255, 0, 0);
-    const auto ColorHighlight = sRGBToLinear(88, 67, 98);
-    const auto ColorSelected = sRGBToLinear(119, 114, 188);
+    const auto ColorHighlight = sRGBToLinear(145, 141, 201);
+    const auto ColorSelected = sRGBToLinear(255, 255, 255);
 
     // Shape colors.
     const auto ColorBackground = sRGBToLinear(40, 44, 50);
@@ -77,7 +77,7 @@ namespace {
     constexpr uint32_t OptionSpacing = 30;
     constexpr uint32_t ValueSpacing = 20;
     constexpr uint32_t SelectionHorizontalSpacing = 8;
-    constexpr uint32_t SelectionVerticalSpacing = 5;
+    constexpr uint32_t SelectionVerticalSpacing = 4;
 
     enum class MenuIndent { NoIndent = 0, OptionIndent = 0, SubGroupIndent = 20 };
 
@@ -411,11 +411,12 @@ namespace {
                 // The actual menu.
 
                 // Apply menu fade.
-                const auto textColorNormal = MakeRGB24(ColorWhite) | alpha;
+                const auto textColorNormal = MakeRGB24(ColorNormal) | alpha;
                 const auto textColorHighlight = MakeRGB24(ColorHighlight) | alpha;
                 const auto textColorSelected = MakeRGB24(ColorSelected) | alpha;
                 const auto textColorHint = MakeRGB24(ColorHint) | alpha;
                 const auto textColorWarning = MakeRGB24(ColorWarning) | alpha;
+                const auto textColorBackground = MakeRGB24(ColorBackground) | alpha;
 
                 // Measurements must be done in 2 steps: first mesure the necessary spacing for alignment of the values,
                 // then measure the background area.
@@ -522,15 +523,16 @@ namespace {
                             const auto style =
                                 menuEntry.type == MenuEntryType::Tabs ? TextStyle::Bold : TextStyle::Normal;
                             const auto valueColor =
-                                i == m_selectedItem && value != j ? textColorSelected : textColorNormal;
+                                value == j ? textColorBackground
+                                           : (i == m_selectedItem ? textColorSelected : textColorHighlight);
                             const auto backgroundColor = i == m_selectedItem ? ColorSelected : ColorHighlight;
 
                             const auto width = m_device->measureString(label, style, fontSize);
 
                             if (j == value) {
-                                m_device->clearColor(top + 4,
+                                m_device->clearColor(top + SelectionVerticalSpacing,
                                                      left - SelectionHorizontalSpacing,
-                                                     top + 4 + fontSize + SelectionVerticalSpacing,
+                                                     top + SelectionVerticalSpacing + 1.33f * fontSize - 1,
                                                      left + width + SelectionHorizontalSpacing + 2,
                                                      backgroundColor);
                             }
