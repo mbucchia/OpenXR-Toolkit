@@ -502,8 +502,12 @@ namespace {
                                      : path.extension() == ".bmp" ? GUID_ContainerFormatBmp
                                      : path.extension() == ".jpg" ? GUID_ContainerFormatJpeg
                                                                   : GUID_ContainerFormatDds;
-            const HRESULT hr =
-                DirectX::SaveWICTextureToFile(m_device->getContext<D3D11>(), get(m_texture), fileFormat, path.c_str());
+
+            const auto forceSRGB = IsEqualGUID(fileFormat, GUID_ContainerFormatPng);
+
+            const HRESULT hr = DirectX::SaveWICTextureToFile(
+                m_device->getContext<D3D11>(), get(m_texture), fileFormat, path.c_str(), nullptr, nullptr, forceSRGB);
+
             if (SUCCEEDED(hr)) {
                 Log("Screenshot saved to %S\n", path.c_str());
             } else {
