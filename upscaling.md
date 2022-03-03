@@ -39,10 +39,4 @@ There are two ways to specify the upscaling factor. The two methods are exactly 
 
 Note that even with an upscaling factor set to 100% (no upscaling), some benefit can be seen from adjusting the sharpening.
 
-## NIS: NVIDIA Image Scaling
-
-This is the spatial upscaler and sharpening algorithm developed by NVIDIA and that works on any DirectX 11 GPU (including non-NVIDIA brands). This is the same algorithm that can be enabled for non-VR applications through the NVIDIA Control Panel.
-
-## FSR: FidelityFX Super Resolution
-
-This is the spatial upscaler and sharpening algorithm developed by AMD and that works on any DirectX 11 GPU (including non-AMD brands). More details on [AMD's website](https://www.amd.com/en/technologies/radeon-software-fidelityfx-super-resolution).
+See [What is AMD FidelityFX Super Resolution](glossary.md#fsr) and [What is NVIDIA Image Scaling](glossary.md#nis) for more information.
