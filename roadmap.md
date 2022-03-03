@@ -17,7 +17,7 @@ nav_order: 5
 | Anamorphic upscaling                 | [Stable](){: .btn .btn-green }          | Mar 2022        |
 | Lock WMR Motion Reprojection rate    | [Stable](){: .btn .btn-green }          | Mar 2022        |
 | Fixed foveated rendering             | [Experimental](){: .btn .btn-purple }   | Mar 2022        |
-| Brightness/contrast/saturation       | [Experimental](){: .btn .btn-green }    | Mar 2022        |
+| Brightness/contrast/saturation       | [Experimental](){: .btn .btn-purple }   | Mar 2022        |
 | Texture LOD biasing                  | [Stable](){: .btn .btn-green }          | Mar 2022        |
 | Field of view override               | [Experimental](){: .btn .btn-purple}    | Mar 2022        |
 | Hand tracking haptics cues           | [Implementation](){: .btn .btn-blue }   | Apr 2022?       |
