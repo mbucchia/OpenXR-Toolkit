@@ -58,7 +58,7 @@ Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskyto
 
 > 📝 **Note:** You may be warned that Windows protected your PC because this software is not signed yet. We are working on signing the software through a reputable organization and in the the meantime you can proceed with the following steps.
 
-<details>
+<details markdown="block">
   <summary>Proceed through the "Windows protected your PC" warning...</summary>
 
   #### Select `More info` then `Run anyway`
