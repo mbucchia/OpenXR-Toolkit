@@ -25,6 +25,7 @@ Devices confirmed to work:
 * Ultraleap [Leap Motion Controller](https://www.ultraleap.com/product/leap-motion-controller/)
 * Ultraleap [Stereo IR 170](https://www.ultraleap.com/product/stereo-ir-170/)
 * Pimax [Hand Tracking Module](https://pimax.com/product/hand-tracking-module/)
+* Oculus Quest 2
 
 We would love to add more devices to this list! If you have a device that supports hand tracking via OpenXR that is no on this list, please contact us on [Discord](https://discord.gg/WXFshwMnke) or submit an [issue on GitHub](https://github.com/mbucchia/OpenXR-Toolkit/issues).
 
@@ -37,6 +38,31 @@ We would love to add more devices to this list! If you have a device that suppor
 3. Download and install the [Ultraleap OpenXR Hand Tracking API Layer](https://github.com/ultraleap/OpenXRHandTracking/releases).
 
 4. With your game running, open the menu (Ctrl+F2), then navigate to **Hand Tracking**. Select either **Both** to use both hands, or **Left**/**Right** to use only one hand. Restart the VR session for the hand tracking to begin.
+
+## Using with Oculus Quest 2
+
+1. Upgrade to Oculus software v37 or later.
+
+2. Open the _Oculus App_, and navigate to the _Beta_ menu.
+
+3. Enable both _Developer Runtime Features_ and _Passthrough over Oculus Link_.
+
+4. Copy the OpenXR Toolkit hand configuration file for your application (eg: `FS2020.cfg`) from the `%ProgramFiles%\OpenXR-Toolkit` folder to the `%LocalAppData%\OpenXR-Toolkit\configs` folder.
+
+5. Edit the copy of the hand configuration file for your application (eg: `%LocalAppData%\OpenXR-Toolkit\configs\FS2020.cfg`) , and replace the following content:
+
+```
+interaction_profile=/interaction_profiles/hp/mixed_reality_controller
+```
+
+  + with:
+
+```
+interaction_profile=/interaction_profiles/oculus/touch_controller
+```
+
+6. With your game running, open the menu (Ctrl+F2), then navigate to **Hand Tracking**. Select either **Both** to use both hands, or **Left**/**Right** to use only one hand. Restart the VR session for the hand tracking to begin.
+
 
 ## Customizing the tracking and gestures
 

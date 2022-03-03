@@ -37,7 +37,9 @@ The following OpenXR ToolKit features have additional restrictions:
 + This software was only extensively tested with Microsoft Flight Simulator 2020.
 + Other applications are untested but it appears to work with War Thunder as well.
 + It is also expected this software should work with most Steam games if they are using OpenXR (instead of Steam's OpenVR).
-+ The menu does not display correctly on Pimax headsets;
++ Fixed Foverated Rendering does not work on Oculus headsets when using the Oculus OpenXR Runtime with DirectX 11 applications.
+  + Please either use the SteamVR OpenXR Runtime or set your application to use DirectX 12.
++ The menu does not display correctly on Pimax headsets.
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
 For future plans, see the [Roadmap](roadmap).
@@ -56,11 +58,12 @@ Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskyto
 
 NOTE: _You may be warned that Windows protected your PC because this software is not signed yet. We are working on signing the software through a reputable organization and in the the meantime you can proceed with the following steps_.
 
-<details><summary>Proceed through the "Windows protected your PC" warning...</summary>
+<details>
+  <summary>Proceed through the "Windows protected your PC" warning...</summary>
 
-#### Select `More info` then `Run anyway`
+  #### Select `More info` then `Run anyway`
 
-![Warning not signed](site/unsigned1.png) ![Warning not signed](site/unsigned2.png)
+  ![Warning not signed](site/unsigned1.png) ![Warning not signed](site/unsigned2.png)
 
 </details>
 
@@ -70,9 +73,10 @@ NOTE: _You may be warned that Windows protected your PC because this software is
 
 ### 3. Launch the _OpenXR Toolkit Companion app_ to confirm that the software is active.
 
-<details><summary>You can use the shorcut found on the desktop or in the Start menu...</summary>
+<details>
+  <summary>You can use the shorcut found on the desktop or in the Start menu...</summary>
 
-![Companion app shortcut](site/companion-start.png)
+  ![Companion app shortcut](site/companion-start.png)
   
 </details>
 
@@ -101,9 +105,10 @@ In order to navigate the menu, select options and change values:
 
 NOTE: the first few times you're using the OpenXR Toolkit with a new application, a convenient reminder message will appear in the headset and confirms whether the software is operating properly.
 
-<details><summary>On-screen indicator...</summary>
+<details>
+  <summary>On-screen indicator...</summary>
 
-![On-screen indicator](site/osd-indicator.png)
+  ![On-screen indicator](site/osd-indicator.png)
 
 </details>
   

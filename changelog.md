@@ -22,6 +22,7 @@ nav_order: 6
 - Add an option to save screenshots to different file formats.
 - Add a configurable hotkey to move up in the menu.
 - Add mip-map Level Of Detail (LOD) biasing when using upscaling (changes texture details slightly).
+- Hand tracking is confirmed to work with Oculus Quest 2 (see [instructions](hand-tracking)).
 - Re-design the in-headset, on-screen menu.
 - Move the Field Of View (FOV) override feature out of experimental mode.
 - Display the effective Field Of View (FOV) value in the menu.
@@ -30,6 +31,9 @@ nav_order: 6
 - Fix issue with the sharpening settings not being applied correctly.
 - Fix incorrectly computed menu placement and menu eye offset.
 - Fix installer bug that prevented upgrading the Companion app without uninstalling first.
+- Fix issue where loss of hand tracking would not properly release the virtual controller buttons.
+- Fix heavy flickering issue with SteamVR runtime and when using Motion Reprojection with WMR runtime.
+- Fix bugs with the Hand-to-Controller configuration tool and international locales.
 
 ## Changes in Beta #2 (Jan 2022 / v0.9.4 - 0.9.7)
 
