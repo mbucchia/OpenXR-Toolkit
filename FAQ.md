@@ -30,7 +30,10 @@ Any GPU that is compatible DirectX 11.
 
 Yes, even the NVIDIA Image Scaling (NIS) will work on non-NVIDIA cards, and AMD's FSR will work on non-AMD cards.
 
-Some features such as fixed foveated rendering require support for the GPU, and therefore cannot be enabled on all GPUs.
+Fixed foveated rendering is only supported with the following GPUs:
+
+* NVIDIA GeForce GTX 1600 series and RTX series, both DX11 and DX12.
+* AMD RX 6000 series, with DX12 only.
 
 ## Q: Does the OpenXR Toolkit work with DX11 and DX12?
 

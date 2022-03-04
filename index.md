@@ -16,9 +16,9 @@ DISCLAIMER: This software is distributed as-is, without any warranties or condit
 
 ## Downloads
 
-Current version: **Beta #2 Hotfix #3 (0.9.7)**
+Current version: **Beta #3 (1.0.1)**
 
-[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/0.9.7/OpenXR-Toolkit.msi){: .btn .btn-blue }
+[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.0.1/OpenXR-Toolkit.msi){: .btn .btn-blue }
 
 ...or expore [all versions](https://github.com/mbucchia/OpenXR-Toolkit/releases).
 
@@ -35,10 +35,10 @@ The following OpenXR ToolKit features have additional restrictions:
 ## Limitations
 
 + This software was only extensively tested with Microsoft Flight Simulator 2020.
-+ Other applications are untested but it appears to work with War Thunder as well.
 + It is also expected this software should work with most Steam games if they are using OpenXR (instead of Steam's OpenVR).
 + Fixed Foverated Rendering does not work on Oculus headsets when using the Oculus OpenXR Runtime with DirectX 11 applications.
   + Please either use the SteamVR OpenXR Runtime or set your application to use DirectX 12.
++ Fixed Foverated Rendering does not work with War Thunder at this time, and it causes some lighting issues.
 + The menu does not display correctly on Pimax headsets.
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
@@ -56,14 +56,15 @@ Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskyto
 
 ![Installer file](site/installer-file.png)
 
-> 📝 **Note:** You may be warned that Windows protected your PC because this software is not signed yet. We are working on signing the software through a reputable organization and in the the meantime you can proceed with the following steps.
+> 📝 **Note:** You may be warned that Windows protected your PC because this software is not trusted. The application is built on a GitHub server hosted in the Microsoft cloud, which greatly limits the risk of contamination from viruses and malware. Additionally, we have digitally signed the software through a reputable organization (Comodo) which helps with guaranteeing that is has not been altered by any third party.
 
 <details>
   <summary>Proceed through the "Windows protected your PC" warning...</summary>
 
-  #### Select `More info` then `Run anyway`
+  Select <i>More info</i> then <i>Run anyway</i>.
 
-  ![Warning not signed](site/unsigned1.png) ![Warning not signed](site/unsigned2.png)
+  <img alt="Warning not signed" src="site/unsigned1.png"></img>
+  <img alt="Warning not signed" src="site/unsigned2.png"></img>
 
 </details>
 
@@ -76,7 +77,7 @@ Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskyto
 <details>
   <summary>You can use the shorcut found on the desktop or in the Start menu...</summary>
 
-  ![Companion app shortcut](site/companion-start.png)
+  <img alt="Companion app shortcut" src="site/companion-start.png"></img>
   
 </details>
 
@@ -104,13 +105,6 @@ In order to navigate the menu, select options and change values:
 > 💡 **Tip:** When starting an application for the first time, use the configuration menu to adjust the _Menu eye offset_ until the text appears correctly (eg: no "double vision").
 
 > 📝 **Note:** The first few times you're using the OpenXR Toolkit with a new application, a convenient reminder message will appear in the headset and confirms whether the software is operating properly.
-
-<details>
-  <summary>On-screen indicator...</summary>
-
-  ![On-screen indicator](site/osd-indicator.png)
-
-</details>
   
 ## Available options
 

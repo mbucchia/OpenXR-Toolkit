@@ -12,7 +12,7 @@ Deep Learning Super Sampling (DLSS) is an NVIDIA RTX technology that uses the po
 
 ## FFR
 
-Fixed Foveated Rendering is a type of Foveated Rendering rendering technique which doesn't utilise eye tracking and assumes a fixed focal point.
+Fixed Foveated Rendering is a type of Foveated Rendering technique which doesn't utilise eye tracking and assumes a fixed focal point.
 
 https://en.wikipedia.org/wiki/Foveated_rendering
 
