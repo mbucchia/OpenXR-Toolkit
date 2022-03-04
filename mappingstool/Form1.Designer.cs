@@ -323,7 +323,7 @@ namespace mappingtool
             this.tabControl1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(1005, 695);
+            this.tabControl1.Size = new System.Drawing.Size(1025, 695);
             this.tabControl1.TabIndex = 0;
             // 
             // tabPage1
@@ -340,7 +340,7 @@ namespace mappingtool
             this.tabPage1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            this.tabPage1.Size = new System.Drawing.Size(997, 669);
+            this.tabPage1.Size = new System.Drawing.Size(1017, 669);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Offsets";
             this.tabPage1.UseVisualStyleBackColor = true;
@@ -1133,7 +1133,7 @@ namespace mappingtool
             this.tabPage2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            this.tabPage2.Size = new System.Drawing.Size(997, 669);
+            this.tabPage2.Size = new System.Drawing.Size(1014, 669);
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "Bindings";
             this.tabPage2.UseVisualStyleBackColor = true;
@@ -1898,7 +1898,7 @@ namespace mappingtool
             this.tabPage3.Location = new System.Drawing.Point(4, 22);
             this.tabPage3.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.tabPage3.Name = "tabPage3";
-            this.tabPage3.Size = new System.Drawing.Size(997, 669);
+            this.tabPage3.Size = new System.Drawing.Size(1014, 671);
             this.tabPage3.TabIndex = 2;
             this.tabPage3.Text = "Gestures";
             this.tabPage3.UseVisualStyleBackColor = true;
@@ -2801,7 +2801,7 @@ namespace mappingtool
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Padding = new System.Windows.Forms.Padding(4, 1, 0, 1);
-            this.menuStrip1.Size = new System.Drawing.Size(1005, 24);
+            this.menuStrip1.Size = new System.Drawing.Size(1025, 24);
             this.menuStrip1.TabIndex = 1;
             this.menuStrip1.Text = "menuStrip1";
             // 
@@ -2849,7 +2849,7 @@ namespace mappingtool
             this.status});
             this.statusStrip1.Location = new System.Drawing.Point(0, 697);
             this.statusStrip1.Name = "statusStrip1";
-            this.statusStrip1.Size = new System.Drawing.Size(1005, 22);
+            this.statusStrip1.Size = new System.Drawing.Size(1025, 22);
             this.statusStrip1.SizingGrip = false;
             this.statusStrip1.TabIndex = 2;
             this.statusStrip1.Text = "statusStrip1";
@@ -2863,7 +2863,7 @@ namespace mappingtool
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1005, 719);
+            this.ClientSize = new System.Drawing.Size(1025, 719);
             this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.tabControl1);
             this.Controls.Add(this.menuStrip1);
