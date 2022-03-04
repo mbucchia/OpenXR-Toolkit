@@ -125,7 +125,7 @@ See [Features](features) for more details.
   - **Sharpness**: The sharpness factor. Has a different scale/effect between NIS and FSR.
   - **Mip-map bias** (Expert setting): This settings changes how the game is rendering some of the textures in order to reveal a little bit more details when used with FSR/NIS upscalers.
 - **Lock motion reprojection** (only with Windows Mixed Reality): Disable automatic motion reprojection adjustment, and lock the frame rate to the desired fraction of the refresh rate.
-- **Fixed foveated rendering**: TODO
+- **Fixed foveated rendering**: These settings adjust the [VRS](glossary.html#vrs) parameters in order to balance out peripheral visual details with rendering performance.
   - **Mode** (with _Preset_ mode): Whether to prefer performance over quality.
   - **Pattern** (with _Preset_ mode): The size of the foveated regions.
   - **Inner resolution** (with _Custom_ mode, Expert setting): The resolution inside the inner ring of foveation. Should be left at full resolution (1x).
@@ -143,7 +143,7 @@ See [Features](features) for more details.
 - **Saturation**: Adjust the saturation of the image.
   - **Ajustment** (with _Global_ mode): Adjust all colors at once.
   - **Red**, **Green**, **Blue** (with _Selective_ mode): Adjust each primary color individually.
-- **Field of view**: TODO
+- **Field of view**: Adjust the pixel density per degree. A smaller field of view is covering a smaller region of the view but with the same amount of pixels, effectively increasing the perceived resolution.
 - **World scale**: The Inter-Camera Distance override, which can be used to alter the world scale.
 
 **Inputs** tab:
