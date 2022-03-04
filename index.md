@@ -36,9 +36,9 @@ The following OpenXR ToolKit features have additional restrictions:
 
 + This software was only extensively tested with Microsoft Flight Simulator 2020.
 + It is also expected this software should work with most Steam games if they are using OpenXR (instead of Steam's OpenVR).
-+ Fixed Foverated Rendering does not work on Oculus headsets when using the Oculus OpenXR Runtime with DirectX 11 applications.
++ Fixed Foveated Rendering does not work on Oculus headsets when using the Oculus OpenXR Runtime with DirectX 11 applications.
   + Please either use the SteamVR OpenXR Runtime or set your application to use DirectX 12.
-+ Fixed Foverated Rendering does not work with War Thunder at this time, and it causes some lighting issues.
++ Fixed Foveated Rendering does not work with War Thunder at this time, and it causes some lighting issues.
 + The menu does not display correctly on Pimax headsets.
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
@@ -61,10 +61,10 @@ Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskyto
 <details>
   <summary>Proceed through the "Windows protected your PC" warning...</summary>
 
-  Select <i>More info</i> then <i>Run anyway</i>.
+  <p>Select <i>More info</i> then <i>Run anyway</i>.</p>
 
-  <img alt="Warning not signed" src="site/unsigned1.png"></img>
-  <img alt="Warning not signed" src="site/unsigned2.png"></img>
+  <img alt="Warning not signed" src="site/unsigned1.png">
+  <img alt="Warning not signed" src="site/unsigned2.png">
 
 </details>
 
@@ -77,7 +77,7 @@ Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskyto
 <details>
   <summary>You can use the shorcut found on the desktop or in the Start menu...</summary>
 
-  <img alt="Companion app shortcut" src="site/companion-start.png"></img>
+  <img alt="Companion app shortcut" src="site/companion-start.png">
   
 </details>
 
@@ -105,6 +105,13 @@ In order to navigate the menu, select options and change values:
 > 💡 **Tip:** When starting an application for the first time, use the configuration menu to adjust the _Menu eye offset_ until the text appears correctly (eg: no "double vision").
 
 > 📝 **Note:** The first few times you're using the OpenXR Toolkit with a new application, a convenient reminder message will appear in the headset and confirms whether the software is operating properly.
+
+<details>
+  <summary>On-screen indicator...</summary>
+
+  <img alt="On-screen indicator" src="site/osd-indicator.png">
+
+</details>
   
 ## Available options
 
@@ -125,7 +132,7 @@ See [Features](features) for more details.
   - **Inner resolution** (with _Custom_ mode, Expert setting): The resolution inside the inner ring of foveation. Should be left at full resolution (1x).
   - **Inner ring size** (with _Custom_ mode): The size of the inner ring of foveation, in percent of the height of the image.
   - **Middle resolution** (with _Custom_ mode): The resolution inside the middle ring of foveation.
-  - **Outer ring size** (with _Custom_ mode): The size of the ouner ring of foveation, in percent of the height of the image.
+  - **Outer ring size** (with _Custom_ mode): The size of the outer ring of foveation, in percent of the height of the image.
   - **Outer resolution** (with _Custom_ mode): The resolution inside the outer ring of foveation.
   - **Horizontal offset** (with _Custom_ mode, Expert setting): Add a horizontal offset to the center of the foveation rings. The offset is expressed relative to the left eye, and its opposite value will be applied to the right eye.
   - **Horizontal scale** (with _Custom_ mode, Expert setting): The rings for foveation can be configured as ellipses. This setting controls the scale of the horizontal radius (or semi-major axis) based on the vertical radius (or semi-minor axis). A value of 100% means that the rings are circles. A value larger than 100% will result in flattened, oval-shaped rings.
@@ -142,7 +149,7 @@ See [Features](features) for more details.
 
 **Inputs** tab:
 - **Shaking reduction**, formerly **Prediction dampening** (only when supported by the system): The prediction override, which can be use to dampen the prediction for head, controllers, and hand movements.
-- **Controller emulation** (only when hand tracking is supported by the system): Enable the use of hand tracking in place of the VR controller. Requires a compatible device, such as the Leap Motion. Either or both hands can be enabled at the same time. Requires to restart the VR session when toggling on or off. 
+- **Controller emulation** (only when hand tracking is supported by the system): Enable the use of hand tracking in place of the VR controller. Requires a compatible device, such a Leap Motion controller or an Oculus Quest 2 headset. Either or both hands can be enabled at a time. Requires to restart the VR session when toggling on or off. 
   - **Hands skeleton**: Whether the hands are displayed and what color tone to use.
   - **Controller timeout**: The amount of time after losing track of the hands before simulator shutdown of the simulated VR controller.
 

@@ -12,7 +12,7 @@ nav_order: 6
 
 ---
 
-## Changes in Beta #3 (Mar 2022 / v1.0.0 - )
+## Changes in Beta #3 (Mar 2022 / v1.0.1 - )
 
 - Add support for Fixed Foveated Rendering (FFR) (experimental, with selected GPUs only).
 - Add support for anamorphic upscaling (independent upscaling of horizontal and vertical resolution).

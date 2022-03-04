@@ -39,7 +39,7 @@ When motion reprojection is not enabled, this setting has no effect.
 
 ## Field of view
 
-TODO
+The field of view override adjusts the pixel density per degree. A smaller field of view is covering a smaller region of the view but with the same amount of pixels, effectively increasing the perceived resolution.
 
 ## Screen capture
 
