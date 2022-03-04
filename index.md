@@ -119,9 +119,9 @@ See [Features](features) for more details.
 **Performance** tab:
 - **Overlay**: Enables the FPS display in the top-right corner of the view. _Please note that the overlay may reduce performance_. A third option - "_Detailed_" - is available in experimental mode and may be used for advanced performance monitoring.
 - **Upscaling**: Enables the use of an upscaler such as NIS or FSR to perform rendering at a lower resolution, and upscale and/or sharpen the image. Requires to restart the VR session.
-  - **Anamorphic**: TODO
+  - **Anamorphic**: When _Disabled_, the _Size_ scales both the width and the height propotionally. When _Enabled_, both sizes can be adjusted independently.
   - **Size**: The upscaling factor (ie: the percentage of magnification of the rendering resolution). The resolution displayed next to the percentage is the effective resolution that the application sees. Requires to restart the VR session.
-  - **Width/Height**: TODO
+  - **Width/Height**: This displays the actual in-game render width and height, that is the actual number of pixels the game is rendering per eye.
   - **Sharpness**: The sharpness factor. Has a different scale/effect between NIS and FSR.
   - **Mip-map bias** (Expert setting): TODO
 - **Lock motion reprojection** (only with Windows Mixed Reality): Disable automatic motion reprojection adjustment, and lock the frame rate to the desired fraction of the refresh rate.
