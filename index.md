@@ -123,7 +123,7 @@ See [Features](features) for more details.
   - **Size**: The upscaling factor (ie: the percentage of magnification of the rendering resolution). The resolution displayed next to the percentage is the effective resolution that the application sees. Requires to restart the VR session.
   - **Width/Height**: This displays the actual in-game render width and height, that is the actual number of pixels the game is rendering per eye.
   - **Sharpness**: The sharpness factor. Has a different scale/effect between NIS and FSR.
-  - **Mip-map bias** (Expert setting): TODO
+  - **Mip-map bias** (Expert setting): This settings changes how the game is rendering some of the textures in order to reveal a little bit more details when used with FSR/NIS upscalers.
 - **Lock motion reprojection** (only with Windows Mixed Reality): Disable automatic motion reprojection adjustment, and lock the frame rate to the desired fraction of the refresh rate.
 - **Fixed foveated rendering**: TODO
   - **Mode** (with _Preset_ mode): Whether to prefer performance over quality.
