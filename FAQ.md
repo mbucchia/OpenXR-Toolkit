@@ -30,6 +30,11 @@ Any GPU that is compatible DirectX 11.
 
 Yes, even the NVIDIA Image Scaling (NIS) will work on non-NVIDIA cards, and AMD's FSR will work on non-AMD cards.
 
+Fixed foveated rendering is only supported with the following GPUs:
+
+* NVIDIA GeForce GTX 1600 series and RTX series, both DX11 and DX12.
+* AMD RX 6000 series, with DX12 only.
+
 ## Q: Does the OpenXR Toolkit work with DX11 and DX12?
 
 It works with both, however DX12 support is considered experimental at this time.
@@ -50,17 +55,23 @@ You may also notice that the upscaling factor value is now working differently. 
 
 No, you may just run your game as usual. No need to open the companion app.
 
+## Q: Can the menu be invoked at any time?
+
+Yes.
+
+The "Press [...] to bring up the menu" banner is only displayed as a hint during the first few runs of the OpenXR Toolkit, and the menu can be called even when this text is not displayed.
+
 ## Q: Can you tell me what the best settings are?
 
 No, we cannot. The settings depend on your hardware and your expectations.
 
+## Q: I am not getting better performance from upscaling or fixed foveated rendering?
+
+The upscaling and fixed foveated rendering features will help relieve your GPU, which will only yield better performance if your GPU was the limiting component. If your performance is limited by your CPU, upscaling will not help improving performance.
+
 ## Q: There’s already a NIS option in my GPU driver... Do I need this?
 
 The NIS option in the NVIDIA drivers does not apply to VR. You need this software to use NIS with VR. It is also recommended to turn off NIS in the NVIDIA driver when using this software, otherwise the GPU will be performing extra processing for the desktop view and not for VR.
-
-## Q: I am not getting better performance from upscaling.
-
-The upscaling feature will help relieve your GPU, which will only yield better performance if your GPU was the limiting component. If your performance is limited by your CPU, upscaling will not help improving performance.
 
 ## Q: How can I compare the image quality?
 

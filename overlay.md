@@ -34,6 +34,8 @@ _Note_: All durations are in microseconds.
 * **ovl GPU**: The time spent (on GPU) to draw the OpenXR Toolkit menu/overlays.
 * **hnd CPU**: The time spent (on CPU) to query the hand tracking driver.
 
+All other metrics are intended for debugging and should only be useful by request of the developer (eg: for troubleshooting).
+
 ### Gesture state
 
 For each gesture that is **currently bound to an input**, the current input value is shown for each hand. If a gesture is not bound, the value reported will be `nan` (Not A Number). The input value is enveloped by the Near and Far settings that can be configured with the _OpenXR Toolkig Hand-to-Controller Configuration tool_. See the [Hand tracking](hand-tracking) feature for more details on setting up gestures.
