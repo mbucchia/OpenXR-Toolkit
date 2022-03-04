@@ -21,5 +21,6 @@ Special thanks to:
 - [2020FS'ers](https://www.youtube.com/channel/UCwCZlJ5_EOSzS9_gNvyWFTw)
 - Frydrych Holger
 - Paul Haeberli
+- Flobud
 
-Thanks to our beta testers: CptStevil, NumberNumber481, themadmaker, RCFlyer51, Booms3220, CPSweatPants, Altsak, AmiableGalaxy9, Malkavien...
+Thanks to our beta testers: CptStevil, NumberNumber481, themadmaker, RCFlyer51, Booms3220, CPSweatPants, Altsak, AmiableGalaxy9, Malkavien, Nirgal76...
