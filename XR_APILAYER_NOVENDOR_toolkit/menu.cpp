@@ -58,13 +58,12 @@ namespace {
     }
 
     // Text colors
-    const auto ColorNormal = sRGBToLinear(119, 114, 188);
+    const auto ColorNormal = sRGBToLinear(145, 141, 201);
     const auto ColorOverlay = sRGBToLinear(247, 198, 20);
     const auto ColorHint = sRGBToLinear(163, 163, 163);
-    const auto ColorWarning = sRGBToLinear(255, 0, 0);
-    const auto ColorHighlight = sRGBToLinear(145, 141, 201);
+    const auto ColorWarning = sRGBToLinear(255, 96, 96);
     const auto ColorSelected = sRGBToLinear(255, 255, 255);
-    const auto ColorHighlightText = sRGBToLinear(40, 44, 50);
+    const auto ColorHighlightText = sRGBToLinear(34, 36, 42);
 
     // Shape colors.
     const auto ColorBackground = sRGBToLinear(34, 36, 42);
@@ -413,7 +412,6 @@ namespace {
 
                 // Apply menu fade.
                 const auto textColorNormal = MakeRGB24(ColorNormal) | alpha;
-                const auto textColorHighlight = MakeRGB24(ColorHighlight) | alpha;
                 const auto textColorHighlightText = MakeRGB24(ColorHighlightText) | alpha;
                 const auto textColorSelected = MakeRGB24(ColorSelected) | alpha;
                 const auto textColorHint = MakeRGB24(ColorHint) | alpha;
@@ -523,10 +521,8 @@ namespace {
 
                             const auto style =
                                 menuEntry.type == MenuEntryType::Tabs ? TextStyle::Bold : TextStyle::Normal;
-                            const auto valueColor =
-                                value == j ? textColorHighlightText
-                                           : (i == m_selectedItem ? textColorSelected : textColorHighlight);
-                            const auto backgroundColor = i == m_selectedItem ? ColorSelected : ColorHighlight;
+                            const auto valueColor = value == j ? textColorHighlightText : entryColor;
+                            const auto backgroundColor = i == m_selectedItem ? ColorSelected : ColorNormal;
 
                             const auto width = m_device->measureString(label, style, fontSize);
 
