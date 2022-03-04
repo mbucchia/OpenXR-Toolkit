@@ -64,10 +64,11 @@ namespace {
     const auto ColorWarning = sRGBToLinear(255, 0, 0);
     const auto ColorHighlight = sRGBToLinear(145, 141, 201);
     const auto ColorSelected = sRGBToLinear(255, 255, 255);
+    const auto ColorHighlightText = sRGBToLinear(40, 44, 50);
 
     // Shape colors.
-    const auto ColorBackground = sRGBToLinear(40, 44, 50);
-    const auto ColorHeader = sRGBToLinear(60, 63, 73);
+    const auto ColorBackground = sRGBToLinear(34, 36, 42);
+    const auto ColorHeader = sRGBToLinear(50, 52, 62);
     const auto ColorHeaderSeparator = sRGBToLinear(120, 126, 145);
     constexpr float HeaderLineWeight = 1.f;
 
@@ -413,10 +414,10 @@ namespace {
                 // Apply menu fade.
                 const auto textColorNormal = MakeRGB24(ColorNormal) | alpha;
                 const auto textColorHighlight = MakeRGB24(ColorHighlight) | alpha;
+                const auto textColorHighlightText = MakeRGB24(ColorHighlightText) | alpha;
                 const auto textColorSelected = MakeRGB24(ColorSelected) | alpha;
                 const auto textColorHint = MakeRGB24(ColorHint) | alpha;
                 const auto textColorWarning = MakeRGB24(ColorWarning) | alpha;
-                const auto textColorBackground = MakeRGB24(ColorBackground) | alpha;
 
                 // Measurements must be done in 2 steps: first mesure the necessary spacing for alignment of the values,
                 // then measure the background area.
@@ -523,7 +524,7 @@ namespace {
                             const auto style =
                                 menuEntry.type == MenuEntryType::Tabs ? TextStyle::Bold : TextStyle::Normal;
                             const auto valueColor =
-                                value == j ? textColorBackground
+                                value == j ? textColorHighlightText
                                            : (i == m_selectedItem ? textColorSelected : textColorHighlight);
                             const auto backgroundColor = i == m_selectedItem ? ColorSelected : ColorHighlight;
 
