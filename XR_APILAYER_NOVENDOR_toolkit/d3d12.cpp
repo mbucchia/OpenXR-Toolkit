@@ -2034,6 +2034,10 @@ namespace {
         void registerRenderTargetView(ID3D12Resource* resource,
                                       const D3D12_RENDER_TARGET_VIEW_DESC* desc,
                                       D3D12_CPU_DESCRIPTOR_HANDLE handle) {
+            if (!resource) {
+                return;
+            }
+
             ComPtr<ID3D12Device> device;
             CHECK_HRCMD(resource->GetDevice(IID_PPV_ARGS(set(device))));
             if (device != m_device) {
