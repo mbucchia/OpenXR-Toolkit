@@ -50,7 +50,7 @@ For future plans, see the [Roadmap](roadmap).
 
 Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskytours):
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/QelydCFe0aQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/3CW8x9TBeQ0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 ### 1. Run the `OpenXR-Toolkit.msi` program.
 
