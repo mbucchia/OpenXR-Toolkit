@@ -969,6 +969,16 @@ namespace {
                                              variableRateShaderMaxDownsamplePow2,
                                              samplePow2ToString});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Prefer resolution",
+                                             MenuEntryType::Choice,
+                                             SettingVRSPreferHorizontal,
+                                             0,
+                                             1,
+                                             [](int value) {
+                                                 const std::string_view labels[] = {"Vertical", "Horizontal"};
+                                                 return std::string(labels[value]);
+                                             }});
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Horizontal offset",
                                              MenuEntryType::Slider,
                                              SettingVRSXOffset,
