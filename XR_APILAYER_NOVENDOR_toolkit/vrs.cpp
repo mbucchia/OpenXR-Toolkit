@@ -200,7 +200,8 @@ namespace {
                      ((mode == VariableShadingRateType::Preset && m_configManager->hasChanged(SettingVRSQuality)) ||
                       (mode == VariableShadingRateType::Custom &&
                        (m_configManager->hasChanged(SettingVRSInner) || m_configManager->hasChanged(SettingVRSMiddle) ||
-                        m_configManager->hasChanged(SettingVRSOuter)))));
+                        m_configManager->hasChanged(SettingVRSOuter) ||
+                        m_configManager->hasChanged(SettingVRSPreferHorizontal)))));
 
                 int innerRate, middleRate, outerRate;
                 if (mode == VariableShadingRateType::Preset) {
@@ -631,7 +632,7 @@ namespace {
             default:
                 return std::make_tuple(0 /* 1x */, 2 /* 1/4x */, 4 /* 1/16x */);
             case VariableShadingRateQuality::Quality:
-                return std::make_tuple(0 /* 1x */, 1 /* 1/2x */, 2 /* 1/8x */);
+                return std::make_tuple(0 /* 1x */, 1 /* 1/2x */, 2 /* 1/4x */);
             }
         }
 
@@ -648,16 +649,20 @@ namespace {
             }
         }
 
-        static NV_PIXEL_SHADING_RATE getNVAPIShadingRate(int samplingPow2) {
+        NV_PIXEL_SHADING_RATE getNVAPIShadingRate(int samplingPow2) {
+            const bool preferHorizontal = m_configManager->getEnumValue<VariableShadingRateType>(config::SettingVRS) ==
+                                              VariableShadingRateType::Custom &&
+                                          m_configManager->getValue(SettingVRSPreferHorizontal);
+
             switch (samplingPow2) {
             case 0:
                 return NV_PIXEL_X1_PER_RASTER_PIXEL;
             case 1:
-                return NV_PIXEL_X1_PER_1X2_RASTER_PIXELS;
+                return preferHorizontal ? NV_PIXEL_X1_PER_1X2_RASTER_PIXELS : NV_PIXEL_X1_PER_2X1_RASTER_PIXELS;
             case 2:
                 return NV_PIXEL_X1_PER_2X2_RASTER_PIXELS;
             case 3:
-                return NV_PIXEL_X1_PER_2X4_RASTER_PIXELS;
+                return preferHorizontal ? NV_PIXEL_X1_PER_2X4_RASTER_PIXELS : NV_PIXEL_X1_PER_4X2_RASTER_PIXELS;
             case 4:
                 return NV_PIXEL_X1_PER_4X4_RASTER_PIXELS;
             default:
@@ -666,16 +671,20 @@ namespace {
             }
         }
 
-        static D3D12_SHADING_RATE getD3D12ShadingRate(int samplingPow2) {
+        D3D12_SHADING_RATE getD3D12ShadingRate(int samplingPow2) {
+            const bool preferHorizontal = m_configManager->getEnumValue<VariableShadingRateType>(config::SettingVRS) ==
+                                              VariableShadingRateType::Custom &&
+                                          m_configManager->getValue(SettingVRSPreferHorizontal);
+
             switch (samplingPow2) {
             case 0:
                 return D3D12_SHADING_RATE_1X1;
             case 1:
-                return D3D12_SHADING_RATE_1X2;
+                return preferHorizontal ? D3D12_SHADING_RATE_1X2 : D3D12_SHADING_RATE_2X1;
             case 2:
                 return D3D12_SHADING_RATE_2X2;
             case 3:
-                return D3D12_SHADING_RATE_2X4;
+                return preferHorizontal ? D3D12_SHADING_RATE_2X4 : D3D12_SHADING_RATE_4X2;
             case 4:
             default:
                 return D3D12_SHADING_RATE_4X4;
