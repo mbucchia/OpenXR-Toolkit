@@ -88,6 +88,7 @@ namespace toolkit {
         const std::string SettingVRSXOffset = "vrs_x_offset";
         const std::string SettingVRSXScale = "vrs_x_scale";
         const std::string SettingVRSYOffset = "vrs_y_offset";
+        const std::string SettingVRSPreferHorizontal = "vrs_prefer_horizontal";
         const std::string SettingMipMapBias = "mipmap_bias";
         const std::string SettingBrightness = "brightness";
         const std::string SettingContrast = "contrast";
