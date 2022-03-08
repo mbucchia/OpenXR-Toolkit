@@ -424,6 +424,14 @@ namespace {
                             xrConvertWin32PerformanceCounterToTimeKHR != nullptr;
                         const bool isMotionReprojectionRateSupported =
                             m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
+                        const auto displayRefreshRate =
+                            utilities::RegGetDword(
+                                HKEY_LOCAL_MACHINE,
+                                L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Holographic\\DisplayThrottling",
+                                L"ThrottleFramerate")
+                                    .value_or(0)
+                                ? 60u
+                                : 90u;
                         m_menuHandler = menu::CreateMenuHandler(
                             m_configManager,
                             m_graphicsDevice,
@@ -433,6 +441,7 @@ namespace {
                             m_supportHandTracking,
                             isPredictionDampeningSupported,
                             isMotionReprojectionRateSupported,
+                            displayRefreshRate,
                             m_variableRateShader ? m_variableRateShader->getMaxDownsamplePow2() : 0);
                     }
 
