@@ -1481,7 +1481,7 @@ namespace {
 
                         // Patch the FOV when set above 100%.
                         const int fov = m_configManager->getValue(config::SettingFOV);
-                        if (fov > 100) {
+                        if (0 && fov > 100) {
                             const float multiplier = 100.0f / fov;
 
                             correctedProjectionViews[eye].fov.angleUp *= multiplier;
