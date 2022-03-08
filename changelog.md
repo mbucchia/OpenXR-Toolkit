@@ -34,6 +34,10 @@ nav_order: 6
 - Fix issue where loss of hand tracking would not properly release the virtual controller buttons.
 - Fix heavy flickering issue with SteamVR runtime and when using Motion Reprojection with WMR runtime.
 - Fix bugs with the Hand-to-Controller configuration tool and international locales.
+- Hotfix #1: Fix issue with Oculus runtime and DirectX 11.
+- Hotfix #1: Greatly improve image quality of FFR when using a resolution of 1/2x and/or 1/8x.
+- Hotfix #1: Fix the sharpening effect when using FSR (was a regression from Beta #2).
+- Hotfix #1: Display the Motion Reprojection rate in FPS instead of a fraction of the refresh rate.
 
 ## Changes in Beta #2 (Jan 2022 / v0.9.4 - 0.9.7)
 

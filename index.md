@@ -16,9 +16,9 @@ DISCLAIMER: This software is distributed as-is, without any warranties or condit
 
 ## Downloads
 
-Current version: **Beta #3 (1.0.1)**
+Current version: **Beta #3 (1.0.2)**
 
-[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.0.1/OpenXR-Toolkit.msi){: .btn .btn-blue }
+[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.0.2/OpenXR-Toolkit.msi){: .btn .btn-blue }
 
 ...or expore [all versions](https://github.com/mbucchia/OpenXR-Toolkit/releases).
 
@@ -36,8 +36,6 @@ The following OpenXR ToolKit features have additional restrictions:
 
 + This software was only extensively tested with Microsoft Flight Simulator 2020.
 + It is also expected this software should work with most Steam games if they are using OpenXR (instead of Steam's OpenVR).
-+ Fixed Foveated Rendering does not work on Oculus headsets when using the Oculus OpenXR Runtime with DirectX 11 applications.
-  + Please either use the SteamVR OpenXR Runtime or set your application to use DirectX 12.
 + Fixed Foveated Rendering does not work with War Thunder at this time, and it causes some lighting issues.
 + The menu does not display correctly on Pimax headsets.
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
