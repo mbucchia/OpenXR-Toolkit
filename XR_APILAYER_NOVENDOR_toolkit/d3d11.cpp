@@ -851,7 +851,10 @@ namespace {
 
             // Create common resources.
             if (!textOnly) {
-                initializeInterceptor();
+                // Workaround: the Oculus OpenXR Runtime for DX11 seems to intercept some of the D3D calls as well. It
+                // breaks our use of Detours. Delay the call to initializeInterceptor() by a few frames (see
+                // flushContext()).
+                // initializeInterceptor();
                 initializeShadingResources();
                 initializeMeshResources();
             }
@@ -941,6 +944,14 @@ namespace {
 
             if (blocking) {
                 m_context->Flush();
+            }
+
+            // Workaround: the Oculus OpenXR Runtime for DX11 seems to intercept some of the D3D calls as well. It
+            // breaks our use of Detours. Delay the call to initializeInterceptor() by an arbitrary number of frames.
+            static int countdown = 10;
+            if (countdown && --countdown == 0) {
+                Log("Late initializeInterceptor() call\n");
+                initializeInterceptor();
             }
 
             // Log any messages from the Debug layer.
