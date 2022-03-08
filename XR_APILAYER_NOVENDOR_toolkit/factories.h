@@ -125,6 +125,7 @@ namespace toolkit {
                                                         bool isHandTrackingSupported,
                                                         bool isPredictionDampeningSupported,
                                                         bool isMotionReprojectionRateSupported,
+                                                        uint8_t displayRefreshRate,
                                                         uint8_t variableRateShaderMaxDownsamplePow2);
 
     } // namespace menu
