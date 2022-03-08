@@ -948,8 +948,7 @@ namespace {
 
             // Workaround: the Oculus OpenXR Runtime for DX11 seems to intercept some of the D3D calls as well. It
             // breaks our use of Detours. Delay the call to initializeInterceptor() by an arbitrary number of frames.
-            static int countdown = 10;
-            if (countdown && --countdown == 0) {
+            if (m_lateInitCountdown && --m_lateInitCountdown == 0) {
                 Log("Late initializeInterceptor() call\n");
                 initializeInterceptor();
             }
@@ -1939,6 +1938,7 @@ namespace {
         D3D11ContextState m_state;
         std::string m_deviceName;
         GpuArchitecture m_gpuArchitecture;
+        int m_lateInitCountdown{10};
 
         ComPtr<ID3D11SamplerState> m_linearClampSamplerPS;
         ComPtr<ID3D11SamplerState> m_linearClampSamplerCS;
