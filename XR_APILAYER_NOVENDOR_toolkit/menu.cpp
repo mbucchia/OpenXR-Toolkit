@@ -164,6 +164,7 @@ namespace {
                     bool isHandTrackingSupported,
                     bool isPredictionDampeningSupported,
                     bool isMotionReprojectionRateSupported,
+                    uint8_t displayRefreshRate,
                     uint8_t variableRateShaderMaxDownsamplePow2)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
               m_displayHeight(displayHeight), m_keyModifiers(keyModifiers),
@@ -229,7 +230,8 @@ namespace {
             m_menuEntries.push_back({MenuIndent::NoIndent, "", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
             m_menuEntries.back().visible = true; /* Always visible. */
 
-            setupPerformanceTab(isMotionReprojectionRateSupported, variableRateShaderMaxDownsamplePow2);
+            setupPerformanceTab(
+                isMotionReprojectionRateSupported, displayRefreshRate, variableRateShaderMaxDownsamplePow2);
             setupAppearanceTab();
             setupInputsTab(isPredictionDampeningSupported);
             setupMenuTab();
@@ -749,7 +751,9 @@ namespace {
         }
 
       private:
-        void setupPerformanceTab(bool isMotionReprojectionRateSupported, uint8_t variableRateShaderMaxDownsamplePow2) {
+        void setupPerformanceTab(bool isMotionReprojectionRateSupported,
+                                 uint8_t displayRefreshRate,
+                                 uint8_t variableRateShaderMaxDownsamplePow2) {
             MenuGroup performanceTab(
                 m_configManager,
                 m_menuGroups,
@@ -869,9 +873,10 @@ namespace {
                                          SettingMotionReprojectionRate,
                                          (int)MotionReprojectionRate::Off,
                                          (int)MotionReprojectionRate::MaxValue - 1,
-                                         [&](int value) {
-                                             std::string_view labels[] = {"Unlocked", "1/half", "1/third", "1/quarter"};
-                                             return std::string(labels[value - 1]);
+                                         [displayRefreshRate](int value) {
+                                             return (MotionReprojectionRate)value == MotionReprojectionRate::Off
+                                                        ? "Unlocked"
+                                                        : fmt::format("{:.1f} FPS", (float)displayRefreshRate / value);
                                          }});
             }
 
@@ -1348,6 +1353,7 @@ namespace toolkit::menu {
                                                     bool isHandTrackingSupported,
                                                     bool isPredictionDampeningSupported,
                                                     bool isMotionReprojectionRateSupported,
+                                                    uint8_t displayRefreshRate,
                                                     uint8_t variableRateShaderMaxDownsamplePow2) {
         return std::make_shared<MenuHandler>(configManager,
                                              device,
@@ -1357,6 +1363,7 @@ namespace toolkit::menu {
                                              isHandTrackingSupported,
                                              isPredictionDampeningSupported,
                                              isMotionReprojectionRateSupported,
+                                             displayRefreshRate,
                                              variableRateShaderMaxDownsamplePow2);
     }
 
