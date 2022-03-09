@@ -10,17 +10,17 @@ nav_order: 10
 
 [NVIDIA DLSS: Your Questions, Answered](https://www.nvidia.com/en-us/geforce/news/nvidia-dlss-your-questions-answered/)
 
-## FOV
-
-The **F**ield **O**f **V**iew is the extent of the observable game world that is seen on the display at any given moment. It is typically measured as an angle.
-
-[https://en.wikipedia.org/wiki/Field_of_view_in_video_games](https://en.wikipedia.org/wiki/Field_of_view_in_video_games)
-
 ## FFR
 
 **F**ixed **F**oveated **R**endering is a type of Foveated Rendering technique which doesn't utilise eye tracking and assumes a fixed focal point.
 
 [https://en.wikipedia.org/wiki/Foveated_rendering](https://en.wikipedia.org/wiki/Foveated_rendering)
+
+## FOV
+
+The **F**ield **O**f **V**iew is the extent of the observable game world that is seen on the display at any given moment. It is typically measured as an angle.
+
+[https://en.wikipedia.org/wiki/Field_of_view_in_video_games](https://en.wikipedia.org/wiki/Field_of_view_in_video_games)
 
 ## FSR
 
