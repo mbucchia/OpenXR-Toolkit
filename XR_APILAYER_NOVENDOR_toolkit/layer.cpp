@@ -135,6 +135,7 @@ namespace {
 #endif
             );
             m_configManager->setDefault("disable_frame_analyzer", 0);
+            m_configManager->setDefault("canting", 0);
 
             // Workaround: the first versions of the toolkit used a different representation for the world scale.
             // Migrate the value upon first run.
@@ -1044,6 +1045,24 @@ namespace {
                 viewLocateInfo->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
                 assert(*viewCountOutput == utilities::ViewCount);
 
+                m_posesForFrame[0] = views[0];
+                m_posesForFrame[1] = views[1];
+
+                // Override the canting angle if requested.
+                const int cantOverride = m_configManager->getValue("canting");
+                if (cantOverride != 0) {
+                    const float angle = (float)(cantOverride * (M_PI / 180));
+
+                    StoreXrPose(
+                        &views[0].pose,
+                        DirectX::XMMatrixMultiply(LoadXrPose(views[0].pose),
+                                                  DirectX::XMMatrixRotationRollPitchYaw(0.f, -angle / 2.f, 0.f)));
+                    StoreXrPose(
+                        &views[1].pose,
+                        DirectX::XMMatrixMultiply(LoadXrPose(views[1].pose),
+                                                  DirectX::XMMatrixRotationRollPitchYaw(0.f, angle / 2.f, 0.f)));
+                }
+
                 // Calibrate the projection center for each eye.
                 if (m_needCalibrateEyeProjections) {
                     XrViewLocateInfo info = *viewLocateInfo;
@@ -1640,6 +1659,12 @@ namespace {
                             correctedProjectionViews[eye].fov.angleRight *= multiplier;
                         }
 
+                        // Patch the eye poses.
+                        const int cantOverride = m_configManager->getValue("canting");
+                        if (cantOverride != 0) {
+                            correctedProjectionViews[eye].pose = m_posesForFrame[eye].pose;
+                        }
+
                         viewsForOverlay[eye].pose = correctedProjectionViews[eye].pose;
                         viewsForOverlay[eye].fov = correctedProjectionViews[eye].fov;
                         viewsForOverlay[eye].nearFar = nearFar;
@@ -1820,6 +1845,7 @@ namespace {
         bool m_needCalibrateEyeProjections{true};
         float m_eyeGazeX[utilities::ViewCount];
         float m_eyeGazeY[utilities::ViewCount];
+        XrView m_posesForFrame[utilities::ViewCount];
 
         std::shared_ptr<config::IConfigManager> m_configManager;
 
