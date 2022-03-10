@@ -57,6 +57,7 @@ using namespace std::chrono_literals;
 #include <wrl.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <wil/registry.h>
 
 using Microsoft::WRL::ComPtr;
 
