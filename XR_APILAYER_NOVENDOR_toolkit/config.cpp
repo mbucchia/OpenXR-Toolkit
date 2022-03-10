@@ -59,6 +59,16 @@ namespace {
 
             std::string baseKey = RegPrefix + "\\" + appName;
             m_baseKey = std::wstring(baseKey.begin(), baseKey.end());
+
+            // Create a key to 1) ensure that the watcher below has something to work with and 2) always have the base
+            // key for the desktop app.
+            RegSetDword(HKEY_CURRENT_USER, m_baseKey, L"hello", 0);
+
+            m_watcher = wil::make_registry_watcher(
+                HKEY_CURRENT_USER, m_baseKey.c_str(), true, [&](wil::RegistryChangeKind changeType) {
+                    // TODO: Every call to writeValue() will also cause us to invoke this (unnecessarily).
+                    m_needRefresh = true;
+                });
         }
 
         ~ConfigManager() override {
@@ -74,8 +84,14 @@ namespace {
         }
 
         void tick() override {
+            const bool m_wasNeedRefresh = m_needRefresh;
+
             for (auto& value : m_values) {
                 ConfigValue& entry = value.second;
+
+                if (m_needRefresh) {
+                    refreshValue(value.first, entry);
+                }
 
                 if (entry.writeCountdown > 0) {
                     entry.writeCountdown--;
@@ -85,6 +101,9 @@ namespace {
                     }
                 }
             }
+
+            // Only clear the need for refresh if the whole tick update saw the changes.
+            m_needRefresh = m_wasNeedRefresh != m_needRefresh;
         }
 
         void setDefault(const std::string& name, int value) override {
@@ -186,13 +205,7 @@ namespace {
         }
 
       private:
-        void readValue(const std::string& name, ConfigValue& entry) const {
-            if (m_safeMode) {
-                entry.value = entry.defaultValue;
-                entry.changedSinceLastQuery = true;
-                return;
-            }
-
+        std::optional<int> readRegistry(const std::string& name) const {
             auto value = RegGetDword(HKEY_CURRENT_USER, m_baseKey, std::wstring(name.begin(), name.end()));
             if (!value) {
                 // Fallback to HKLM for global options.
@@ -200,8 +213,34 @@ namespace {
                                     std::wstring(RegPrefix.begin(), RegPrefix.end()),
                                     std::wstring(name.begin(), name.end()));
             }
+            return value;
+        }
+
+        void readValue(const std::string& name, ConfigValue& entry) const {
+            if (m_safeMode) {
+                entry.value = entry.defaultValue;
+                entry.changedSinceLastQuery = true;
+                return;
+            }
+
+            const auto value = readRegistry(name);
             entry.value = value.value_or(entry.defaultValue);
             entry.changedSinceLastQuery = true;
+        }
+
+        void refreshValue(const std::string& name, ConfigValue& entry) const {
+            if (m_safeMode) {
+                return;
+            }
+
+            const auto value = readRegistry(name);
+            if (entry.value != value.value_or(entry.defaultValue)) {
+                entry.value = value.value_or(entry.defaultValue);
+                entry.changedSinceLastQuery = true;
+
+                // Cancel pending writes.
+                entry.writeCountdown = 0;
+            }
         }
 
         void writeValue(const std::string& name, ConfigValue& entry) const {
@@ -212,6 +251,8 @@ namespace {
         std::wstring m_baseKey;
         bool m_safeMode;
         bool m_experimentalMode;
+        wil::unique_registry_watcher m_watcher;
+        bool m_needRefresh{false};
 
         mutable std::map<std::string, ConfigValue> m_values;
     };
