@@ -25,6 +25,7 @@
 #include <layer.h>
 
 #include "dispatch.h"
+#include "factories.h"
 #include "log.h"
 
 #ifndef LAYER_NAMESPACE
@@ -34,6 +35,8 @@
 using namespace LAYER_NAMESPACE::log;
 
 namespace LAYER_NAMESPACE {
+
+    PFN_xrGetInstanceProcAddr g_bypass = nullptr;
 
     // Entry point for creating the layer.
     XrResult xrCreateApiLayerInstance(const XrInstanceCreateInfo* const instanceCreateInfo,
@@ -51,6 +54,43 @@ namespace LAYER_NAMESPACE {
             !apiLayerInfo->nextInfo->nextCreateApiLayerInstance) {
             Log("xrCreateApiLayerInstance validation failed\n");
             return XR_ERROR_INITIALIZATION_FAILED;
+        }
+
+        // Determine if we should entirely bypass the layer for this application.
+        {
+            std::string baseKey = RegPrefix + "\\" + instanceCreateInfo->applicationInfo.applicationName;
+
+            // Always create a key to make each application name easy to find, and let the user add the bypass key
+            // manually.
+            {
+                char path[_MAX_PATH];
+                GetModuleFileNameA(nullptr, path, sizeof(path));
+                LAYER_NAMESPACE::utilities::RegSetString(
+                    HKEY_CURRENT_USER, std::wstring(baseKey.begin(), baseKey.end()), L"module", path);
+            }
+
+            const std::string_view engineName(instanceCreateInfo->applicationInfo.engineName);
+
+            // Bypass the layer if it's either in the no-no list, or if the user requests it.
+            const bool bypassLayer = engineName == "Chromium" ||
+                                     (LAYER_NAMESPACE::utilities::RegGetDword(
+                                          HKEY_CURRENT_USER, std::wstring(baseKey.begin(), baseKey.end()), L"bypass")
+                                          .value_or(0));
+            if (bypassLayer) {
+                Log("Bypassing OpenXR Toolkit for application '%s', engine '%s'\n",
+                    instanceCreateInfo->applicationInfo.applicationName,
+                    instanceCreateInfo->applicationInfo.engineName);
+
+                // Bypass interception of xrGetInstanceProcAddr() calls.
+                // TODO: What if an application creates multiple instances with different names.
+                g_bypass = apiLayerInfo->nextInfo->nextGetInstanceProcAddr;
+
+                // Call the chain to create the instance, and nothing else.
+                XrApiLayerCreateInfo chainApiLayerInfo = *apiLayerInfo;
+                chainApiLayerInfo.nextInfo = apiLayerInfo->nextInfo->next;
+                return apiLayerInfo->nextInfo->nextCreateApiLayerInstance(
+                    instanceCreateInfo, &chainApiLayerInfo, instance);
+            }
         }
 
         // Determine whether we are invoked from the OpenXR Developer Tools for Windows Mixed Reality.
@@ -234,6 +274,10 @@ namespace LAYER_NAMESPACE {
 
     // Forward the xrGetInstanceProcAddr() call to the dispatcher.
     XrResult xrGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function) {
+        if (g_bypass) {
+            return g_bypass(instance, name, function);
+        }
+
         try {
             return LAYER_NAMESPACE::GetInstance()->xrGetInstanceProcAddr(instance, name, function);
         } catch (std::runtime_error& exc) {

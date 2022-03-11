@@ -99,6 +99,19 @@ namespace toolkit::utilities {
         }
     }
 
+    void
+    RegSetString(HKEY hKey, const std::wstring& subKey, const std::wstring& value, const std::string& stringValue) {
+        LONG retCode = ::RegSetKeyValue(hKey,
+                                        subKey.c_str(),
+                                        value.c_str(),
+                                        REG_SZ,
+                                        std::wstring(stringValue.begin(), stringValue.end()).c_str(),
+                                        (DWORD)(2 * (stringValue.length() + 1)));
+        if (retCode != ERROR_SUCCESS) {
+            Log("Failed to write value: %d\n", retCode);
+        }
+    }
+
     void RegDeleteValue(HKEY hKey, const std::wstring& subKey, const std::wstring& value) {
         ::RegDeleteKeyValue(hKey, subKey.c_str(), value.c_str());
     }
