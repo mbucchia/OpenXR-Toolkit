@@ -135,7 +135,8 @@ namespace {
 
         XrResult xrGetSystem(XrInstance instance, const XrSystemGetInfo* getInfo, XrSystemId* systemId) override {
             const XrResult result = OpenXrApi::xrGetSystem(instance, getInfo, systemId);
-            if (XR_SUCCEEDED(result) && getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY) {
+            if (XR_SUCCEEDED(result) && getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY &&
+                m_vrSystemId == XR_NULL_SYSTEM_ID) {
                 // Store the actual OpenXR resolution.
                 XrViewConfigurationView views[utilities::ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW},
                                                                        {XR_TYPE_VIEW_CONFIGURATION_VIEW}};
@@ -296,7 +297,10 @@ namespace {
                     if (entry->type == XR_TYPE_GRAPHICS_BINDING_D3D11_KHR) {
                         const XrGraphicsBindingD3D11KHR* d3dBindings =
                             reinterpret_cast<const XrGraphicsBindingD3D11KHR*>(entry);
-                        m_graphicsDevice = graphics::WrapD3D11Device(d3dBindings->device, m_configManager);
+                        // Workaround: On Oculus, we must delay the initialization of Detour.
+                        const bool enableOculusQuirk = m_runtimeName.find("Oculus") != std::string::npos;
+                        m_graphicsDevice =
+                            graphics::WrapD3D11Device(d3dBindings->device, m_configManager, enableOculusQuirk);
                         break;
                     } else if (entry->type == XR_TYPE_GRAPHICS_BINDING_D3D12_KHR) {
                         const XrGraphicsBindingD3D12KHR* d3dBindings =
