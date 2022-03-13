@@ -91,7 +91,7 @@ namespace toolkit {
         const std::string SettingVRSPreferHorizontal = "vrs_prefer_horizontal";
         const std::string SettingMipMapBias = "mipmap_bias";
         const std::string SettingBrightness = "brightness";
-        const std::string SettingContrast = "contrast";
+        const std::string SettingContrast = "contrast2";
         const std::string SettingSaturationMode = "saturation_mode";
         const std::string SettingSaturation = "saturation";
         const std::string SettingSaturationRed = "saturation_red";
