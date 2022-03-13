@@ -647,8 +647,8 @@ namespace {
             if (m_state != MenuState::Splash && overlayType != OverlayType::None) {
                 const auto textColorOverlayNoFade = MakeRGB24(ColorOverlay) | 0xff000000;
 
-                float top =
-                    m_state != MenuState::Visible ? topAlign : topAlign - BorderVerticalSpacing - 1.1f * fontSize;
+                float top = m_state != MenuState::Visible ? (renderTarget->getInfo().height / 3.f)
+                                                          : topAlign - BorderVerticalSpacing - 1.1f * fontSize;
 
 #define OVERLAY_COMMON TextStyle::Normal, fontSize, overlayAlign - 200, top, textColorOverlayNoFade, true, FW1_LEFT
 
