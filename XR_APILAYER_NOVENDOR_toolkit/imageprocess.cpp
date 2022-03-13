@@ -82,7 +82,7 @@ namespace {
                 const float saturationGreen = 1.f + 2.f * (saturationGreenValue - 500) / 1000.f;
                 const float saturationBlue = 1.f + 2.f * (saturationBlueValue - 500) / 1000.f;
                 // Contrast is also inverted.
-                const float contrast = 2.f * -(m_configManager->getValue(SettingContrast) - 500) / 1000.f;
+                const float contrast = 2.f * -(m_configManager->getValue(SettingContrast) - 5000) / 10000.f;
 
                 // This code is based on the article from Paul Haeberli.
                 // http://www.graficaobscura.com/matrix/

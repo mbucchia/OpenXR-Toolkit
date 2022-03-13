@@ -1031,10 +1031,10 @@ namespace {
                                      [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
             m_menuEntries.back().acceleration = 5;
             m_menuEntries.push_back(
-                {MenuIndent::OptionIndent, "Contrast", MenuEntryType::Slider, SettingContrast, 400, 600, [](int value) {
-                     return fmt::format("{:.1f}", value / 10.f);
+                {MenuIndent::OptionIndent, "Contrast", MenuEntryType::Slider, SettingContrast, 4000, 6000, [](int value) {
+                     return fmt::format("{:.2f}", value / 100.f);
                  }});
-            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.back().acceleration = 20;
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Saturation",
