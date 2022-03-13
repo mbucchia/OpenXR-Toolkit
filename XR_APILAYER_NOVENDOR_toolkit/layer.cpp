@@ -209,7 +209,7 @@ namespace {
                 m_configManager->setDefault(config::SettingVRSPreferHorizontal, 0);
                 m_configManager->setEnumDefault(config::SettingMipMapBias, config::MipMapBias::Anisotropic);
                 m_configManager->setDefault(config::SettingBrightness, 500);
-                m_configManager->setDefault(config::SettingContrast, 500);
+                m_configManager->setDefault(config::SettingContrast, 5000);
                 m_configManager->setDefault(config::SettingSaturation, 500);
                 m_configManager->setDefault(config::SettingSaturationRed, 500);
                 m_configManager->setDefault(config::SettingSaturationGreen, 500);
@@ -224,6 +224,19 @@ namespace {
                     m_configManager->setValue(config::SettingICD, migratedValue, true);
                     m_configManager->deleteValue("icd");
                 }
+
+                // Workaround: the first versions of the toolkit used a different representation for the contrast.
+                // Migrate the value upon first run.
+                m_configManager->setDefault("contrast", 0);
+                if (m_configManager->getValue("contrast") != 0) {
+                    const int migratedValue = m_configManager->getValue("contrast") * 10;
+                    m_configManager->setValue(config::SettingContrast, migratedValue, true);
+                    m_configManager->deleteValue("contrast");
+                }
+
+                // Commit any update above. This is needed for apps that create an instance, destroy it right away
+                // without submitting a frame, then create a new one.
+                m_configManager->tick();
 
                 // Remember the XrSystemId to use.
                 m_vrSystemId = *systemId;
