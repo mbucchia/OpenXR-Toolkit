@@ -812,8 +812,12 @@ namespace {
 
     class D3D11Device : public IDevice, public std::enable_shared_from_this<D3D11Device> {
       public:
-        D3D11Device(ID3D11Device* device, std::shared_ptr<config::IConfigManager> configManager, bool textOnly = false)
-            : m_device(device), m_gpuArchitecture(GpuArchitecture::Unknown) {
+        D3D11Device(ID3D11Device* device,
+                    std::shared_ptr<config::IConfigManager> configManager,
+                    bool textOnly = false,
+                    bool enableOculusQuirk = false)
+            : m_device(device), m_gpuArchitecture(GpuArchitecture::Unknown),
+              m_lateInitCountdown(enableOculusQuirk ? 10 : 0) {
             m_device->GetImmediateContext(set(m_context));
             {
                 ComPtr<IDXGIDevice> dxgiDevice;
@@ -854,7 +858,10 @@ namespace {
                 // Workaround: the Oculus OpenXR Runtime for DX11 seems to intercept some of the D3D calls as well. It
                 // breaks our use of Detours. Delay the call to initializeInterceptor() by a few frames (see
                 // flushContext()).
-                // initializeInterceptor();
+                if (!m_lateInitCountdown) {
+                    Log("Early initializeInterceptor() call\n");
+                    initializeInterceptor();
+                }
                 initializeShadingResources();
                 initializeMeshResources();
             }
@@ -1938,7 +1945,7 @@ namespace {
         D3D11ContextState m_state;
         std::string m_deviceName;
         GpuArchitecture m_gpuArchitecture;
-        int m_lateInitCountdown{10};
+        int m_lateInitCountdown{0};
 
         ComPtr<ID3D11SamplerState> m_linearClampSamplerPS;
         ComPtr<ID3D11SamplerState> m_linearClampSamplerCS;
@@ -2172,13 +2179,14 @@ namespace toolkit::graphics {
     }
 
     std::shared_ptr<IDevice> WrapD3D11Device(ID3D11Device* device,
-                                             std::shared_ptr<config::IConfigManager> configManager) {
-        return std::make_shared<D3D11Device>(device, configManager);
+                                             std::shared_ptr<config::IConfigManager> configManager,
+                                             bool enableOculusQuirk) {
+        return std::make_shared<D3D11Device>(device, configManager, false /* textOnly */, enableOculusQuirk);
     }
 
     std::shared_ptr<IDevice> WrapD3D11TextDevice(ID3D11Device* device,
                                                  std::shared_ptr<config::IConfigManager> configManager) {
-        return std::make_shared<D3D11Device>(device, configManager, true);
+        return std::make_shared<D3D11Device>(device, configManager, true /* textOnly */);
     }
 
     std::shared_ptr<ITexture> WrapD3D11Texture(std::shared_ptr<IDevice> device,
