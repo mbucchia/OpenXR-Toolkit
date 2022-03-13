@@ -852,9 +852,9 @@ namespace {
             // Create common resources.
             if (!textOnly) {
                 // Workaround: the Oculus OpenXR Runtime for DX11 seems to intercept some of the D3D calls as well. It
-                // breaks our use of Detours. Delay the call to initializeInterceptor() by a few frames (see
-                // flushContext()).
-                // initializeInterceptor();
+                // breaks our use of Detours. We split the code of initializeInterceptor() and we do early Detour here,
+                // and late Detour after a few frames (see flushContext()).
+                initializeInterceptorEarly();
                 initializeShadingResources();
                 initializeMeshResources();
             }
@@ -950,7 +950,7 @@ namespace {
             // breaks our use of Detours. Delay the call to initializeInterceptor() by an arbitrary number of frames.
             if (m_lateInitCountdown && --m_lateInitCountdown == 0) {
                 Log("Late initializeInterceptor() call\n");
-                initializeInterceptor();
+                initializeInterceptorLate();
             }
 
             // Log any messages from the Debug layer.
@@ -1524,7 +1524,23 @@ namespace {
         }
 
       private:
-        void initializeInterceptor() {
+        void initializeInterceptorEarly() {
+            g_instance = this;
+
+            // Hook to the Direct3D device context to intercept preparation for the rendering.
+            DetourMethodAttach(get(m_context),
+                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
+                               47,
+                               hooked_ID3D11DeviceContext_CopyResource,
+                               g_original_ID3D11DeviceContext_CopyResource);
+            DetourMethodAttach(get(m_context),
+                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
+                               46,
+                               hooked_ID3D11DeviceContext_CopySubresourceRegion,
+                               g_original_ID3D11DeviceContext_CopySubresourceRegion);
+        }
+
+        void initializeInterceptorLate() {
             g_instance = this;
 
             // Hook to the Direct3D device context to intercept preparation for the rendering.
@@ -1538,16 +1554,6 @@ namespace {
                                34,
                                hooked_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews,
                                g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews);
-            DetourMethodAttach(get(m_context),
-                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
-                               47,
-                               hooked_ID3D11DeviceContext_CopyResource,
-                               g_original_ID3D11DeviceContext_CopyResource);
-            DetourMethodAttach(get(m_context),
-                               // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
-                               46,
-                               hooked_ID3D11DeviceContext_CopySubresourceRegion,
-                               g_original_ID3D11DeviceContext_CopySubresourceRegion);
             DetourMethodAttach(get(m_context),
                                // Method offset is 7 + method index (0-based) for ID3D11DeviceContext.
                                10,
