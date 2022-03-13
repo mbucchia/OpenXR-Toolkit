@@ -202,16 +202,16 @@ namespace {
                     return false;
                 }
 
-                if (m_debugWithController) {
-                    location.pose.position.x = location.pose.position.y = location.pose.position.z = 0.f;
-                }
-
                 // Project the pose onto the screen.
 
                 // 1) Project the gaze to a 3D point forward. This point is relative to the view space.
                 const auto gaze = LoadXrPose(location.pose);
+                // const auto gazeProjectedPoint =
+                //    DirectX::XMVector3Transform(DirectX::XMVectorSet(0, 0, m_projectionDistance, 1), gaze);
                 const auto gazeProjectedPoint =
-                    DirectX::XMVector3Transform(DirectX::XMVectorSet(0, 0, m_projectionDistance, 1), gaze);
+                    m_debugWithController
+                        ? LoadXrVector3(location.pose.position)
+                        : DirectX::XMVector3Transform(DirectX::XMVectorSet(0, 0, m_projectionDistance, 1), gaze);
 
                 for (uint32_t eye = 0; eye < ViewCount; eye++) {
                     // 2) Compute the view space to camera transform for this eye.
@@ -238,7 +238,7 @@ namespace {
 
                 // Update Stats
                 // TODO: Consider removing this.
-                m_eyeGazeState.origin = location.pose.position;
+                m_eyeGazeState.origin = !m_debugWithController ? location.pose.position : XrVector3f{0.f, 0.f, 0.f};
                 {
                     const auto q = location.pose.orientation;
                     const auto sinp = 2 * (q.w * q.y - q.z * q.x);
