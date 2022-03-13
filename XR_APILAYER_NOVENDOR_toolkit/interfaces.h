@@ -699,7 +699,8 @@ namespace toolkit {
 
             uint64_t predictionTimeUs{0};
             float icd{0.0f};
-            float totalFov{0.0f};
+            float fovL[4]{0.0f, 0.0f, 0.0f, 0.0f};
+            float fovR[4]{0.0f, 0.0f, 0.0f, 0.0f};
 
             bool hasColorBuffer[utilities::ViewCount]{false, false};
             bool hasDepthBuffer[utilities::ViewCount]{false, false};

@@ -216,6 +216,13 @@ namespace {
                 m_configManager->setDefault(config::SettingSaturationBlue, 500);
                 m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
 
+                m_configManager->setDefault("fov_up", 100);
+                m_configManager->setDefault("fov_down", 100);
+                m_configManager->setDefault("fov_l_l", 100);
+                m_configManager->setDefault("fov_l_r", 100);
+                m_configManager->setDefault("fov_r_l", 100);
+                m_configManager->setDefault("fov_r_r", 100);
+
                 // Workaround: the first versions of the toolkit used a different representation for the world scale.
                 // Migrate the value upon first run.
                 m_configManager->setDefault("icd", 0);
@@ -1021,22 +1028,24 @@ namespace {
                     m_stats.icd = ipd;
                 }
 
-                // Override the FOV if requested.
-                const int fovOverride = m_configManager->getValue(config::SettingFOV);
-                if (fovOverride != 100) {
-                    const float multiplier = fovOverride / 100.0f;
+                // Override the FOV.
+                views[0].fov.angleUp *= m_configManager->getValue("fov_up") / 100.0f;
+                views[0].fov.angleDown *= m_configManager->getValue("fov_down") / 100.0f;
+                views[0].fov.angleLeft *= m_configManager->getValue("fov_l_l") / 100.0f;
+                views[0].fov.angleRight *= m_configManager->getValue("fov_l_r") / 100.0f;
+                views[1].fov.angleUp *= m_configManager->getValue("fov_up") / 100.0f;
+                views[1].fov.angleDown *= m_configManager->getValue("fov_down") / 100.0f;
+                views[1].fov.angleLeft *= m_configManager->getValue("fov_r_l") / 100.0f;
+                views[1].fov.angleRight *= m_configManager->getValue("fov_r_r") / 100.0f;
 
-                    views[0].fov.angleUp *= multiplier;
-                    views[0].fov.angleDown *= multiplier;
-                    views[0].fov.angleLeft *= multiplier;
-                    views[0].fov.angleRight *= multiplier;
-                    views[1].fov.angleUp *= multiplier;
-                    views[1].fov.angleDown *= multiplier;
-                    views[1].fov.angleLeft *= multiplier;
-                    views[1].fov.angleRight *= multiplier;
-                }
-
-                m_stats.totalFov = -views[0].fov.angleLeft + views[1].fov.angleRight;
+                m_stats.fovL[0] = views[0].fov.angleUp;
+                m_stats.fovL[1] = views[0].fov.angleDown;
+                m_stats.fovL[2] = views[0].fov.angleLeft;
+                m_stats.fovL[3] = views[0].fov.angleRight;
+                m_stats.fovR[0] = views[1].fov.angleUp;
+                m_stats.fovR[1] = views[1].fov.angleDown;
+                m_stats.fovR[2] = views[1].fov.angleLeft;
+                m_stats.fovR[3] = views[1].fov.angleRight;
             }
 
             return result;
@@ -1255,7 +1264,7 @@ namespace {
             }
         }
 
-        void takeScreenshot(std::shared_ptr<graphics::ITexture> texture) const {
+        void takeScreenshot(std::shared_ptr<graphics::ITexture> texture, const std::string& suffix) const {
             SYSTEMTIME st;
             ::GetLocalTime(&st);
 
@@ -1271,6 +1280,8 @@ namespace {
                 parameters << upscaleName << m_upscalingFactor << "_"
                            << m_configManager->getValue(config::SettingSharpness);
             }
+
+            parameters << "_" << suffix;
 
             const auto fileFormat =
                 m_configManager->getEnumValue<config::ScreenshotFileFormat>(config::SettingScreenshotFileFormat);
@@ -1514,17 +1525,6 @@ namespace {
                         correctedProjectionViews[eye].subImage.imageRect.extent.width = m_displayWidth;
                         correctedProjectionViews[eye].subImage.imageRect.extent.height = m_displayHeight;
 
-                        // Patch the FOV when set above 100%.
-                        const int fov = m_configManager->getValue(config::SettingFOV);
-                        if (fov > 100) {
-                            const float multiplier = 100.0f / fov;
-
-                            correctedProjectionViews[eye].fov.angleUp *= multiplier;
-                            correctedProjectionViews[eye].fov.angleDown *= multiplier;
-                            correctedProjectionViews[eye].fov.angleLeft *= multiplier;
-                            correctedProjectionViews[eye].fov.angleRight *= multiplier;
-                        }
-
                         // Patch the eye poses.
                         const int cantOverride = m_configManager->getValue("canting");
                         if (cantOverride != 0) {
@@ -1616,7 +1616,8 @@ namespace {
             if (textureForOverlay[0] && requestScreenshot) {
                 // TODO: this is capturing frame N-3
                 // review the command queues/lists and context flush
-                takeScreenshot(textureForOverlay[0]);
+                takeScreenshot(textureForOverlay[0], "L");
+                takeScreenshot(textureForOverlay[1], "R");
 
 #ifdef _DEBUG
                 if (m_variableRateShader) {
