@@ -290,8 +290,8 @@ namespace {
                     std::vector<uint8_t> genericPattern;
                     generateFoveationPattern(genericPattern,
                                              rowPitchAligned,
-                                             m_targetWidth / 2,
-                                             m_targetHeight / 2,
+                                             m_targetWidth / 2, // Cannot apply xOffset.
+                                             (m_targetHeight / 2) + yOffset,
                                              innerRadius / 100.f,
                                              outerRadius / 100.f,
                                              semiMajorFactor,
