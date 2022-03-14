@@ -25,7 +25,7 @@ Devices confirmed to work:
 * Ultraleap [Leap Motion Controller](https://www.ultraleap.com/product/leap-motion-controller/)
 * Ultraleap [Stereo IR 170](https://www.ultraleap.com/product/stereo-ir-170/)
 * Pimax [Hand Tracking Module](https://pimax.com/product/hand-tracking-module/)
-* Oculus Quest 2
+* Oculus Quest and Quest 2
 
 We would love to add more devices to this list! If you have a device that supports hand tracking via OpenXR that is no on this list, please contact us on [Discord](https://discord.gg/WXFshwMnke) or submit an [issue on GitHub](https://github.com/mbucchia/OpenXR-Toolkit/issues).
 
@@ -39,17 +39,63 @@ We would love to add more devices to this list! If you have a device that suppor
 
 4. With your game running, open the menu (Ctrl+F2), then navigate to **Hand Tracking**. Select either **Both** to use both hands, or **Left**/**Right** to use only one hand. Restart the VR session for the hand tracking to begin.
 
-## Using with Oculus Quest 2
+### Note fo Varjo Aero users
 
-1. Upgrade to Oculus software v37 or later.
+In order to use an Ultraleap device with the Varjo Aero, please follow these additional steps (after step 3 above):
 
-2. Open the _Oculus App_, and navigate to the _Beta_ menu.
+1. Copy the OpenXR Toolkit hand configuration file for your application (eg: `FS2020.cfg`) from the `%ProgramFiles%\OpenXR-Toolkit` folder to the `%LocalAppData%\OpenXR-Toolkit\configs` folder.
 
-3. Enable both _Developer Runtime Features_ and _Passthrough over Oculus Link_.
+2. Edit the copy of the hand configuration file for your application (eg: `%LocalAppData%\OpenXR-Toolkit\configs\FS2020.cfg`) , and replace the following content:
 
-4. Copy the OpenXR Toolkit hand configuration file for your application (eg: `FS2020.cfg`) from the `%ProgramFiles%\OpenXR-Toolkit` folder to the `%LocalAppData%\OpenXR-Toolkit\configs` folder.
+```
+interaction_profile=/interaction_profiles/hp/mixed_reality_controller
+```
 
-5. Edit the copy of the hand configuration file for your application (eg: `%LocalAppData%\OpenXR-Toolkit\configs\FS2020.cfg`) , and replace the following content:
+  + with:
+
+```
+interaction_profile=/interaction_profiles/valve/index_controller
+```
+
+## Using with Oculus Quest or Quest 2
+
+1. Create and log in with a [developer account](https://developer.oculus.com/sign-up/).
+
+2. Ensure that your Oculus software is up-to-date (v37 or later).
+
+3. Turn on hand tracking on the headset: https://support.oculus.com/articles/headsets-and-accessories/controllers-and-hand-tracking/index-controllers-hand-tracking
+
+![Enabling hand tracking](site/oculus-hands-enable.png)<br>
+
+<details>
+  <summary>Click for details...</summary>
+
+  <img alt="Enabling hand tracking" src="site/oculus-hands-enable-1.png">
+  <img alt="Enabling hand tracking" src="site/oculus-hands-enable-2.png">
+  <img alt="Enabling hand tracking" src="site/oculus-hands-enable-3.png">
+  <img alt="Enabling hand tracking" src="site/oculus-hands-enable-4.png">
+
+</details>
+
+3. Turn on Developer mode on the headset.
+
+<details>
+  <summary>Click for details...</summary>
+
+  <img alt="Enabling developer mode" src="site/oculus-dev-1.jpeg">
+  <img alt="Enabling developer mode" src="site/oculus-dev-2.jpeg">
+
+</details>
+
+4. On your PC, open the _Oculus App_, and navigate to _Settings_ and the _Beta_ menu.
+
+5. Enable _Public Test Channel_, _Developer Runtime Features_ and _Passthrough over Oculus Link_.
+
+![Enabling hand tracking](site/oculus-dev-3.jpeg)<br>
+
+6. Copy the OpenXR Toolkit hand configuration file for your application (eg: `FS2020.cfg`) from the `%ProgramFiles%\OpenXR-Toolkit` folder to the `%LocalAppData%\OpenXR-Toolkit\configs` folder.
+
+7. Edit the copy of the hand configuration file for your application (eg: `%LocalAppData%\OpenXR-Toolkit\configs\FS2020.cfg`) , and replace the following content:
 
 ```
 interaction_profile=/interaction_profiles/hp/mixed_reality_controller
@@ -61,7 +107,7 @@ interaction_profile=/interaction_profiles/hp/mixed_reality_controller
 interaction_profile=/interaction_profiles/oculus/touch_controller
 ```
 
-6. With your game running, open the menu (Ctrl+F2), then navigate to **Hand Tracking**. Select either **Both** to use both hands, or **Left**/**Right** to use only one hand. Restart the VR session for the hand tracking to begin.
+8. With your game running, open the menu (Ctrl+F2), then navigate to **Hand Tracking**. Select either **Both** to use both hands, or **Left**/**Right** to use only one hand. Restart the VR session for the hand tracking to begin.
 
 
 ## Customizing the tracking and gestures

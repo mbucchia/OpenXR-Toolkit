@@ -82,14 +82,18 @@ Finally, the _Horizontal scale_ value lets you control the scale of the horizont
 
 Certain graphics settings in the application may create additional artifacts. There are a few ways to deal this this situation:
 
-1. Increase the radius values until the degradations are no longer visible (which may lead to a lower gain in frame rate)
+1. Increase the radius values or enable Expert settings and increase the _Horizontal scale_ until the degradations are no longer visible (which may lead to a lower gain in frame rate).
 
-2. Find and disable the graphic settings causing the issue (which may lead to a lower fidelity in the scene)
+2. Experiment with different resolutions in the _Custom_ settings, and try both _Prefer resolution_ settings in conjunction with the 1/2x and 1/8x resolutions.
+
+3. Find and disable the graphic settings causing the issue (which may lead to a lower graphics fidelity).
 
 In the example below, we see how the the "Light shafts" feature in Microsoft Flight Simulator 2020 creates undesirable black lines near the horizon line. However, when the feature is disabled, the artifacts are nearly completely gone.
 
 ![FFR light shafts setting](site/ffr-light-shafts.jpg)<br>
 *A demonstration of light shafts on (top) and off (bottom) and the impact on visual quality with FFR.*
+
+This issue can also be resolved by using the 1/2x and 1/8x resolutions exclusively, and ensure that the _Prefer resolution_ setting is set to Vertical.
 
 Another way to reduce or conceal some of the visual artifacts is to use the sharpening features of the NIS or FSR upscalers (see [Upscaling](upscaling)).
 

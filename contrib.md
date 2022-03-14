@@ -11,8 +11,19 @@ Logo and icons designed by RPthreenine.
 User Experience designed by Andrew Lilley (FarFutureFox).
 
 Additional contributions by John Kolencheryl.
+Additional contributions by NumberNumber481.
 
-Special thanks to:
+Our beta testers:
+- Altsak
+- AmiableGalaxy9
+- CptStevil
+- Malkavien
+- Nirgal76
+- NumberNumber481
+- Roman Bershadsky
+- RPthreenine
+
+Special thanks to (including additional beta testers):
 - Roman Bershadsky ([Roman Design](https://flightsimulation.romandesign.ca/))
 - [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskytours)
 - Bryce Hutchings
@@ -22,5 +33,9 @@ Special thanks to:
 - Frydrych Holger
 - Paul Haeberli
 - Flobud
-
-Thanks to our beta testers: CptStevil, NumberNumber481, themadmaker, RCFlyer51, Booms3220, CPSweatPants, Altsak, AmiableGalaxy9, Malkavien, Nirgal76...
+- dbuz1805
+- buzinin
+- themadmaker
+- RCFlyer51
+- Booms3220
+- CPSweatPants

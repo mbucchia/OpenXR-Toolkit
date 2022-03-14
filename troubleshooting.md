@@ -44,9 +44,20 @@ Please note that certain applications may run in a security-sandbox environment.
 ![An example log file](site/log-file.png)<br>
 *An example log file*
 
+## Missing DirectX legacy runtime
+
+Check for the following error in the log file:
+
+```
+[OXRTK] 2022-02-28 20:41:32 -0600: HRESULT failure [80004005]
+Origin: m_fontWrapperFactory->CreateFontWrapper(get(m_device), m_fontFamily.c_str(), set(m_fontNormal))
+```
+
+To solve this problem, please install the [DirectX legacy runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=35).
+
 ## Confirming that the Ultraleap OpenXR layer is active
 
-**Note: this is applicable for troubleshooting hand tracking only.**
+**Note: this is applicable for troubleshooting hand tracking with Ultraleap devices only.**
 
 To confirm that the Ultraleap OpenXR layer is active and loaded in the correct order, open the _OpenXR Toolkit Companion app_ (found on the desktop or Start menu) and hover the mouse cursor on the _OpenXR Toolkit layer is active_ label.
 
