@@ -38,6 +38,10 @@ nav_order: 6
 - Hotfix #1: Greatly improve image quality of FFR when using a resolution of 1/2x and/or 1/8x.
 - Hotfix #1: Fix the sharpening effect when using FSR (was a regression from Beta #2).
 - Hotfix #1: Display the Motion Reprojection rate in FPS instead of a fraction of the refresh rate.
+- Hotfix #2: Fix a regression introduced in Hotfix #1 and causing the FFR mask to be incorrectly applied.
+- Hotfix #2: Allow finer adjustment of the contrast (0.01 step).
+- Hotfix #2: Fix position of the FPS overlay.
+- Hotfix #2: Disable the OpenXR Toolkit when the application is Edge/Chrome (eg: 360 videos).
 
 ## Changes in Beta #2 (Jan 2022 / v0.9.4 - 0.9.7)
 
