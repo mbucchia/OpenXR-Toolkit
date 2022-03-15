@@ -11,15 +11,16 @@ Logo and icons designed by RPthreenine.
 User Experience designed by Andrew Lilley (FarFutureFox).
 
 Additional contributions by John Kolencheryl.
-Additional contributions by NumberNumber481.
+
+Additional contributions by Micah Frisby.
 
 Our beta testers:
 - Altsak
 - AmiableGalaxy9
 - CptStevil
 - Malkavien
+- Micah Frisby
 - Nirgal76
-- NumberNumber481
 - Roman Bershadsky
 - RPthreenine
 
