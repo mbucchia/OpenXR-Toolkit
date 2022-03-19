@@ -488,7 +488,7 @@ namespace {
         void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) override {
             assert(!(rowPitch % m_device->getTextureAlignmentConstraint()));
 
-            m_device->getContext<D3D11>()->UpdateSubresource(
+            m_device->getContextAs<D3D11>()->UpdateSubresource(
                 get(m_texture),
                 D3D11CalcSubresource(0, std::max(0, slice), m_textureDesc.MipLevels),
                 nullptr,
@@ -506,7 +506,7 @@ namespace {
             const auto forceSRGB = IsEqualGUID(fileFormat, GUID_ContainerFormatPng);
 
             const HRESULT hr = DirectX::SaveWICTextureToFile(
-                m_device->getContext<D3D11>(), get(m_texture), fileFormat, path.c_str(), nullptr, nullptr, forceSRGB);
+                m_device->getContextAs<D3D11>(), get(m_texture), fileFormat, path.c_str(), nullptr, nullptr, forceSRGB);
 
             if (SUCCEEDED(hr)) {
                 Log("Screenshot saved to %S\n", path.c_str());
@@ -527,22 +527,22 @@ namespace {
                     throw std::runtime_error("Texture was not created with D3D11_BIND_SHADER_RESOURCE");
                 }
 
-                auto device = m_device->getNative<D3D11>();
+                if (auto device = m_device->getAs<D3D11>()) {
+                    D3D11_SHADER_RESOURCE_VIEW_DESC desc;
+                    ZeroMemory(&desc, sizeof(desc));
+                    desc.Format = (DXGI_FORMAT)m_info.format;
+                    desc.ViewDimension =
+                        m_info.arraySize == 1 ? D3D11_SRV_DIMENSION_TEXTURE2D : D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+                    desc.Texture2DArray.ArraySize = 1;
+                    desc.Texture2DArray.FirstArraySlice = slice;
+                    desc.Texture2DArray.MipLevels = m_info.mipCount;
+                    desc.Texture2DArray.MostDetailedMip = D3D11CalcSubresource(0, 0, m_info.mipCount);
 
-                D3D11_SHADER_RESOURCE_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = (DXGI_FORMAT)m_info.format;
-                desc.ViewDimension =
-                    m_info.arraySize == 1 ? D3D11_SRV_DIMENSION_TEXTURE2D : D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = 1;
-                desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipLevels = m_info.mipCount;
-                desc.Texture2DArray.MostDetailedMip = D3D11CalcSubresource(0, 0, m_info.mipCount);
+                    ComPtr<ID3D11ShaderResourceView> srv;
+                    CHECK_HRCMD(device->CreateShaderResourceView(get(m_texture), &desc, set(srv)));
 
-                ComPtr<ID3D11ShaderResourceView> srv;
-                CHECK_HRCMD(device->CreateShaderResourceView(get(m_texture), &desc, set(srv)));
-
-                shaderResourceView = std::make_shared<D3D11ShaderResourceView>(m_device, get(srv));
+                    shaderResourceView = std::make_shared<D3D11ShaderResourceView>(m_device, get(srv));
+                }
             }
             return shaderResourceView;
         }
@@ -554,21 +554,21 @@ namespace {
                     throw std::runtime_error("Texture was not created with D3D11_BIND_UNORDERED_ACCESS");
                 }
 
-                auto device = m_device->getNative<D3D11>();
+                if (auto device = m_device->getAs<D3D11>()) {
+                    D3D11_UNORDERED_ACCESS_VIEW_DESC desc;
+                    ZeroMemory(&desc, sizeof(desc));
+                    desc.Format = (DXGI_FORMAT)m_info.format;
+                    desc.ViewDimension =
+                        m_info.arraySize == 1 ? D3D11_UAV_DIMENSION_TEXTURE2D : D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+                    desc.Texture2DArray.ArraySize = 1;
+                    desc.Texture2DArray.FirstArraySlice = slice;
+                    desc.Texture2DArray.MipSlice = D3D11CalcSubresource(0, 0, m_info.mipCount);
 
-                D3D11_UNORDERED_ACCESS_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = (DXGI_FORMAT)m_info.format;
-                desc.ViewDimension =
-                    m_info.arraySize == 1 ? D3D11_UAV_DIMENSION_TEXTURE2D : D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = 1;
-                desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipSlice = D3D11CalcSubresource(0, 0, m_info.mipCount);
+                    ComPtr<ID3D11UnorderedAccessView> uav;
+                    CHECK_HRCMD(device->CreateUnorderedAccessView(get(m_texture), &desc, set(uav)));
 
-                ComPtr<ID3D11UnorderedAccessView> uav;
-                CHECK_HRCMD(device->CreateUnorderedAccessView(get(m_texture), &desc, set(uav)));
-
-                unorderedAccessView = std::make_shared<D3D11UnorderedAccessView>(m_device, get(uav));
+                    unorderedAccessView = std::make_shared<D3D11UnorderedAccessView>(m_device, get(uav));
+                }
             }
             return unorderedAccessView;
         }
@@ -580,21 +580,21 @@ namespace {
                     throw std::runtime_error("Texture was not created with D3D11_BIND_RENDER_TARGET");
                 }
 
-                auto device = m_device->getNative<D3D11>();
+                if (auto device = m_device->getAs<D3D11>()) {
+                    D3D11_RENDER_TARGET_VIEW_DESC desc;
+                    ZeroMemory(&desc, sizeof(desc));
+                    desc.Format = (DXGI_FORMAT)m_info.format;
+                    desc.ViewDimension =
+                        m_info.arraySize == 1 ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+                    desc.Texture2DArray.ArraySize = 1;
+                    desc.Texture2DArray.FirstArraySlice = slice;
+                    desc.Texture2DArray.MipSlice = D3D11CalcSubresource(0, 0, m_info.mipCount);
 
-                D3D11_RENDER_TARGET_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = (DXGI_FORMAT)m_info.format;
-                desc.ViewDimension =
-                    m_info.arraySize == 1 ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = 1;
-                desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipSlice = D3D11CalcSubresource(0, 0, m_info.mipCount);
+                    ComPtr<ID3D11RenderTargetView> rtv;
+                    CHECK_HRCMD(device->CreateRenderTargetView(get(m_texture), &desc, set(rtv)));
 
-                ComPtr<ID3D11RenderTargetView> rtv;
-                CHECK_HRCMD(device->CreateRenderTargetView(get(m_texture), &desc, set(rtv)));
-
-                renderTargetView = std::make_shared<D3D11RenderTargetView>(m_device, get(rtv));
+                    renderTargetView = std::make_shared<D3D11RenderTargetView>(m_device, get(rtv));
+                }
             }
             return renderTargetView;
         }
@@ -606,21 +606,21 @@ namespace {
                     throw std::runtime_error("Texture was not created with D3D11_BIND_DEPTH_STENCIL");
                 }
 
-                auto device = m_device->getNative<D3D11>();
+                if (auto device = m_device->getAs<D3D11>()) {
+                    D3D11_DEPTH_STENCIL_VIEW_DESC desc;
+                    ZeroMemory(&desc, sizeof(desc));
+                    desc.Format = (DXGI_FORMAT)m_info.format;
+                    desc.ViewDimension =
+                        m_info.arraySize == 1 ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+                    desc.Texture2DArray.ArraySize = 1;
+                    desc.Texture2DArray.FirstArraySlice = slice;
+                    desc.Texture2DArray.MipSlice = D3D11CalcSubresource(0, 0, m_info.mipCount);
 
-                D3D11_DEPTH_STENCIL_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = (DXGI_FORMAT)m_info.format;
-                desc.ViewDimension =
-                    m_info.arraySize == 1 ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = 1;
-                desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipSlice = D3D11CalcSubresource(0, 0, m_info.mipCount);
+                    ComPtr<ID3D11DepthStencilView> rtv;
+                    CHECK_HRCMD(device->CreateDepthStencilView(get(m_texture), &desc, set(rtv)));
 
-                ComPtr<ID3D11DepthStencilView> rtv;
-                CHECK_HRCMD(device->CreateDepthStencilView(get(m_texture), &desc, set(rtv)));
-
-                depthStencilView = std::make_shared<D3D11DepthStencilView>(m_device, get(rtv));
+                    depthStencilView = std::make_shared<D3D11DepthStencilView>(m_device, get(rtv));
+                }
             }
             return depthStencilView;
         }
@@ -660,12 +660,12 @@ namespace {
                 throw std::runtime_error("Upload size mismatch");
             }
 
-            auto context = m_device->getContext<D3D11>();
-
-            D3D11_MAPPED_SUBRESOURCE mappedResources;
-            CHECK_HRCMD(context->Map(get(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResources));
-            memcpy(mappedResources.pData, buffer, count);
-            context->Unmap(get(m_buffer), 0);
+            if (auto context = m_device->getContextAs<D3D11>()) {
+                D3D11_MAPPED_SUBRESOURCE mappedResources;
+                CHECK_HRCMD(context->Map(get(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResources));
+                memcpy(mappedResources.pData, buffer, count);
+                context->Unmap(get(m_buffer), 0);
+            }
         }
 
         void* getNativePtr() const override {
@@ -716,15 +716,15 @@ namespace {
     class D3D11GpuTimer : public IGpuTimer {
       public:
         D3D11GpuTimer(std::shared_ptr<IDevice> device) : m_device(device) {
-            auto d3dDevice = m_device->getNative<D3D11>();
-
-            D3D11_QUERY_DESC queryDesc;
-            ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
-            queryDesc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
-            CHECK_HRCMD(d3dDevice->CreateQuery(&queryDesc, set(m_timeStampDis)));
-            queryDesc.Query = D3D11_QUERY_TIMESTAMP;
-            CHECK_HRCMD(d3dDevice->CreateQuery(&queryDesc, set(m_timeStampStart)));
-            CHECK_HRCMD(d3dDevice->CreateQuery(&queryDesc, set(m_timeStampEnd)));
+            if (auto device = m_device->getAs<D3D11>()) {
+                D3D11_QUERY_DESC queryDesc;
+                ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
+                queryDesc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+                CHECK_HRCMD(device->CreateQuery(&queryDesc, set(m_timeStampDis)));
+                queryDesc.Query = D3D11_QUERY_TIMESTAMP;
+                CHECK_HRCMD(device->CreateQuery(&queryDesc, set(m_timeStampStart)));
+                CHECK_HRCMD(device->CreateQuery(&queryDesc, set(m_timeStampEnd)));
+            }
         }
 
         Api getApi() const override {
@@ -737,42 +737,37 @@ namespace {
 
         void start() override {
             assert(!m_valid);
-
-            auto context = m_device->getContext<D3D11>();
-
-            context->Begin(get(m_timeStampDis));
-            context->End(get(m_timeStampStart));
+            if (auto context = m_device->getContextAs<D3D11>()) {
+                context->Begin(get(m_timeStampDis));
+                context->End(get(m_timeStampStart));
+            }
         }
 
         void stop() override {
             assert(!m_valid);
-
-            auto context = m_device->getContext<D3D11>();
-
-            context->End(get(m_timeStampEnd));
-            context->End(get(m_timeStampDis));
-            m_valid = true;
+            if (auto context = m_device->getContextAs<D3D11>()) {
+                context->End(get(m_timeStampEnd));
+                context->End(get(m_timeStampDis));
+                m_valid = true;
+            }
         }
 
         uint64_t query(bool reset) const override {
-            auto context = m_device->getContext<D3D11>();
-
-            D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disData;
-            UINT64 startime;
-            UINT64 endtime;
-
             uint64_t duration = 0;
+            auto context = m_device->getContextAs<D3D11>();
+            if (context && m_valid) {
+                UINT64 startime = 0, endtime = 0;
+                D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disData = {0};
 
-            if (m_valid &&
-                context->GetData(get(m_timeStampDis), &disData, sizeof(D3D11_QUERY_DATA_TIMESTAMP_DISJOINT), 0) ==
-                    S_OK &&
-                context->GetData(get(m_timeStampStart), &startime, sizeof(UINT64), 0) == S_OK &&
-                context->GetData(get(m_timeStampEnd), &endtime, sizeof(UINT64), 0) == S_OK && !disData.Disjoint) {
-                duration = (uint64_t)((endtime - startime) / double(disData.Frequency) * 1e6);
+                if (context->GetData(get(m_timeStampStart), &startime, sizeof(UINT64), 0) == S_OK &&
+                    context->GetData(get(m_timeStampEnd), &endtime, sizeof(UINT64), 0) == S_OK &&
+                    context->GetData(get(m_timeStampDis), &disData, sizeof(D3D11_QUERY_DATA_TIMESTAMP_DISJOINT), 0) ==
+                        S_OK &&
+                    !disData.Disjoint) {
+                    duration = static_cast<uint64_t>(((endtime - startime) * 1e6) / disData.Frequency);
+                }
+                m_valid = !reset;
             }
-
-            m_valid = !reset;
-
             return duration;
         }
 

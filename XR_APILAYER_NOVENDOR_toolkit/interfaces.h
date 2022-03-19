@@ -43,6 +43,10 @@ namespace toolkit {
             virtual uint64_t query(bool reset = true) const = 0;
         };
 
+        // Quick and dirty API helper
+        template <class T, class... Types>
+        inline constexpr bool is_any_of_v = std::disjunction_v<std::is_same<T, Types>...>;
+
     } // namespace
 
     namespace utilities {
@@ -170,8 +174,8 @@ namespace toolkit {
             using Buffer = ID3D11Buffer*;
             struct MeshData {
                 ID3D11Buffer* vertexBuffer;
-                UINT stride;
                 ID3D11Buffer* indexBuffer;
+                UINT stride;
                 UINT numIndices;
             };
             using Mesh = MeshData*;
@@ -181,6 +185,12 @@ namespace toolkit {
             using ComputeShaderOutputView = ID3D11UnorderedAccessView*;
             using RenderTargetView = ID3D11RenderTargetView*;
             using DepthStencilView = ID3D11DepthStencilView*;
+
+            // clang-format off
+            template <typename T>
+            static constexpr bool is_concrete_api_v = is_any_of_v<T,
+              Device, Context, Texture, Buffer, Mesh, PixelShader, ComputeShader, ShaderInputView, RenderTargetView, DepthStencilView>;
+            // clang-format on
         };
 
         // Type traits for D3D12.
@@ -207,7 +217,20 @@ namespace toolkit {
             using ComputeShaderOutputView = D3D12_CPU_DESCRIPTOR_HANDLE*;
             using RenderTargetView = D3D12_CPU_DESCRIPTOR_HANDLE*;
             using DepthStencilView = D3D12_CPU_DESCRIPTOR_HANDLE*;
+
+            // clang-format off
+            template <typename T>
+            static constexpr bool is_concrete_api_v = is_any_of_v<T,
+              Device, Context, Texture, Buffer, Mesh, PixelShader, ComputeShader, ShaderInputView, RenderTargetView, DepthStencilView>;
+            // clang-format on
         };
+
+        // Graphics API helper
+        template <typename ConcreteType, typename InterfaceType>
+        inline auto GetAs(const InterfaceType* pInterface) {
+            constexpr auto api = D3D12::is_concrete_api_v<ConcreteType> ? Api::D3D12 : Api::D3D11;
+            return reinterpret_cast<ConcreteType>(api == pInterface->getApi() ? pInterface->getNativePtr() : nullptr);
+        }
 
         // A few handy texture formats.
         enum class TextureFormat { R32G32B32A32_FLOAT, R16G16B16A16_UNORM, R10G10B10A2_UNORM, R8G8B8A8_UNORM };
@@ -236,6 +259,11 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
+            auto getAs() const {
+                return GetAs<typename ApiTraits::PixelShader>(this);
+            }
+
+            template <typename ApiTraits>
             typename ApiTraits::PixelShader getNative() const {
                 if (ApiTraits::Api != getApi()) {
                     throw std::runtime_error("Api mismatch");
@@ -257,6 +285,11 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
+            auto getAs() const {
+                return GetAs<typename ApiTraits::ComputeShader>(this);
+            }
+
+            template <typename ApiTraits>
             typename ApiTraits::ComputeShader getNative() const {
                 if (ApiTraits::Api != getApi()) {
                     throw std::runtime_error("Api mismatch");
@@ -273,6 +306,11 @@ namespace toolkit {
             virtual std::shared_ptr<IDevice> getDevice() const = 0;
 
             virtual void* getNativePtr() const = 0;
+
+            template <typename ApiTraits>
+            auto getAs() const {
+                return GetAs<typename ApiTraits::ShaderInputView>(this);
+            }
 
             template <typename ApiTraits>
             typename ApiTraits::ShaderInputView getNative() const {
@@ -293,6 +331,11 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
+            auto getAs() const {
+                return GetAs<typename ApiTraits::ComputeShaderOutputView>(this);
+            }
+
+            template <typename ApiTraits>
             typename ApiTraits::ComputeShaderOutputView getNative() const {
                 if (ApiTraits::Api != getApi()) {
                     throw std::runtime_error("Api mismatch");
@@ -311,6 +354,11 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
+            auto getAs() const {
+                return GetAs<typename ApiTraits::RenderTargetView>(this);
+            }
+
+            template <typename ApiTraits>
             typename ApiTraits::RenderTargetView getNative() const {
                 if (ApiTraits::Api != getApi()) {
                     throw std::runtime_error("Api mismatch");
@@ -327,6 +375,11 @@ namespace toolkit {
             virtual std::shared_ptr<IDevice> getDevice() const = 0;
 
             virtual void* getNativePtr() const = 0;
+
+            template <typename ApiTraits>
+            auto getAs() const {
+                return GetAs<typename ApiTraits::DepthStencilView>(this);
+            }
 
             template <typename ApiTraits>
             typename ApiTraits::DepthStencilView getNative() const {
@@ -361,6 +414,11 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
+            auto getAs() const {
+                return GetAs<typename ApiTraits::Texture>(this);
+            }
+
+            template <typename ApiTraits>
             typename ApiTraits::Texture getNative() const {
                 if (ApiTraits::Api != getApi()) {
                     throw std::runtime_error("Api mismatch");
@@ -379,6 +437,11 @@ namespace toolkit {
             virtual void uploadData(const void* buffer, size_t count) = 0;
 
             virtual void* getNativePtr() const = 0;
+
+            template <typename ApiTraits>
+            auto getAs() const {
+                return GetAs<typename ApiTraits::Buffer>(this);
+            }
 
             template <typename ApiTraits>
             typename ApiTraits::Buffer getNative() const {
@@ -404,6 +467,11 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
+            auto getAs() const {
+                return GetAs<typename ApiTraits::Mesh>(this);
+            }
+
+            template <typename ApiTraits>
             typename ApiTraits::Mesh getNative() const {
                 if (ApiTraits::Api != getApi()) {
                     throw std::runtime_error("Api mismatch");
@@ -426,6 +494,11 @@ namespace toolkit {
             virtual std::shared_ptr<IDevice> getDevice() const = 0;
 
             virtual void* getNativePtr() const = 0;
+
+            template <typename ApiTraits>
+            auto getAs() const {
+                return GetAs<typename ApiTraits::Context>(this);
+            }
 
             template <typename ApiTraits>
             typename ApiTraits::Context getNative() const {
@@ -554,26 +627,31 @@ namespace toolkit {
             virtual void* getContextPtr() const = 0;
 
             template <typename ApiTraits>
-            typename ApiTraits::Device getAs() const {
-                return ApiTraits::Api == getApi() ? reinterpret_cast<typename ApiTraits::Device>(getNativePtr())
-                                                  : nullptr;
+            auto getAs() const {
+                return GetAs<typename ApiTraits::Device>(this);
             }
 
             template <typename ApiTraits>
-            typename ApiTraits::Device getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::Device>(getNativePtr());
+            auto getContextAs() const {
+                return reinterpret_cast<typename ApiTraits::Context>(ApiTraits::Api == getApi() ? getContextPtr()
+                                                                                                : nullptr);
             }
 
-            template <typename ApiTraits>
-            typename ApiTraits::Context getContext() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::Context>(getContextPtr());
-            }
+            //template <typename ApiTraits>
+            //typename ApiTraits::Device getNative() const {
+            //    if (ApiTraits::Api != getApi()) {
+            //        throw std::runtime_error("Api mismatch");
+            //    }
+            //    return reinterpret_cast<typename ApiTraits::Device>(getNativePtr());
+            //}
+
+            //template <typename ApiTraits>
+            //typename ApiTraits::Context getContext() const {
+            //    if (ApiTraits::Api != getApi()) {
+            //        throw std::runtime_error("Api mismatch");
+            //    }
+            //    return reinterpret_cast<typename ApiTraits::Context>(getContextPtr());
+            //}
         };
 
         // A texture post-processor.
@@ -633,7 +711,6 @@ namespace toolkit {
     } // namespace graphics
 
     namespace input {
-
         enum class Hand : uint32_t { Left, Right };
 
         struct GesturesState {

@@ -123,37 +123,37 @@ namespace {
 
         virtual void resolve() {
             // Common code for creating the root signature.
-            auto device = m_device->getNative<D3D12>();
-
-            std::vector<CD3DX12_ROOT_PARAMETER> parametersDescriptors;
-            for (const auto& range : m_parametersDescriptorRanges) {
-                parametersDescriptors.push_back({});
-                parametersDescriptors.back().InitAsDescriptorTable(1, &range);
-            }
-
-            CD3DX12_ROOT_SIGNATURE_DESC desc((UINT)parametersDescriptors.size(),
-                                             parametersDescriptors.data(),
-                                             0,
-                                             nullptr,
-                                             D3D12_ROOT_SIGNATURE_FLAG_NONE);
-
-            ComPtr<ID3DBlob> serializedRootSignature;
-            ComPtr<ID3DBlob> errors;
-            const HRESULT hr =
-                D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &serializedRootSignature, set(errors));
-            if (FAILED(hr)) {
-                if (errors) {
-                    Log("%s", (char*)errors->GetBufferPointer());
+            if (auto device = m_device->getAs<D3D12>()) {
+                std::vector<CD3DX12_ROOT_PARAMETER> parametersDescriptors;
+                for (const auto& range : m_parametersDescriptorRanges) {
+                    parametersDescriptors.push_back({});
+                    parametersDescriptors.back().InitAsDescriptorTable(1, &range);
                 }
-                CHECK_HRESULT(hr, "Failed to serialize root signature");
+
+                CD3DX12_ROOT_SIGNATURE_DESC desc((UINT)parametersDescriptors.size(),
+                                                 parametersDescriptors.data(),
+                                                 0,
+                                                 nullptr,
+                                                 D3D12_ROOT_SIGNATURE_FLAG_NONE);
+
+                ComPtr<ID3DBlob> serializedRootSignature;
+                ComPtr<ID3DBlob> errors;
+                const HRESULT hr = D3D12SerializeRootSignature(
+                    &desc, D3D_ROOT_SIGNATURE_VERSION_1, &serializedRootSignature, set(errors));
+                if (FAILED(hr)) {
+                    if (errors) {
+                        Log("%s", (char*)errors->GetBufferPointer());
+                    }
+                    CHECK_HRESULT(hr, "Failed to serialize root signature");
+                }
+
+                CHECK_HRCMD(device->CreateRootSignature(0,
+                                                        serializedRootSignature->GetBufferPointer(),
+                                                        serializedRootSignature->GetBufferSize(),
+                                                        IID_PPV_ARGS(set(m_rootSignature))));
+
+                m_parametersDescriptorRanges.clear();
             }
-
-            CHECK_HRCMD(device->CreateRootSignature(0,
-                                                    serializedRootSignature->GetBufferPointer(),
-                                                    serializedRootSignature->GetBufferSize(),
-                                                    IID_PPV_ARGS(set(m_rootSignature))));
-
-            m_parametersDescriptorRanges.clear();
         }
 
         bool needsResolve() const {
@@ -200,44 +200,45 @@ namespace {
 
             // Initialize the pipeline state now.
             // TODO: We must support the RTV format changing.
-            auto device = m_device->getNative<D3D12>();
-            m_psoDesc.RTVFormats[0] = (DXGI_FORMAT)m_outputInfo.format;
-            m_psoDesc.NumRenderTargets = 1;
-            m_psoDesc.SampleDesc.Count = m_outputInfo.sampleCount;
-            if (m_psoDesc.SampleDesc.Count > 1) {
-                D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS qualityLevels;
-                qualityLevels.Format = m_psoDesc.RTVFormats[0];
-                qualityLevels.SampleCount = m_psoDesc.SampleDesc.Count;
-                qualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-                CHECK_HRCMD(m_device->getNative<D3D12>()->CheckFeatureSupport(
-                    D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &qualityLevels, sizeof(qualityLevels)));
+            if (auto device = m_device->getAs<D3D12>()) {
+                m_psoDesc.RTVFormats[0] = (DXGI_FORMAT)m_outputInfo.format;
+                m_psoDesc.NumRenderTargets = 1;
+                m_psoDesc.SampleDesc.Count = m_outputInfo.sampleCount;
+                if (m_psoDesc.SampleDesc.Count > 1) {
+                    D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS qualityLevels;
+                    qualityLevels.Format = m_psoDesc.RTVFormats[0];
+                    qualityLevels.SampleCount = m_psoDesc.SampleDesc.Count;
+                    qualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+                    CHECK_HRCMD(device->CheckFeatureSupport(
+                        D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &qualityLevels, sizeof(qualityLevels)));
 
-                // Setup for highest quality multisampling if requested.
-                m_psoDesc.SampleDesc.Quality = qualityLevels.NumQualityLevels - 1;
-                m_psoDesc.RasterizerState.MultisampleEnable = true;
+                    // Setup for highest quality multisampling if requested.
+                    m_psoDesc.SampleDesc.Quality = qualityLevels.NumQualityLevels - 1;
+                    m_psoDesc.RasterizerState.MultisampleEnable = true;
+                }
+                m_psoDesc.pRootSignature = get(m_rootSignature);
+                CHECK_HRCMD(device->CreateGraphicsPipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
+
+                if (m_debugName) {
+                    m_pipelineState->SetName(std::wstring(m_debugName->begin(), m_debugName->end()).c_str());
+                }
+
+                m_shaderData.rootSignature = get(m_rootSignature);
+                m_shaderData.pipelineState = get(m_pipelineState);
+
+                // Setup the pipeline to make up for the deferred initialization.
+                auto context = m_device->getContextAs<D3D12>();
+                context->SetGraphicsRootSignature(get(m_rootSignature));
+                context->SetPipelineState(get(m_pipelineState));
+                context->IASetIndexBuffer(nullptr);
+                context->IASetVertexBuffers(0, 0, nullptr);
+                context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+                for (const auto& parameter : m_parametersForFirstCall) {
+                    context->SetGraphicsRootDescriptorTable(parameter.first, parameter.second);
+                }
+
+                m_parametersForFirstCall.clear();
             }
-            m_psoDesc.pRootSignature = get(m_rootSignature);
-            CHECK_HRCMD(device->CreateGraphicsPipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
-
-            if (m_debugName) {
-                m_pipelineState->SetName(std::wstring(m_debugName->begin(), m_debugName->end()).c_str());
-            }
-
-            m_shaderData.rootSignature = get(m_rootSignature);
-            m_shaderData.pipelineState = get(m_pipelineState);
-
-            // Setup the pipeline to make up for the deferred initialization.
-            auto context = m_device->getContext<D3D12>();
-            context->SetGraphicsRootSignature(get(m_rootSignature));
-            context->SetPipelineState(get(m_pipelineState));
-            context->IASetIndexBuffer(nullptr);
-            context->IASetVertexBuffers(0, 0, nullptr);
-            context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-            for (const auto& parameter : m_parametersForFirstCall) {
-                context->SetGraphicsRootDescriptorTable(parameter.first, parameter.second);
-            }
-
-            m_parametersForFirstCall.clear();
         }
 
         void* getNativePtr() const override {
@@ -282,26 +283,27 @@ namespace {
             D3D12Shader::resolve();
 
             // Initialize the pipeline state now.
-            auto device = m_device->getNative<D3D12>();
-            m_psoDesc.pRootSignature = get(m_rootSignature);
-            CHECK_HRCMD(device->CreateComputePipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
+            if (auto device = m_device->getAs<D3D12>()) {
+                m_psoDesc.pRootSignature = get(m_rootSignature);
+                CHECK_HRCMD(device->CreateComputePipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
 
-            if (m_debugName) {
-                m_pipelineState->SetName(std::wstring(m_debugName->begin(), m_debugName->end()).c_str());
+                if (m_debugName) {
+                    m_pipelineState->SetName(std::wstring(m_debugName->begin(), m_debugName->end()).c_str());
+                }
+
+                m_shaderData.rootSignature = get(m_rootSignature);
+                m_shaderData.pipelineState = get(m_pipelineState);
+
+                // Setup the pipeline to make up for the deferred initialization.
+                auto context = m_device->getContextAs<D3D12>();
+                context->SetComputeRootSignature(get(m_rootSignature));
+                context->SetPipelineState(get(m_pipelineState));
+                for (const auto& parameter : m_parametersForFirstCall) {
+                    context->SetComputeRootDescriptorTable(parameter.first, parameter.second);
+                }
+
+                m_parametersForFirstCall.clear();
             }
-
-            m_shaderData.rootSignature = get(m_rootSignature);
-            m_shaderData.pipelineState = get(m_pipelineState);
-
-            // Setup the pipeline to make up for the deferred initialization.
-            auto context = m_device->getContext<D3D12>();
-            context->SetComputeRootSignature(get(m_rootSignature));
-            context->SetPipelineState(get(m_pipelineState));
-            for (const auto& parameter : m_parametersForFirstCall) {
-                context->SetComputeRootDescriptorTable(parameter.first, parameter.second);
-            }
-
-            m_parametersForFirstCall.clear();
         }
 
         void* getNativePtr() const override {
@@ -415,12 +417,12 @@ namespace {
                     Align((UINT)m_textureDesc.Width, m_device->getTextureAlignmentConstraint()) * m_textureDesc.Height;
                 const auto& heapType = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
                 const auto stagingDesc = CD3DX12_RESOURCE_DESC::Buffer(m_uploadSize);
-                CHECK_HRCMD(m_device->getNative<D3D12>()->CreateCommittedResource(&heapType,
-                                                                                  D3D12_HEAP_FLAG_NONE,
-                                                                                  &stagingDesc,
-                                                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
-                                                                                  nullptr,
-                                                                                  IID_PPV_ARGS(set(m_uploadBuffer))));
+                CHECK_HRCMD(m_device->getAs<D3D12>()->CreateCommittedResource(&heapType,
+                                                                              D3D12_HEAP_FLAG_NONE,
+                                                                              &stagingDesc,
+                                                                              D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                                              nullptr,
+                                                                              IID_PPV_ARGS(set(m_uploadBuffer))));
             }
 
             // Copy to the upload buffer.
@@ -432,28 +434,29 @@ namespace {
             }
 
             // Do the upload now.
-            auto context = m_device->getContext<D3D12>();
-            {
-                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                    get(m_texture), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-                context->ResourceBarrier(1, &barrier);
-            }
-            {
-                D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-                ZeroMemory(&footprint, sizeof(footprint));
-                footprint.Footprint.Width = (UINT)m_textureDesc.Width;
-                footprint.Footprint.Height = m_textureDesc.Height;
-                footprint.Footprint.Depth = 1;
-                footprint.Footprint.RowPitch = rowPitch;
-                footprint.Footprint.Format = m_textureDesc.Format;
-                CD3DX12_TEXTURE_COPY_LOCATION src(get(m_uploadBuffer), footprint);
-                CD3DX12_TEXTURE_COPY_LOCATION dst(get(m_texture), 0);
-                context->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
-            }
-            {
-                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                    get(m_texture), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
-                context->ResourceBarrier(1, &barrier);
+            if (auto context = m_device->getContextAs<D3D12>()) {
+                {
+                    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                        get(m_texture), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+                    context->ResourceBarrier(1, &barrier);
+                }
+                {
+                    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+                    ZeroMemory(&footprint, sizeof(footprint));
+                    footprint.Footprint.Width = (UINT)m_textureDesc.Width;
+                    footprint.Footprint.Height = m_textureDesc.Height;
+                    footprint.Footprint.Depth = 1;
+                    footprint.Footprint.RowPitch = rowPitch;
+                    footprint.Footprint.Format = m_textureDesc.Format;
+                    CD3DX12_TEXTURE_COPY_LOCATION src(get(m_uploadBuffer), footprint);
+                    CD3DX12_TEXTURE_COPY_LOCATION dst(get(m_texture), 0);
+                    context->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+                }
+                {
+                    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                        get(m_texture), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
+                    context->ResourceBarrier(1, &barrier);
+                }
             }
         }
 
@@ -465,7 +468,7 @@ namespace {
 
             ComPtr<ID3D12CommandQueue> commandQueue;
             UINT size = sizeof(ID3D12CommandQueue*);
-            m_device->getNative<D3D12>()->GetPrivateData(IID_ID3D12CommandQueue, &size, set(commandQueue));
+            m_device->getAs<D3D12>()->GetPrivateData(IID_ID3D12CommandQueue, &size, set(commandQueue));
 
             const auto forceSRGB = IsEqualGUID(fileFormat, GUID_ContainerFormatPng);
 
@@ -497,23 +500,24 @@ namespace {
                     throw std::runtime_error("Texture was created with D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE");
                 }
 
-                auto device = m_device->getNative<D3D12>();
+                if (auto device = m_device->getAs<D3D12>()) {
+                    D3D12_SHADER_RESOURCE_VIEW_DESC desc;
+                    ZeroMemory(&desc, sizeof(desc));
+                    desc.Format = (DXGI_FORMAT)m_info.format;
+                    desc.ViewDimension =
+                        m_info.arraySize == 1 ? D3D12_SRV_DIMENSION_TEXTURE2D : D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                    desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                    desc.Texture2DArray.ArraySize = 1;
+                    desc.Texture2DArray.FirstArraySlice = slice;
+                    desc.Texture2DArray.MipLevels = m_info.mipCount;
+                    desc.Texture2DArray.MostDetailedMip =
+                        D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
 
-                D3D12_SHADER_RESOURCE_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = (DXGI_FORMAT)m_info.format;
-                desc.ViewDimension =
-                    m_info.arraySize == 1 ? D3D12_SRV_DIMENSION_TEXTURE2D : D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-                desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-                desc.Texture2DArray.ArraySize = 1;
-                desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipLevels = m_info.mipCount;
-                desc.Texture2DArray.MostDetailedMip = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
-
-                D3D12_CPU_DESCRIPTOR_HANDLE handle;
-                m_rvHeap.allocate(handle);
-                device->CreateShaderResourceView(get(m_texture), &desc, handle);
-                shaderResourceView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                    D3D12_CPU_DESCRIPTOR_HANDLE handle;
+                    m_rvHeap.allocate(handle);
+                    device->CreateShaderResourceView(get(m_texture), &desc, handle);
+                    shaderResourceView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                }
             }
             return shaderResourceView;
         }
@@ -525,21 +529,21 @@ namespace {
                     throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS");
                 }
 
-                auto device = m_device->getNative<D3D12>();
+                if (auto device = m_device->getAs<D3D12>()) {
+                    D3D12_UNORDERED_ACCESS_VIEW_DESC desc;
+                    ZeroMemory(&desc, sizeof(desc));
+                    desc.Format = (DXGI_FORMAT)m_info.format;
+                    desc.ViewDimension =
+                        m_info.arraySize == 1 ? D3D12_UAV_DIMENSION_TEXTURE2D : D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                    desc.Texture2DArray.ArraySize = 1;
+                    desc.Texture2DArray.FirstArraySlice = slice;
+                    desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
 
-                D3D12_UNORDERED_ACCESS_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = (DXGI_FORMAT)m_info.format;
-                desc.ViewDimension =
-                    m_info.arraySize == 1 ? D3D12_UAV_DIMENSION_TEXTURE2D : D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = 1;
-                desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
-
-                D3D12_CPU_DESCRIPTOR_HANDLE handle;
-                m_rvHeap.allocate(handle);
-                device->CreateUnorderedAccessView(get(m_texture), nullptr, &desc, handle);
-                unorderedAccessView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                    D3D12_CPU_DESCRIPTOR_HANDLE handle;
+                    m_rvHeap.allocate(handle);
+                    device->CreateUnorderedAccessView(get(m_texture), nullptr, &desc, handle);
+                    unorderedAccessView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                }
             }
             return unorderedAccessView;
         }
@@ -551,21 +555,21 @@ namespace {
                     throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET");
                 }
 
-                auto device = m_device->getNative<D3D12>();
+                if (auto device = m_device->getAs<D3D12>()) {
+                    D3D12_RENDER_TARGET_VIEW_DESC desc;
+                    ZeroMemory(&desc, sizeof(desc));
+                    desc.Format = (DXGI_FORMAT)m_info.format;
+                    desc.ViewDimension =
+                        m_info.arraySize == 1 ? D3D12_RTV_DIMENSION_TEXTURE2D : D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                    desc.Texture2DArray.ArraySize = 1;
+                    desc.Texture2DArray.FirstArraySlice = slice;
+                    desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
 
-                D3D12_RENDER_TARGET_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = (DXGI_FORMAT)m_info.format;
-                desc.ViewDimension =
-                    m_info.arraySize == 1 ? D3D12_RTV_DIMENSION_TEXTURE2D : D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = 1;
-                desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
-
-                D3D12_CPU_DESCRIPTOR_HANDLE handle;
-                m_rtvHeap.allocate(handle);
-                device->CreateRenderTargetView(get(m_texture), &desc, handle);
-                renderTargetView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                    D3D12_CPU_DESCRIPTOR_HANDLE handle;
+                    m_rtvHeap.allocate(handle);
+                    device->CreateRenderTargetView(get(m_texture), &desc, handle);
+                    renderTargetView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                }
             }
             return renderTargetView;
         }
@@ -577,21 +581,21 @@ namespace {
                     throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL");
                 }
 
-                auto device = m_device->getNative<D3D12>();
+                if (auto device = m_device->getAs<D3D12>()) {
+                    D3D12_DEPTH_STENCIL_VIEW_DESC desc;
+                    ZeroMemory(&desc, sizeof(desc));
+                    desc.Format = (DXGI_FORMAT)m_info.format;
+                    desc.ViewDimension =
+                        m_info.arraySize == 1 ? D3D12_DSV_DIMENSION_TEXTURE2D : D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+                    desc.Texture2DArray.ArraySize = 1;
+                    desc.Texture2DArray.FirstArraySlice = slice;
+                    desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
 
-                D3D12_DEPTH_STENCIL_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = (DXGI_FORMAT)m_info.format;
-                desc.ViewDimension =
-                    m_info.arraySize == 1 ? D3D12_DSV_DIMENSION_TEXTURE2D : D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = 1;
-                desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
-
-                D3D12_CPU_DESCRIPTOR_HANDLE handle;
-                m_dsvHeap.allocate(handle);
-                device->CreateDepthStencilView(get(m_texture), &desc, handle);
-                depthStencilView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                    D3D12_CPU_DESCRIPTOR_HANDLE handle;
+                    m_dsvHeap.allocate(handle);
+                    device->CreateDepthStencilView(get(m_texture), &desc, handle);
+                    depthStencilView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                }
             }
             return depthStencilView;
         }
@@ -654,18 +658,18 @@ namespace {
             subresourceData.pData = buffer;
             subresourceData.RowPitch = subresourceData.SlicePitch = count;
 
-            auto context = m_device->getContext<D3D12>();
-
-            {
-                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                    get(m_buffer), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-                context->ResourceBarrier(1, &barrier);
-            }
-            UpdateSubresources<1>(context, get(m_buffer), uploadBuffer, 0, 0, 1, &subresourceData);
-            {
-                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                    get(m_buffer), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-                context->ResourceBarrier(1, &barrier);
+            if (auto context = m_device->getContextAs<D3D12>()) {
+                {
+                    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                        get(m_buffer), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+                    context->ResourceBarrier(1, &barrier);
+                }
+                UpdateSubresources<1>(context, get(m_buffer), uploadBuffer, 0, 0, 1, &subresourceData);
+                {
+                    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                        get(m_buffer), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+                    context->ResourceBarrier(1, &barrier);
+                }
             }
         }
 
@@ -685,12 +689,12 @@ namespace {
                     m_constantBufferView = handle;
                 }
 
-                auto device = m_device->getNative<D3D12>();
-
-                D3D12_CONSTANT_BUFFER_VIEW_DESC desc;
-                desc.BufferLocation = m_buffer->GetGPUVirtualAddress();
-                desc.SizeInBytes = Align(m_bufferDesc.Width, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-                device->CreateConstantBufferView(&desc, m_constantBufferView.value());
+                if (auto device = m_device->getAs<D3D12>()) {
+                    D3D12_CONSTANT_BUFFER_VIEW_DESC desc;
+                    desc.BufferLocation = m_buffer->GetGPUVirtualAddress();
+                    desc.SizeInBytes = Align(m_bufferDesc.Width, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+                    device->CreateConstantBufferView(&desc, m_constantBufferView.value());
+                }
             }
             return m_constantBufferView.value();
         }
@@ -773,11 +777,11 @@ namespace {
         }
 
         void start() override {
-            m_device->getContext<D3D12>()->EndQuery(get(m_queryHeap), D3D12_QUERY_TYPE_TIMESTAMP, m_startIndex);
+            m_device->getContextAs<D3D12>()->EndQuery(get(m_queryHeap), D3D12_QUERY_TYPE_TIMESTAMP, m_startIndex);
         }
 
         void stop() override {
-            m_device->getContext<D3D12>()->EndQuery(get(m_queryHeap), D3D12_QUERY_TYPE_TIMESTAMP, m_stopIndex);
+            m_device->getContextAs<D3D12>()->EndQuery(get(m_queryHeap), D3D12_QUERY_TYPE_TIMESTAMP, m_stopIndex);
         }
 
         uint64_t query(bool reset) const override {
