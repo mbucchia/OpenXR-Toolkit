@@ -477,6 +477,10 @@ namespace {
                     m_handTracker->beginSession(*session, m_graphicsDevice);
                 }
 
+                // Make sure we perform calibration again. We pass these values to the menu and FFR, so in the case of
+                // multi-session applications, we must push those values again.
+                m_needCalibrateEyeProjections = true;
+
                 // Remember the XrSession to use.
                 m_vrSession = *session;
             }
