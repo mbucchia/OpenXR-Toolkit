@@ -1977,16 +1977,13 @@ namespace {
 
         static inline D3D11Device* g_instance = nullptr;
 
-        typedef void (*PFN_ID3D11DeviceContext_OMSetRenderTargets)(ID3D11DeviceContext*,
-                                                                   UINT,
-                                                                   ID3D11RenderTargetView* const*,
-                                                                   ID3D11DepthStencilView*);
-        static inline PFN_ID3D11DeviceContext_OMSetRenderTargets g_original_ID3D11DeviceContext_OMSetRenderTargets =
-            nullptr;
-        static void hooked_ID3D11DeviceContext_OMSetRenderTargets(ID3D11DeviceContext* context,
-                                                                  UINT NumViews,
-                                                                  ID3D11RenderTargetView* const* ppRenderTargetViews,
-                                                                  ID3D11DepthStencilView* pDepthStencilView) {
+        DECLARE_DETOUR_FUNCTION(static void,
+                                STDMETHODCALLTYPE,
+                                ID3D11DeviceContext_OMSetRenderTargets,
+                                ID3D11DeviceContext* context,
+                                UINT NumViews,
+                                ID3D11RenderTargetView* const* ppRenderTargetViews,
+                                ID3D11DepthStencilView* pDepthStencilView) {
             DebugLog("--> ID3D11DeviceContext_OMSetRenderTargets\n");
 
             assert(g_instance);
@@ -1999,26 +1996,17 @@ namespace {
             DebugLog("<-- ID3D11DeviceContext_OMSetRenderTargets\n");
         }
 
-        typedef void (*PFN_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews)(
-            ID3D11DeviceContext*,
-            UINT,
-            ID3D11RenderTargetView* const*,
-            ID3D11DepthStencilView*,
-            UINT,
-            UINT,
-            ID3D11UnorderedAccessView* const*,
-            const UINT*);
-        static inline PFN_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews
-            g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews = nullptr;
-        static void hooked_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews(
-            ID3D11DeviceContext* context,
-            UINT NumRTVs,
-            ID3D11RenderTargetView* const* ppRenderTargetViews,
-            ID3D11DepthStencilView* pDepthStencilView,
-            UINT UAVStartSlot,
-            UINT NumUAVs,
-            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-            const UINT* pUAVInitialCounts) {
+        DECLARE_DETOUR_FUNCTION(static void,
+                                STDMETHODCALLTYPE,
+                                ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews,
+                                ID3D11DeviceContext* context,
+                                UINT NumRTVs,
+                                ID3D11RenderTargetView* const* ppRenderTargetViews,
+                                ID3D11DepthStencilView* pDepthStencilView,
+                                UINT UAVStartSlot,
+                                UINT NumUAVs,
+                                ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+                                const UINT* pUAVInitialCounts) {
             DebugLog("--> ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews\n");
 
             assert(g_instance);
@@ -2037,11 +2025,12 @@ namespace {
             DebugLog("<-- ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews\n");
         }
 
-        typedef void (*PFN_ID3D11DeviceContext_CopyResource)(ID3D11DeviceContext*, ID3D11Resource*, ID3D11Resource*);
-        static inline PFN_ID3D11DeviceContext_CopyResource g_original_ID3D11DeviceContext_CopyResource = nullptr;
-        static void hooked_ID3D11DeviceContext_CopyResource(ID3D11DeviceContext* context,
-                                                            ID3D11Resource* pDstResource,
-                                                            ID3D11Resource* pSrcResource) {
+        DECLARE_DETOUR_FUNCTION(static void,
+                                STDMETHODCALLTYPE,
+                                ID3D11DeviceContext_CopyResource,
+                                ID3D11DeviceContext* context,
+                                ID3D11Resource* pDstResource,
+                                ID3D11Resource* pSrcResource) {
             DebugLog("--> ID3D11DeviceContext_CopyResource\n");
 
             assert(g_instance);
@@ -2053,19 +2042,18 @@ namespace {
             DebugLog("<-- ID3D11DeviceContext_CopyResource\n");
         }
 
-        typedef void (*PFN_ID3D11DeviceContext_CopySubresourceRegion)(
-            ID3D11DeviceContext*, ID3D11Resource*, UINT, UINT, UINT, UINT, ID3D11Resource*, UINT, const D3D11_BOX*);
-        static inline PFN_ID3D11DeviceContext_CopySubresourceRegion
-            g_original_ID3D11DeviceContext_CopySubresourceRegion = nullptr;
-        static void hooked_ID3D11DeviceContext_CopySubresourceRegion(ID3D11DeviceContext* context,
-                                                                     ID3D11Resource* pDstResource,
-                                                                     UINT DstSubresource,
-                                                                     UINT DstX,
-                                                                     UINT DstY,
-                                                                     UINT DstZ,
-                                                                     ID3D11Resource* pSrcResource,
-                                                                     UINT SrcSubresource,
-                                                                     const D3D11_BOX* pSrcBox) {
+        DECLARE_DETOUR_FUNCTION(static void,
+                                STDMETHODCALLTYPE,
+                                ID3D11DeviceContext_CopySubresourceRegion,
+                                ID3D11DeviceContext* context,
+                                ID3D11Resource* pDstResource,
+                                UINT DstSubresource,
+                                UINT DstX,
+                                UINT DstY,
+                                UINT DstZ,
+                                ID3D11Resource* pSrcResource,
+                                UINT SrcSubresource,
+                                const D3D11_BOX* pSrcBox) {
             DebugLog("--> ID3D11DeviceContext_CopySubresourceRegion\n");
 
             assert(g_instance);
@@ -2078,15 +2066,13 @@ namespace {
             DebugLog("<-- ID3D11DeviceContext_CopySubresourceRegion\n");
         }
 
-        typedef void (*PFN_ID3D11DeviceContext_PSSetSamplers)(ID3D11DeviceContext*,
-                                                              UINT,
-                                                              UINT,
-                                                              ID3D11SamplerState* const*);
-        static inline PFN_ID3D11DeviceContext_PSSetSamplers g_original_ID3D11DeviceContext_PSSetSamplers = nullptr;
-        static void hooked_ID3D11DeviceContext_PSSetSamplers(ID3D11DeviceContext* context,
-                                                             UINT StartSlot,
-                                                             UINT NumSamplers,
-                                                             ID3D11SamplerState* const* ppSamplers) {
+        DECLARE_DETOUR_FUNCTION(static void,
+                                STDMETHODCALLTYPE,
+                                ID3D11DeviceContext_PSSetSamplers,
+                                ID3D11DeviceContext* context,
+                                UINT StartSlot,
+                                UINT NumSamplers,
+                                ID3D11SamplerState* const* ppSamplers) {
             DebugLog("--> ID3D11DeviceContext_PSSetSamplers\n");
 
             ID3D11SamplerState* updatedSamplers[D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT];
@@ -2104,18 +2090,18 @@ namespace {
         }
     };
 
-    decltype(&D3D11CreateDevice) g_original_D3D11CreateDevice = nullptr;
+    decltype(D3D11CreateDevice)* g_original_D3D11CreateDevice = nullptr;
 
-    HRESULT Hooked_D3D11CreateDevice(IDXGIAdapter* pAdapter,
-                                     D3D_DRIVER_TYPE DriverType,
-                                     HMODULE Software,
-                                     UINT Flags,
-                                     const D3D_FEATURE_LEVEL* pFeatureLevels,
-                                     UINT FeatureLevels,
-                                     UINT SDKVersion,
-                                     ID3D11Device** ppDevice,
-                                     D3D_FEATURE_LEVEL* pFeatureLevel,
-                                     ID3D11DeviceContext** ppImmediateContext) {
+    HRESULT STDMETHODCALLTYPE Hooked_D3D11CreateDevice(IDXGIAdapter* pAdapter,
+                                                       D3D_DRIVER_TYPE DriverType,
+                                                       HMODULE Software,
+                                                       UINT Flags,
+                                                       const D3D_FEATURE_LEVEL* pFeatureLevels,
+                                                       UINT FeatureLevels,
+                                                       UINT SDKVersion,
+                                                       ID3D11Device** ppDevice,
+                                                       D3D_FEATURE_LEVEL* pFeatureLevel,
+                                                       ID3D11DeviceContext** ppImmediateContext) {
         assert(g_original_D3D11CreateDevice);
         Log("Creating D3D11 device with D3D11_CREATE_DEVICE_DEBUG flag\n");
         return g_original_D3D11CreateDevice(pAdapter,

@@ -70,7 +70,7 @@ void DetourDllAttach(const char* dll, const char* target, TMethod hooked, TMetho
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
 
-    original = (TMethod)GetProcAddress(handle, target); 
+    original = (TMethod)GetProcAddress(handle, target);
     CHECK_MSG(original, "Failed to resolve symbol");
     DetourAttach((PVOID*)&original, hooked);
 
@@ -133,3 +133,7 @@ void DetourMethodDetach(T* instance, unsigned int methodOffset, TMethod hooked, 
 
     original = nullptr;
 }
+
+#define DECLARE_DETOUR_FUNCTION(ReturnType, Callconv, FunctionName, ...)                                               \
+    inline ReturnType(Callconv* g_original_##FunctionName)(##__VA_ARGS__) = nullptr;                                   \
+    ReturnType Callconv hooked_##FunctionName(##__VA_ARGS__)
