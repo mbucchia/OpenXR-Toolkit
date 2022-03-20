@@ -90,7 +90,7 @@ namespace {
     // are going to be identical for a given shader, which is an acceptable constraint.
     class D3D12Shader {
       public:
-        D3D12Shader(std::shared_ptr<IDevice> device, ID3DBlob* shaderBytes, const std::optional<std::string>& debugName)
+        D3D12Shader(std::shared_ptr<IDevice> device, ID3DBlob* shaderBytes, std::string_view debugName)
             : m_device(device), m_shaderBytes(shaderBytes), m_debugName(debugName), m_shaderData{} {
         }
 
@@ -164,7 +164,7 @@ namespace {
         const std::shared_ptr<IDevice> m_device;
         // Keep a reference for memory management purposes.
         const ComPtr<ID3DBlob> m_shaderBytes;
-        const std::optional<std::string> m_debugName;
+        const std::string_view m_debugName;
 
         ComPtr<ID3D12RootSignature> m_rootSignature;
         ComPtr<ID3D12PipelineState> m_pipelineState;
@@ -182,7 +182,7 @@ namespace {
         D3D12QuadShader(std::shared_ptr<IDevice> device,
                         D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc,
                         ID3DBlob* shaderBytes,
-                        const std::optional<std::string>& debugName)
+                        std::string_view debugName)
             : D3D12Shader(device, shaderBytes, debugName), m_psoDesc(desc) {
         }
 
@@ -219,8 +219,9 @@ namespace {
                 m_psoDesc.pRootSignature = get(m_rootSignature);
                 CHECK_HRCMD(device->CreateGraphicsPipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
 
-                if (m_debugName) {
-                    m_pipelineState->SetName(std::wstring(m_debugName->begin(), m_debugName->end()).c_str());
+                if (!m_debugName.empty()) {
+                    m_pipelineState->SetPrivateData(
+                        WKPDID_D3DDebugObjectName, (UINT)m_debugName.size(), m_debugName.data());
                 }
 
                 m_shaderData.rootSignature = get(m_rootSignature);
@@ -254,7 +255,7 @@ namespace {
         D3D12ComputeShader(std::shared_ptr<IDevice> device,
                            D3D12_COMPUTE_PIPELINE_STATE_DESC& desc,
                            ID3DBlob* shaderBytes,
-                           const std::optional<std::string>& debugName,
+                           std::string_view debugName,
                            std::optional<std::array<unsigned int, 3>> threadGroups)
             : D3D12Shader(device, shaderBytes, debugName), m_psoDesc(desc) {
             if (threadGroups) {
@@ -287,8 +288,9 @@ namespace {
                 m_psoDesc.pRootSignature = get(m_rootSignature);
                 CHECK_HRCMD(device->CreateComputePipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
 
-                if (m_debugName) {
-                    m_pipelineState->SetName(std::wstring(m_debugName->begin(), m_debugName->end()).c_str());
+                if (!m_debugName.empty()) {
+                    m_pipelineState->SetPrivateData(
+                        WKPDID_D3DDebugObjectName, (UINT)m_debugName.size(), m_debugName.data());
                 }
 
                 m_shaderData.rootSignature = get(m_rootSignature);
@@ -376,36 +378,24 @@ namespace {
             return m_textureDesc.DepthOrArraySize > 1;
         }
 
-        std::shared_ptr<IShaderInputTextureView> getShaderInputView() const override {
-            return getShaderInputViewInternal(m_shaderResourceView, 0);
+        std::shared_ptr<IShaderInputTextureView> getShaderResourceView(int32_t slice) const override {
+            auto& view = slice < 0 ? m_shaderResourceView : m_shaderResourceSubView[slice];
+            return getShaderInputViewInternal(view, std::max(slice, 0));
         }
 
-        std::shared_ptr<IShaderInputTextureView> getShaderInputView(uint32_t slice) const override {
-            return getShaderInputViewInternal(m_shaderResourceSubView[slice], slice);
+        std::shared_ptr<IComputeShaderOutputView> getUnorderedAccessView(int32_t slice) const override {
+            auto& view = slice < 0 ? m_unorderedAccessView : m_unorderedAccessSubView[slice];
+            return getUnorderedAccessViewInternal(view, std::max(slice, 0));
         }
 
-        std::shared_ptr<IComputeShaderOutputView> getComputeShaderOutputView() const override {
-            return getComputeShaderOutputViewInternal(m_unorderedAccessView, 0);
+        std::shared_ptr<IRenderTargetView> getRenderTargetView(int32_t slice) const override {
+            auto& view = slice < 0 ? m_renderTargetView : m_renderTargetSubView[slice];
+            return getRenderTargetViewInternal(view, std::max(slice, 0));
         }
 
-        std::shared_ptr<IComputeShaderOutputView> getComputeShaderOutputView(uint32_t slice) const override {
-            return getComputeShaderOutputViewInternal(m_unorderedAccessSubView[slice], slice);
-        }
-
-        std::shared_ptr<IRenderTargetView> getRenderTargetView() const override {
-            return getRenderTargetViewInternal(m_renderTargetView, 0);
-        }
-
-        std::shared_ptr<IRenderTargetView> getRenderTargetView(uint32_t slice) const override {
-            return getRenderTargetViewInternal(m_renderTargetSubView[slice], slice);
-        }
-
-        std::shared_ptr<IDepthStencilView> getDepthStencilView() const override {
-            return getDepthStencilViewInternal(m_depthStencilView, 0);
-        }
-
-        std::shared_ptr<IDepthStencilView> getDepthStencilView(uint32_t slice) const override {
-            return getDepthStencilViewInternal(m_depthStencilSubView[slice], slice);
+        std::shared_ptr<IDepthStencilView> getDepthStencilView(int32_t slice) const override {
+            auto& view = slice < 0 ? m_depthStencilView : m_depthStencilSubView[slice];
+            return getDepthStencilViewInternal(view, std::max(slice, 0));
         }
 
         void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) override {
@@ -522,7 +512,7 @@ namespace {
             return shaderResourceView;
         }
 
-        std::shared_ptr<D3D12ResourceView> getComputeShaderOutputViewInternal(
+        std::shared_ptr<D3D12ResourceView> getUnorderedAccessViewInternal(
             std::shared_ptr<D3D12ResourceView>& unorderedAccessView, uint32_t slice = 0) const {
             if (!unorderedAccessView) {
                 if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)) {
@@ -1107,7 +1097,7 @@ namespace {
         }
 
         std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
-                                                const std::optional<std::string>& debugName,
+                                                std::string_view debugName,
                                                 int64_t overrideFormat = 0,
                                                 uint32_t rowPitch = 0,
                                                 uint32_t imageSize = 0,
@@ -1188,18 +1178,16 @@ namespace {
                 flushContext(true);
             }
 
-            if (debugName) {
-                texture->SetName(std::wstring(debugName->begin(), debugName->end()).c_str());
+            if (!debugName.empty()) {
+                texture->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
             }
 
             return std::make_shared<D3D12Texture>(
                 shared_from_this(), info, desc, get(texture), m_rtvHeap, m_dsvHeap, m_rvHeap);
         }
 
-        std::shared_ptr<IShaderBuffer> createBuffer(size_t size,
-                                                    const std::optional<std::string>& debugName,
-                                                    const void* initialData,
-                                                    bool immutable) override {
+        std::shared_ptr<IShaderBuffer>
+        createBuffer(size_t size, std::string_view debugName, const void* initialData, bool immutable) override {
             const auto desc =
                 CD3DX12_RESOURCE_DESC::Buffer(Align(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 
@@ -1226,8 +1214,8 @@ namespace {
                                                               IID_PPV_ARGS(set(uploadBuffer))));
             }
 
-            if (debugName) {
-                buffer->SetName(std::wstring(debugName->begin(), debugName->end()).c_str());
+            if (!debugName.empty()) {
+                buffer->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
             }
 
             auto result = std::make_shared<D3D12Buffer>(
@@ -1243,7 +1231,7 @@ namespace {
 
         std::shared_ptr<ISimpleMesh> createSimpleMesh(std::vector<SimpleMeshVertex>& vertices,
                                                       std::vector<uint16_t>& indices,
-                                                      const std::optional<std::string>& debugName) override {
+                                                      std::string_view debugName) override {
             std::shared_ptr<IShaderBuffer> vertexBuffer =
                 createBuffer(vertices.size() * sizeof(SimpleMeshVertex), debugName, vertices.data(), true);
 
@@ -1251,15 +1239,15 @@ namespace {
                 createBuffer(indices.size() * sizeof(uint16_t), debugName, indices.data(), true);
 
             return std::make_shared<D3D12SimpleMesh>(shared_from_this(),
-                                                     vertexBuffer->getNative<D3D12>(),
+                                                     vertexBuffer->getAs<D3D12>(),
                                                      sizeof(SimpleMeshVertex),
-                                                     indexBuffer->getNative<D3D12>(),
+                                                     indexBuffer->getAs<D3D12>(),
                                                      indices.size());
         }
 
         std::shared_ptr<IQuadShader> createQuadShader(const std::string& shaderPath,
                                                       const std::string& entryPoint,
-                                                      const std::optional<std::string>& debugName,
+                                                      std::string_view debugName,
                                                       const D3D_SHADER_MACRO* defines,
                                                       const std::string includePath) override {
             ComPtr<ID3DBlob> psBytes;
@@ -1287,7 +1275,7 @@ namespace {
 
         std::shared_ptr<IComputeShader> createComputeShader(const std::string& shaderPath,
                                                             const std::string& entryPoint,
-                                                            const std::optional<std::string>& debugName,
+                                                            std::string_view debugName,
                                                             const std::array<unsigned int, 3>& threadGroups,
                                                             const D3D_SHADER_MACRO* defines,
                                                             const std::string includePath) override {
@@ -1335,7 +1323,7 @@ namespace {
 
             if (!d3d12Shader->needsResolve()) {
                 // Prepare to draw the quad.
-                const auto shaderData = shader->getNative<D3D12>();
+                const auto shaderData = shader->getAs<D3D12>();
                 // TODO: This code is duplicated in D3D12QuadShader::resolve().
                 m_context->SetGraphicsRootSignature(shaderData->rootSignature);
                 m_context->SetPipelineState(shaderData->pipelineState);
@@ -1366,7 +1354,7 @@ namespace {
             auto d3d12Shader = dynamic_cast<D3D12Shader*>(shader.get());
 
             if (!d3d12Shader->needsResolve()) {
-                const auto shaderData = shader->getNative<D3D12>();
+                const auto shaderData = shader->getAs<D3D12>();
                 m_context->SetComputeRootSignature(shaderData->rootSignature);
                 m_context->SetPipelineState(shaderData->pipelineState);
                 // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
@@ -1388,17 +1376,16 @@ namespace {
                     d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentQuadShader.get());
                 }
 
-                const auto& handle =
-                    *(slice == -1 ? input->getShaderInputView() : input->getShaderInputView(slice))->getNative<D3D12>();
+                const auto handle = input->getShaderResourceView(slice)->getAs<D3D12>();
 
                 if (!d3d12Shader->needsResolve()) {
                     if (m_currentComputeShader) {
-                        m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(handle));
+                        m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(*handle));
                     } else {
-                        m_context->SetGraphicsRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(handle));
+                        m_context->SetGraphicsRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(*handle));
                     }
                 } else {
-                    d3d12Shader->registerSRVParameter(slot, m_rvHeap.getGPUHandle(handle));
+                    d3d12Shader->registerSRVParameter(slot, m_rvHeap.getGPUHandle(*handle));
                 }
             } else {
                 throw std::runtime_error("No shader is set");
@@ -1416,7 +1403,7 @@ namespace {
 
                 auto d3d12Buffer = dynamic_cast<D3D12Buffer*>(input.get());
 
-                const auto& handle = d3d12Buffer->getConstantBufferView();
+                const auto handle = d3d12Buffer->getConstantBufferView();
 
                 if (!d3d12Shader->needsResolve()) {
                     if (m_currentComputeShader) {
@@ -1437,11 +1424,8 @@ namespace {
                 if (slot) {
                     throw std::runtime_error("Only use slot 0 for IQuadShader");
                 }
-                if (slice == -1) {
-                    setRenderTargets({output}, nullptr);
-                } else {
-                    setRenderTargets({std::make_pair(output, slice)}, {});
-                }
+
+                setRenderTargets(1, &output, &slice);
 
                 auto d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentQuadShader.get());
                 if (d3d12Shader->needsResolve()) {
@@ -1450,14 +1434,12 @@ namespace {
             } else if (m_currentComputeShader) {
                 auto d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentComputeShader.get());
 
-                const auto& handle =
-                    *(slice == -1 ? output->getComputeShaderOutputView() : output->getComputeShaderOutputView(slice))
-                         ->getNative<D3D12>();
+                const auto handle = output->getUnorderedAccessView(slice)->getAs<D3D12>();
 
                 if (!d3d12Shader->needsResolve()) {
-                    m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(handle));
+                    m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(*handle));
                 } else {
-                    d3d12Shader->registerUAVParameter(slot, m_rvHeap.getGPUHandle(handle));
+                    d3d12Shader->registerUAVParameter(slot, m_rvHeap.getGPUHandle(*handle));
                 }
             } else {
                 throw std::runtime_error("No shader is set");
@@ -1499,62 +1481,51 @@ namespace {
 
         void unsetRenderTargets() override {
             m_context->OMSetRenderTargets(0, nullptr, true, nullptr);
-
             m_currentDrawRenderTarget.reset();
             m_currentDrawDepthBuffer.reset();
             m_currentMesh.reset();
         }
 
-        void setRenderTargets(std::vector<std::shared_ptr<ITexture>> renderTargets,
-                              std::shared_ptr<ITexture> depthBuffer) override {
-            std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargetsNoSlice;
-            for (auto renderTarget : renderTargets) {
-                renderTargetsNoSlice.push_back(std::make_pair(renderTarget, -1));
-            }
-            setRenderTargets(renderTargetsNoSlice, std::make_pair(depthBuffer, -1));
-        }
-
-        void setRenderTargets(std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargets,
-                              std::pair<std::shared_ptr<ITexture>, int32_t> depthBuffer) override {
+        void setRenderTargets(size_t numRenderTargets,
+                              std::shared_ptr<ITexture>* renderTargets,
+                              int32_t* renderSlices = nullptr,
+                              std::shared_ptr<ITexture>* depthBuffer = nullptr,
+                              int32_t depthSlice = -1) override {
+            // std::vector<D3D12_RESOURCE_BARRIER> barriers;
             std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> rtvs;
-            std::vector<D3D12_RESOURCE_BARRIER> barriers;
+            rtvs.reserve(numRenderTargets);
 
-            for (auto renderTarget : renderTargets) {
-                const auto slice = renderTarget.second;
-
-                if (slice == -1) {
-                    rtvs.push_back(*renderTarget.first->getRenderTargetView()->getNative<D3D12>());
-                } else {
-                    rtvs.push_back(*renderTarget.first->getRenderTargetView(slice)->getNative<D3D12>());
-                }
+            for (size_t i = 0; i < numRenderTargets; i++) {
+                auto slice = renderSlices ? renderSlices[i] : -1;
+                rtvs.push_back(*renderTargets[i]->getRenderTargetView(slice)->getAs<D3D12>());
 
                 // We assume that the resource is always in the expected state.
-                // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(renderTarget.first->getNative<D3D12>(),
+                // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(renderTargets[i]->getAs<D3D12>(),
                 //                                                         D3D12_RESOURCE_STATE_COMMON,
                 //                                                         D3D12_RESOURCE_STATE_RENDER_TARGET));
             }
 
-            if (depthBuffer.first) {
+            //if (depthBuffer) {
                 // We assume that the resource is always in the expected state.
-                // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(depthBuffer.first->getNative<D3D12>(),
+                // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(depthBuffer[0]->getAs<D3D12>(),
                 //                                                         D3D12_RESOURCE_STATE_COMMON,
                 //                                                         D3D12_RESOURCE_STATE_DEPTH_WRITE));
-            }
+            //}
 
-            if (barriers.size()) {
-                m_context->ResourceBarrier((UINT)barriers.size(), barriers.data());
-            }
-            m_context->OMSetRenderTargets(
-                (UINT)rtvs.size(),
-                rtvs.data(),
-                false,
-                depthBuffer.first ? depthBuffer.first->getDepthStencilView()->getNative<D3D12>() : nullptr);
+            // if (!barriers.empty()) {
+            //    m_context->ResourceBarrier((UINT)barriers.size(), barriers.data());
+            //}
 
-            if (renderTargets.size() > 0) {
-                m_currentDrawRenderTarget = renderTargets[0].first;
-                m_currentDrawRenderTargetSlice = renderTargets[0].second;
-                m_currentDrawDepthBuffer = depthBuffer.first;
-                m_currentDrawDepthBufferSlice = depthBuffer.second;
+            m_context->OMSetRenderTargets((UINT)rtvs.size(),
+                                          rtvs.data(),
+                                          false,
+                                          depthBuffer ? depthBuffer[0]->getDepthStencilView()->getAs<D3D12>() : nullptr);
+
+            if (!rtvs.empty()) {
+                m_currentDrawRenderTarget = renderTargets[0];
+                m_currentDrawRenderTargetSlice = renderSlices ? renderSlices[0] : -1;
+                m_currentDrawDepthBuffer = depthBuffer ? depthBuffer[0] : nullptr;
+                m_currentDrawDepthBufferSlice = depthBuffer ? depthSlice : -1;
 
                 const auto viewport = CD3DX12_VIEWPORT(0.0f,
                                                        0.0f,
@@ -1579,17 +1550,12 @@ namespace {
 
             // When rendering text, we must use the corresponding device.
             if (!m_isRenderingText) {
-                D3D12_CPU_DESCRIPTOR_HANDLE renderTargetView;
-                if (m_currentDrawRenderTargetSlice == -1) {
-                    renderTargetView = *m_currentDrawRenderTarget->getRenderTargetView()->getNative<D3D12>();
-                } else {
-                    renderTargetView = *m_currentDrawRenderTarget->getRenderTargetView(m_currentDrawRenderTargetSlice)
-                                            ->getNative<D3D12>();
-                }
+                auto renderTargetView =
+                    m_currentDrawRenderTarget->getRenderTargetView(m_currentDrawRenderTargetSlice)->getAs<D3D12>();
 
                 float clearColor[] = {color.r, color.g, color.b, color.a};
                 const auto rect = CD3DX12_RECT((LONG)left, (LONG)top, (LONG)right, (LONG)bottom);
-                m_context->ClearRenderTargetView(renderTargetView, clearColor, 1, &rect);
+                m_context->ClearRenderTargetView(*renderTargetView, clearColor, 1, &rect);
             } else {
                 m_textDevice->clearColor(top, left, bottom, right, color);
             }
@@ -1600,24 +1566,20 @@ namespace {
                 return;
             }
 
-            D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView;
-            if (m_currentDrawDepthBufferSlice == -1) {
-                depthStencilView = *m_currentDrawDepthBuffer->getDepthStencilView()->getNative<D3D12>();
-            } else {
-                depthStencilView =
-                    *m_currentDrawDepthBuffer->getDepthStencilView(m_currentDrawDepthBufferSlice)->getNative<D3D12>();
-            }
+            auto depthStencilView =
+                m_currentDrawDepthBuffer->getDepthStencilView(m_currentDrawDepthBufferSlice)->getAs<D3D12>();
 
-            m_context->ClearDepthStencilView(depthStencilView, D3D12_CLEAR_FLAG_DEPTH, value, 0, 0, nullptr);
+            m_context->ClearDepthStencilView(*depthStencilView, D3D12_CLEAR_FLAG_DEPTH, value, 0, 0, nullptr);
         }
 
         void setViewProjection(const View& view) override {
-            const DirectX::XMMATRIX projectionMatrix = xr::math::ComposeProjectionMatrix(view.fov, view.nearFar);
-            const DirectX::XMMATRIX viewMatrix = xr::math::LoadInvertedXrPose(view.pose);
-
             ViewProjectionConstantBuffer staging;
-            DirectX::XMStoreFloat4x4(&staging.ViewProjection,
-                                     DirectX::XMMatrixTranspose(viewMatrix * projectionMatrix));
+
+            // viewMatrix* projMatrix
+            DirectX::XMStoreFloat4x4(
+                &staging.ViewProjection,
+                DirectX::XMMatrixTranspose(xr::math::LoadInvertedXrPose(view.pose) *
+                                           xr::math::ComposeProjectionMatrix(view.fov, view.nearFar)));
 
             m_currentMeshViewProjectionBuffer++;
             if (m_currentMeshViewProjectionBuffer >= ARRAYSIZE(m_meshViewProjectionBuffer)) {
@@ -1633,7 +1595,9 @@ namespace {
         }
 
         void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling) override {
-            auto meshData = mesh->getNative<D3D12>();
+            auto meshData = mesh->getAs<D3D12>();
+            if (!meshData)
+                return;
 
             if (mesh != m_currentMesh) {
                 // Lazily construct the pipeline state now that we know the format for the render target and whether
@@ -1725,7 +1689,7 @@ namespace {
             m_context->DrawIndexedInstanced(meshData->numIndices, 1, 0, 0, 0);
         }
 
-        float drawString(std::wstring string,
+        float drawString(std::wstring_view string,
                          TextStyle style,
                          float size,
                          float x,
@@ -1736,7 +1700,7 @@ namespace {
             return m_textDevice->drawString(string, style, size, x, y, color, measure, alignment);
         }
 
-        float drawString(std::string string,
+        float drawString(std::string_view string,
                          TextStyle style,
                          float size,
                          float x,
@@ -1747,11 +1711,11 @@ namespace {
             return m_textDevice->drawString(string, style, size, x, y, color, measure, alignment);
         }
 
-        float measureString(std::wstring string, TextStyle style, float size) const override {
+        float measureString(std::wstring_view string, TextStyle style, float size) const override {
             return m_textDevice->measureString(string, style, size);
         }
 
-        float measureString(std::string string, TextStyle style, float size) const override {
+        float measureString(std::string_view string, TextStyle style, float size) const override {
             return m_textDevice->measureString(string, style, size);
         }
 
@@ -1765,7 +1729,7 @@ namespace {
                 D3D11_RESOURCE_FLAGS flags;
                 ZeroMemory(&flags, sizeof(flags));
                 flags.BindFlags = D3D11_BIND_RENDER_TARGET;
-                CHECK_HRCMD(m_textInteropDevice->CreateWrappedResource(m_currentDrawRenderTarget->getNative<D3D12>(),
+                CHECK_HRCMD(m_textInteropDevice->CreateWrappedResource(m_currentDrawRenderTarget->getAs<D3D12>(),
                                                                        &flags,
                                                                        D3D12_RESOURCE_STATE_RENDER_TARGET,
                                                                        D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -1779,12 +1743,12 @@ namespace {
                 d3d12DrawRenderTarget->setInteropTexture(m_currentTextRenderTarget);
             }
             {
-                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getNative<D3D11>()};
+                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
                 m_textInteropDevice->AcquireWrappedResources(resources, 1);
             }
 
             // Setup the interop context for rendering.
-            m_textDevice->setRenderTargets({std::make_pair(m_currentTextRenderTarget, m_currentDrawRenderTargetSlice)});
+            m_textDevice->setRenderTargets(1, &m_currentTextRenderTarget, &m_currentDrawRenderTargetSlice);
             m_textDevice->beginText();
             m_isRenderingText = true;
         }
@@ -1795,7 +1759,7 @@ namespace {
             // Commit to the D3D12 queue.
             m_textDevice->flushContext(true);
             {
-                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getNative<D3D11>()};
+                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
                 m_textInteropDevice->ReleaseWrappedResources(resources, 1);
             }
             m_currentTextRenderTarget.reset();
@@ -2199,11 +2163,10 @@ namespace {
         std::map<D3D12_CPU_DESCRIPTOR_HANDLE, ID3D12Resource*, decltype(descriptorCompare)>
             m_renderTargetResourceDescriptors{descriptorCompare};
 
-        friend std::shared_ptr<ITexture>
-        toolkit::graphics::WrapD3D12Texture(std::shared_ptr<IDevice> device,
-                                            const XrSwapchainCreateInfo& info,
-                                            ID3D12Resource* texture,
-                                            const std::optional<std::string>& debugName);
+        friend std::shared_ptr<ITexture> toolkit::graphics::WrapD3D12Texture(std::shared_ptr<IDevice> device,
+                                                                             const XrSwapchainCreateInfo& info,
+                                                                             ID3D12Resource* texture,
+                                                                             std::string_view debugName);
 
         static XrSwapchainCreateInfo getTextureInfo(const D3D12_RESOURCE_DESC& resourceDesc) {
             XrSwapchainCreateInfo info;
@@ -2332,14 +2295,14 @@ namespace toolkit::graphics {
     std::shared_ptr<ITexture> WrapD3D12Texture(std::shared_ptr<IDevice> device,
                                                const XrSwapchainCreateInfo& info,
                                                ID3D12Resource* texture,
-                                               const std::optional<std::string>& debugName) {
+                                               std::string_view debugName) {
         if (device->getApi() != Api::D3D12) {
             throw std::runtime_error("Not a D3D12 device");
         }
         auto d3d12Device = dynamic_cast<D3D12Device*>(device.get());
 
-        if (debugName) {
-            texture->SetName(std::wstring(debugName->begin(), debugName->end()).c_str());
+        if (!debugName.empty()) {
+            texture->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
         }
 
         const D3D12_RESOURCE_DESC desc = texture->GetDesc();

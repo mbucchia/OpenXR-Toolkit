@@ -907,12 +907,12 @@ namespace {
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D11) {
                         XrSwapchainImageD3D11KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D11KHR*>(images);
                         for (uint32_t i = 0; i < *imageCountOutput; i++) {
-                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getNative<graphics::D3D11>();
+                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getAs<graphics::D3D11>();
                         }
                     } else if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                         XrSwapchainImageD3D12KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D12KHR*>(images);
                         for (uint32_t i = 0; i < *imageCountOutput; i++) {
-                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getNative<graphics::D3D12>();
+                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getAs<graphics::D3D12>();
                         }
                     } else {
                         throw std::runtime_error("Unsupported graphics runtime");
@@ -1638,12 +1638,12 @@ namespace {
                     }
 
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                        if (!useVPRT) {
-                            m_graphicsDevice->setRenderTargets({textureForOverlay[eye]}, depthForOverlay[eye]);
-                        } else {
-                            m_graphicsDevice->setRenderTargets({std::make_pair(textureForOverlay[eye], eye)},
-                                                               {std::make_pair(depthForOverlay[eye], eye)});
-                        }
+                        m_graphicsDevice->setRenderTargets(1,
+                                                           &textureForOverlay[eye],
+                                                           useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr,
+                                                           &depthForOverlay[eye],
+                                                           useVPRT ? eye : -1);
+
                         m_graphicsDevice->setViewProjection(viewsForOverlay[eye]);
 
                         if (m_handTracker) {
@@ -1670,12 +1670,9 @@ namespace {
                         m_graphicsDevice->flushContext();
                     }
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                        if (!useVPRT) {
-                            m_graphicsDevice->setRenderTargets({textureForOverlay[eye]});
-                        } else {
-                            m_graphicsDevice->setRenderTargets({std::make_pair(textureForOverlay[eye], eye)});
-                        }
-
+                        m_graphicsDevice->setRenderTargets(1,
+                                                           &textureForOverlay[eye],
+                                                           useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr);
                         m_graphicsDevice->beginText();
                         m_menuHandler->render((utilities::Eye)eye, textureForOverlay[eye]);
                         m_graphicsDevice->flushText();

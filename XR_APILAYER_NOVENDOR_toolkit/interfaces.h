@@ -262,14 +262,6 @@ namespace toolkit {
             auto getAs() const {
                 return GetAs<typename ApiTraits::PixelShader>(this);
             }
-
-            template <typename ApiTraits>
-            typename ApiTraits::PixelShader getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::PixelShader>(getNativePtr());
-            }
         };
 
         // A compute shader.
@@ -288,14 +280,6 @@ namespace toolkit {
             auto getAs() const {
                 return GetAs<typename ApiTraits::ComputeShader>(this);
             }
-
-            template <typename ApiTraits>
-            typename ApiTraits::ComputeShader getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::ComputeShader>(getNativePtr());
-            }
         };
 
         // The view of a texture in input of a shader.
@@ -310,14 +294,6 @@ namespace toolkit {
             template <typename ApiTraits>
             auto getAs() const {
                 return GetAs<typename ApiTraits::ShaderInputView>(this);
-            }
-
-            template <typename ApiTraits>
-            typename ApiTraits::ShaderInputView getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::ShaderInputView>(getNativePtr());
             }
         };
 
@@ -334,14 +310,6 @@ namespace toolkit {
             auto getAs() const {
                 return GetAs<typename ApiTraits::ComputeShaderOutputView>(this);
             }
-
-            template <typename ApiTraits>
-            typename ApiTraits::ComputeShaderOutputView getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::ComputeShaderOutputView>(getNativePtr());
-            }
         };
 
         // The view of a texture in output of a quad shader or used for rendering.
@@ -356,14 +324,6 @@ namespace toolkit {
             template <typename ApiTraits>
             auto getAs() const {
                 return GetAs<typename ApiTraits::RenderTargetView>(this);
-            }
-
-            template <typename ApiTraits>
-            typename ApiTraits::RenderTargetView getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::RenderTargetView>(getNativePtr());
             }
         };
 
@@ -380,14 +340,6 @@ namespace toolkit {
             auto getAs() const {
                 return GetAs<typename ApiTraits::DepthStencilView>(this);
             }
-
-            template <typename ApiTraits>
-            typename ApiTraits::DepthStencilView getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::DepthStencilView>(getNativePtr());
-            }
         };
 
         // A texture, plain and simple!
@@ -399,14 +351,10 @@ namespace toolkit {
             virtual const XrSwapchainCreateInfo& getInfo() const = 0;
             virtual bool isArray() const = 0;
 
-            virtual std::shared_ptr<IShaderInputTextureView> getShaderInputView() const = 0;
-            virtual std::shared_ptr<IShaderInputTextureView> getShaderInputView(uint32_t slice) const = 0;
-            virtual std::shared_ptr<IComputeShaderOutputView> getComputeShaderOutputView() const = 0;
-            virtual std::shared_ptr<IComputeShaderOutputView> getComputeShaderOutputView(uint32_t slice) const = 0;
-            virtual std::shared_ptr<IRenderTargetView> getRenderTargetView() const = 0;
-            virtual std::shared_ptr<IRenderTargetView> getRenderTargetView(uint32_t slice) const = 0;
-            virtual std::shared_ptr<IDepthStencilView> getDepthStencilView() const = 0;
-            virtual std::shared_ptr<IDepthStencilView> getDepthStencilView(uint32_t slice) const = 0;
+            virtual std::shared_ptr<IShaderInputTextureView> getShaderResourceView(int32_t slice = -1) const = 0;
+            virtual std::shared_ptr<IComputeShaderOutputView> getUnorderedAccessView(int32_t slice = -1) const = 0;
+            virtual std::shared_ptr<IRenderTargetView> getRenderTargetView(int32_t slice = -1) const = 0;
+            virtual std::shared_ptr<IDepthStencilView> getDepthStencilView(int32_t slice = -1) const = 0;
 
             virtual void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) = 0;
             virtual void saveToFile(const std::filesystem::path& path) const = 0;
@@ -416,14 +364,6 @@ namespace toolkit {
             template <typename ApiTraits>
             auto getAs() const {
                 return GetAs<typename ApiTraits::Texture>(this);
-            }
-
-            template <typename ApiTraits>
-            typename ApiTraits::Texture getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::Texture>(getNativePtr());
             }
         };
 
@@ -441,14 +381,6 @@ namespace toolkit {
             template <typename ApiTraits>
             auto getAs() const {
                 return GetAs<typename ApiTraits::Buffer>(this);
-            }
-
-            template <typename ApiTraits>
-            typename ApiTraits::Buffer getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::Buffer>(getNativePtr());
             }
         };
 
@@ -469,14 +401,6 @@ namespace toolkit {
             template <typename ApiTraits>
             auto getAs() const {
                 return GetAs<typename ApiTraits::Mesh>(this);
-            }
-
-            template <typename ApiTraits>
-            typename ApiTraits::Mesh getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::Mesh>(getNativePtr());
             }
         };
 
@@ -499,14 +423,6 @@ namespace toolkit {
             auto getAs() const {
                 return GetAs<typename ApiTraits::Context>(this);
             }
-
-            template <typename ApiTraits>
-            typename ApiTraits::Context getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::Context>(getNativePtr());
-            }
         };
 
         // A graphics device.
@@ -526,26 +442,26 @@ namespace toolkit {
             virtual void flushContext(bool blocking = false, bool isEndOfFrame = false) = 0;
 
             virtual std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
-                                                            const std::optional<std::string>& debugName,
+                                                            std::string_view debugName,
                                                             int64_t overrideFormat = 0,
                                                             uint32_t rowPitch = 0,
                                                             uint32_t imageSize = 0,
                                                             const void* initialData = nullptr) = 0;
             virtual std::shared_ptr<IShaderBuffer> createBuffer(size_t size,
-                                                                const std::optional<std::string>& debugName,
+                                                                std::string_view debugName,
                                                                 const void* initialData = nullptr,
                                                                 bool immutable = false) = 0;
             virtual std::shared_ptr<ISimpleMesh> createSimpleMesh(std::vector<SimpleMeshVertex>& vertices,
                                                                   std::vector<uint16_t>& indices,
-                                                                  const std::optional<std::string>& debugName) = 0;
+                                                                  std::string_view debugName) = 0;
             virtual std::shared_ptr<IQuadShader> createQuadShader(const std::string& shaderPath,
                                                                   const std::string& entryPoint,
-                                                                  const std::optional<std::string>& debugName,
+                                                                  std::string_view debugName,
                                                                   const D3D_SHADER_MACRO* defines = nullptr,
                                                                   const std::string includePath = "") = 0;
             virtual std::shared_ptr<IComputeShader> createComputeShader(const std::string& shaderPath,
                                                                         const std::string& entryPoint,
-                                                                        const std::optional<std::string>& debugName,
+                                                                        std::string_view debugName,
                                                                         const std::array<unsigned int, 3>& threadGroups,
                                                                         const D3D_SHADER_MACRO* defines = nullptr,
                                                                         const std::string includePath = "") = 0;
@@ -563,11 +479,12 @@ namespace toolkit {
 
             virtual void dispatchShader(bool doNotClear = false) const = 0;
 
+            virtual void setRenderTargets(size_t numRenderTargets,
+                                          std::shared_ptr<ITexture>* renderTargets,
+                                          int32_t* renderSlices = nullptr,
+                                          std::shared_ptr<ITexture>* depthBuffer = nullptr,
+                                          int32_t depthSlice = -1) = 0;
             virtual void unsetRenderTargets() = 0;
-            virtual void setRenderTargets(std::vector<std::shared_ptr<ITexture>> renderTargets,
-                                          std::shared_ptr<ITexture> depthBuffer = {}) = 0;
-            virtual void setRenderTargets(std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargets,
-                                          std::pair<std::shared_ptr<ITexture>, int32_t> depthBuffer = {}) = 0;
 
             virtual void clearColor(float top, float left, float bottom, float right, const XrColor4f& color) const = 0;
             virtual void clearDepth(float value) = 0;
@@ -577,7 +494,7 @@ namespace toolkit {
                               const XrPosef& pose,
                               XrVector3f scaling = {1.0f, 1.0f, 1.0f}) = 0;
 
-            virtual float drawString(std::wstring string,
+            virtual float drawString(std::wstring_view string,
                                      TextStyle style,
                                      float size,
                                      float x,
@@ -585,7 +502,7 @@ namespace toolkit {
                                      uint32_t color,
                                      bool measure = false,
                                      int alignment = FW1_LEFT) = 0;
-            virtual float drawString(std::string string,
+            virtual float drawString(std::string_view string,
                                      TextStyle style,
                                      float size,
                                      float x,
@@ -593,8 +510,8 @@ namespace toolkit {
                                      uint32_t color,
                                      bool measure = false,
                                      int alignment = FW1_LEFT) = 0;
-            virtual float measureString(std::wstring string, TextStyle style, float size) const = 0;
-            virtual float measureString(std::string string, TextStyle style, float size) const = 0;
+            virtual float measureString(std::wstring_view string, TextStyle style, float size) const = 0;
+            virtual float measureString(std::string_view string, TextStyle style, float size) const = 0;
             virtual void beginText() = 0;
             virtual void flushText() = 0;
 
@@ -636,22 +553,6 @@ namespace toolkit {
                 return reinterpret_cast<typename ApiTraits::Context>(ApiTraits::Api == getApi() ? getContextPtr()
                                                                                                 : nullptr);
             }
-
-            //template <typename ApiTraits>
-            //typename ApiTraits::Device getNative() const {
-            //    if (ApiTraits::Api != getApi()) {
-            //        throw std::runtime_error("Api mismatch");
-            //    }
-            //    return reinterpret_cast<typename ApiTraits::Device>(getNativePtr());
-            //}
-
-            //template <typename ApiTraits>
-            //typename ApiTraits::Context getContext() const {
-            //    if (ApiTraits::Api != getApi()) {
-            //        throw std::runtime_error("Api mismatch");
-            //    }
-            //    return reinterpret_cast<typename ApiTraits::Context>(getContextPtr());
-            //}
         };
 
         // A texture post-processor.
