@@ -58,61 +58,25 @@ namespace {
     using namespace toolkit::graphics;
     using namespace toolkit::utilities;
 
+    template <typename T>
+    constexpr T integer_log2(T n) noexcept {
+        // _HAS_CXX20: std::bit_width(m_tileSize) - 1;
+        return (n > 1u) ? 1u + integer_log2(n >> 1u) : 0;
+    }
+
     class VariableRateShader : public IVariableRateShader {
       public:
         VariableRateShader(std::shared_ptr<IConfigManager> configManager,
                            std::shared_ptr<IDevice> graphicsDevice,
                            std::shared_ptr<input::IEyeTracker> eyeTracker,
                            uint32_t targetWidth,
-                           uint32_t targetHeight)
+                           uint32_t targetHeight,
+                           uint32_t tileSize,
+                           uint32_t tileRateMax)
             : m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
-              m_targetWidth(targetWidth), m_targetHeight(targetHeight),
-              m_targetAspectRatio((float)m_targetWidth / m_targetHeight) {
-            // Check that the device is capable of doing VRS.
-            if (auto device11 = m_device->getAs<D3D11>()) {
-                auto status = NvAPI_Initialize();
-                if (status != NVAPI_OK) {
-                    NvAPI_ShortString errorMessage;
-                    ZeroMemory(errorMessage, sizeof(errorMessage));
-                    if (NvAPI_GetErrorMessage(status, errorMessage) == NVAPI_OK) {
-                        Log("Failed to initialize NVAPI: %s\n", errorMessage);
-                    }
-                    throw FeatureNotSupported();
-                }
-
-                m_d3d11Resources.deferredUnload.needUnload = true;
-
-                NV_D3D1x_GRAPHICS_CAPS graphicCaps;
-                ZeroMemory(&graphicCaps, sizeof(graphicCaps));
-                status = NvAPI_D3D1x_GetGraphicsCapabilities(device11, NV_D3D1x_GRAPHICS_CAPS_VER, &graphicCaps);
-                if (status != NVAPI_OK || !graphicCaps.bVariablePixelRateShadingSupported) {
-                    Log("VRS is not supported for this adapter\n");
-                    throw FeatureNotSupported();
-                }
-
-                m_tileSize = NV_VARIABLE_PIXEL_SHADING_TILE_WIDTH;
-                // We would normally pass 4 (for 1/16x) but we also want to allow "tile culling".
-                m_maxDownsamplePow2 = 5;
-
-            } else if (auto device12 = m_device->getAs<D3D12>()) {
-                D3D12_FEATURE_DATA_D3D12_OPTIONS6 options;
-                ZeroMemory(&options, sizeof(options));
-                if (FAILED(device12->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &options, sizeof(options))) ||
-                    options.VariableShadingRateTier == D3D12_VARIABLE_SHADING_RATE_TIER_NOT_SUPPORTED) {
-                    Log("VRS is not supported for this adapter\n");
-                    throw FeatureNotSupported();
-                }
-
-                m_tileSize = options.ShadingRateImageTileSize;
-                m_maxDownsamplePow2 = options.AdditionalShadingRatesSupported ? 4 : 2;
-
-            } else {
-                throw std::runtime_error("Unsupported graphics runtime");
-            }
-
-            DebugLog("VRS: targetWidth=%u targetHeight=%u\n", m_targetWidth, m_targetHeight);
-            m_projCenterX[(int)Eye::Left] = m_projCenterX[(int)Eye::Right] = m_targetWidth / 2;
-            m_projCenterY[(int)Eye::Left] = m_projCenterY[(int)Eye::Right] = m_targetHeight / 2;
+              m_targetWidth(targetWidth), m_targetHeight(targetHeight), m_tileSize(tileSize),
+              m_tileRateMax(tileRateMax), m_targetAspectRatio((float)m_targetWidth / m_targetHeight) {
+            m_d3d11Resources.deferredUnloadNvAPI.needUnload = m_device->getApi() == Api::D3D11;
 
             // Create a texture with the shading rates.
             {
@@ -167,6 +131,10 @@ namespace {
             } else if (m_device->getAs<D3D12>()) {
                 // Nothing extra to initialize.
             }
+
+            DebugLog("VRS: targetWidth=%u targetHeight=%u tileSize=%u\n", m_targetWidth, m_targetHeight, m_tileSize);
+            m_projCenterX[(int)Eye::Left] = m_projCenterX[(int)Eye::Right] = m_targetWidth / 2;
+            m_projCenterY[(int)Eye::Left] = m_projCenterY[(int)Eye::Right] = m_targetHeight / 2;
         }
 
         ~VariableRateShader() override {
@@ -339,8 +307,8 @@ namespace {
             m_hasProjCenterChanged = true;
         }
 
-        uint8_t getMaxDownsamplePow2() const override {
-            return m_maxDownsamplePow2;
+        uint8_t getMaxRate() const override {
+            return static_cast<uint8_t>(m_tileRateMax);
         }
 
 #ifdef _DEBUG
@@ -459,9 +427,9 @@ namespace {
             }
 
             // Cap to device's capabilities.
-            innerRate = std::min(static_cast<int>(m_maxDownsamplePow2), innerRate);
-            middleRate = std::min(static_cast<int>(m_maxDownsamplePow2), middleRate);
-            outerRate = std::min(static_cast<int>(m_maxDownsamplePow2), outerRate);
+            innerRate = std::min(static_cast<int>(m_tileRateMax), innerRate);
+            middleRate = std::min(static_cast<int>(m_tileRateMax), middleRate);
+            outerRate = std::min(static_cast<int>(m_tileRateMax), outerRate);
 
             const bool preferHorizontal =
                 m_mode == VariableShadingRateType::Custom && m_configManager->getValue(SettingVRSPreferHorizontal);
@@ -647,6 +615,8 @@ namespace {
         const std::shared_ptr<input::IEyeTracker> m_eyeTracker;
         const uint32_t m_targetWidth;
         const uint32_t m_targetHeight;
+        const uint32_t m_tileSize;
+        const uint32_t m_tileRateMax;
         const float m_targetAspectRatio;
 
         VariableShadingRateType m_mode{VariableShadingRateType::None};
@@ -661,9 +631,6 @@ namespace {
         bool m_hasProjCenterChanged{false};
         bool m_needUpdateEye{false};
 
-        UINT m_tileSize{0};
-        uint8_t m_maxDownsamplePow2{0};
-
         struct {
             // Must appear first.
             struct DeferredNvAPI_Unload {
@@ -675,7 +642,7 @@ namespace {
                 }
 
                 bool needUnload{false};
-            } deferredUnload;
+            } deferredUnloadNvAPI;
 
             NV_PIXEL_SHADING_RATE innerShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
             NV_PIXEL_SHADING_RATE middleShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
@@ -767,8 +734,52 @@ namespace toolkit::graphics {
                                                                   uint32_t targetWidth,
                                                                   uint32_t targetHeight) {
         try {
+            uint32_t tileSize = 0;
+            uint32_t tileRateMax = 0;
+
+            if (auto device11 = graphicsDevice->getAs<D3D11>()) {
+                auto status = NvAPI_Initialize();
+                if (status != NVAPI_OK) {
+                    NvAPI_ShortString errorMessage;
+                    ZeroMemory(errorMessage, sizeof(errorMessage));
+                    if (NvAPI_GetErrorMessage(status, errorMessage) == NVAPI_OK) {
+                        Log("Failed to initialize NVAPI: %s\n", errorMessage);
+                    }
+                    throw FeatureNotSupported();
+                }
+
+                NV_D3D1x_GRAPHICS_CAPS graphicCaps;
+                ZeroMemory(&graphicCaps, sizeof(graphicCaps));
+                status = NvAPI_D3D1x_GetGraphicsCapabilities(device11, NV_D3D1x_GRAPHICS_CAPS_VER, &graphicCaps);
+                if (status != NVAPI_OK || !graphicCaps.bVariablePixelRateShadingSupported) {
+                    Log("VRS (NVidia) is not supported for this adapter\n");
+                    throw FeatureNotSupported();
+                }
+
+                // We would normally pass 4 (for 1/16x) but we also want to allow "tile culling".
+                tileSize = NV_VARIABLE_PIXEL_SHADING_TILE_WIDTH;
+                tileRateMax = 5; // integer_log2(tileSize) + 1;
+
+            } else if (auto device12 = graphicsDevice->getAs<D3D12>()) {
+                D3D12_FEATURE_DATA_D3D12_OPTIONS6 options;
+                ZeroMemory(&options, sizeof(options));
+                if (FAILED(device12->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &options, sizeof(options))) ||
+                    options.VariableShadingRateTier != D3D12_VARIABLE_SHADING_RATE_TIER_2 ||
+                    options.ShadingRateImageTileSize < 2u) {
+                    Log("VRS (DX12 Tier2) is not supported for this adapter\n");
+                    throw FeatureNotSupported();
+                }
+
+                tileSize = options.ShadingRateImageTileSize;
+                tileRateMax = integer_log2(tileSize);
+
+            } else {
+                throw std::runtime_error("Unsupported graphics runtime");
+            }
+
             return std::make_shared<VariableRateShader>(
-                configManager, graphicsDevice, eyeTracker, targetWidth, targetHeight);
+                configManager, graphicsDevice, eyeTracker, targetWidth, targetHeight, tileSize, tileRateMax);
+
         } catch (FeatureNotSupported&) {
             return nullptr;
         }

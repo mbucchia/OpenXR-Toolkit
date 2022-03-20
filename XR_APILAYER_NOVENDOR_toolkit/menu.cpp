@@ -165,7 +165,7 @@ namespace {
                     bool isPredictionDampeningSupported,
                     bool isMotionReprojectionRateSupported,
                     uint8_t displayRefreshRate,
-                    uint8_t variableRateShaderMaxDownsamplePow2,
+                    uint8_t variableRateShaderMaxRate,
                     bool isEyeTrackingSupported)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
               m_displayHeight(displayHeight), m_keyModifiers(keyModifiers),
@@ -231,8 +231,7 @@ namespace {
             m_menuEntries.push_back({MenuIndent::NoIndent, "", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
             m_menuEntries.back().visible = true; /* Always visible. */
 
-            setupPerformanceTab(
-                isMotionReprojectionRateSupported, displayRefreshRate, variableRateShaderMaxDownsamplePow2);
+            setupPerformanceTab(isMotionReprojectionRateSupported, displayRefreshRate, variableRateShaderMaxRate);
             setupAppearanceTab();
             setupInputsTab(isPredictionDampeningSupported);
             setupMenuTab();
@@ -772,7 +771,7 @@ namespace {
       private:
         void setupPerformanceTab(bool isMotionReprojectionRateSupported,
                                  uint8_t displayRefreshRate,
-                                 uint8_t variableRateShaderMaxDownsamplePow2) {
+                                 uint8_t variableRateShaderMaxRate) {
             MenuGroup performanceTab(
                 m_configManager,
                 m_menuGroups,
@@ -900,7 +899,7 @@ namespace {
             }
 
             // Fixed Foveated Rendering (VRS) Settings.
-            if (variableRateShaderMaxDownsamplePow2) {
+            if (variableRateShaderMaxRate) {
                 m_menuEntries.push_back({MenuIndent::OptionIndent,
                                          !m_isEyeTrackingSupported ? "Fixed foveated rendering" : "Foveated rendering",
                                          MenuEntryType::Choice,
@@ -994,7 +993,7 @@ namespace {
                                              MenuEntryType::Slider,
                                              SettingVRSInner,
                                              0,
-                                             variableRateShaderMaxDownsamplePow2,
+                                             variableRateShaderMaxRate,
                                              samplePow2ToString});
                     m_menuEntries.back().expert = true;
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
@@ -1009,7 +1008,7 @@ namespace {
                                              MenuEntryType::Slider,
                                              SettingVRSMiddle,
                                              1, // Exclude 1x to discourage people from using poor settings!
-                                             variableRateShaderMaxDownsamplePow2,
+                                             variableRateShaderMaxRate,
                                              samplePow2ToString});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Outer ring size",
@@ -1023,7 +1022,7 @@ namespace {
                                              MenuEntryType::Slider,
                                              SettingVRSOuter,
                                              1, // Exclude 1x to discourage people from using poor settings!
-                                             variableRateShaderMaxDownsamplePow2,
+                                             variableRateShaderMaxRate,
                                              samplePow2ToString});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Prefer resolution",
@@ -1414,7 +1413,7 @@ namespace toolkit::menu {
                                                     bool isPredictionDampeningSupported,
                                                     bool isMotionReprojectionRateSupported,
                                                     uint8_t displayRefreshRate,
-                                                    uint8_t variableRateShaderMaxDownsamplePow2,
+                                                    uint8_t variableRateShaderMaxRate,
                                                     bool isEyeTrackingSupported) {
         return std::make_shared<MenuHandler>(configManager,
                                              device,
@@ -1425,7 +1424,7 @@ namespace toolkit::menu {
                                              isPredictionDampeningSupported,
                                              isMotionReprojectionRateSupported,
                                              displayRefreshRate,
-                                             variableRateShaderMaxDownsamplePow2,
+                                             variableRateShaderMaxRate,
                                              isEyeTrackingSupported);
     }
 

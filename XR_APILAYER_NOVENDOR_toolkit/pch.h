@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <bit>
 #include <chrono>
 #define _USE_MATH_DEFINES
 #include <cmath>
@@ -51,7 +52,7 @@
 using namespace std::chrono_literals;
 
 // Windows header files.
-#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
 #define NOMINMAX
 #include <windows.h>
 #include <unknwn.h>
@@ -63,7 +64,7 @@ using Microsoft::WRL::ComPtr;
 
 // Helpers for ComPtr manipulation.
 
-template<typename T>
+template <typename T>
 inline T* get(const ComPtr<T>& object) {
     return object.Get();
 }
@@ -82,6 +83,7 @@ template <typename T>
 T* detach(ComPtr<T>& object) {
     return object.Detach();
 }
+
 
 // Direct3D.
 #include <d3d11_1.h>

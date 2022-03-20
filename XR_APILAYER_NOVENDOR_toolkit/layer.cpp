@@ -480,18 +480,18 @@ namespace {
                                     .value_or(0)
                                 ? 60u
                                 : 90u;
-                        m_menuHandler = menu::CreateMenuHandler(
-                            m_configManager,
-                            m_graphicsDevice,
-                            m_displayWidth,
-                            m_displayHeight,
-                            m_keyModifiers,
-                            m_supportHandTracking,
-                            isPredictionDampeningSupported,
-                            isMotionReprojectionRateSupported,
-                            displayRefreshRate,
-                            m_variableRateShader ? m_variableRateShader->getMaxDownsamplePow2() : 0,
-                            m_supportEyeTracking);
+                        m_menuHandler =
+                            menu::CreateMenuHandler(m_configManager,
+                                                    m_graphicsDevice,
+                                                    m_displayWidth,
+                                                    m_displayHeight,
+                                                    m_keyModifiers,
+                                                    m_supportHandTracking,
+                                                    isPredictionDampeningSupported,
+                                                    isMotionReprojectionRateSupported,
+                                                    displayRefreshRate,
+                                                    m_variableRateShader ? m_variableRateShader->getMaxRate() : 0,
+                                                    m_supportEyeTracking);
                     }
 
                     // Create a reference space to calculate projection views.
@@ -1670,9 +1670,8 @@ namespace {
                         m_graphicsDevice->flushContext();
                     }
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                        m_graphicsDevice->setRenderTargets(1,
-                                                           &textureForOverlay[eye],
-                                                           useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr);
+                        m_graphicsDevice->setRenderTargets(
+                            1, &textureForOverlay[eye], useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr);
                         m_graphicsDevice->beginText();
                         m_menuHandler->render((utilities::Eye)eye, textureForOverlay[eye]);
                         m_graphicsDevice->flushText();

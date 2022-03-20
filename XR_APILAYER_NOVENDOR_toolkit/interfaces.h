@@ -601,7 +601,7 @@ namespace toolkit {
             virtual void
             setViewProjectionCenters(float leftCenterX, float leftCenterY, float rightCenterX, float rightCenterY) = 0;
 
-            virtual uint8_t getMaxDownsamplePow2() const = 0;
+            virtual uint8_t getMaxRate() const = 0;
 
 #ifdef _DEBUG
             virtual void startCapture() = 0;
