@@ -1189,7 +1189,7 @@ namespace {
                 if (slot) {
                     throw std::runtime_error("Only use slot 0 for IQuadShader");
                 }
-                
+
                 setRenderTargets(1, &output, &slice);
 
                 m_context->RSSetState(output->getInfo().sampleCount > 1 ? get(m_quadRasterizerMSAA)
@@ -1277,7 +1277,8 @@ namespace {
 
             m_context->OMSetRenderTargets((UINT)rtvs.size(),
                                           rtvs.data(),
-                                          depthBuffer ? depthBuffer[0]->getDepthStencilView()->getAs<D3D11>() : nullptr);
+                                          depthBuffer ? depthBuffer[0]->getDepthStencilView()->getAs<D3D11>()
+                                                      : nullptr);
 
             if (!rtvs.empty()) {
                 m_currentDrawRenderTarget = renderTargets[0];
@@ -1407,7 +1408,16 @@ namespace {
                          uint32_t color,
                          bool measure,
                          int alignment) override {
-            return drawString(std::wstring(string.begin(), string.end()), style, size, x, y, color, measure, alignment);
+            // fast path, use the stack for most of our strings
+            wchar_t buffer[64];
+            if (string.size() < std::size(buffer)) {
+                std::copy_n(string.begin(), string.size(), buffer)[0] = '\0';
+                return drawString(
+                    std::wstring_view(buffer, string.size()), style, size, x, y, color, measure, alignment);
+            } else {
+                return drawString(
+                    std::wstring(string.begin(), string.end()), style, size, x, y, color, measure, alignment);
+            }
         }
 
         float measureString(std::wstring_view string, TextStyle style, float size) const override {
@@ -1423,7 +1433,15 @@ namespace {
         }
 
         float measureString(std::string_view string, TextStyle style, float size) const override {
-            return measureString(std::wstring(string.begin(), string.end()), style, size);
+            // fast path, use the stack for most of our strings
+            wchar_t buffer[64];
+            if (string.size() < std::size(buffer)) {
+                std::copy_n(string.begin(), string.size(), buffer);
+                return measureString(
+                    std::wstring_view(buffer, string.size()), style, size);
+            } else {
+                return measureString(std::wstring(string.begin(), string.end()), style, size);
+            }
         }
 
         void beginText() override {
