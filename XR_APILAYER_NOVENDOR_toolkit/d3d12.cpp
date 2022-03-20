@@ -855,8 +855,7 @@ namespace {
 
             // Initialize Debug layer logging.
             if (configManager->getValue("debug_layer")) {
-                if (SUCCEEDED(m_device->QueryInterface(__uuidof(ID3D12InfoQueue),
-                                                       reinterpret_cast<void**>(set(m_infoQueue))))) {
+                if (SUCCEEDED(m_device->QueryInterface(set(m_infoQueue)))) {
                     Log("D3D12 Debug layer is enabled\n");
 
                     // Disable some common warnings.
@@ -941,8 +940,7 @@ namespace {
                                                   set(textDevice),
                                                   nullptr,
                                                   nullptr));
-                CHECK_HRCMD(textDevice->QueryInterface(__uuidof(ID3D11On12Device),
-                                                       reinterpret_cast<void**>(set(m_textInteropDevice))));
+                CHECK_HRCMD(textDevice->QueryInterface(set(m_textInteropDevice)));
 
                 m_textDevice = WrapD3D11TextDevice(get(textDevice), configManager);
             }

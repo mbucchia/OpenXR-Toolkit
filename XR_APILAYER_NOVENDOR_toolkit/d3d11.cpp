@@ -807,7 +807,7 @@ namespace {
                 ComPtr<IDXGIAdapter> adapter;
                 DXGI_ADAPTER_DESC desc;
 
-                CHECK_HRCMD(m_device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(set(dxgiDevice))));
+                CHECK_HRCMD(m_device->QueryInterface(set(dxgiDevice)));
                 CHECK_HRCMD(dxgiDevice->GetAdapter(set(adapter)));
                 CHECK_HRCMD(adapter->GetDesc(&desc));
 
@@ -827,8 +827,7 @@ namespace {
 
             // Initialize Debug layer logging.
             if (!textOnly && configManager->getValue("debug_layer")) {
-                if (SUCCEEDED(m_device->QueryInterface(__uuidof(ID3D11InfoQueue),
-                                                       reinterpret_cast<void**>(set(m_infoQueue))))) {
+                if (SUCCEEDED(m_device->QueryInterface(set(m_infoQueue)))) {
                     Log("D3D11 Debug layer is enabled\n");
                 } else {
                     Log("Failed to enable debug layer - please check that the 'Graphics Tools' feature of Windows is "
@@ -1784,7 +1783,7 @@ namespace {
             renderTargetViews[0]->GetResource(set(resource));
 
             ComPtr<ID3D11Texture2D> texture;
-            if (FAILED(resource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(set(texture))))) {
+            if (FAILED(resource->QueryInterface(set(texture)))) {
                 INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
                 return;
             }
@@ -1813,14 +1812,12 @@ namespace {
             }
 
             ComPtr<ID3D11Texture2D> sourceTexture;
-            if (FAILED(pSrcResource->QueryInterface(__uuidof(ID3D11Texture2D),
-                                                    reinterpret_cast<void**>(set(sourceTexture))))) {
+            if (FAILED(pSrcResource->QueryInterface(set(sourceTexture)))) {
                 return;
             }
 
             ComPtr<ID3D11Texture2D> destinationTexture;
-            if (FAILED(pDstResource->QueryInterface(__uuidof(ID3D11Texture2D),
-                                                    reinterpret_cast<void**>(set(destinationTexture))))) {
+            if (FAILED(pDstResource->QueryInterface(set(destinationTexture)))) {
                 return;
             }
 
