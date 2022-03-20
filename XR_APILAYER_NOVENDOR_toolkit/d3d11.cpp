@@ -1436,9 +1436,8 @@ namespace {
             // fast path, use the stack for most of our strings
             wchar_t buffer[64];
             if (string.size() < std::size(buffer)) {
-                std::copy_n(string.begin(), string.size(), buffer);
-                return measureString(
-                    std::wstring_view(buffer, string.size()), style, size);
+                std::copy_n(string.begin(), string.size(), buffer)[0] = '\0';
+                return measureString(std::wstring_view(buffer, string.size()), style, size);
             } else {
                 return measureString(std::wstring(string.begin(), string.end()), style, size);
             }
