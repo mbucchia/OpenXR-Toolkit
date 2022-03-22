@@ -22,6 +22,10 @@ Please use the _OpenXR Toolkit Companion app_ to try different hotkeys, selectin
 
 While an application is running, you may at any point reset all the settings to their default values by pressing simultaneously the keys bound to all 3 of the menu actions. If no custom key combinations have been set in the _OpenXR Toolkit Companion app_, this combination is Ctrl+F1+F2+F3.
 
+## Disable ReShade
+
+If you had previously installed ReShade or any similar mod for your application, please disable or delete it in order to use the OpenXR Toolkit.
+
 ## Start in Safe mode
 
 If an application fails to start due to some settings changes, you may use the  _OpenXR Toolkit Companion app_ (found on the desktop or Start menu) to _Enable safe mode_. In this mode, the settings for this application will not be loaded.
@@ -87,3 +91,11 @@ Please include the log file (see above how to retrieve it) **as an attachment**.
 If applicable, you may include screenshots (see [Other features](other-features)).
 
 Thank you for taking the time to report issue and help us improve the software!
+
+## Checking if you are CPU or GPU limited
+
+**Perform the test below with any form of motion reprojection or asynchronous space warp (ASW) disabled and any frame limiting/throttling feature disabled (eg: in your driver or NVIDIA control panel).**
+
+Use the _Detailed_ overlay (see [Overlay](overlay)) to inspect your application CPU and GPU times (respectively **app CPU** and **app GPU**). 
+
+When the value of **app GPU** is greater than the value of **app CPU**, you are limited by your GPU, and you may use features such as [Upscaling](upscaling) of [Fixed Foveated Rendering](ffr) to relieve your GPU. If you are not GPU limited, then these features will not help to gain performnce. Instead, you may alter other settings of your application, such as details settings, and increase them until you become GPU limited, and can enable the performance-enhancing features previously mentioned.
