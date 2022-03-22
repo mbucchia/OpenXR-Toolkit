@@ -35,9 +35,13 @@ The following OpenXR ToolKit features have additional restrictions:
 ## Limitations
 
 + This software was only extensively tested with Microsoft Flight Simulator 2020.
-+ It is also expected this software should work with most Steam games if they are using OpenXR (instead of Steam's OpenVR).
++ It is also expected this software should work with most Steam games if they are using OpenXR (instead of Steam's OpenVR)
++ If using with an HTC Vive Pro 2 or Cosmos, please select SteamVR as your OpenXR runtime.
++ Fixed Foveated Rendering in Microsoft Flight Simulator only works when TAA is enabled with a render scale of 100%.
++ Fixed Foveated Rendering in Microsoft Flight Simulator is incorrectly applied in the main menu, resulting in blurry menu windows.
 + Fixed Foveated Rendering does not work with War Thunder at this time, and it causes some lighting issues.
 + The menu does not display correctly on Pimax headsets.
++ Reshade is not supported.
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
 For future plans, see the [Roadmap](roadmap).
