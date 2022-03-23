@@ -53,7 +53,7 @@ namespace toolkit {
 
         // 2 views to process, one per eye.
         constexpr uint32_t ViewCount = 2;
-        enum class Eye : uint32_t { Left, Right };
+        enum class Eye : uint32_t { Left, Right, Both };
 
         // A CPU synchronous timer.
         struct ICpuTimer : public ITimer {};
@@ -603,8 +603,7 @@ namespace toolkit {
                                            std::optional<utilities::Eye> eyeHint) = 0;
             virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
 
-            virtual void
-            setViewProjectionCenters(float leftCenterX, float leftCenterY, float rightCenterX, float rightCenterY) = 0;
+            virtual void updateGazeLocation(float ndc_x, float ndc_y) = 0;
 
             virtual uint8_t getMaxRate() const = 0;
 

@@ -64,6 +64,30 @@ namespace {
         return (n > 1u) ? 1u + integer_log2(n >> 1u) : 0;
     }
 
+    // Standard shading rates
+    enum ShadingRates {
+        SHADING_RATE_CULL,
+        SHADING_RATE_x16,
+        SHADING_RATE_x8,
+        SHADING_RATE_x4,
+        SHADING_RATE_x2,
+        SHADING_RATE_x1,
+        SHADING_RATE_2x1,
+        SHADING_RATE_1x2,
+        SHADING_RATE_2x2,
+        SHADING_RATE_4x2,
+        SHADING_RATE_2x4,
+        SHADING_RATE_4x4,
+    };
+
+    // Constant buffer
+    struct alignas(16) ShadingConstants {
+        float Gaze[4];    // u,v,1/w,1/h
+        float Ring12[4];  // sx1,sy1,sx2,sy2
+        float Ring34[4];  // sx3,sy3,sx4,sy4
+        int Rates[4];     // r1,r2,r3,r4
+    };
+
     class VariableRateShader : public IVariableRateShader {
       public:
         VariableRateShader(std::shared_ptr<IConfigManager> configManager,
@@ -76,80 +100,28 @@ namespace {
             : m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
               m_targetWidth(targetWidth), m_targetHeight(targetHeight), m_tileSize(tileSize),
               m_tileRateMax(tileRateMax), m_targetAspectRatio((float)m_targetWidth / m_targetHeight) {
-            m_d3d11Resources.deferredUnloadNvAPI.needUnload = m_device->getApi() == Api::D3D11;
+            // Make sure to unload NvAPI on destruction
+            m_NvShadingRateResources.deferredUnloadNvAPI.needUnload = m_device->getApi() == Api::D3D11;
 
             // Create a texture with the shading rates.
-            {
-                XrSwapchainCreateInfo info;
-                ZeroMemory(&info, sizeof(info));
-                info.width = Align(m_targetWidth, m_tileSize) / m_tileSize;
-                info.height = Align(m_targetHeight, m_tileSize) / m_tileSize;
-                info.format = (int64_t)DXGI_FORMAT_R8_UINT;
-                info.arraySize = 1;
-                info.mipCount = 1;
-                info.sampleCount = 1;
-                info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+            createRenderResources(m_targetWidth, m_targetHeight);
 
-                for (uint32_t i = 0; i < ViewCount; i++) {
-                    m_shadingRateMask[i] = m_device->createTexture(info, "VRS {} TEX2D");
-                }
-                m_shadingRateMaskGeneric = m_device->createTexture(info, "VRS Generic TEX2D");
-
-                info.arraySize = 2;
-                m_shadingRateMaskVPRT = m_device->createTexture(info, "VRS VPRT TEX2D");
-            }
-
-            // Initialize API-specific resources.
-            if (auto device11 = m_device->getAs<D3D11>()) {
-                NV_D3D11_SHADING_RATE_RESOURCE_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.version = NV_D3D11_SHADING_RATE_RESOURCE_VIEW_DESC_VER;
-                desc.Format = DXGI_FORMAT_R8_UINT;
-                desc.ViewDimension = NV_SRRV_DIMENSION_TEXTURE2D;
-                desc.Texture2D.MipSlice = 0;
-
-                for (uint32_t i = 0; i < ViewCount; i++) {
-                    CHECK_NVCMD(
-                        NvAPI_D3D11_CreateShadingRateResourceView(device11,
-                                                                  m_shadingRateMask[i]->getAs<D3D11>(),
-                                                                  &desc,
-                                                                  set(m_d3d11Resources.shadingRateResourceView[i])));
-                }
-                CHECK_NVCMD(
-                    NvAPI_D3D11_CreateShadingRateResourceView(device11,
-                                                              m_shadingRateMaskGeneric->getAs<D3D11>(),
-                                                              &desc,
-                                                              set(m_d3d11Resources.shadingRateResourceViewGeneric)));
-
-                desc.ViewDimension = NV_SRRV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = 2;
-                CHECK_NVCMD(
-                    NvAPI_D3D11_CreateShadingRateResourceView(device11,
-                                                              m_shadingRateMaskVPRT->getAs<D3D11>(),
-                                                              &desc,
-                                                              set(m_d3d11Resources.shadingRateResourceViewVPRT)));
-            } else if (m_device->getAs<D3D12>()) {
-                // Nothing extra to initialize.
-            }
-
-            DebugLog("VRS: targetWidth=%u targetHeight=%u tileSize=%u\n", m_targetWidth, m_targetHeight, m_tileSize);
-            m_projCenterX[(int)Eye::Left] = m_projCenterX[(int)Eye::Right] = m_targetWidth / 2;
-            m_projCenterY[(int)Eye::Left] = m_projCenterY[(int)Eye::Right] = m_targetHeight / 2;
+            // Set initial projection center
+            updateGazeLocation(0, 0);
         }
 
         ~VariableRateShader() override {
             disable();
 
             // TODO: Releasing the NVAPI resources sometimes leads to a crash... We leak them for now.
-            for (uint32_t i = 0; i < ViewCount; i++) {
-                m_d3d11Resources.shadingRateResourceView[i].Detach();
+            for (auto& it : m_NvShadingRateResources.views) {
+                it.Detach();
             }
-            m_d3d11Resources.shadingRateResourceViewGeneric.Detach();
-            m_d3d11Resources.shadingRateResourceViewVPRT.Detach();
+            m_NvShadingRateResources.viewsVPRT.Detach();
         }
 
         void beginFrame(XrTime frameTime) override {
-            m_needUpdateEye = m_configManager->getValue(SettingEyeTrackingEnabled) && m_eyeTracker != nullptr;
+            m_needUpdateEye = m_eyeTracker && m_configManager->getValue(SettingEyeTrackingEnabled);
         }
 
         void endFrame() override {
@@ -206,7 +178,8 @@ namespace {
                     }
                 }
 
-                updateFoveationMasks(m_projCenterX, m_projCenterY, innerRadius, outerRadius);
+                // TODO:
+                updateFoveationMasks(0 /*m_projCenterX*/, 0 /*m_projCenterY*/, innerRadius, outerRadius);
                 m_hasProjCenterChanged = false;
             }
         }
@@ -223,6 +196,7 @@ namespace {
 
             // Attempt to update the foveation mask based on eye gaze.
             if (m_needUpdateEye) {
+                assert(m_eyeTracker);
                 // In normalized screen coordinates.
                 float gazeScreenX[ViewCount], gazeScreenY[ViewCount];
                 if (m_eyeTracker->getProjectedGaze(gazeScreenX, gazeScreenY)) {
@@ -245,12 +219,14 @@ namespace {
             if (auto context11 = context->getAs<D3D11>()) {
                 // We set VRS on 2 viewports in case the stereo view renders in parallel.
                 NV_D3D11_VIEWPORT_SHADING_RATE_DESC viewports[2];
-                ZeroMemory(&viewports[0], sizeof(viewports[0]));
+                viewports[1] = viewports[0] = m_NvShadingRateResources.rates;
                 viewports[0].enableVariablePixelShadingRate = true;
-                viewports[0].shadingRateTable[0] = m_d3d11Resources.innerShadingRate;
-                viewports[0].shadingRateTable[1] = m_d3d11Resources.middleShadingRate;
-                viewports[0].shadingRateTable[2] = m_d3d11Resources.outerShadingRate;
-                viewports[1] = viewports[0];
+                viewports[1].enableVariablePixelShadingRate = true;
+
+                // viewports[0].shadingRateTable[0] = m_NvShadingRateResources.innerShadingRate;
+                // viewports[0].shadingRateTable[1] = m_NvShadingRateResources.middleShadingRate;
+                // viewports[0].shadingRateTable[2] = m_NvShadingRateResources.outerShadingRate;
+                // viewports[1] = viewports[0];
 
                 NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
@@ -259,9 +235,8 @@ namespace {
                 desc.pViewports = viewports;
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context11, &desc));
 
-                auto& mask = info.arraySize == 2   ? m_d3d11Resources.shadingRateResourceViewVPRT
-                             : eyeHint.has_value() ? m_d3d11Resources.shadingRateResourceView[(uint32_t)eyeHint.value()]
-                                                   : m_d3d11Resources.shadingRateResourceViewGeneric;
+                auto& mask = info.arraySize == 2 ? m_NvShadingRateResources.viewsVPRT
+                                                 : m_NvShadingRateResources.views[(uint32_t)eyeHint.value_or(Eye::Both)];
 
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context11, get(mask)));
 
@@ -281,8 +256,7 @@ namespace {
                 vrsCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiner);
 
                 // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
-                auto& mask =
-                    eyeHint.has_value() ? m_shadingRateMask[(uint32_t)eyeHint.value()] : m_shadingRateMaskGeneric;
+                auto& mask = m_shadingRateMask[(uint32_t)eyeHint.value_or(Eye::Both)];
 
                 vrsCommandList->RSSetShadingRateImage(mask->getAs<D3D12>());
             } else {
@@ -296,14 +270,11 @@ namespace {
             disable(context);
         }
 
-        void setViewProjectionCenters(float leftCenterX,
-                                      float leftCenterY,
-                                      float rightCenterX,
-                                      float rightCenterY) override {
-            m_projCenterX[0] = (int)(m_targetWidth * leftCenterX);
-            m_projCenterY[0] = (int)(m_targetHeight * leftCenterY);
-            m_projCenterX[1] = (int)(m_targetWidth * rightCenterX);
-            m_projCenterY[1] = (int)(m_targetHeight * rightCenterY);
+        void updateGazeLocation(float ndc_x, float ndc_y) override {
+            m_gazeLocation[0].x = m_targetWidth * ndc_x;
+            m_gazeLocation[0].y = m_targetHeight * ndc_y;
+            m_gazeLocation[1].x = m_targetWidth * ndc_x;
+            m_gazeLocation[1].y = m_targetHeight * ndc_y;
             m_hasProjCenterChanged = true;
         }
 
@@ -340,7 +311,7 @@ namespace {
                         m_shadingRateMask[1]->saveToFile(
                             (localAppData / "screenshots" / fmt::format("vrs_{}_mask_right.dds", m_captureID))
                                 .string());
-                        m_shadingRateMaskGeneric->saveToFile(
+                        m_shadingRateMask[2]->saveToFile(
                             (localAppData / "screenshots" / fmt::format("vrs_{}_mask_generic.dds", m_captureID))
                                 .string());
                         m_shadingRateMaskVPRT->saveToFile(
@@ -382,8 +353,64 @@ namespace {
 #endif
 
       private:
-        bool isEnabled() const {
-            return m_mode != VariableShadingRateType::None;
+        void createRenderResources(uint32_t renderWidth, uint32_t renderHeigh) {
+            auto texW = xr::math::DivideRoundingUp(renderWidth, m_tileSize);
+            auto texH = xr::math::DivideRoundingUp(renderHeigh, m_tileSize);
+            {
+                XrSwapchainCreateInfo info;
+                ZeroMemory(&info, sizeof(info));
+                info.width = texW;
+                info.height = texH;
+                info.format = DXGI_FORMAT_R8_UINT;
+                info.arraySize = 1;
+                info.mipCount = 1;
+                info.sampleCount = 1;
+                info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+
+                for (auto& it : m_shadingRateMask) {
+                    it = m_device->createTexture(info, "VRS TEX2D");
+                }
+                info.arraySize = 2;
+                m_shadingRateMaskVPRT = m_device->createTexture(info, "VRS VPRT TEX2D");
+            }
+
+            // Initialize API-specific resources.
+            if (auto device11 = m_device->getAs<D3D11>()) {
+                m_NvShadingRateResources.resetRates();
+
+                NV_D3D11_SHADING_RATE_RESOURCE_VIEW_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.version = NV_D3D11_SHADING_RATE_RESOURCE_VIEW_DESC_VER;
+                desc.Format = DXGI_FORMAT_R8_UINT;
+                desc.ViewDimension = NV_SRRV_DIMENSION_TEXTURE2D;
+                desc.Texture2D.MipSlice = 0;
+
+                for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
+                    CHECK_NVCMD(NvAPI_D3D11_CreateShadingRateResourceView(
+                        device11, m_shadingRateMask[i]->getAs<D3D11>(), &desc, set(m_NvShadingRateResources.views[i])));
+                }
+
+                desc.ViewDimension = NV_SRRV_DIMENSION_TEXTURE2DARRAY;
+                desc.Texture2DArray.ArraySize = 2;
+                CHECK_NVCMD(NvAPI_D3D11_CreateShadingRateResourceView(
+                    device11, m_shadingRateMaskVPRT->getAs<D3D11>(), &desc, set(m_NvShadingRateResources.viewsVPRT)));
+
+            } else if (m_device->getAs<D3D12>()) {
+                // Nothing extra to initialize.
+            }
+
+            // Initialize compute shader
+            {
+                const auto shadersDir = dllHome / "shaders";
+                const auto shaderFile = shadersDir / "VRS.hlsl";
+
+                const std::array<unsigned int, 3> threadGroups = {texW, texH, 1};
+
+                m_csShadingRate = m_device->createComputeShader(shaderFile, "mainCS", "VRS CS", threadGroups);
+                m_cbShadingRate = m_device->createBuffer(sizeof(ShadingConstants), "VRS CB");
+            }
+
+            DebugLog("VRS: targetWidth=%u targetHeight=%u tileSize=%u\n", m_targetWidth, m_targetHeight, m_tileSize);
         }
 
         void disable(std::shared_ptr<graphics::IContext> context = nullptr) {
@@ -427,18 +454,18 @@ namespace {
             }
 
             // Cap to device's capabilities.
-            innerRate = std::min(static_cast<int>(m_tileRateMax), innerRate);
-            middleRate = std::min(static_cast<int>(m_tileRateMax), middleRate);
-            outerRate = std::min(static_cast<int>(m_tileRateMax), outerRate);
+            innerRate = std::clamp(static_cast<int>(m_tileRateMax), 1, innerRate);
+            middleRate = std::clamp(static_cast<int>(m_tileRateMax), 1, middleRate);
+            outerRate = std::clamp(static_cast<int>(m_tileRateMax), 1, outerRate);
 
             const bool preferHorizontal =
                 m_mode == VariableShadingRateType::Custom && m_configManager->getValue(SettingVRSPreferHorizontal);
 
             if (m_device->getApi() == Api::D3D11) {
                 // These are handled through an indirection table.
-                m_d3d11Resources.innerShadingRate = getNVAPIShadingRate(innerRate, preferHorizontal);
-                m_d3d11Resources.middleShadingRate = getNVAPIShadingRate(middleRate, preferHorizontal);
-                m_d3d11Resources.outerShadingRate = getNVAPIShadingRate(outerRate, preferHorizontal);
+                m_NvShadingRateResources.rates.shadingRateTable[0] = getNVAPIShadingRate(innerRate, preferHorizontal);
+                m_NvShadingRateResources.rates.shadingRateTable[1] = getNVAPIShadingRate(middleRate, preferHorizontal);
+                m_NvShadingRateResources.rates.shadingRateTable[2] = getNVAPIShadingRate(outerRate, preferHorizontal);
                 m_innerValue = 0;
                 m_middleValue = 1;
                 m_outerValue = 2;
@@ -470,8 +497,8 @@ namespace {
                 static_cast<int>(m_configManager->getValue(SettingVRSYOffset) * (m_targetHeight / 200.f));
             const float semiMajorFactor = m_configManager->getValue(SettingVRSXScale) / 100.f;
 
-            const int rowPitch = Align(m_targetWidth, m_tileSize) / m_tileSize;
-            const int rowPitchAligned = Align(rowPitch, m_device->getTextureAlignmentConstraint());
+            const int rowPitch = roundUp(m_targetWidth, m_tileSize) / m_tileSize;
+            const int rowPitchAligned = roundUp(rowPitch, m_device->getTextureAlignmentConstraint());
 
             static_assert(ViewCount == 2);
             std::vector<uint8_t> leftPattern;
@@ -517,7 +544,7 @@ namespace {
                 m_shadingRateMask[1]->uploadData(rightPattern.data(), rowPitchAligned);
             }
             if (updateFallbackRTV) {
-                m_shadingRateMaskGeneric->uploadData(genericPattern.data(), rowPitchAligned);
+                m_shadingRateMask[2]->uploadData(genericPattern.data(), rowPitchAligned);
             }
 
             if (updateArrayRTV) {
@@ -536,7 +563,7 @@ namespace {
                         CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMask[1]->getAs<D3D12>(),
                                                              D3D12_RESOURCE_STATE_COMMON,
                                                              D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE),
-                        CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMaskGeneric->getAs<D3D12>(),
+                        CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMask[2]->getAs<D3D12>(),
                                                              D3D12_RESOURCE_STATE_COMMON,
                                                              D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE),
                         CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMaskVPRT->getAs<D3D12>(),
@@ -557,8 +584,8 @@ namespace {
                                       uint8_t innerValue,
                                       uint8_t middleValue,
                                       uint8_t outerValue) {
-            const auto width = Align(m_targetWidth, m_tileSize) / m_tileSize;
-            const auto height = Align(m_targetHeight, m_tileSize) / m_tileSize;
+            const auto width = roundUp(m_targetWidth, m_tileSize) / m_tileSize;
+            const auto height = roundUp(m_targetHeight, m_tileSize) / m_tileSize;
 
             pattern.resize(rowPitch * height);
             const int centerX = std::clamp(projCenterX, 0, (int)m_targetWidth) / m_tileSize;
@@ -613,25 +640,28 @@ namespace {
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
         const std::shared_ptr<input::IEyeTracker> m_eyeTracker;
+
         const uint32_t m_targetWidth;
         const uint32_t m_targetHeight;
         const uint32_t m_tileSize;
         const uint32_t m_tileRateMax;
+
         const float m_targetAspectRatio;
 
         VariableShadingRateType m_mode{VariableShadingRateType::None};
+
+        XrVector2f m_gazeLocation[ViewCount];
+
         // bool m_isEnabled{true};
 
         int m_innerValue{0};
         int m_middleValue{0};
         int m_outerValue{0};
 
-        int m_projCenterX[ViewCount];
-        int m_projCenterY[ViewCount];
         bool m_hasProjCenterChanged{false};
         bool m_needUpdateEye{false};
 
-        struct {
+        struct NvShadingRateResouces {
             // Must appear first.
             struct DeferredNvAPI_Unload {
                 ~DeferredNvAPI_Unload() {
@@ -644,17 +674,40 @@ namespace {
                 bool needUnload{false};
             } deferredUnloadNvAPI;
 
-            NV_PIXEL_SHADING_RATE innerShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
-            NV_PIXEL_SHADING_RATE middleShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
-            NV_PIXEL_SHADING_RATE outerShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
+            void resetRates() {
+                rates.enableVariablePixelShadingRate = false;
+                std::fill_n(rates.shadingRateTable, std::size(rates.shadingRateTable), NV_PIXEL_X1_PER_RASTER_PIXEL);
 
-            ComPtr<ID3D11NvShadingRateResourceView> shadingRateResourceView[ViewCount];
-            ComPtr<ID3D11NvShadingRateResourceView> shadingRateResourceViewGeneric;
-            ComPtr<ID3D11NvShadingRateResourceView> shadingRateResourceViewVPRT;
-        } m_d3d11Resources;
+                // We use a constant table and a varying shading rate texture filled with a compute shader.
+                rates.shadingRateTable[SHADING_RATE_CULL] = NV_PIXEL_X0_CULL_RASTER_PIXELS;
+                rates.shadingRateTable[SHADING_RATE_x16] = NV_PIXEL_X16_PER_RASTER_PIXEL;
+                rates.shadingRateTable[SHADING_RATE_x8] = NV_PIXEL_X8_PER_RASTER_PIXEL;
+                rates.shadingRateTable[SHADING_RATE_x4] = NV_PIXEL_X4_PER_RASTER_PIXEL;
+                rates.shadingRateTable[SHADING_RATE_x2] = NV_PIXEL_X2_PER_RASTER_PIXEL;
+                rates.shadingRateTable[SHADING_RATE_x1] = NV_PIXEL_X1_PER_RASTER_PIXEL;
+                rates.shadingRateTable[SHADING_RATE_2x1] = NV_PIXEL_X1_PER_2X1_RASTER_PIXELS;
+                rates.shadingRateTable[SHADING_RATE_1x2] = NV_PIXEL_X1_PER_1X2_RASTER_PIXELS;
+                rates.shadingRateTable[SHADING_RATE_2x2] = NV_PIXEL_X1_PER_2X2_RASTER_PIXELS;
+                rates.shadingRateTable[SHADING_RATE_4x2] = NV_PIXEL_X1_PER_4X2_RASTER_PIXELS;
+                rates.shadingRateTable[SHADING_RATE_2x4] = NV_PIXEL_X1_PER_2X4_RASTER_PIXELS;
+                rates.shadingRateTable[SHADING_RATE_4x4] = NV_PIXEL_X1_PER_4X4_RASTER_PIXELS;
+            }
 
-        std::shared_ptr<ITexture> m_shadingRateMask[ViewCount];
-        std::shared_ptr<ITexture> m_shadingRateMaskGeneric;
+            // NV_PIXEL_SHADING_RATE innerShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
+            // NV_PIXEL_SHADING_RATE middleShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
+            // NV_PIXEL_SHADING_RATE outerShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
+
+            ComPtr<ID3D11NvShadingRateResourceView> views[ViewCount + 1];
+            ComPtr<ID3D11NvShadingRateResourceView> viewsVPRT;
+
+            NV_D3D11_VIEWPORT_SHADING_RATE_DESC rates;
+
+        } m_NvShadingRateResources;
+
+        std::shared_ptr<IShaderBuffer> m_cbShadingRate;
+        std::shared_ptr<IComputeShader> m_csShadingRate;
+
+        std::shared_ptr<ITexture> m_shadingRateMask[ViewCount + 1];
         std::shared_ptr<ITexture> m_shadingRateMaskVPRT;
 
 #ifdef _DEBUG
@@ -690,7 +743,23 @@ namespace {
             }
         }
 
+        // std::array<NV_PIXEL_SHADING_RATE, 16> getNVAPIShadingRateTable() const {
+        //    PixelShadingRate shadingRateTable[MAX_SHADING_RATES];
+        //}
+
         NV_PIXEL_SHADING_RATE getNVAPIShadingRate(int samplingPow2, bool preferHorizontal) {
+            // TODO:
+            static const NV_PIXEL_SHADING_RATE lut[] = {NV_PIXEL_X1_PER_RASTER_PIXEL,
+                                                        NV_PIXEL_X1_PER_2X1_RASTER_PIXELS,
+                                                        NV_PIXEL_X1_PER_2X2_RASTER_PIXELS,
+                                                        NV_PIXEL_X1_PER_4X2_RASTER_PIXELS,
+                                                        NV_PIXEL_X1_PER_4X4_RASTER_PIXELS};
+
+            static_assert(NV_PIXEL_X1_PER_1X2_RASTER_PIXELS == (NV_PIXEL_X1_PER_2X1_RASTER_PIXELS + 1));
+            static_assert(NV_PIXEL_X1_PER_2X4_RASTER_PIXELS == (NV_PIXEL_X1_PER_4X2_RASTER_PIXELS + 1));
+
+            if (size_t(samplingPow2) < std::size(lut)) {
+            }
             switch (samplingPow2) {
             case 0:
                 return NV_PIXEL_X1_PER_RASTER_PIXEL;
