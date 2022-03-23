@@ -447,24 +447,29 @@ namespace toolkit {
                                                             uint32_t rowPitch = 0,
                                                             uint32_t imageSize = 0,
                                                             const void* initialData = nullptr) = 0;
+
             virtual std::shared_ptr<IShaderBuffer> createBuffer(size_t size,
                                                                 std::string_view debugName,
                                                                 const void* initialData = nullptr,
                                                                 bool immutable = false) = 0;
+
             virtual std::shared_ptr<ISimpleMesh> createSimpleMesh(std::vector<SimpleMeshVertex>& vertices,
                                                                   std::vector<uint16_t>& indices,
                                                                   std::string_view debugName) = 0;
-            virtual std::shared_ptr<IQuadShader> createQuadShader(const std::string& shaderPath,
+
+            virtual std::shared_ptr<IQuadShader> createQuadShader(const std::filesystem::path& shaderFile,
                                                                   const std::string& entryPoint,
                                                                   std::string_view debugName,
                                                                   const D3D_SHADER_MACRO* defines = nullptr,
-                                                                  const std::string includePath = "") = 0;
-            virtual std::shared_ptr<IComputeShader> createComputeShader(const std::string& shaderPath,
+                                                                  std::filesystem::path includePath = "") = 0;
+
+            virtual std::shared_ptr<IComputeShader> createComputeShader(const std::filesystem::path& shaderFile,
                                                                         const std::string& entryPoint,
                                                                         std::string_view debugName,
                                                                         const std::array<unsigned int, 3>& threadGroups,
                                                                         const D3D_SHADER_MACRO* defines = nullptr,
-                                                                        const std::string includePath = "") = 0;
+                                                                        std::filesystem::path includePath = "") = 0;
+
             virtual std::shared_ptr<IGpuTimer> createTimer() = 0;
 
             // Must be invoked prior to setting the input/output.
