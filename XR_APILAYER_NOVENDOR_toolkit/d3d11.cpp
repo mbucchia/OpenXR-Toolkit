@@ -1064,17 +1064,19 @@ namespace {
                 shared_from_this(), get(vertexBuffer), sizeof(SimpleMeshVertex), get(indexBuffer), indices.size());
         }
 
-        std::shared_ptr<IQuadShader> createQuadShader(const std::string& shaderPath,
+        std::shared_ptr<IQuadShader> createQuadShader(const std::filesystem::path& shaderFile,
                                                       const std::string& entryPoint,
                                                       std::string_view debugName,
                                                       const D3D_SHADER_MACRO* defines,
-                                                      const std::string includePath) override {
+                                                      std::filesystem::path includePath = "") override {
             ComPtr<ID3DBlob> psBytes;
             if (!includePath.empty()) {
-                utilities::shader::IncludeHeader includes({includePath});
-                utilities::shader::CompileShader(shaderPath, entryPoint, set(psBytes), defines, &includes, "ps_5_0");
+                utilities::shader::IncludeHeader includes({std::move(includePath)});
+                utilities::shader::CompileShader(
+                    shaderFile, entryPoint.c_str(), set(psBytes), defines, &includes, "ps_5_0");
             } else {
-                utilities::shader::CompileShader(shaderPath, entryPoint, set(psBytes), defines, nullptr, "ps_5_0");
+                utilities::shader::CompileShader(
+                    shaderFile, entryPoint.c_str(), set(psBytes), defines, nullptr, "ps_5_0");
             }
 
             ComPtr<ID3D11PixelShader> compiledShader;
@@ -1088,18 +1090,20 @@ namespace {
             return std::make_shared<D3D11QuadShader>(shared_from_this(), get(compiledShader));
         }
 
-        std::shared_ptr<IComputeShader> createComputeShader(const std::string& shaderPath,
+        std::shared_ptr<IComputeShader> createComputeShader(const std::filesystem::path& shaderFile,
                                                             const std::string& entryPoint,
                                                             std::string_view debugName,
                                                             const std::array<unsigned int, 3>& threadGroups,
                                                             const D3D_SHADER_MACRO* defines,
-                                                            const std::string includePath) override {
+                                                            std::filesystem::path includePath = "") override {
             ComPtr<ID3DBlob> csBytes;
             if (!includePath.empty()) {
-                utilities::shader::IncludeHeader includes({includePath});
-                utilities::shader::CompileShader(shaderPath, entryPoint, set(csBytes), defines, &includes, "cs_5_0");
+                utilities::shader::IncludeHeader includes({std::move(includePath)});
+                utilities::shader::CompileShader(
+                    shaderFile, entryPoint.c_str(), set(csBytes), defines, &includes, "cs_5_0");
             } else {
-                utilities::shader::CompileShader(shaderPath, entryPoint, set(csBytes), defines, nullptr, "cs_5_0");
+                utilities::shader::CompileShader(
+                    shaderFile, entryPoint.c_str(), set(csBytes), defines, nullptr, "cs_5_0");
             }
 
             ComPtr<ID3D11ComputeShader> compiledShader;

@@ -93,7 +93,7 @@ namespace {
       private:
         void initializeScaler() {
             const auto shadersDir = dllHome / "shaders";
-            const auto shaderPath = shadersDir / "FSR.hlsl";
+            const auto shaderFile = shadersDir / "FSR.hlsl";
 
             // This value is the image region dimension that each thread group of the FSR shader operates on
             const auto threadGroupWorkRegionDim = 16u;
@@ -113,13 +113,13 @@ namespace {
             defines.add("SAMPLE_RCAS", 0);
             defines.add("SAMPLE_EASU", 1);
             m_shaderEASU = m_device->createComputeShader(
-                shaderPath.string(), "mainCS", "FSR EASU CS", threadGroups, defines.get(), shadersDir.string());
+                shaderFile, "mainCS", "FSR EASU CS", threadGroups, defines.get() /*,  shadersDir*/);
 
             // RCAS specific
             defines.set("SAMPLE_EASU", 0);
             defines.set("SAMPLE_RCAS", 1);
             m_shaderRCAS = m_device->createComputeShader(
-                shaderPath.string(), "mainCS", "FSR RCAS CS", threadGroups, defines.get(), shadersDir.string());
+                shaderFile, "mainCS", "FSR RCAS CS", threadGroups, defines.get() /*,  shadersDir*/);
 
             // TODO: Consider making immutable and create a new buffer in update(). For now, our D3D12 implementation
             // does not do heap descriptor recycling.
