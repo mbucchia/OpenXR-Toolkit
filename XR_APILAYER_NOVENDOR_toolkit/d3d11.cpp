@@ -644,15 +644,15 @@ namespace {
         }
 
         void uploadData(const void* buffer, size_t count) override {
-            if (m_bufferDesc.ByteWidth != count) {
-                throw std::runtime_error("Upload size mismatch");
-            }
-
-            if (auto context = m_device->getContextAs<D3D11>()) {
-                D3D11_MAPPED_SUBRESOURCE mappedResources;
-                CHECK_HRCMD(context->Map(get(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResources));
-                memcpy(mappedResources.pData, buffer, count);
-                context->Unmap(get(m_buffer), 0);
+            if (m_bufferDesc.CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) {
+                if (auto context = m_device->getContextAs<D3D11>()) {
+                    D3D11_MAPPED_SUBRESOURCE mappedResources;
+                    CHECK_HRCMD(context->Map(get(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResources));
+                    memcpy(mappedResources.pData, buffer, std::min(count, size_t(m_bufferDesc.ByteWidth)));
+                    context->Unmap(get(m_buffer), 0);
+                }
+            } else {
+                throw std::runtime_error("Texture is immutable");
             }
         }
 
@@ -662,8 +662,8 @@ namespace {
 
       private:
         const std::shared_ptr<IDevice> m_device;
-        const D3D11_BUFFER_DESC m_bufferDesc;
         const ComPtr<ID3D11Buffer> m_buffer;
+        const D3D11_BUFFER_DESC m_bufferDesc;
     };
 
     // Wrap a vertex+indices buffers. Obtained from D3D11Device.
@@ -1011,13 +1011,10 @@ namespace {
 
         std::shared_ptr<IShaderBuffer>
         createBuffer(size_t size, std::string_view debugName, const void* initialData, bool immutable) override {
-            D3D11_BUFFER_DESC desc;
-            ZeroMemory(&desc, sizeof(desc));
-            desc.ByteWidth = (UINT)size;
-            desc.Usage = (initialData && immutable) ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DYNAMIC;
-            desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-            desc.CPUAccessFlags = immutable ? 0 : D3D11_CPU_ACCESS_WRITE;
-
+            auto desc = CD3D11_BUFFER_DESC(static_cast<UINT>(size),
+                                           D3D11_BIND_CONSTANT_BUFFER,
+                                           (initialData && immutable) ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DYNAMIC,
+                                           immutable ? 0 : D3D11_CPU_ACCESS_WRITE);
             ComPtr<ID3D11Buffer> buffer;
             if (initialData) {
                 D3D11_SUBRESOURCE_DATA data;

@@ -136,7 +136,7 @@ namespace {
 
         void initializeCoefficients() {
             const int rowPitch = kFilterSize * 4;
-            const int rowPitchAligned = Align(rowPitch, m_device->getTextureAlignmentConstraint());
+            const int rowPitchAligned = alignTo(rowPitch, m_device->getTextureAlignmentConstraint());
             const int coefSize = rowPitchAligned * kPhaseCount;
 
             XrSwapchainCreateInfo info;

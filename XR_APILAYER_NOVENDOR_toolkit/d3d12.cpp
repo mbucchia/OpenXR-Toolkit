@@ -403,8 +403,8 @@ namespace {
 
             // Create an upload buffer if we don't have one already
             if (!m_uploadBuffer) {
-                m_uploadSize =
-                    Align((UINT)m_textureDesc.Width, m_device->getTextureAlignmentConstraint()) * m_textureDesc.Height;
+                m_uploadSize = alignTo((UINT)m_textureDesc.Width, m_device->getTextureAlignmentConstraint()) *
+                               m_textureDesc.Height;
                 const auto& heapType = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
                 const auto stagingDesc = CD3DX12_RESOURCE_DESC::Buffer(m_uploadSize);
                 CHECK_HRCMD(m_device->getAs<D3D12>()->CreateCommittedResource(&heapType,
@@ -644,7 +644,6 @@ namespace {
 
         void uploadData(const void* buffer, size_t count, ID3D12Resource* uploadBuffer) {
             D3D12_SUBRESOURCE_DATA subresourceData;
-            ZeroMemory(&subresourceData, sizeof(subresourceData));
             subresourceData.pData = buffer;
             subresourceData.RowPitch = subresourceData.SlicePitch = count;
 
@@ -665,7 +664,7 @@ namespace {
 
         void uploadData(const void* buffer, size_t count) override {
             if (!m_uploadBuffer) {
-                throw std::runtime_error("Texture is immutable");
+                throw std::runtime_error("Buffer is immutable");
             }
             uploadData(buffer, count, get(m_uploadBuffer));
         }
@@ -682,7 +681,8 @@ namespace {
                 if (auto device = m_device->getAs<D3D12>()) {
                     D3D12_CONSTANT_BUFFER_VIEW_DESC desc;
                     desc.BufferLocation = m_buffer->GetGPUVirtualAddress();
-                    desc.SizeInBytes = Align(m_bufferDesc.Width, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+                    desc.SizeInBytes =
+                        alignTo(static_cast<UINT>(m_bufferDesc.Width), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
                     device->CreateConstantBufferView(&desc, m_constantBufferView.value());
                 }
             }
@@ -1187,7 +1187,7 @@ namespace {
         std::shared_ptr<IShaderBuffer>
         createBuffer(size_t size, std::string_view debugName, const void* initialData, bool immutable) override {
             const auto desc =
-                CD3DX12_RESOURCE_DESC::Buffer(Align(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+                CD3DX12_RESOURCE_DESC::Buffer(alignTo(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 
             ComPtr<ID3D12Resource> buffer;
             {
