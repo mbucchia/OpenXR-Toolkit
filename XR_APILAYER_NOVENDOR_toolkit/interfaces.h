@@ -603,7 +603,7 @@ namespace toolkit {
                                            std::optional<utilities::Eye> eyeHint) = 0;
             virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
 
-            virtual void updateGazeLocation(float ndc_x, float ndc_y) = 0;
+            virtual void updateGazeLocation(XrVector2f gaze, utilities::Eye eye) = 0;
 
             virtual uint8_t getMaxRate() const = 0;
 
@@ -687,8 +687,7 @@ namespace toolkit {
             virtual void update() = 0;
 
             virtual XrActionSet getActionSet() const = 0;
-            virtual bool getProjectedGaze(float gazeX[utilities::ViewCount],
-                                          float gazeY[utilities::ViewCount]) const = 0;
+            virtual bool getProjectedGaze(XrVector2f gaze[utilities::ViewCount]) const = 0;
 
             virtual const EyeGazeState& getEyeGazeState() const = 0;
         };
@@ -730,7 +729,7 @@ namespace toolkit {
             virtual void updateEyeGazeState(const input::EyeGazeState& state) = 0;
 
             virtual void
-            setViewProjectionCenters(float leftCenterX, float leftCenterY, float rightCenterX, float rightCenterY) = 0;
+            setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
         };
 
     } // namespace menu

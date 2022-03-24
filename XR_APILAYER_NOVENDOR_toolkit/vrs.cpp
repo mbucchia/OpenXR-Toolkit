@@ -23,6 +23,7 @@
 
 #include "pch.h"
 
+#include "shader_utilities.h"
 #include "factories.h"
 #include "interfaces.h"
 #include "layer.h"
@@ -82,10 +83,10 @@ namespace {
 
     // Constant buffer
     struct alignas(16) ShadingConstants {
-        float Gaze[4];    // u,v,1/w,1/h
-        float Ring12[4];  // sx1,sy1,sx2,sy2
-        float Ring34[4];  // sx3,sy3,sx4,sy4
-        int Rates[4];     // r1,r2,r3,r4
+        float Gaze[4];     // u,v,1/w,1/h
+        float Ring12[4];   // a1,b1,a2,b2
+        float Ring34[4];   // a3,b3,a4,b4
+        uint32_t Rates[4]; // r1,r2,r3,r4
     };
 
     class VariableRateShader : public IVariableRateShader {
@@ -103,11 +104,10 @@ namespace {
             // Make sure to unload NvAPI on destruction
             m_NvShadingRateResources.deferredUnloadNvAPI.needUnload = m_device->getApi() == Api::D3D11;
 
-            // Create a texture with the shading rates.
             createRenderResources(m_targetWidth, m_targetHeight);
 
             // Set initial projection center
-            updateGazeLocation(0, 0);
+            updateGazeLocation({0.f, 0.f}, Eye::Both);
         }
 
         ~VariableRateShader() override {
@@ -178,8 +178,14 @@ namespace {
                     }
                 }
 
-                // TODO:
-                updateFoveationMasks(0 /*m_projCenterX*/, 0 /*m_projCenterY*/, innerRadius, outerRadius);
+                updateShadingRings();
+
+                // TODO: do we need to call this one here always?
+
+                updateRenderResources();
+
+                // updateFoveationMasks(0 /*m_projCenterX*/, 0 /*m_projCenterY*/, innerRadius, outerRadius);
+
                 m_hasProjCenterChanged = false;
             }
         }
@@ -198,17 +204,15 @@ namespace {
             if (m_needUpdateEye) {
                 assert(m_eyeTracker);
                 // In normalized screen coordinates.
-                float gazeScreenX[ViewCount], gazeScreenY[ViewCount];
-                if (m_eyeTracker->getProjectedGaze(gazeScreenX, gazeScreenY)) {
-                    int gazeX[ViewCount];
-                    int gazeY[ViewCount];
-                    for (uint32_t i = 0; i < ViewCount; i++) {
-                        gazeX[i] = (int)(gazeScreenX[i] * m_targetWidth);
-                        gazeY[i] = (int)(gazeScreenY[i] * m_targetHeight);
-                    }
+                XrVector2f gaze[ViewCount];
+                if (m_eyeTracker->getProjectedGaze(gaze)) {
+                    const auto updateSingleRTV = eyeHint.has_value() && info.arraySize == 1;
+                    const auto updateArrayRTV = info.arraySize > 1;
 
-                    updateFoveationMasks(
-                        gazeX, gazeY, -1, -1, eyeHint.has_value() && info.arraySize == 1, info.arraySize > 1, false);
+                    updateGazeLocation(gaze[0], Eye::Left);
+                    updateGazeLocation(gaze[1], Eye::Right);
+                    updateRenderResources(updateSingleRTV, updateArrayRTV, false);
+
                     m_needUpdateEye = false;
 
                     // TODO: What do we do upon (permanent) loss of tracking?
@@ -220,13 +224,6 @@ namespace {
                 // We set VRS on 2 viewports in case the stereo view renders in parallel.
                 NV_D3D11_VIEWPORT_SHADING_RATE_DESC viewports[2];
                 viewports[1] = viewports[0] = m_NvShadingRateResources.rates;
-                viewports[0].enableVariablePixelShadingRate = true;
-                viewports[1].enableVariablePixelShadingRate = true;
-
-                // viewports[0].shadingRateTable[0] = m_NvShadingRateResources.innerShadingRate;
-                // viewports[0].shadingRateTable[1] = m_NvShadingRateResources.middleShadingRate;
-                // viewports[0].shadingRateTable[2] = m_NvShadingRateResources.outerShadingRate;
-                // viewports[1] = viewports[0];
 
                 NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
@@ -235,8 +232,9 @@ namespace {
                 desc.pViewports = viewports;
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context11, &desc));
 
-                auto& mask = info.arraySize == 2 ? m_NvShadingRateResources.viewsVPRT
-                                                 : m_NvShadingRateResources.views[(uint32_t)eyeHint.value_or(Eye::Both)];
+                auto& mask = info.arraySize == 2
+                                 ? m_NvShadingRateResources.viewsVPRT
+                                 : m_NvShadingRateResources.views[(uint32_t)eyeHint.value_or(Eye::Both)];
 
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context11, get(mask)));
 
@@ -270,11 +268,13 @@ namespace {
             disable(context);
         }
 
-        void updateGazeLocation(float ndc_x, float ndc_y) override {
-            m_gazeLocation[0].x = m_targetWidth * ndc_x;
-            m_gazeLocation[0].y = m_targetHeight * ndc_y;
-            m_gazeLocation[1].x = m_targetWidth * ndc_x;
-            m_gazeLocation[1].y = m_targetHeight * ndc_y;
+        void updateGazeLocation(XrVector2f gaze, Eye eye) override {
+            // works with left, right and both
+            if (eye != Eye::Right)
+                m_gazeLocation[0] = gaze;
+            if (eye != Eye::Left)
+                m_gazeLocation[1] = gaze;
+            m_gazeLocation[2] = {0, 0}; // updateFallbackRTV
             m_hasProjCenterChanged = true;
         }
 
@@ -356,6 +356,8 @@ namespace {
         void createRenderResources(uint32_t renderWidth, uint32_t renderHeigh) {
             auto texW = xr::math::DivideRoundingUp(renderWidth, m_tileSize);
             auto texH = xr::math::DivideRoundingUp(renderHeigh, m_tileSize);
+
+            // Initialize shading rate resources
             {
                 XrSwapchainCreateInfo info;
                 ZeroMemory(&info, sizeof(info));
@@ -374,7 +376,23 @@ namespace {
                 m_shadingRateMaskVPRT = m_device->createTexture(info, "VRS VPRT TEX2D");
             }
 
-            // Initialize API-specific resources.
+            // Initialize compute shader
+            {
+                const auto shadersDir = dllHome / "shaders";
+                const auto shaderFile = shadersDir / "VRS.hlsl";
+
+                utilities::shader::Defines defines;
+                defines.add("VRS_TILE_X", m_tileSize);
+                defines.add("VRS_TILE_Y", m_tileSize);
+                defines.add("VRS_NUM_RATES", 3);
+
+                m_csShadingRate =
+                    m_device->createComputeShader(shaderFile, "mainCS", "VRS CS", {texW, texH, 1}, defines.get());
+
+                m_cbShadingRate = m_device->createBuffer(sizeof(ShadingConstants), "VRS CB");
+            }
+
+            // Initialize API-specific shading rate resources.
             if (auto device11 = m_device->getAs<D3D11>()) {
                 m_NvShadingRateResources.resetRates();
 
@@ -399,16 +417,13 @@ namespace {
                 // Nothing extra to initialize.
             }
 
-            // Initialize compute shader
-            {
-                const auto shadersDir = dllHome / "shaders";
-                const auto shaderFile = shadersDir / "VRS.hlsl";
+            // Initialize VRS shader constants
+            m_constants.Gaze[2] = 1.f / texW;
+            m_constants.Gaze[3] = 1.f / texH;
 
-                const std::array<unsigned int, 3> threadGroups = {texW, texH, 1};
-
-                m_csShadingRate = m_device->createComputeShader(shaderFile, "mainCS", "VRS CS", threadGroups);
-                m_cbShadingRate = m_device->createBuffer(sizeof(ShadingConstants), "VRS CB");
-            }
+            updateShadingRings();
+            updateShadingRates();
+            updateRenderResources();
 
             DebugLog("VRS: targetWidth=%u targetHeight=%u tileSize=%u\n", m_targetWidth, m_targetHeight, m_tileSize);
         }
@@ -443,39 +458,126 @@ namespace {
         }
 
         void updateShadingRates() {
-            int innerRate, middleRate, outerRate;
+            uint32_t rates[3];
+
             if (m_mode == VariableShadingRateType::Preset) {
                 const auto quality = m_configManager->getEnumValue<VariableShadingRateQuality>(SettingVRSQuality);
-                std::tie(innerRate, middleRate, outerRate) = getShadingRateForQuality(quality);
+                for (int i = 0; i < 3; i++) {
+                    rates[i] = i + (quality != VariableShadingRateQuality::Quality ? i : 0);
+                }
             } else {
-                innerRate = m_configManager->getValue(SettingVRSInner);
-                middleRate = m_configManager->getValue(SettingVRSMiddle);
-                outerRate = m_configManager->getValue(SettingVRSOuter);
+                rates[0] = m_configManager->getValue(SettingVRSInner);
+                rates[1] = m_configManager->getValue(SettingVRSMiddle);
+                rates[2] = m_configManager->getValue(SettingVRSOuter);
             }
-
-            // Cap to device's capabilities.
-            innerRate = std::clamp(static_cast<int>(m_tileRateMax), 1, innerRate);
-            middleRate = std::clamp(static_cast<int>(m_tileRateMax), 1, middleRate);
-            outerRate = std::clamp(static_cast<int>(m_tileRateMax), 1, outerRate);
 
             const bool preferHorizontal =
                 m_mode == VariableShadingRateType::Custom && m_configManager->getValue(SettingVRSPreferHorizontal);
 
-            if (m_device->getApi() == Api::D3D11) {
-                // These are handled through an indirection table.
-                m_NvShadingRateResources.rates.shadingRateTable[0] = getNVAPIShadingRate(innerRate, preferHorizontal);
-                m_NvShadingRateResources.rates.shadingRateTable[1] = getNVAPIShadingRate(middleRate, preferHorizontal);
-                m_NvShadingRateResources.rates.shadingRateTable[2] = getNVAPIShadingRate(outerRate, preferHorizontal);
-                m_innerValue = 0;
-                m_middleValue = 1;
-                m_outerValue = 2;
-            } else if (m_device->getApi() == Api::D3D12) {
-                m_innerValue = getD3D12ShadingRate(innerRate, preferHorizontal);
-                m_middleValue = getD3D12ShadingRate(middleRate, preferHorizontal);
-                m_outerValue = getD3D12ShadingRate(outerRate, preferHorizontal);
-            }
+            // TODO: D3D12 shading rates and lut
+            m_constants.Rates[0] = settingsRateToShadingRate(rates[0], preferHorizontal);
+            m_constants.Rates[1] = settingsRateToShadingRate(rates[1], preferHorizontal);
+            m_constants.Rates[2] = settingsRateToShadingRate(rates[2], preferHorizontal);
+            m_constants.Rates[3] = SHADING_RATE_CULL;
+
+            DebugLog("VRS: Rates = %u %u %u %u\n",
+                     m_constants.Rates[0],
+                     m_constants.Rates[1],
+                     m_constants.Rates[2],
+                     m_constants.Rates[3]);
         }
 
+        void updateShadingRings() {
+            uint32_t radius[2];
+
+            if (m_mode == VariableShadingRateType::Preset) {
+                const auto pattern = m_configManager->getEnumValue<VariableShadingRatePattern>(SettingVRSPattern);
+                if (pattern == VariableShadingRatePattern::Wide) {
+                    radius[0] = 55, radius[1] = 80;
+                } else if (pattern == VariableShadingRatePattern::Narrow) {
+                    radius[0] = 30, radius[1] = 55;
+                } else { // VariableShadingRatePattern::Balanced
+                    radius[0] = 50, radius[1] = 60;
+                }
+            } else {
+                radius[0] = m_configManager->getValue(SettingVRSInnerRadius);
+                radius[1] = m_configManager->getValue(SettingVRSOuterRadius);
+            }
+
+            // TODO:
+            // const float semiMajorFactor = m_configManager->getValue(SettingVRSXScale) * 0.01f;
+
+            m_constants.Ring12[0] = radius[0] * 0.01f;
+            m_constants.Ring12[1] = radius[0] * 0.01f;
+            m_constants.Ring12[2] = radius[1] * 0.01f;
+            m_constants.Ring12[3] = radius[1] * 0.01f;
+            m_constants.Ring34[0] = 10; // large enough
+            m_constants.Ring34[1] = 10;
+            m_constants.Ring34[2] = 10;
+            m_constants.Ring34[3] = 10;
+
+            DebugLog("VRS: Rings = %u %u\n", radius[0], radius[1]);
+        }
+
+        void updateRenderResources(bool updateSingleRTV = true,
+                                   bool updateArrayRTV = true,
+                                   bool updateFallbackRTV = true) {
+            // TODO:
+            // const auto xOffset =
+            //    static_cast<int>(m_configManager->getValue(SettingVRSXOffset) * (m_targetWidth / 200.f));
+            // const auto yOffset =
+            //    static_cast<int>(m_configManager->getValue(SettingVRSYOffset) * (m_targetHeight / 200.f));
+            // const float semiMajorFactor = m_configManager->getValue(SettingVRSXScale) / 100.f;
+
+            for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
+                auto update_dispatch = i != 2 ? (updateSingleRTV || updateArrayRTV) : updateFallbackRTV;
+                if (update_dispatch) {
+                    m_constants.Gaze[0] = m_gazeLocation[i].x;
+                    m_constants.Gaze[1] = m_gazeLocation[i].y;
+                    m_cbShadingRate->uploadData(&m_constants, sizeof(m_constants));
+
+                    m_device->setShader(m_csShadingRate);
+                    m_device->setShaderInput(0, m_cbShadingRate);
+                    m_device->setShaderInput(0, m_shadingRateMask[i]);
+                    m_device->setShaderOutput(0, m_shadingRateMask[i]);
+                    m_device->dispatchShader();
+
+                    if (i != 2 && updateArrayRTV) {
+                        m_device->setShader(m_csShadingRate);
+                        m_device->setShaderInput(0, m_cbShadingRate);
+                        m_device->setShaderInput(0, m_shadingRateMaskVPRT, static_cast<int>(i));
+                        m_device->setShaderOutput(0, m_shadingRateMaskVPRT, static_cast<int>(i));
+                        m_device->dispatchShader();
+                    }
+                }
+            }
+
+// TODO:
+#if 0
+            if (m_device->getApi() == Api::D3D12) {
+                // TODO: Need to use the immediate context instead! (same for uploadData above).
+                auto context12 = m_device->getContextAs<D3D12>();
+                {
+                    const D3D12_RESOURCE_BARRIER barriers[] = {
+                        CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMask[0]->getAs<D3D12>(),
+                                                             D3D12_RESOURCE_STATE_COMMON,
+                                                             D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE),
+                        CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMask[1]->getAs<D3D12>(),
+                                                             D3D12_RESOURCE_STATE_COMMON,
+                                                             D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE),
+                        CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMask[2]->getAs<D3D12>(),
+                                                             D3D12_RESOURCE_STATE_COMMON,
+                                                             D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE),
+                        CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMaskVPRT->getAs<D3D12>(),
+                                                             D3D12_RESOURCE_STATE_COMMON,
+                                                             D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE)};
+                    context12->ResourceBarrier(ARRAYSIZE(barriers), barriers);
+                }
+            }
+#endif
+        }
+
+#if 0
         void updateFoveationMasks(int projCenterX[ViewCount],
                                   int projCenterY[ViewCount],
                                   int innerRadius,
@@ -615,6 +717,22 @@ namespace {
                 }
             }
         }
+#endif
+
+        uint32_t settingsRateToShadingRate(uint32_t settingsRate, bool preferHorizontal) const {
+            static const uint8_t lut[] = {SHADING_RATE_x1,
+                                          SHADING_RATE_2x1,
+                                          SHADING_RATE_2x2,
+                                          SHADING_RATE_4x2,
+                                          SHADING_RATE_4x4,
+                                          SHADING_RATE_CULL};
+
+            static_assert(SHADING_RATE_1x2 == (SHADING_RATE_2x1 + 1), "preferHorizonal shading rate arithmetic");
+            static_assert(SHADING_RATE_2x4 == (SHADING_RATE_4x2 + 1), "preferHorizonal shading rate arithmetic");
+
+            // preferHorizontal applies to odd settingsRate only!
+            return lut[std::min(size_t(settingsRate), std::size(lut))] + (settingsRate & uint32_t(preferHorizontal));
+        }
 
         bool isVariableRateShadingCandidate(const XrSwapchainCreateInfo& info) const {
             // Check for proportionality with the size of our render target.
@@ -645,23 +763,9 @@ namespace {
         const uint32_t m_targetHeight;
         const uint32_t m_tileSize;
         const uint32_t m_tileRateMax;
-
         const float m_targetAspectRatio;
 
-        VariableShadingRateType m_mode{VariableShadingRateType::None};
-
-        XrVector2f m_gazeLocation[ViewCount];
-
-        // bool m_isEnabled{true};
-
-        int m_innerValue{0};
-        int m_middleValue{0};
-        int m_outerValue{0};
-
-        bool m_hasProjCenterChanged{false};
-        bool m_needUpdateEye{false};
-
-        struct NvShadingRateResouces {
+        struct {
             // Must appear first.
             struct DeferredNvAPI_Unload {
                 ~DeferredNvAPI_Unload() {
@@ -675,7 +779,7 @@ namespace {
             } deferredUnloadNvAPI;
 
             void resetRates() {
-                rates.enableVariablePixelShadingRate = false;
+                rates.enableVariablePixelShadingRate = true;
                 std::fill_n(rates.shadingRateTable, std::size(rates.shadingRateTable), NV_PIXEL_X1_PER_RASTER_PIXEL);
 
                 // We use a constant table and a varying shading rate texture filled with a compute shader.
@@ -693,10 +797,6 @@ namespace {
                 rates.shadingRateTable[SHADING_RATE_4x4] = NV_PIXEL_X1_PER_4X4_RASTER_PIXELS;
             }
 
-            // NV_PIXEL_SHADING_RATE innerShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
-            // NV_PIXEL_SHADING_RATE middleShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
-            // NV_PIXEL_SHADING_RATE outerShadingRate{NV_PIXEL_X1_PER_RASTER_PIXEL};
-
             ComPtr<ID3D11NvShadingRateResourceView> views[ViewCount + 1];
             ComPtr<ID3D11NvShadingRateResourceView> viewsVPRT;
 
@@ -710,6 +810,19 @@ namespace {
         std::shared_ptr<ITexture> m_shadingRateMask[ViewCount + 1];
         std::shared_ptr<ITexture> m_shadingRateMaskVPRT;
 
+        VariableShadingRateType m_mode{VariableShadingRateType::None};
+
+        XrVector2f m_gazeLocation[ViewCount + 1];
+        ShadingConstants m_constants;
+
+        bool m_hasProjCenterChanged{false};
+        bool m_needUpdateEye{false};
+
+        // bool m_isEnabled{true};
+        // int m_innerValue{0};
+        // int m_middleValue{0};
+        // int m_outerValue{0};
+
 #ifdef _DEBUG
         bool m_isCapturing{false};
         uint32_t m_captureID{0};
@@ -718,65 +831,7 @@ namespace {
         std::shared_ptr<ITexture> m_currentRenderTarget;
         std::optional<Eye> m_currentEyeHint;
 #endif
-
-        // Returns inner, middle, outer downsampling as a power of 2.
-        static std::tuple<int, int, int> getShadingRateForQuality(VariableShadingRateQuality quality) {
-            switch (quality) {
-            case VariableShadingRateQuality::Quality:
-                return std::make_tuple(0 /* 1x */, 1 /* 1/2x */, 2 /* 1/4x */);
-            case VariableShadingRateQuality::Performance:
-            default:
-                return std::make_tuple(0 /* 1x */, 2 /* 1/4x */, 4 /* 1/16x */);
-            }
-        }
-
-        // Returns inner and outer radius, as a percentage.
-        static std::tuple<int, int> getRadiusForPattern(VariableShadingRatePattern pattern) {
-            switch (pattern) {
-            case VariableShadingRatePattern::Wide:
-                return std::make_tuple(55, 80);
-            case VariableShadingRatePattern::Narrow:
-                return std::make_tuple(30, 55);
-            case VariableShadingRatePattern::Balanced:
-            default:
-                return std::make_tuple(50, 60);
-            }
-        }
-
-        // std::array<NV_PIXEL_SHADING_RATE, 16> getNVAPIShadingRateTable() const {
-        //    PixelShadingRate shadingRateTable[MAX_SHADING_RATES];
-        //}
-
-        NV_PIXEL_SHADING_RATE getNVAPIShadingRate(int samplingPow2, bool preferHorizontal) {
-            // TODO:
-            static const NV_PIXEL_SHADING_RATE lut[] = {NV_PIXEL_X1_PER_RASTER_PIXEL,
-                                                        NV_PIXEL_X1_PER_2X1_RASTER_PIXELS,
-                                                        NV_PIXEL_X1_PER_2X2_RASTER_PIXELS,
-                                                        NV_PIXEL_X1_PER_4X2_RASTER_PIXELS,
-                                                        NV_PIXEL_X1_PER_4X4_RASTER_PIXELS};
-
-            static_assert(NV_PIXEL_X1_PER_1X2_RASTER_PIXELS == (NV_PIXEL_X1_PER_2X1_RASTER_PIXELS + 1));
-            static_assert(NV_PIXEL_X1_PER_2X4_RASTER_PIXELS == (NV_PIXEL_X1_PER_4X2_RASTER_PIXELS + 1));
-
-            if (size_t(samplingPow2) < std::size(lut)) {
-            }
-            switch (samplingPow2) {
-            case 0:
-                return NV_PIXEL_X1_PER_RASTER_PIXEL;
-            case 1:
-                return preferHorizontal ? NV_PIXEL_X1_PER_1X2_RASTER_PIXELS : NV_PIXEL_X1_PER_2X1_RASTER_PIXELS;
-            case 2:
-                return NV_PIXEL_X1_PER_2X2_RASTER_PIXELS;
-            case 3:
-                return preferHorizontal ? NV_PIXEL_X1_PER_2X4_RASTER_PIXELS : NV_PIXEL_X1_PER_4X2_RASTER_PIXELS;
-            case 4:
-                return NV_PIXEL_X1_PER_4X4_RASTER_PIXELS;
-            default:
-                // Useful for debugging.
-                return NV_PIXEL_X0_CULL_RASTER_PIXELS;
-            }
-        }
-
+#if 0
         D3D12_SHADING_RATE getD3D12ShadingRate(int samplingPow2, bool preferHorizontal) {
             switch (samplingPow2) {
             case 0:
@@ -792,6 +847,7 @@ namespace {
                 return D3D12_SHADING_RATE_4X4;
             }
         }
+#endif
     };
 
 } // namespace

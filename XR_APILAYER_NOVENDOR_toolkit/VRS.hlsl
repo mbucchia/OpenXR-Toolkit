@@ -20,52 +20,115 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// combine EASU and RCAS constants in a single buffer
+#ifndef VRS_TILE_X
+#define VRS_TILE_X 16
+#endif
+
+#ifndef VRS_TILE_Y
+#define VRS_TILE_Y 16
+#endif
+
+#ifndef VRS_NUM_RATES
+#define VRS_NUM_RATES 4
+#endif
+
+#ifndef VRS_DEFAULT_RATE
+#define VRS_DEFAULT_RATE 0
+#endif
+
+// Render up to 4 ellipses with their shading rates
+// Equation: x^2 / a^2 + y^2 / b^2 == 1
+// https://www.desmos.com/calculator/tevuazt8xl
+
 cbuffer cb : register(b0)
 {
   float4 Gaze;   // u,v,1/w,1/h
-  float4 Ring12; // sx1,sy1,sx2,sy2
-  float4 Ring34; // sx3,sy3,sx4,sy4
-  int Rates[4];  // r1,r2,r3,r4
+  float4 Ring12; // a1,b1,a2,b2
+  float4 Ring34; // a3,b3,a4,b4
+  uint4  Rates;   // r1,r2,r3,r4
 };
 
 RWTexture2D<uint> u_Output : register(u0);
 
-[numthreads(16, 16, 1)]
-void mainCS(in int2 pos : SV_DispatchThreadID)
-{
-  // screen space (w,h) to screen uv (0,1)
-  float2 posUV = (pos << 4) * Gaze.zw;
+[numthreads(VRS_TILE_X, VRS_TILE_Y, 1)]
+void mainCS(in int2 pos : SV_DispatchThreadID) {
+  // texture space (w,h) to uv (0,1)
+  const float2 pos_uv = pos * Gaze.zw;
   
-  // relative screen uv to gaze in (-1,+1) 
-  float2 ndcUV = 2.0f * (posUV - Gaze.xy) - 1.0f;
-  
-  // Render 3 ellipses with their shading rates
-  // Equation: x^2 / a^2 + y^2 / b^2 == 1
-  // https://www.desmos.com/calculator/tevuazt8xl
+  // uv pos to gaze ndc (-1,+1) 
+  const float2 pos_ndc = 2.0f * (pos_uv - Gaze.xy) - 1.0f;
 
-  static const int kNumRates = 3;
+  // adjust ellipse scale with texture scale ratio
+  // if (w > h) scale a by h/w == x by w/h == x by (1/h)/(1/w)
+  const float2 scale = (Gaze.z < Gaze.w) ? float2(Gaze.w / Gaze.z, 1.0f) : float2(1.0f, Gaze.z / Gaze.w);
+  const float2 pos_xy = pos_ndc * scale;
 
   // Numerators (x^2, y^2)
-  float2 ndcSQ = ndcUV * 2.0f;
+  const float2 pos_xy2 = pos_xy * pos_xy;
 
+ #if 0
   // Denominators (a^2, b^2)
-  float2 shadingRings[kNumRates] =
-  {
+  const float2 rings_sq[VRS_NUM_RATES] = {
     1.0f / (Ring12.xy * Ring12.xy),
+#if VRS_NUM_RATES >= 2
     1.0f / (Ring12.zw * Ring12.zw),
-    1.0f / (Ring34.xy * Ring34.xy)
+#if VRS_NUM_RATES >= 3
+    1.0f / (Ring34.xy * Ring34.xy),
+#if VRS_NUM_RATES >= 4
+    1.0f / (Ring34.zw * Ring34.zw)
+#endif
+#endif
+#endif
+  };
+
+  const uint rates[VRS_NUM_RATES] = {
+    Rates.x,
+#if VRS_NUM_RATES >= 2
+    Rates.y,
+#if VRS_NUM_RATES >= 3
+    Rates.z,
+#if VRS_NUM_RATES >= 4
+    Rates.w
+#endif
+#endif
+#endif
   };
 
   int i = 0;
-  for (i = 0; i < kNumRates; i++) {
-    if (dot(ndcSQ, shadingRings[i]) <= 1) {
-      u_Output[pos] = Rates[i];
+  for (i = 0; i < VRS_NUM_RATES; i++) {
+    if (dot(pos_xy2, rings_sq[i]) <= 1) {
+      u_Output[pos] = rates[i];
       break;
     }
   }
+  if (i == VRS_NUM_RATES) {
+    u_Output[pos] = VRS_DEFAULT_RATE;
+  }
+#endif
 
-  if (i == kNumRates)
-    u_Output[pos] = 0; // cull
+  uint rate;
+  if (dot(pos_xy2, rcp(Ring12.xy * Ring12.xy)) <= 1.0f) {
+    rate = Rates.x;
+  }
+#if VRS_NUM_RATES >= 2
+  else if (dot(pos_xy2, rcp(Ring12.zw * Ring12.zw)) <= 1.0f) {
+    rate = Rates.y;
+  }
+#if VRS_NUM_RATES >= 3
+  else if (dot(pos_xy2, rcp(Ring34.xy * Ring34.xy)) <= 1.0f) {
+    rate = Rates.z;
+  }
+#if VRS_NUM_RATES >= 4
+  else if (dot(pos_xy2, rcp(Ring34.zw * Ring34.zw)) <= 1.0f) {
+    rate = Rates.w;
+  }
+#endif
+#endif
+#endif
+  else {
+    rate = VRS_DEFAULT_RATE;
+  }
+
+  u_Output[pos] = rate;
 }
 

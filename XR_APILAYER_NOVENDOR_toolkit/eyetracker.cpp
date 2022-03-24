@@ -148,7 +148,7 @@ namespace {
         }
 
         // TODO: Consider switching to NDC.
-        bool getProjectedGaze(float gazeX[ViewCount], float gazeY[ViewCount]) const {
+        bool getProjectedGaze(XrVector2f gaze[ViewCount]) const {
             assert(m_session != XR_NULL_HANDLE);
 
             if (!m_frameTime) {
@@ -205,13 +205,13 @@ namespace {
                 // Project the pose onto the screen.
 
                 // 1) Project the gaze to a 3D point forward. This point is relative to the view space.
-                const auto gaze = LoadXrPose(location.pose);
+                const auto gazePose = LoadXrPose(location.pose);
                 // const auto gazeProjectedPoint =
                 //    DirectX::XMVector3Transform(DirectX::XMVectorSet(0, 0, m_projectionDistance, 1), gaze);
                 const auto gazeProjectedPoint =
                     m_debugWithController
                         ? LoadXrVector3(location.pose.position)
-                        : DirectX::XMVector3Transform(DirectX::XMVectorSet(0, 0, m_projectionDistance, 1), gaze);
+                        : DirectX::XMVector3Transform(DirectX::XMVectorSet(0, 0, m_projectionDistance, 1), gazePose);
 
                 for (uint32_t eye = 0; eye < ViewCount; eye++) {
                     // 2) Compute the view space to camera transform for this eye.
@@ -229,8 +229,8 @@ namespace {
                     if (std::abs(point.w) < FLT_EPSILON) {
                         break;
                     }
-                    m_gazeX[eye] = ((point.x / point.w) + 1) / 2;
-                    m_gazeY[eye] = (1 - (point.y / point.w)) / 2;
+                    m_gaze[eye].x = ((point.x / point.w) + 1) / 2;
+                    m_gaze[eye].y = (1 - (point.y / point.w)) / 2;
 
                     // Mark as valid if we have both eyes.
                     m_valid = (eye == ViewCount - 1);
@@ -259,8 +259,7 @@ namespace {
             }
 
             for (uint32_t eye = 0; eye < ViewCount; eye++) {
-                gazeX[eye] = m_gazeX[eye];
-                gazeY[eye] = m_gazeY[eye];
+                gaze[eye] = m_gaze[eye];
             }
 
             return true;
@@ -283,17 +282,14 @@ namespace {
         XrSpace m_eyeSpace{XR_NULL_HANDLE};
         XrTime m_frameTime{0};
 
-        mutable float m_gazeX[ViewCount];
-        mutable float m_gazeY[ViewCount];
+        mutable XrVector2f m_gaze[ViewCount];
         mutable bool m_valid{false};
-
         mutable EyeGazeState m_eyeGazeState{};
     };
 
 } // namespace
 
 namespace toolkit::input {
-
     std::shared_ptr<IEyeTracker> CreateEyeTracker(toolkit::OpenXrApi& openXR,
                                                   std::shared_ptr<toolkit::config::IConfigManager> configManager) {
         return std::make_shared<EyeTracker>(openXR, configManager);

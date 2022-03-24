@@ -1013,14 +1013,8 @@ namespace {
 
                     if (Pose::IsPoseValid(state.viewStateFlags)) {
                         DirectX::XMFLOAT4X4 leftView, rightView;
-                        {
-                            const auto tmp = LoadXrPose(eyeInViewSpace[0].pose);
-                            DirectX::XMStoreFloat4x4(&leftView, tmp);
-                        }
-                        {
-                            const auto tmp = LoadXrPose(eyeInViewSpace[1].pose);
-                            DirectX::XMStoreFloat4x4(&rightView, tmp);
-                        }
+                        DirectX::XMStoreFloat4x4(&leftView, LoadXrPose(eyeInViewSpace[0].pose));
+                        DirectX::XMStoreFloat4x4(&rightView, LoadXrPose(eyeInViewSpace[1].pose));
 
                         // This code is based on vrperfkit by Frydrych Holger.
                         // https://github.com/fholger/vrperfkit/blob/master/src/openvr/openvr_manager.cpp
@@ -1029,29 +1023,28 @@ namespace {
                                                  leftView.m[2][2] * rightView.m[2][2];
 
                         // In normalized screen coordinates.
-                        float projCenterX[utilities::ViewCount];
-                        float projCenterY[utilities::ViewCount];
+                        XrVector2f projCenters[utilities::ViewCount];
                         for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                             const auto& fov = eyeInViewSpace[eye].fov;
                             const float cantedAngle = std::abs(std::acosf(dotForward) / 2) * (eye ? -1 : 1);
                             const float canted = std::tanf(cantedAngle);
-                            projCenterX[eye] = 0.5f * (1.f + (fov.angleRight + fov.angleLeft - 2 * canted) /
-                                                                 (fov.angleLeft - fov.angleRight));
-                            projCenterY[eye] =
+                            projCenters[eye].x = 0.5f * (1.f + (fov.angleRight + fov.angleLeft - 2 * canted) /
+                                                                   (fov.angleLeft - fov.angleRight));
+                            projCenters[eye].y =
                                 0.5f * (1.f + (fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown));
 
-                            m_eyeGazeX[eye] = projCenterX[eye];
-                            m_eyeGazeY[eye] = projCenterY[eye];
+                            m_eyeGaze[eye] = projCenters[eye];
                         }
 
                         if (m_menuHandler) {
-                            m_menuHandler->setViewProjectionCenters(
-                                projCenterX[0], projCenterY[0], projCenterX[1], projCenterY[1]);
+                            m_menuHandler->setViewProjectionCenters(projCenters[0], projCenters[1]);
                         }
-                        if (m_variableRateShader) {
-                            m_variableRateShader->setViewProjectionCenters(
-                                projCenterX[0], projCenterY[0], projCenterX[1], projCenterY[1]);
-                        }
+
+                        // TODO:
+                        // if (m_variableRateShader) {
+                        //    m_variableRateShader->setViewProjectionCenters(
+                        //        projCenterX[0], projCenterY[0], projCenterX[1], projCenterY[1]);
+                        //}
 
                         m_needCalibrateEyeProjections = false;
                     }
@@ -1633,7 +1626,7 @@ namespace {
                 // Render the hands or eye gaze helper.
                 if (m_handTracker || (m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug))) {
                     bool isEyeGazeValid = false;
-                    if (m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGazeX, m_eyeGazeY)) {
+                    if (m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze)) {
                         isEyeGazeValid = true;
                     }
 
@@ -1653,8 +1646,8 @@ namespace {
 
                         if (m_eyeTracker) {
                             XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
-                            const auto centerX = m_displayWidth * m_eyeGazeX[eye];
-                            const auto centerY = m_displayHeight * m_eyeGazeY[eye];
+                            const auto centerX = m_displayWidth * m_eyeGaze[eye].x;
+                            const auto centerY = m_displayHeight * m_eyeGaze[eye].y;
 
                             m_graphicsDevice->clearColor(centerY - 20, centerX - 20, centerY + 20, centerX + 20, color);
                         }
@@ -1770,8 +1763,7 @@ namespace {
         bool m_sendInterationProfileEvent{false};
         XrSpace m_viewSpace{XR_NULL_HANDLE};
         bool m_needCalibrateEyeProjections{true};
-        float m_eyeGazeX[utilities::ViewCount];
-        float m_eyeGazeY[utilities::ViewCount];
+        XrVector2f m_eyeGaze[utilities::ViewCount];
 
         std::shared_ptr<config::IConfigManager> m_configManager;
 

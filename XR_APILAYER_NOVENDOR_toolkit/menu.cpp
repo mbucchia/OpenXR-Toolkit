@@ -758,14 +758,11 @@ namespace {
             m_eyeGazeState = state;
         }
 
-        void setViewProjectionCenters(float leftCenterX,
-                                      float leftCenterY,
-                                      float rightCenterX,
-                                      float rightCenterY) override {
-            m_projCenterX[0] = (int)(m_displayWidth * leftCenterX);
-            m_projCenterY[0] = (int)(m_displayHeight * leftCenterY);
-            m_projCenterX[1] = (int)(m_displayWidth * rightCenterX);
-            m_projCenterY[1] = (int)(m_displayHeight * rightCenterY);
+        void setViewProjectionCenters(XrVector2f left, XrVector2f right) override {
+            m_projCenterX[0] = (int)(m_displayWidth * left.x);
+            m_projCenterY[0] = (int)(m_displayHeight * left.y);
+            m_projCenterX[1] = (int)(m_displayWidth * right.x);
+            m_projCenterY[1] = (int)(m_displayHeight * right.y);
         }
 
       private:
@@ -1081,10 +1078,13 @@ namespace {
                                      1000,
                                      [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
             m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back(
-                {MenuIndent::OptionIndent, "Contrast", MenuEntryType::Slider, SettingContrast, 4000, 6000, [](int value) {
-                     return fmt::format("{:.2f}", value / 100.f);
-                 }});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Contrast",
+                                     MenuEntryType::Slider,
+                                     SettingContrast,
+                                     4000,
+                                     6000,
+                                     [](int value) { return fmt::format("{:.2f}", value / 100.f); }});
             m_menuEntries.back().acceleration = 20;
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
