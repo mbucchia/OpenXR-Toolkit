@@ -66,6 +66,13 @@ namespace {
             OpenXrApi::xrCreateInstance(createInfo);
 
             m_applicationName = createInfo->applicationInfo.applicationName;
+            Log("Application name: '%s', Engine name: '%s'\n",
+                createInfo->applicationInfo.applicationName,
+                createInfo->applicationInfo.engineName);
+            m_isOpenComposite = m_applicationName.find("OpenComposite_") == 0;
+            if (m_isOpenComposite) {
+                Log("Detected OpenComposite\n");
+            }
 
             // Dump the OpenXR runtime information to help debugging customer issues.
             XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES, nullptr};
@@ -1770,6 +1777,7 @@ namespace {
         }
 
         std::string m_applicationName;
+        bool m_isOpenComposite{false};
         std::string m_runtimeName;
         XrSystemId m_vrSystemId{XR_NULL_SYSTEM_ID};
         XrSession m_vrSession{XR_NULL_HANDLE};
