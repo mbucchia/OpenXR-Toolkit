@@ -731,7 +731,8 @@ namespace {
             static_assert(SHADING_RATE_1x2 == (SHADING_RATE_2x1 + 1), "preferHorizonal shading rate arithmetic");
             static_assert(SHADING_RATE_2x4 == (SHADING_RATE_4x2 + 1), "preferHorizonal shading rate arithmetic");
 
-            // preferHorizontal applies to odd settingsRate only!
+            // preferHorizontal applies to odd settingsRate only, this prevents (CULL+1)
+            preferHorizontal &= settingsRate < 4;
             return lut[std::min(size_t(settingsRate), std::size(lut))] + (settingsRate & uint32_t(preferHorizontal));
         }
 
