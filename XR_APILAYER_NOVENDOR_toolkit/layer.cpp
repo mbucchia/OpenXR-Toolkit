@@ -977,6 +977,12 @@ namespace {
                                 0.5f * (1.f + (fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown));
                         }
 
+                        Log("Projection calibration: %.5f, %.5f | %.5f, %.5f\n",
+                            projCenterX[0],
+                            projCenterY[0],
+                            projCenterX[1],
+                            projCenterY[1]);
+
                         if (m_menuHandler) {
                             m_menuHandler->setViewProjectionCenters(
                                 projCenterX[0], projCenterY[0], projCenterX[1], projCenterY[1]);

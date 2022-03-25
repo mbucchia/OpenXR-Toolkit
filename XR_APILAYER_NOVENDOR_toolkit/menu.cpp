@@ -356,22 +356,24 @@ namespace {
                 return;
             }
 
+            const auto& renderTargetInfo = renderTarget->getInfo();
+
             const float leftEyeOffset = 0.0f;
-            const float rightEyeOffset =
-                2.f * (m_projCenterX[1] - m_projCenterX[0]) + m_configManager->getValue(SettingMenuEyeOffset);
+            const float rightEyeOffset = 2.f * (m_projCenter[1].x - m_projCenter[0].x) * renderTargetInfo.width +
+                                         m_configManager->getValue(SettingMenuEyeOffset);
             const float eyeOffset = eye == Eye::Left ? leftEyeOffset : rightEyeOffset;
 
-            const float leftAnchor = m_projCenterX[0] - m_menuBackgroundWidth / 2;
+            const float leftAnchor = m_projCenter[0].x * renderTargetInfo.width - m_menuBackgroundWidth / 2;
             const float leftAlign = leftAnchor + eyeOffset;
             const float centerAlign = leftAnchor + m_menuBackgroundWidth / 2 + eyeOffset;
             const float rightAlign = leftAnchor + m_menuBackgroundWidth + eyeOffset;
-            const float overlayAlign = (2 * renderTarget->getInfo().width / 3.0f) + eyeOffset;
-            const float topAlign = m_projCenterY[0] - m_menuBackgroundHeight / 2;
+            const float overlayAlign = (2 * renderTargetInfo.width / 3.0f) + eyeOffset;
+            const float topAlign = m_projCenter[0].y * renderTargetInfo.height - m_menuBackgroundHeight / 2;
 
             const float fontSizes[(int)MenuFontSize::MaxValue] = {
-                renderTarget->getInfo().height * 0.0075f,
-                renderTarget->getInfo().height * 0.015f,
-                renderTarget->getInfo().height * 0.02f,
+                renderTargetInfo.height * 0.0075f,
+                renderTargetInfo.height * 0.015f,
+                renderTargetInfo.height * 0.02f,
             };
             const float fontSize = fontSizes[m_configManager->getValue(SettingMenuFontSize)];
 
@@ -647,7 +649,7 @@ namespace {
             if (m_state != MenuState::Splash && overlayType != OverlayType::None) {
                 const auto textColorOverlayNoFade = MakeRGB24(ColorOverlay) | 0xff000000;
 
-                float top = m_state != MenuState::Visible ? (renderTarget->getInfo().height / 3.f)
+                float top = m_state != MenuState::Visible ? (renderTargetInfo.height / 3.f)
                                                           : topAlign - BorderVerticalSpacing - 1.1f * fontSize;
 
 #define OVERLAY_COMMON TextStyle::Normal, fontSize, overlayAlign - 200, top, textColorOverlayNoFade, true, FW1_LEFT
@@ -744,10 +746,8 @@ namespace {
                                       float leftCenterY,
                                       float rightCenterX,
                                       float rightCenterY) override {
-            m_projCenterX[0] = (int)(m_displayWidth * leftCenterX);
-            m_projCenterY[0] = (int)(m_displayHeight * leftCenterY);
-            m_projCenterX[1] = (int)(m_displayWidth * rightCenterX);
-            m_projCenterY[1] = (int)(m_displayHeight * rightCenterY);
+            m_projCenter[0] = {leftCenterX, leftCenterY};
+            m_projCenter[1] = {rightCenterX, rightCenterY};
         }
 
       private:
@@ -1307,8 +1307,7 @@ namespace {
         int m_keyUp{0};
         std::wstring m_keyUpLabel;
 
-        int m_projCenterX[ViewCount];
-        int m_projCenterY[ViewCount];
+        XrVector2f m_projCenter[ViewCount]{{0.5f, 0.5f}, {0.5f, 0.5f}};
 
         int m_numSplashLeft;
         std::vector<MenuEntry> m_menuEntries;
