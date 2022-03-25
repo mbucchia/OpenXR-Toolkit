@@ -83,11 +83,15 @@ namespace {
 
     // Constant buffer
     struct alignas(16) ShadingConstants {
-        float Gaze[4];     // u,v,1/w,1/h
-        float Ring12[4];   // a1,b1,a2,b2
-        float Ring34[4];   // a3,b3,a4,b4
-        uint32_t Rates[4]; // r1,r2,r3,r4
+        XrVector2f GazeXY;   // ndc
+        XrVector2f InvDim;   // 1/w, 1/h
+        XrVector2f Rings[4]; // 1/(a1^2), 1/(b1^2)
+        uint32_t Rates[4];   // r1, r2, r3, r4
     };
+
+    inline XrVector2f MakeRingParam(XrVector2f size) {
+        return {1.f / (size.x * size.x), 1.f / (size.y * size.y)};
+    }
 
     class VariableRateShader : public IVariableRateShader {
       public:
@@ -418,8 +422,7 @@ namespace {
             }
 
             // Initialize VRS shader constants
-            m_constants.Gaze[2] = 1.f / texW;
-            m_constants.Gaze[3] = 1.f / texH;
+            m_constants.InvDim = {1.f / texW, 1.f / texH};
 
             updateShadingRings();
             updateShadingRates();
@@ -507,14 +510,10 @@ namespace {
             // TODO:
             // const float semiMajorFactor = m_configManager->getValue(SettingVRSXScale) * 0.01f;
 
-            m_constants.Ring12[0] = radius[0] * 0.01f;
-            m_constants.Ring12[1] = radius[0] * 0.01f;
-            m_constants.Ring12[2] = radius[1] * 0.01f;
-            m_constants.Ring12[3] = radius[1] * 0.01f;
-            m_constants.Ring34[0] = 10; // large enough
-            m_constants.Ring34[1] = 10;
-            m_constants.Ring34[2] = 10;
-            m_constants.Ring34[3] = 10;
+            m_constants.Rings[0] = MakeRingParam({radius[0] * 0.01f * m_displayRatio, radius[0] * 0.01f});
+            m_constants.Rings[1] = MakeRingParam({radius[1] * 0.01f * m_displayRatio, radius[1] * 0.01f});
+            m_constants.Rings[2] = MakeRingParam({10.f * m_displayRatio, 10.f});
+            m_constants.Rings[3] = MakeRingParam({10.f * m_displayRatio, 10.f});
 
             DebugLog("VRS: Rings = %u %u\n", radius[0], radius[1]);
         }
@@ -532,8 +531,7 @@ namespace {
             for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
                 auto update_dispatch = i != 2 ? (updateSingleRTV || updateArrayRTV) : updateFallbackRTV;
                 if (update_dispatch) {
-                    m_constants.Gaze[0] = m_gazeLocation[i].x;
-                    m_constants.Gaze[1] = m_gazeLocation[i].y;
+                    m_constants.GazeXY = m_gazeLocation[i];
                     m_cbShadingRate->uploadData(&m_constants, sizeof(m_constants));
 
                     m_device->setShader(m_csShadingRate);
