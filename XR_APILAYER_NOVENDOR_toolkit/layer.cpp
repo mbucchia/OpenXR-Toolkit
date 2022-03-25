@@ -61,6 +61,97 @@ namespace {
       public:
         OpenXrLayer() = default;
 
+        void setOptionsDefaults() {
+            // Input & menu options.
+            m_configManager->setDefault(config::SettingKeyCtrlModifier, 1);
+            m_configManager->setDefault(config::SettingKeyAltModifier, 0);
+            m_configManager->setDefault(config::SettingMenuKeyLeft, VK_F1);
+            m_configManager->setDefault(config::SettingMenuKeyRight, VK_F3);
+            m_configManager->setDefault(config::SettingMenuKeyDown, VK_F2);
+            m_configManager->setDefault(config::SettingMenuKeyUp, 0);
+            m_configManager->setDefault(config::SettingScreenshotKey, VK_F12);
+            m_configManager->setDefault(config::SettingMenuEyeVisibility, 0); // Both
+            m_configManager->setDefault(config::SettingMenuEyeOffset, 0);
+            m_configManager->setEnumDefault(config::SettingMenuFontSize, config::MenuFontSize::Medium);
+            m_configManager->setEnumDefault(config::SettingMenuTimeout, config::MenuTimeout::Medium);
+            m_configManager->setDefault(config::SettingMenuExpert, 0);
+            m_configManager->setEnumDefault(config::SettingOverlayType, config::OverlayType::None);
+
+            // Hand tracking feature.
+            m_configManager->setEnumDefault(config::SettingHandTrackingEnabled, config::HandTrackingEnabled::Off);
+            m_configManager->setDefault(config::SettingBypassMsftHandInteractionCheck, 0);
+            m_configManager->setDefault(config::SettingHandVisibilityAndSkinTone, 2); // Visible - Medium
+            m_configManager->setDefault(config::SettingHandTimeout, 1);
+
+            // Upscaling feature.
+            m_configManager->setEnumDefault(config::SettingScalingType, config::ScalingType::None);
+            m_configManager->setDefault(config::SettingScaling, 100);
+            m_configManager->setDefault(config::SettingAnamorphic, -100);
+            m_configManager->setDefault(config::SettingSharpness, 20);
+            m_configManager->setEnumDefault(config::SettingMipMapBias, config::MipMapBias::Anisotropic);
+
+            // Foveated rendering.
+            m_configManager->setEnumDefault(config::SettingVRS, config::VariableShadingRateType::None);
+            m_configManager->setEnumDefault(config::SettingVRSQuality, config::VariableShadingRateQuality::Performance);
+            m_configManager->setEnumDefault(config::SettingVRSPattern, config::VariableShadingRatePattern::Wide);
+            m_configManager->setDefault(config::SettingVRSInner, 0); // 1x
+            m_configManager->setDefault(config::SettingVRSInnerRadius, 55);
+            m_configManager->setDefault(config::SettingVRSMiddle, 2); // 1/4x
+            m_configManager->setDefault(config::SettingVRSOuter, 4);  // 1/16x
+            m_configManager->setDefault(config::SettingVRSOuterRadius, 80);
+            m_configManager->setDefault(config::SettingVRSXOffset, 0);
+            m_configManager->setDefault(config::SettingVRSXScale, 125);
+            m_configManager->setDefault(config::SettingVRSYOffset, 0);
+            m_configManager->setDefault(config::SettingVRSPreferHorizontal, 0);
+
+            // Appearance.
+            m_configManager->setDefault(config::SettingBrightness, 500);
+            m_configManager->setDefault(config::SettingContrast, 5000);
+            m_configManager->setDefault(config::SettingSaturation, 500);
+            m_configManager->setDefault(config::SettingSaturationRed, 500);
+            m_configManager->setDefault(config::SettingSaturationGreen, 500);
+            m_configManager->setDefault(config::SettingSaturationBlue, 500);
+
+            // Misc features.
+            m_configManager->setDefault(config::SettingICD, 1000);
+            m_configManager->setDefault(config::SettingFOV, 100);
+            m_configManager->setDefault(config::SettingPredictionDampen, 100);
+            m_configManager->setEnumDefault(config::SettingMotionReprojectionRate, config::MotionReprojectionRate::Off);
+            m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
+
+            // Misc debug.
+            m_configManager->setDefault("debug_layer",
+#ifdef _DEBUG
+                                        1
+#else
+                                        0
+#endif
+            );
+            m_configManager->setDefault("disable_frame_analyzer", 0);
+
+            // Workaround: the first versions of the toolkit used a different representation for the world scale.
+            // Migrate the value upon first run.
+            m_configManager->setDefault("icd", 0);
+            if (m_configManager->getValue("icd") != 0) {
+                const int migratedValue = 1'000'000 / m_configManager->getValue("icd");
+                m_configManager->setValue(config::SettingICD, migratedValue, true);
+                m_configManager->deleteValue("icd");
+            }
+
+            // Workaround: the first versions of the toolkit used a different representation for the contrast.
+            // Migrate the value upon first run.
+            m_configManager->setDefault("contrast", 0);
+            if (m_configManager->getValue("contrast") != 0) {
+                const int migratedValue = m_configManager->getValue("contrast") * 10;
+                m_configManager->setValue(config::SettingContrast, migratedValue, true);
+                m_configManager->deleteValue("contrast");
+            }
+
+            // Commit any update above. This is needed for apps that create an instance, destroy it right away
+            // without submitting a frame, then create a new one.
+            m_configManager->tick();
+        }
+
         XrResult xrCreateInstance(const XrInstanceCreateInfo* createInfo) override {
             // Needed to resolve the requested function pointers.
             OpenXrApi::xrCreateInstance(createInfo);
@@ -96,37 +187,25 @@ namespace {
             }
 
             m_configManager = config::CreateConfigManager(createInfo->applicationInfo.applicationName);
+            setOptionsDefaults();
 
             // Hook to enable Direct3D 11 Debug layer on request.
-            m_configManager->setDefault("debug_layer",
-#ifdef _DEBUG
-                                        1
-#else
-                                        0
-#endif
-            );
             if (m_configManager->getValue("debug_layer")) {
                 graphics::HookForD3D11DebugLayer();
                 graphics::EnableD3D12DebugLayer();
             }
 
             // Check what keys to use.
-            m_configManager->setDefault("ctrl_modifier", 1);
-            if (m_configManager->getValue("ctrl_modifier")) {
+            if (m_configManager->getValue(config::SettingKeyCtrlModifier)) {
                 m_keyModifiers.push_back(VK_CONTROL);
             }
-            m_configManager->setDefault("alt_modifier", 0);
-            if (m_configManager->getValue("alt_modifier")) {
+            if (m_configManager->getValue(config::SettingKeyAltModifier)) {
                 m_keyModifiers.push_back(VK_MENU);
             }
-            m_configManager->setDefault("key_screenshot", m_keyScreenshot);
-            m_keyScreenshot = m_configManager->getValue("key_screenshot");
+            m_keyScreenshot = m_configManager->getValue(config::SettingScreenshotKey);
 
             // We must initialize hand tracking early on, because the application can start creating actions etc
             // before creating the session.
-            m_configManager->setEnumDefault(config::SettingHandTrackingEnabled, config::HandTrackingEnabled::Off);
-            m_configManager->setDefault(config::SettingHandVisibilityAndSkinTone, 2); // Visible - Medium
-            m_configManager->setDefault(config::SettingHandTimeout, 1);
             if (m_configManager->getEnumValue<config::HandTrackingEnabled>(config::SettingHandTrackingEnabled) !=
                 config::HandTrackingEnabled::Off) {
                 m_handTracker = input::CreateHandTracker(*this, m_configManager);
@@ -374,7 +453,6 @@ namespace {
                     m_postProcessor =
                         graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
 
-                    m_configManager->setDefault("disable_frame_analyzer", 0);
                     if (!m_configManager->getValue("disable_frame_analyzer")) {
                         m_frameAnalyzer = graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice);
                     }
@@ -1704,7 +1782,7 @@ namespace {
         std::shared_ptr<input::IHandTracker> m_handTracker;
 
         std::vector<int> m_keyModifiers;
-        int m_keyScreenshot{VK_F12};
+        int m_keyScreenshot;
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
         bool m_requestScreenShotKeyState{false};
 

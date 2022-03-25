@@ -179,8 +179,7 @@ namespace {
                 m_configManager->setValue("first_run", firstRun + 1);
             }
 
-            m_configManager->setDefault("menu_eye", 0); // Both
-            switch (m_configManager->getValue("menu_eye")) {
+            switch (m_configManager->getValue(SettingMenuEyeVisibility)) {
             case 0:
             default:
                 m_displayLeftEye = m_displayRightEye = true;
@@ -201,17 +200,13 @@ namespace {
             if (std::count(m_keyModifiers.cbegin(), m_keyModifiers.cend(), VK_MENU)) {
                 m_keyModifiersLabel += L"ALT+";
             }
-            m_configManager->setDefault("key_left", m_keyLeft);
-            m_configManager->setDefault("key_right", m_keyRight);
-            m_configManager->setDefault("key_menu", m_keyMenu);
-            m_configManager->setDefault("key_up", m_keyUp);
-            m_keyLeft = m_configManager->getValue("key_left");
+            m_keyLeft = m_configManager->getValue(SettingMenuKeyLeft);
             m_keyLeftLabel = keyToString(m_keyLeft);
-            m_keyRight = m_configManager->getValue("key_right");
+            m_keyRight = m_configManager->getValue(SettingMenuKeyRight);
             m_keyRightLabel = keyToString(m_keyRight);
-            m_keyMenu = m_configManager->getValue("key_menu");
+            m_keyMenu = m_configManager->getValue(SettingMenuKeyDown);
             m_keyMenuLabel = keyToString(m_keyMenu);
-            m_keyUp = m_configManager->getValue("key_up");
+            m_keyUp = m_configManager->getValue(SettingMenuKeyUp);
             if (m_keyUp) {
                 m_keyUpLabel = keyToString(m_keyUp);
             } else {
@@ -772,7 +767,6 @@ namespace {
                                          const std::string_view labels[] = {"Off", "FPS", "Detailed"};
                                          return std::string(labels[value]);
                                      }});
-            m_configManager->setEnumDefault(SettingOverlayType, OverlayType::None);
 
             // Upscaling Settings.
             m_originalScalingType = getCurrentScalingType();
@@ -1194,7 +1188,6 @@ namespace {
                                          const std::string_view labels[] = {"No", "Yes"};
                                          return std::string(labels[value]);
                                      }});
-            m_configManager->setDefault(SettingMenuExpert, 0);
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Font size",
                                      MenuEntryType::Slider,
@@ -1205,7 +1198,6 @@ namespace {
                                          const std::string_view labels[] = {"Small", "Medium", "Large"};
                                          return std::string(labels[value]);
                                      }});
-            m_configManager->setEnumDefault(SettingMenuFontSize, MenuFontSize::Medium);
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Menu timeout",
                                      MenuEntryType::Slider,
@@ -1216,7 +1208,6 @@ namespace {
                                          const std::string_view labels[] = {"Short", "Medium", "Long"};
                                          return std::string(labels[value]);
                                      }});
-            m_configManager->setEnumDefault(SettingMenuTimeout, MenuTimeout::Medium);
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Menu eye offset",
                                      MenuEntryType::Slider,
@@ -1298,13 +1289,13 @@ namespace {
 
         std::vector<int> m_keyModifiers;
         std::wstring m_keyModifiersLabel;
-        int m_keyLeft{VK_F1};
+        int m_keyLeft;
         std::wstring m_keyLeftLabel;
-        int m_keyRight{VK_F3};
+        int m_keyRight;
         std::wstring m_keyRightLabel;
-        int m_keyMenu{VK_F2};
+        int m_keyMenu;
         std::wstring m_keyMenuLabel;
-        int m_keyUp{0};
+        int m_keyUp;
         std::wstring m_keyUpLabel;
 
         XrVector2f m_projCenter[ViewCount]{{0.5f, 0.5f}, {0.5f, 0.5f}};
