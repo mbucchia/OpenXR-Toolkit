@@ -381,17 +381,16 @@ namespace {
                         break;
                     }
 
-                    uint32_t inputWidth = m_displayWidth;
-                    uint32_t inputHeight = m_displayHeight;
+                    uint32_t renderWidth = m_displayWidth;
+                    uint32_t renderHeight = m_displayHeight;
                     if (m_upscaleMode != config::ScalingType::None) {
-                        std::tie(inputWidth, inputHeight) =
+                        std::tie(renderWidth, renderHeight) =
                             config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
-                        m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
                     }
 
                     // Per FSR SDK documentation.
-                    m_mipMapBiasForUpscaling =
-                        -std::log2f(static_cast<float>(m_displayWidth * m_displayHeight) / (inputWidth * inputHeight));
+                    m_mipMapBiasForUpscaling = -std::log2f(static_cast<float>(m_displayWidth * m_displayHeight) /
+                                                           (renderWidth * renderHeight));
                     Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
 
                     m_postProcessor =
@@ -405,8 +404,8 @@ namespace {
                     m_variableRateShader = graphics::CreateVariableRateShader(m_configManager,
                                                                               m_graphicsDevice,
                                                                               m_eyeTracker,
-                                                                              inputWidth,
-                                                                              inputHeight,
+                                                                              renderWidth,
+                                                                              renderHeight,
                                                                               m_displayWidth,
                                                                               m_displayHeight);
 
@@ -1332,7 +1331,7 @@ namespace {
                 const auto upscaleName = m_upscaleMode == config::ScalingType::NIS   ? "_NIS_"
                                          : m_upscaleMode == config::ScalingType::FSR ? "_FSR_"
                                                                                      : "_SCL_";
-                parameters << upscaleName << m_upscalingFactor << "_"
+                parameters << upscaleName << m_configManager->getValue(config::SettingScaling) << "_"
                            << m_configManager->getValue(config::SettingSharpness);
             }
 
@@ -1779,7 +1778,6 @@ namespace {
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
         std::shared_ptr<graphics::IImageProcessor> m_upscaler;
         config::ScalingType m_upscaleMode{config::ScalingType::None};
-        uint32_t m_upscalingFactor{100};
         float m_mipMapBiasForUpscaling{0.f};
 
         std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;
