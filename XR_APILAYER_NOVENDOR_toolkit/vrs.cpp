@@ -98,17 +98,20 @@ namespace {
         VariableRateShader(std::shared_ptr<IConfigManager> configManager,
                            std::shared_ptr<IDevice> graphicsDevice,
                            std::shared_ptr<input::IEyeTracker> eyeTracker,
-                           uint32_t targetWidth,
-                           uint32_t targetHeight,
+                           uint32_t renderWidth,
+                           uint32_t renderHeight,
+                           uint32_t displayWidth,
+                           uint32_t displayHeight,
                            uint32_t tileSize,
                            uint32_t tileRateMax)
             : m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
-              m_targetWidth(targetWidth), m_targetHeight(targetHeight), m_tileSize(tileSize),
-              m_tileRateMax(tileRateMax), m_targetAspectRatio((float)m_targetWidth / m_targetHeight) {
+              m_renderWidth(renderWidth), m_renderHeight(renderHeight),
+              m_renderRatio(float(renderWidth) / renderHeight), m_displayRatio(float(displayHeight) / displayWidth),
+              m_tileSize(tileSize), m_tileRateMax(tileRateMax) {
             // Make sure to unload NvAPI on destruction
             m_NvShadingRateResources.deferredUnloadNvAPI.needUnload = m_device->getApi() == Api::D3D11;
 
-            createRenderResources(m_targetWidth, m_targetHeight);
+            createRenderResources(m_renderWidth, m_renderHeight);
 
             // Set initial projection center
             updateGazeLocation({0.f, 0.f}, Eye::Both);
@@ -428,7 +431,7 @@ namespace {
             updateShadingRates();
             updateRenderResources();
 
-            DebugLog("VRS: targetWidth=%u targetHeight=%u tileSize=%u\n", m_targetWidth, m_targetHeight, m_tileSize);
+            DebugLog("VRS: renderWidth=%u renderHeight=%u tileSize=%u\n", m_renderWidth, m_renderHeight, m_tileSize);
         }
 
         void disable(std::shared_ptr<graphics::IContext> context = nullptr) {
@@ -523,9 +526,9 @@ namespace {
                                    bool updateFallbackRTV = true) {
             // TODO:
             // const auto xOffset =
-            //    static_cast<int>(m_configManager->getValue(SettingVRSXOffset) * (m_targetWidth / 200.f));
+            //    static_cast<int>(m_configManager->getValue(SettingVRSXOffset) * (m_renderWidth / 200.f));
             // const auto yOffset =
-            //    static_cast<int>(m_configManager->getValue(SettingVRSYOffset) * (m_targetHeight / 200.f));
+            //    static_cast<int>(m_configManager->getValue(SettingVRSYOffset) * (m_renderHeight / 200.f));
             // const float semiMajorFactor = m_configManager->getValue(SettingVRSXScale) / 100.f;
 
             for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
@@ -592,12 +595,12 @@ namespace {
             }
 
             const auto xOffset =
-                static_cast<int>(m_configManager->getValue(SettingVRSXOffset) * (m_targetWidth / 200.f));
+                static_cast<int>(m_configManager->getValue(SettingVRSXOffset) * (m_renderWidth / 200.f));
             const auto yOffset =
-                static_cast<int>(m_configManager->getValue(SettingVRSYOffset) * (m_targetHeight / 200.f));
+                static_cast<int>(m_configManager->getValue(SettingVRSYOffset) * (m_renderHeight / 200.f));
             const float semiMajorFactor = m_configManager->getValue(SettingVRSXScale) / 100.f;
 
-            const int rowPitch = roundUp(m_targetWidth, m_tileSize) / m_tileSize;
+            const int rowPitch = roundUp(m_renderWidth, m_tileSize) / m_tileSize;
             const int rowPitchAligned = roundUp(rowPitch, m_device->getTextureAlignmentConstraint());
 
             static_assert(ViewCount == 2);
@@ -629,8 +632,8 @@ namespace {
             if (updateFallbackRTV) {
                 generateFoveationPattern(genericPattern,
                                          rowPitchAligned,
-                                         m_targetWidth / 2, // Cannot apply xOffset.
-                                         (m_targetHeight / 2) + yOffset,
+                                         m_renderWidth / 2, // Cannot apply xOffset.
+                                         (m_renderHeight / 2) + yOffset,
                                          innerRadius / 100.f,
                                          outerRadius / 100.f,
                                          semiMajorFactor,
@@ -684,12 +687,12 @@ namespace {
                                       uint8_t innerValue,
                                       uint8_t middleValue,
                                       uint8_t outerValue) {
-            const auto width = roundUp(m_targetWidth, m_tileSize) / m_tileSize;
-            const auto height = roundUp(m_targetHeight, m_tileSize) / m_tileSize;
+            const auto width = roundUp(m_renderWidth, m_tileSize) / m_tileSize;
+            const auto height = roundUp(m_renderHeight, m_tileSize) / m_tileSize;
 
             pattern.resize(rowPitch * height);
-            const int centerX = std::clamp(projCenterX, 0, (int)m_targetWidth) / m_tileSize;
-            const int centerY = std::clamp(projCenterY, 0, (int)m_targetHeight) / m_tileSize;
+            const int centerX = std::clamp(projCenterX, 0, (int)m_renderWidth) / m_tileSize;
+            const int centerY = std::clamp(projCenterY, 0, (int)m_renderHeight) / m_tileSize;
 
             const int innerSemiMinor = (int)(height * innerRadius / 2);
             const int innerSemiMajor = (int)(semiMajorFactor * innerSemiMinor);
@@ -737,11 +740,11 @@ namespace {
             // Also check that the texture is not under 50% of the render scale. We expect that no one should use
             // in-app render scale that is so small.
             DebugLog("VRS: info.width=%u info.height=%u\n", info.width, info.height);
-            if (info.width < (m_targetWidth / 2))
+            if (info.width < (m_renderWidth / 2))
                 return false;
 
             const float aspectRatio = (float)info.width / info.height;
-            if (std::abs(aspectRatio - m_targetAspectRatio) > 0.01f)
+            if (std::abs(aspectRatio - m_renderRatio) > 0.01f)
                 return false;
 
             DebugLog("VRS: info.arraySize=%u\n", info.arraySize);
@@ -757,11 +760,12 @@ namespace {
         const std::shared_ptr<IDevice> m_device;
         const std::shared_ptr<input::IEyeTracker> m_eyeTracker;
 
-        const uint32_t m_targetWidth;
-        const uint32_t m_targetHeight;
+        const uint32_t m_renderWidth;
+        const uint32_t m_renderHeight;
         const uint32_t m_tileSize;
         const uint32_t m_tileRateMax;
-        const float m_targetAspectRatio;
+        const float m_renderRatio;
+        const float m_displayRatio;
 
         struct {
             // Must appear first.
@@ -854,8 +858,10 @@ namespace toolkit::graphics {
     std::shared_ptr<IVariableRateShader> CreateVariableRateShader(std::shared_ptr<IConfigManager> configManager,
                                                                   std::shared_ptr<IDevice> graphicsDevice,
                                                                   std::shared_ptr<input::IEyeTracker> eyeTracker,
-                                                                  uint32_t targetWidth,
-                                                                  uint32_t targetHeight) {
+                                                                  uint32_t renderWidth,
+                                                                  uint32_t renderHeight,
+                                                                  uint32_t displayWidth,
+                                                                  uint32_t displayHeight) {
         try {
             uint32_t tileSize = 0;
             uint32_t tileRateMax = 0;
@@ -900,8 +906,15 @@ namespace toolkit::graphics {
                 throw std::runtime_error("Unsupported graphics runtime");
             }
 
-            return std::make_shared<VariableRateShader>(
-                configManager, graphicsDevice, eyeTracker, targetWidth, targetHeight, tileSize, tileRateMax);
+            return std::make_shared<VariableRateShader>(configManager,
+                                                        graphicsDevice,
+                                                        eyeTracker,
+                                                        renderWidth,
+                                                        renderHeight,
+                                                        displayWidth,
+                                                        displayHeight,
+                                                        tileSize,
+                                                        tileRateMax);
 
         } catch (FeatureNotSupported&) {
             return nullptr;

@@ -102,8 +102,10 @@ namespace toolkit {
         CreateVariableRateShader(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                  std::shared_ptr<IDevice> graphicsDevice,
                                  std::shared_ptr<input::IEyeTracker> eyeTracker,
-                                 uint32_t targetWidth,
-                                 uint32_t targetHeight);
+                                 uint32_t renderWidth,
+                                 uint32_t renderHeight,
+                                 uint32_t displayWidth,
+                                 uint32_t displayHeight);
 
         bool IsDeviceSupportingFP16(std::shared_ptr<IDevice> device);
 

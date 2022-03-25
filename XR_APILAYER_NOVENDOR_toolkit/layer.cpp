@@ -402,8 +402,13 @@ namespace {
                         m_frameAnalyzer = graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice);
                     }
 
-                    m_variableRateShader = graphics::CreateVariableRateShader(
-                        m_configManager, m_graphicsDevice, m_eyeTracker, inputWidth, inputHeight);
+                    m_variableRateShader = graphics::CreateVariableRateShader(m_configManager,
+                                                                              m_graphicsDevice,
+                                                                              m_eyeTracker,
+                                                                              inputWidth,
+                                                                              inputHeight,
+                                                                              m_displayWidth,
+                                                                              m_displayHeight);
 
                     // Register intercepted events.
                     m_graphicsDevice->registerSetRenderTargetEvent(
