@@ -42,6 +42,7 @@ nav_order: 6
 - Hotfix #2: Allow finer adjustment of the contrast (0.01 step).
 - Hotfix #2: Fix position of the FPS overlay.
 - Hotfix #2: Disable the OpenXR Toolkit when the application is Edge/Chrome (eg: 360 videos).
+- Hotfix #3: Fix menu display with certain applications, such as OpenComposite-ACC.
 
 ## Changes in Beta #2 (Jan 2022 / v0.9.4 - 0.9.7)
 
