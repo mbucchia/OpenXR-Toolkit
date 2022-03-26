@@ -1229,6 +1229,7 @@ namespace {
                 if (m_eyeTracker) {
                     m_eyeTracker->beginFrame(m_begunFrameTime);
                 }
+
                 if (m_variableRateShader) {
                     m_variableRateShader->beginFrame(m_begunFrameTime);
                 }
@@ -1420,7 +1421,7 @@ namespace {
 
             std::shared_ptr<graphics::ITexture> textureForOverlay[utilities::ViewCount] = {};
             std::shared_ptr<graphics::ITexture> depthForOverlay[utilities::ViewCount] = {};
-            graphics::View viewsForOverlay[utilities::ViewCount];
+            xr::math::ViewProjection viewsForOverlay[utilities::ViewCount];
             XrSpace spaceForOverlay = XR_NULL_HANDLE;
 
             // Because the frame info is passed const, we are going to need to reconstruct a writable version of it
@@ -1594,9 +1595,9 @@ namespace {
                             correctedProjectionViews[eye].fov.angleRight *= multiplier;
                         }
 
-                        viewsForOverlay[eye].pose = correctedProjectionViews[eye].pose;
-                        viewsForOverlay[eye].fov = correctedProjectionViews[eye].fov;
-                        viewsForOverlay[eye].nearFar = nearFar;
+                        viewsForOverlay[eye].Pose = correctedProjectionViews[eye].pose;
+                        viewsForOverlay[eye].Fov = correctedProjectionViews[eye].fov;
+                        viewsForOverlay[eye].NearFar = nearFar;
                     }
 
                     spaceForOverlay = proj->space;
@@ -1645,7 +1646,7 @@ namespace {
 
                         if (m_handTracker) {
                             m_handTracker->render(
-                                viewsForOverlay[eye].pose, spaceForOverlay, getTimeNow(), textureForOverlay[eye]);
+                                viewsForOverlay[eye].Pose, spaceForOverlay, getTimeNow(), textureForOverlay[eye]);
                         }
 
                         if (m_eyeTracker) {

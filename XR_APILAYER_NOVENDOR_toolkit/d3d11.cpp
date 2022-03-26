@@ -1334,14 +1334,14 @@ namespace {
             m_context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, value, 0);
         }
 
-        void setViewProjection(const View& view) override {
+        void setViewProjection(const xr::math::ViewProjection& view) override {
             ViewProjectionConstantBuffer staging;
 
             // viewMatrix* projMatrix
             DirectX::XMStoreFloat4x4(
                 &staging.ViewProjection,
-                DirectX::XMMatrixTranspose(xr::math::LoadInvertedXrPose(view.pose) *
-                                           xr::math::ComposeProjectionMatrix(view.fov, view.nearFar)));
+                DirectX::XMMatrixTranspose(xr::math::LoadInvertedXrPose(view.Pose) *
+                                           xr::math::ComposeProjectionMatrix(view.Fov, view.NearFar)));
             if (!m_meshViewProjectionBuffer) {
                 m_meshViewProjectionBuffer =
                     createBuffer(sizeof(ViewProjectionConstantBuffer), "ViewProjection CB", nullptr, false);
@@ -1349,7 +1349,7 @@ namespace {
             m_meshViewProjectionBuffer->uploadData(&staging, sizeof(staging));
 
             m_context->OMSetDepthStencilState(
-                view.nearFar.Near > view.nearFar.Far ? get(m_reversedZDepthNoStencilTest) : nullptr, 0);
+                view.NearFar.Near > view.NearFar.Far ? get(m_reversedZDepthNoStencilTest) : nullptr, 0);
         }
 
         void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling) override {

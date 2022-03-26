@@ -243,12 +243,6 @@ namespace toolkit {
         struct IDevice;
         struct ITexture;
 
-        struct View {
-            XrPosef pose;
-            XrFovf fov;
-            xr::math::NearFar nearFar;
-        };
-
         // A shader that will be rendered on a quad wrapping the entire target.
         struct IQuadShader {
             virtual ~IQuadShader() = default;
@@ -494,7 +488,7 @@ namespace toolkit {
             virtual void clearColor(float top, float left, float bottom, float right, const XrColor4f& color) const = 0;
             virtual void clearDepth(float value) = 0;
 
-            virtual void setViewProjection(const View& view) = 0;
+            virtual void setViewProjection(const xr::math::ViewProjection& view) = 0;
             virtual void draw(std::shared_ptr<ISimpleMesh> mesh,
                               const XrPosef& pose,
                               XrVector3f scaling = {1.0f, 1.0f, 1.0f}) = 0;

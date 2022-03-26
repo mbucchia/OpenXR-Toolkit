@@ -1575,14 +1575,14 @@ namespace {
             m_context->ClearDepthStencilView(*depthStencilView, D3D12_CLEAR_FLAG_DEPTH, value, 0, 0, nullptr);
         }
 
-        void setViewProjection(const View& view) override {
+        void setViewProjection(const xr::math::ViewProjection& view) override {
             ViewProjectionConstantBuffer staging;
 
             // viewMatrix* projMatrix
             DirectX::XMStoreFloat4x4(
                 &staging.ViewProjection,
-                DirectX::XMMatrixTranspose(xr::math::LoadInvertedXrPose(view.pose) *
-                                           xr::math::ComposeProjectionMatrix(view.fov, view.nearFar)));
+                DirectX::XMMatrixTranspose(xr::math::LoadInvertedXrPose(view.Pose) *
+                                           xr::math::ComposeProjectionMatrix(view.Fov, view.NearFar)));
 
             m_currentMeshViewProjectionBuffer++;
             if (m_currentMeshViewProjectionBuffer >= ARRAYSIZE(m_meshViewProjectionBuffer)) {
@@ -1594,7 +1594,7 @@ namespace {
             }
             m_meshViewProjectionBuffer[m_currentMeshViewProjectionBuffer]->uploadData(&staging, sizeof(staging));
 
-            m_currentDrawDepthBufferIsInverted = view.nearFar.Near > view.nearFar.Far;
+            m_currentDrawDepthBufferIsInverted = view.NearFar.Near > view.NearFar.Far;
         }
 
         void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling) override {
