@@ -110,12 +110,10 @@ namespace {
               m_tileSize(tileSize), m_tileRateMax(tileRateMax) {
             // Make sure to unload NvAPI on destruction
             m_NvShadingRateResources.deferredUnloadNvAPI.needUnload = m_device->getApi() == Api::D3D11;
+            createRenderResources(m_renderWidth, m_renderHeight);
 
             // Set initial projection center
             updateGazeLocation({0.f, 0.f}, Eye::Both);
-            createRenderResources(m_renderWidth, m_renderHeight);
-
-            // signal to render vrs views on first use.
             m_needUpdateViews = true;
         }
 
@@ -131,7 +129,7 @@ namespace {
 
         void beginFrame(XrTime frameTime) override {
             // When using eye tracking we must render the views every frame.
-            m_needUpdateViews = m_usingEyeTracking;
+            m_needUpdateViews |= m_usingEyeTracking;
         }
 
         void endFrame() override {
@@ -178,9 +176,6 @@ namespace {
                 }
             }
 
-            if (hasPatternChanged)
-                updateRings();
-
             // Update the shading rates.
             bool hasQualityChanged =
                 mode != prev_mode || m_device->getApi() == Api::D3D12 ||
@@ -190,11 +185,14 @@ namespace {
                   m_configManager->hasChanged(SettingVRSOuter) ||
                   m_configManager->hasChanged(SettingVRSPreferHorizontal)));
 
+            if (hasPatternChanged)
+                updateRings();
+
             if (hasQualityChanged)
                 updateRates();
 
             // Only update the texture when necessary.
-            m_needUpdateViews = hasQualityChanged || hasPatternChanged;
+            m_needUpdateViews |= (hasQualityChanged || hasPatternChanged);
         }
 
         bool onSetRenderTarget(std::shared_ptr<graphics::IContext> context,
@@ -210,10 +208,12 @@ namespace {
             // Attempt to update the foveation mask based on eye gaze.
             if (m_needUpdateViews) {
                 // In normalized screen coordinates.
-                XrVector2f gaze[ViewCount];
-                if (m_eyeTracker && m_eyeTracker->getProjectedGaze(gaze)) {
-                    updateGazeLocation(gaze[0], Eye::Left);
-                    updateGazeLocation(gaze[1], Eye::Right);
+                if (m_usingEyeTracking) {
+                    XrVector2f gaze[ViewCount];
+                    if (m_eyeTracker && m_eyeTracker->getProjectedGaze(gaze)) {
+                        updateGazeLocation(gaze[0], Eye::Left);
+                        updateGazeLocation(gaze[1], Eye::Right);
+                    }
                 }
 
                 // const auto updateSingleRTV = eyeHint.has_value() && info.arraySize == 1;
