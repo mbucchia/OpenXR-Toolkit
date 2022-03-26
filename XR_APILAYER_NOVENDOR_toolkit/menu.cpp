@@ -169,7 +169,9 @@ namespace {
                     bool isEyeTrackingSupported)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
               m_displayHeight(displayHeight), m_keyModifiers(keyModifiers),
-              m_isHandTrackingSupported(isHandTrackingSupported), m_isEyeTrackingSupported(isEyeTrackingSupported) {
+              m_isHandTrackingSupported(isHandTrackingSupported), m_isEyeTrackingSupported(isEyeTrackingSupported),
+              m_isMotionReprojectionRateSupported(isMotionReprojectionRateSupported),
+              m_displayRefreshRate(displayRefreshRate) {
             m_lastInput = std::chrono::steady_clock::now();
 
             // We display the hint for menu hotkeys for the first few runs.
@@ -644,50 +646,108 @@ namespace {
             auto overlayType = m_configManager->getEnumValue<OverlayType>(SettingOverlayType);
             if (m_state != MenuState::Splash && overlayType != OverlayType::None) {
                 const auto textColorOverlayNoFade = MakeRGB24(ColorOverlay) | 0xff000000;
+                const auto textColorRedNoFade = MakeRGB24(ColorWarning) | 0xff000000;
 
                 float top = m_state != MenuState::Visible ? (renderTargetInfo.height / 3.f)
                                                           : topAlign - BorderVerticalSpacing - 1.1f * fontSize;
 
-#define OVERLAY_COMMON TextStyle::Normal, fontSize, overlayAlign - 200, top, textColorOverlayNoFade, true, FW1_LEFT
+#define OVERLAY_COMMON TextStyle::Normal, fontSize, overlayAlign - 300, top, textColorOverlayNoFade, true, FW1_LEFT
 
                 // FPS display.
                 m_device->drawString(fmt::format("FPS: {}", m_stats.fps), OVERLAY_COMMON);
                 top += 1.05f * fontSize;
 
-                // Advanced display.
-                if (m_state != MenuState::Visible && overlayType == OverlayType::Advanced) {
+                if (m_state != MenuState::Visible) {
+                    MotionReprojectionRate targetDivider;
+                    if (m_isMotionReprojectionRateSupported &&
+                        (targetDivider = m_configManager->peekEnumValue<MotionReprojectionRate>(
+                             SettingMotionReprojectionRate)) != MotionReprojectionRate::Off) {
+                        // Give 2 FPS headroom.
+                        const auto targetFps = m_displayRefreshRate / (float)targetDivider;
+                        if (m_stats.fps + 2 < targetFps) {
+                            m_device->drawString("Target missed",
+                                                 TextStyle::Normal,
+                                                 fontSize,
+                                                 overlayAlign - 300,
+                                                 top,
+                                                 textColorRedNoFade,
+                                                 true,
+                                                 FW1_LEFT);
+                        } else {
+                            const auto frameTimeMs = 1000.f / targetFps;
+                            const auto headroomPercent = (int)((m_stats.waitCpuTimeUs / 10.f) / frameTimeMs);
+                            const auto headroom = overlayType == OverlayType::Advanced
+                                                      ? fmt::format("CPU headroom: +{}% ({:.1f}ms)",
+                                                                    headroomPercent,
+                                                                    m_stats.waitCpuTimeUs / 1000.f)
+                                                      : fmt::format("CPU headroom: +{}%", headroomPercent);
+                            m_device->drawString(headroom,
+                                                 TextStyle::Normal,
+                                                 fontSize,
+                                                 overlayAlign - 300,
+                                                 top,
+                                                 headroomPercent < 15 ? textColorRedNoFade : textColorOverlayNoFade,
+                                                 true,
+                                                 FW1_LEFT);
+                        }
+                        top += 1.05f * fontSize;
+                    }
+
+                    // We give a little headroom to avoid flickering (hysteresis).
+                    if (m_stats.appCpuTimeUs + 500 > m_stats.appGpuTimeUs) {
+                        m_device->drawString(
+                            fmt::format(
+                                "CPU bound (+{:.1f}ms)",
+                                std::max(0.f,
+                                         ((int64_t)m_stats.appCpuTimeUs - (int64_t)m_stats.appGpuTimeUs) / 1000.f)),
+                            TextStyle::Normal,
+                            fontSize,
+                            overlayAlign - 300,
+                            top,
+                            textColorRedNoFade,
+                            true,
+                            FW1_LEFT);
+                    }
+                    top += 1.05f * fontSize;
+
+                    // Advanced display.
+                    if (overlayType == OverlayType::Advanced || overlayType == OverlayType::Developer) {
 #define TIMING_STAT(label, name)                                                                                       \
     m_device->drawString(fmt::format(label ": {}", m_stats.name), OVERLAY_COMMON);                                     \
     top += 1.05f * fontSize;
 
-                    TIMING_STAT("app CPU", appCpuTimeUs);
-                    TIMING_STAT("app GPU", appGpuTimeUs);
-                    TIMING_STAT("lay CPU", endFrameCpuTimeUs);
-                    TIMING_STAT("pre GPU", preProcessorGpuTimeUs);
-                    TIMING_STAT("scl GPU", upscalerGpuTimeUs);
-                    TIMING_STAT("pst GPU", postProcessorGpuTimeUs);
-                    TIMING_STAT("ovl CPU", overlayCpuTimeUs);
-                    TIMING_STAT("ovl GPU", overlayGpuTimeUs);
-                    if (m_isHandTrackingSupported) {
-                        TIMING_STAT("hnd CPU", handTrackingCpuTimeUs);
-                    }
+                        TIMING_STAT("app CPU", appCpuTimeUs);
+                        TIMING_STAT("app GPU", appGpuTimeUs);
+                        top += 1.05f * fontSize;
 
-                    m_device->drawString(fmt::format("{}{} / {}{}",
-                                                     m_stats.hasColorBuffer[0] ? "C" : "_",
-                                                     m_stats.hasDepthBuffer[0] ? "D" : "_",
-                                                     m_stats.hasColorBuffer[1] ? "C" : "_",
-                                                     m_stats.hasDepthBuffer[1] ? "D" : "_"),
-                                         OVERLAY_COMMON);
-                    top += 1.05f * fontSize;
+                        if (overlayType == OverlayType::Developer) {
+                            TIMING_STAT("lay CPU", endFrameCpuTimeUs);
+                            TIMING_STAT("pre GPU", preProcessorGpuTimeUs);
+                            TIMING_STAT("scl GPU", upscalerGpuTimeUs);
+                            TIMING_STAT("pst GPU", postProcessorGpuTimeUs);
+                            TIMING_STAT("ovl CPU", overlayCpuTimeUs);
+                            TIMING_STAT("ovl GPU", overlayGpuTimeUs);
+                            if (m_isHandTrackingSupported) {
+                                TIMING_STAT("hnd CPU", handTrackingCpuTimeUs);
+                            }
 
-                    m_device->drawString(fmt::format("biased: {}", m_stats.numBiasedSamplers), OVERLAY_COMMON);
-                    top += 1.05f * fontSize;
-                    m_device->drawString(fmt::format("VRS RTV: {}", m_stats.numRenderTargetsWithVRS), OVERLAY_COMMON);
-                    top += 1.05f * fontSize;
+                            m_device->drawString(fmt::format("{}{} / {}{}",
+                                                             m_stats.hasColorBuffer[0] ? "C" : "_",
+                                                             m_stats.hasDepthBuffer[0] ? "D" : "_",
+                                                             m_stats.hasColorBuffer[1] ? "C" : "_",
+                                                             m_stats.hasDepthBuffer[1] ? "D" : "_"),
+                                                 OVERLAY_COMMON);
+                            top += 1.05f * fontSize;
+
+                            m_device->drawString(fmt::format("biased: {}", m_stats.numBiasedSamplers), OVERLAY_COMMON);
+                            top += 1.05f * fontSize;
+                            m_device->drawString(fmt::format("VRS RTV: {}", m_stats.numRenderTargetsWithVRS),
+                                                 OVERLAY_COMMON);
+                            top += 1.05f * fontSize;
 
 #undef TIMING_STAT
 
-                    top += 1.05f * fontSize;
+                            top += 1.05f * fontSize;
 
 #define GESTURE_STATE(label, name)                                                                                     \
     m_device->drawString(                                                                                              \
@@ -695,49 +755,53 @@ namespace {
         OVERLAY_COMMON);                                                                                               \
     top += 1.05f * fontSize;
 
-                    if (isHandTrackingEnabled()) {
-                        GESTURE_STATE("pinch", pinch);
-                        GESTURE_STATE("thb.pr", thumbPress);
-                        GESTURE_STATE("indx.b", indexBend);
-                        GESTURE_STATE("f.gun", fingerGun);
-                        GESTURE_STATE("squze", squeeze);
-                        GESTURE_STATE("wrist", wristTap);
-                        GESTURE_STATE("palm", palmTap);
-                        GESTURE_STATE("tiptap", indexTipTap);
-                        GESTURE_STATE("cust1", custom1);
+                            if (isHandTrackingEnabled()) {
+                                GESTURE_STATE("pinch", pinch);
+                                GESTURE_STATE("thb.pr", thumbPress);
+                                GESTURE_STATE("indx.b", indexBend);
+                                GESTURE_STATE("f.gun", fingerGun);
+                                GESTURE_STATE("squze", squeeze);
+                                GESTURE_STATE("wrist", wristTap);
+                                GESTURE_STATE("palm", palmTap);
+                                GESTURE_STATE("tiptap", indexTipTap);
+                                GESTURE_STATE("cust1", custom1);
 
-                        m_device->drawString(fmt::format("loss: {}/{}",
-                                                         m_gesturesState.numTrackingLosses[0] % 256,
-                                                         m_gesturesState.numTrackingLosses[1] % 256),
-                                             OVERLAY_COMMON);
-                        top += 1.05f * fontSize;
+                                m_device->drawString(fmt::format("loss: {}/{}",
+                                                                 m_gesturesState.numTrackingLosses[0] % 256,
+                                                                 m_gesturesState.numTrackingLosses[1] % 256),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
 
-                        m_device->drawString(
-                            fmt::format("cache: {}/{}", m_gesturesState.cacheSize[0], m_gesturesState.cacheSize[1]),
-                            OVERLAY_COMMON);
-                        top += 1.05f * fontSize;
+                                m_device->drawString(fmt::format("cache: {}/{}",
+                                                                 m_gesturesState.cacheSize[0],
+                                                                 m_gesturesState.cacheSize[1]),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
 
-                        m_device->drawString(fmt::format("age: {:.1f}/{:.1f}",
-                                                         m_gesturesState.handposeAgeUs[0] / 1000000.0f,
-                                                         m_gesturesState.handposeAgeUs[1] / 1000000.0f),
-                                             OVERLAY_COMMON);
-                        top += 1.05f * fontSize;
-                    }
+                                m_device->drawString(fmt::format("age: {:.1f}/{:.1f}",
+                                                                 m_gesturesState.handposeAgeUs[0] / 1000000.0f,
+                                                                 m_gesturesState.handposeAgeUs[1] / 1000000.0f),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
+                            }
 
 #undef GESTURE_STATE
 
-                    if (isEyeTrackingEnabled()) {
-                        m_device->drawString(fmt::format("e.yaw: {:.1f}", m_eyeGazeState.yaw), OVERLAY_COMMON);
-                        top += 1.05f * fontSize;
-                        m_device->drawString(fmt::format("e.pch: {:.1f}", m_eyeGazeState.pitch), OVERLAY_COMMON);
-                        top += 1.05f * fontSize;
+                            if (isEyeTrackingEnabled()) {
+                                m_device->drawString(fmt::format("e.yaw: {:.1f}", m_eyeGazeState.yaw), OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
+                                m_device->drawString(fmt::format("e.pch: {:.1f}", m_eyeGazeState.pitch),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
 
-                        m_device->drawString(fmt::format("{:.3f}, {:.3f}, {:.3f}",
-                                                         m_eyeGazeState.origin.x,
-                                                         m_eyeGazeState.origin.y,
-                                                         m_eyeGazeState.origin.z),
-                                             OVERLAY_COMMON);
-                        top += 1.05f * fontSize;
+                                m_device->drawString(fmt::format("{:.3f}, {:.3f}, {:.3f}",
+                                                                 m_eyeGazeState.origin.x,
+                                                                 m_eyeGazeState.origin.y,
+                                                                 m_eyeGazeState.origin.z),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
+                            }
+                        }
                     }
                 }
 #undef OVERLAY_COMMON
@@ -783,7 +847,7 @@ namespace {
                                      0,
                                      (int)OverlayType::MaxValue - (m_configManager->isExperimentalMode() ? 1 : 2),
                                      [](int value) {
-                                         const std::string_view labels[] = {"Off", "FPS", "Detailed"};
+                                         const std::string_view labels[] = {"Off", "FPS", "Advanced", "Developer"};
                                          return std::string(labels[value]);
                                      }});
 
@@ -1076,10 +1140,13 @@ namespace {
                                      1000,
                                      [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
             m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back(
-                {MenuIndent::OptionIndent, "Contrast", MenuEntryType::Slider, SettingContrast, 4000, 6000, [](int value) {
-                     return fmt::format("{:.2f}", value / 100.f);
-                 }});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Contrast",
+                                     MenuEntryType::Slider,
+                                     SettingContrast,
+                                     4000,
+                                     6000,
+                                     [](int value) { return fmt::format("{:.2f}", value / 100.f); }});
             m_menuEntries.back().acceleration = 20;
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
@@ -1339,6 +1406,8 @@ namespace {
         const uint32_t m_displayHeight;
         const bool m_isHandTrackingSupported;
         const bool m_isEyeTrackingSupported;
+        const bool m_isMotionReprojectionRateSupported;
+        const uint8_t m_displayRefreshRate;
         MenuStatistics m_stats{};
         GesturesState m_gesturesState{};
         EyeGazeState m_eyeGazeState{};
