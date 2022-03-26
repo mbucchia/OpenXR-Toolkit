@@ -144,4 +144,16 @@ namespace toolkit::utilities {
         return isPressed && (!wasPressed || isRepeat);
     }
 
+    void UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate rate) {
+        if (rate != config::MotionReprojectionRate::Off) {
+            utilities::RegSetDword(
+                HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval", (DWORD)rate);
+            utilities::RegSetDword(
+                HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval", (DWORD)rate);
+        } else {
+            utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
+            utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
+        }
+    }
+
 } // namespace toolkit::utilities
