@@ -455,22 +455,27 @@ namespace {
                                      : path.extension() == ".bmp" ? GUID_ContainerFormatBmp
                                      : path.extension() == ".jpg" ? GUID_ContainerFormatJpeg
                                                                   : GUID_ContainerFormatDds;
-
+            HRESULT hr;
             ComPtr<ID3D12CommandQueue> commandQueue;
             UINT size = sizeof(ID3D12CommandQueue*);
             m_device->getAs<D3D12>()->GetPrivateData(IID_ID3D12CommandQueue, &size, set(commandQueue));
 
+            const auto saveAsDDS = IsEqualGUID(fileFormat, GUID_ContainerFormatDds);
             const auto forceSRGB = IsEqualGUID(fileFormat, GUID_ContainerFormatPng);
 
-            const HRESULT hr = DirectX::SaveWICTextureToFile(get(commandQueue),
-                                                             get(m_texture),
-                                                             fileFormat,
-                                                             path.c_str(),
-                                                             D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                                             D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                                             nullptr,
-                                                             nullptr,
-                                                             forceSRGB);
+            if (saveAsDDS) {
+                hr = DirectX::SaveDDSTextureToFile(get(commandQueue), get(m_texture), path.c_str());
+            } else {
+                hr = DirectX::SaveWICTextureToFile(get(commandQueue),
+                                                   get(m_texture),
+                                                   fileFormat,
+                                                   path.c_str(),
+                                                   D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                                   D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                                   nullptr,
+                                                   nullptr,
+                                                   forceSRGB);
+            }
             if (SUCCEEDED(hr)) {
                 Log("Screenshot saved to %S\n", path.c_str());
             } else {

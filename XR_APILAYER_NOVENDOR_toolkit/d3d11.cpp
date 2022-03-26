@@ -490,12 +490,18 @@ namespace {
                                      : path.extension() == ".bmp" ? GUID_ContainerFormatBmp
                                      : path.extension() == ".jpg" ? GUID_ContainerFormatJpeg
                                                                   : GUID_ContainerFormatDds;
+            HRESULT hr;
+            auto context = m_device->getContextAs<D3D11>();
 
+            const auto saveAsDDS = IsEqualGUID(fileFormat, GUID_ContainerFormatDds);
             const auto forceSRGB = IsEqualGUID(fileFormat, GUID_ContainerFormatPng);
 
-            const HRESULT hr = DirectX::SaveWICTextureToFile(
-                m_device->getContextAs<D3D11>(), get(m_texture), fileFormat, path.c_str(), nullptr, nullptr, forceSRGB);
-
+            if (saveAsDDS) {
+                hr = DirectX::SaveDDSTextureToFile(context, get(m_texture), path.c_str());
+            } else {
+                hr = DirectX::SaveWICTextureToFile(
+                    context, get(m_texture), fileFormat, path.c_str(), nullptr, nullptr, forceSRGB);
+            }
             if (SUCCEEDED(hr)) {
                 Log("Screenshot saved to %S\n", path.c_str());
             } else {
@@ -830,15 +836,16 @@ namespace {
                 if (SUCCEEDED(m_device->QueryInterface(set(m_infoQueue)))) {
                     Log("D3D11 Debug layer is enabled\n");
                 } else {
-                    Log("Failed to enable debug layer - please check that the 'Graphics Tools' feature of Windows is "
+                    Log("Failed to enable debug layer - please check that the 'Graphics Tools' feature of Windows "
+                        "is "
                         "installed\n");
                 }
             }
 
             // Create common resources.
             if (!textOnly) {
-                // Workaround: the Oculus OpenXR Runtime for DX11 seems to intercept some of the D3D calls as well. It
-                // breaks our use of Detours. Delay the call to initializeInterceptor() by a few frames (see
+                // Workaround: the Oculus OpenXR Runtime for DX11 seems to intercept some of the D3D calls as well.
+                // It breaks our use of Detours. Delay the call to initializeInterceptor() by a few frames (see
                 // flushContext()).
                 if (!m_lateInitCountdown) {
                     Log("Early initializeInterceptor() call\n");
@@ -936,7 +943,8 @@ namespace {
             }
 
             // Workaround: the Oculus OpenXR Runtime for DX11 seems to intercept some of the D3D calls as well. It
-            // breaks our use of Detours. Delay the call to initializeInterceptor() by an arbitrary number of frames.
+            // breaks our use of Detours. Delay the call to initializeInterceptor() by an arbitrary number of
+            // frames.
             if (m_lateInitCountdown && --m_lateInitCountdown == 0) {
                 Log("Late initializeInterceptor() call\n");
                 initializeInterceptor();
@@ -2120,7 +2128,6 @@ namespace {
 } // namespace
 
 namespace toolkit::graphics {
-
     void HookForD3D11DebugLayer() {
         DetourDllAttach("d3d11.dll", "D3D11CreateDevice", Hooked_D3D11CreateDevice, g_original_D3D11CreateDevice);
     }
