@@ -227,6 +227,9 @@ namespace {
         }
 
         ~OpenXrLayer() override {
+            // We cleanup after ourselves (again) to avoid leaving state registry entries.
+            utilities::UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate::Off);
+
             graphics::UnhookForD3D11DebugLayer();
         }
 
@@ -558,6 +561,9 @@ namespace {
         XrResult xrDestroySession(XrSession session) override {
             const XrResult result = OpenXrApi::xrDestroySession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                // We cleanup after ourselves as soon as possible to avoid leaving state registry entries.
+                utilities::UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate::Off);
+
                 // Wait for any pending operation to complete.
                 if (m_graphicsDevice) {
                     m_graphicsDevice->blockCallbacks();
@@ -1440,20 +1446,9 @@ namespace {
 
             // Forward the motion reprojection locking values to WMR.
             if (m_configManager->hasChanged(config::SettingMotionReprojectionRate)) {
-                const auto rate = m_configManager->getEnumValue<config::MotionReprojectionRate>(
-                    config::SettingMotionReprojectionRate);
-
-                if (rate != config::MotionReprojectionRate::Off) {
-                    utilities::RegSetDword(
-                        HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval", (DWORD)rate);
-                    utilities::RegSetDword(
-                        HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval", (DWORD)rate);
-                } else {
-                    utilities::RegDeleteValue(
-                        HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
-                    utilities::RegDeleteValue(
-                        HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
-                }
+                utilities::UpdateWindowsMixedRealityReprojection(
+                    m_configManager->getEnumValue<config::MotionReprojectionRate>(
+                        config::SettingMotionReprojectionRate));
             }
 
             // Prepare the Shaders for rendering.

@@ -85,6 +85,9 @@ namespace LAYER_NAMESPACE {
                 // TODO: What if an application creates multiple instances with different names.
                 g_bypass = apiLayerInfo->nextInfo->nextGetInstanceProcAddr;
 
+                // Make sure we clean up the global settings we write for WMR motion reprojection.
+                utilities::UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate::Off);
+
                 // Call the chain to create the instance, and nothing else.
                 XrApiLayerCreateInfo chainApiLayerInfo = *apiLayerInfo;
                 chainApiLayerInfo.nextInfo = apiLayerInfo->nextInfo->next;

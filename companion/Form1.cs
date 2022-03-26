@@ -342,6 +342,7 @@ namespace companion
             var jsonPath = installPath + "\\" + jsonName;
 
             Microsoft.Win32.RegistryKey key = null;
+            Microsoft.Win32.RegistryKey wmrKey = null;
             try
             {
                 key = Microsoft.Win32.Registry.LocalMachine.CreateSubKey("SOFTWARE\\Khronos\\OpenXR\\1\\ApiLayers\\Implicit");
@@ -349,6 +350,11 @@ namespace companion
                 if (disableCheckbox.Checked)
                 {
                     key.SetValue(jsonPath, 1);
+
+                    // Always cleanup the global WMR options we might have set.
+                    wmrKey = Microsoft.Win32.Registry.CurrentUser.CreateSubKey("SOFTWARE\\Microsoft\\OpenXR");
+                    wmrKey.DeleteValue("MinimumFrameInterval");
+                    wmrKey.DeleteValue("MaximumFrameInterval");
                 }
                 else
                 {
@@ -364,6 +370,10 @@ namespace companion
                 if (key != null)
                 {
                     key.Close();
+                }
+                if (wmrKey != null)
+                {
+                    wmrKey.Close();
                 }
             }
 
