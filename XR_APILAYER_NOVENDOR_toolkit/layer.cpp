@@ -490,6 +490,7 @@ namespace {
                     });
 
                     m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
+                    m_performanceCounters.waitCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.endFrameCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.overlayCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.handTrackingTimer = utilities::CreateCpuTimer();
@@ -590,6 +591,7 @@ namespace {
                     m_performanceCounters.overlayGpuTimer[i].reset();
                 }
                 m_performanceCounters.appCpuTimer.reset();
+                m_performanceCounters.waitCpuTimer.reset();
                 m_performanceCounters.endFrameCpuTimer.reset();
                 m_performanceCounters.overlayCpuTimer.reset();
                 m_swapchains.clear();
@@ -1223,8 +1225,12 @@ namespace {
         XrResult xrWaitFrame(XrSession session,
                              const XrFrameWaitInfo* frameWaitInfo,
                              XrFrameState* frameState) override {
+            m_performanceCounters.waitCpuTimer->start();
             const XrResult result = OpenXrApi::xrWaitFrame(session, frameWaitInfo, frameState);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                m_performanceCounters.waitCpuTimer->stop();
+                m_stats.waitCpuTimeUs += m_performanceCounters.waitCpuTimer->query();
+
                 // Apply prediction dampening if possible and if needed.
                 if (xrConvertWin32PerformanceCounterToTimeKHR) {
                     const int predictionDampen = m_configManager->getValue(config::SettingPredictionDampen);
@@ -1303,6 +1309,7 @@ namespace {
                 m_stats.fps = static_cast<float>(numFrames);
                 m_stats.appCpuTimeUs /= numFrames;
                 m_stats.appGpuTimeUs /= numFrames;
+                m_stats.waitCpuTimeUs /= numFrames;
                 // When CPU-bound, do not bother giving a (false) GPU time for D3D12
                 if (m_graphicsDevice->getApi() == graphics::Api::D3D12 &&
                     m_stats.appCpuTimeUs + 500 > m_stats.appGpuTimeUs) {
@@ -1840,6 +1847,7 @@ namespace {
         struct {
             std::shared_ptr<utilities::ICpuTimer> appCpuTimer;
             std::shared_ptr<graphics::IGpuTimer> appGpuTimer[GpuTimerLatency + 1];
+            std::shared_ptr<utilities::ICpuTimer> waitCpuTimer;
             std::shared_ptr<utilities::ICpuTimer> endFrameCpuTimer;
             std::shared_ptr<utilities::ICpuTimer> overlayCpuTimer;
             std::shared_ptr<graphics::IGpuTimer> overlayGpuTimer[GpuTimerLatency + 1];
