@@ -73,6 +73,7 @@ namespace LAYER_NAMESPACE {
 
             // Bypass the layer if it's either in the no-no list, or if the user requests it.
             const bool bypassLayer = engineName == "Chromium" ||
+                                     (engineName.find("UnrealEngine") != std::string::npos) ||
                                      (LAYER_NAMESPACE::utilities::RegGetDword(
                                           HKEY_CURRENT_USER, std::wstring(baseKey.begin(), baseKey.end()), L"bypass")
                                           .value_or(0));
