@@ -352,9 +352,15 @@ namespace companion
                     key.SetValue(jsonPath, 1);
 
                     // Always cleanup the global WMR options we might have set.
-                    wmrKey = Microsoft.Win32.Registry.CurrentUser.CreateSubKey("SOFTWARE\\Microsoft\\OpenXR");
-                    wmrKey.DeleteValue("MinimumFrameInterval");
-                    wmrKey.DeleteValue("MaximumFrameInterval");
+                    try
+                    {
+                        wmrKey = Microsoft.Win32.Registry.CurrentUser.CreateSubKey("SOFTWARE\\Microsoft\\OpenXR");
+                        wmrKey.DeleteValue("MinimumFrameInterval");
+                        wmrKey.DeleteValue("MaximumFrameInterval");
+                    }
+                    catch (Exception)
+                    {
+                    }
                 }
                 else
                 {
