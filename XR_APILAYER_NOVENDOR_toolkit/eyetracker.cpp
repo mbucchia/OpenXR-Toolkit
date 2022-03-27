@@ -147,12 +147,11 @@ namespace {
             return m_eyeTrackerActionSet;
         }
 
-        // TODO: Consider switching to NDC.
         bool getProjectedGaze(XrVector2f gaze[ViewCount]) const {
             assert(m_session != XR_NULL_HANDLE);
 
             if (!m_frameTime) {
-                return 0;
+                return false;
             }
 
             if (!m_valid) {
@@ -223,14 +222,15 @@ namespace {
                     const auto gazeProjectedInCameraSpace =
                         DirectX::XMVector3Transform(gazeProjectedPoint, viewToCamera);
 
-                    // 4) Project the 3D point in camera space to a 2D point in normalized screen coordinates.
+                    // 4) Project the 3D point in camera space to a 2D point in normalized device coordinates.
                     XrVector4f point;
                     StoreXrVector4(&point, gazeProjectedInCameraSpace);
                     if (std::abs(point.w) < FLT_EPSILON) {
                         break;
                     }
-                    m_gaze[eye].x = ((point.x / point.w) + 1) / 2;
-                    m_gaze[eye].y = (1 - (point.y / point.w)) / 2;
+                    // output NDC (-1,+1)
+                    m_gaze[eye].x = point.x / point.w;
+                    m_gaze[eye].y = point.y / point.w;
 
                     // Mark as valid if we have both eyes.
                     m_valid = (eye == ViewCount - 1);

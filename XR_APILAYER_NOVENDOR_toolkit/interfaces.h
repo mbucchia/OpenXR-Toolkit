@@ -58,6 +58,9 @@ namespace toolkit {
         // A CPU synchronous timer.
         struct ICpuTimer : public ITimer {};
 
+        XrVector2f NdcToScreen(XrVector2f);
+        XrVector2f ScreenToNdc(XrVector2f);
+
     } // namespace utilities
 
     namespace config {
@@ -598,6 +601,7 @@ namespace toolkit {
             virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
 
             virtual void updateGazeLocation(XrVector2f gaze, utilities::Eye eye) = 0;
+            virtual void setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
 
             virtual uint8_t getMaxRate() const = 0;
 

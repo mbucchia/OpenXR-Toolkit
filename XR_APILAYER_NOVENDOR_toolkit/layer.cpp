@@ -1027,28 +1027,21 @@ namespace {
                                                  leftView.m[2][2] * rightView.m[2][2];
 
                         // In normalized screen coordinates.
-                        XrVector2f projCenters[utilities::ViewCount];
                         for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                             const auto& fov = eyeInViewSpace[eye].fov;
                             const float cantedAngle = std::abs(std::acosf(dotForward) / 2) * (eye ? -1 : 1);
                             const float canted = std::tanf(cantedAngle);
-                            projCenters[eye].x = 0.5f * (1.f + (fov.angleRight + fov.angleLeft - 2 * canted) /
-                                                                   (fov.angleLeft - fov.angleRight));
-                            projCenters[eye].y =
-                                0.5f * (1.f + (fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown));
-
-                            m_eyeGaze[eye] = projCenters[eye];
+                            m_projCenters[eye].x = (fov.angleRight + fov.angleLeft - 2 * canted) / (fov.angleLeft - fov.angleRight);
+                            m_projCenters[eye].y = -(fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown);
                         }
 
                         if (m_menuHandler) {
-                            m_menuHandler->setViewProjectionCenters(projCenters[0], projCenters[1]);
+                            m_menuHandler->setViewProjectionCenters(m_projCenters[0], m_projCenters[1]);
                         }
 
-                        // TODO:
-                        // if (m_variableRateShader) {
-                        //    m_variableRateShader->setViewProjectionCenters(
-                        //        projCenterX[0], projCenterY[0], projCenterX[1], projCenterY[1]);
-                        //}
+                        if (m_variableRateShader) {
+                            m_variableRateShader->setViewProjectionCenters(m_projCenters[0], m_projCenters[1]);
+                        }
 
                         m_needCalibrateEyeProjections = false;
                     }
@@ -1630,10 +1623,8 @@ namespace {
 
                 // Render the hands or eye gaze helper.
                 if (m_handTracker || (m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug))) {
-                    bool isEyeGazeValid = false;
-                    if (m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze)) {
-                        isEyeGazeValid = true;
-                    }
+                    XrVector2f eyeGaze[utilities::ViewCount];
+                    auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(eyeGaze);
 
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                         m_graphicsDevice->setRenderTargets(1,
@@ -1651,10 +1642,10 @@ namespace {
 
                         if (m_eyeTracker) {
                             XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
-                            const auto centerX = m_displayWidth * m_eyeGaze[eye].x;
-                            const auto centerY = m_displayHeight * m_eyeGaze[eye].y;
-
-                            m_graphicsDevice->clearColor(centerY - 20, centerX - 20, centerY + 20, centerX + 20, color);
+                            auto pos = utilities::NdcToScreen(eyeGaze[eye]);
+                            pos.x *= m_displayWidth;
+                            pos.y *= m_displayHeight;
+                            m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
                         }
                     }
                 }
@@ -1768,7 +1759,7 @@ namespace {
         bool m_sendInterationProfileEvent{false};
         XrSpace m_viewSpace{XR_NULL_HANDLE};
         bool m_needCalibrateEyeProjections{true};
-        XrVector2f m_eyeGaze[utilities::ViewCount];
+        XrVector2f m_projCenters[utilities::ViewCount];
 
         std::shared_ptr<config::IConfigManager> m_configManager;
 

@@ -113,7 +113,9 @@ namespace {
             createRenderResources(m_renderWidth, m_renderHeight);
 
             // Set initial projection center
+            std::fill_n(m_gazeOffset, std::size(m_gazeOffset), XrVector2f{0.f, 0.f});
             updateGazeLocation({0.f, 0.f}, Eye::Both);
+
             m_needUpdateViews = true;
         }
 
@@ -129,7 +131,8 @@ namespace {
 
         void beginFrame(XrTime frameTime) override {
             // When using eye tracking we must render the views every frame.
-            m_needUpdateViews |= m_usingEyeTracking;
+            if (m_usingEyeTracking)
+                m_needUpdateViews = true;
         }
 
         void endFrame() override {
@@ -137,62 +140,29 @@ namespace {
         }
 
         void update() override {
-            m_usingEyeTracking = m_eyeTracker && m_configManager->getValue(SettingEyeTrackingEnabled);
-
             const auto mode = m_configManager->getEnumValue<VariableShadingRateType>(config::SettingVRS);
-            const auto prev_mode = std::exchange(m_mode, mode);
+            if (mode != VariableShadingRateType::None) {
+                m_usingEyeTracking = m_eyeTracker && m_configManager->getValue(SettingEyeTrackingEnabled);
 
-            if (mode == VariableShadingRateType::None)
-                return;
+                const bool hasModeChanged = mode != m_mode;
+                const bool hasPatternChanged = hasModeChanged || checkUpdateRings(mode);
+                const bool hasQualityChanged = hasModeChanged || checkUpdateRates(mode);
 
-            // Update the shading views
-            bool hasPatternChanged = false;
+                if (hasPatternChanged)
+                    updateRings(mode);
 
-            if (mode == VariableShadingRateType::Preset) {
-                hasPatternChanged = m_configManager->hasChanged(SettingVRSPattern);
-            }
-            if (mode == VariableShadingRateType::Custom) {
-                const bool hasInnerRadiusChanged = m_configManager->hasChanged(SettingVRSInnerRadius);
-                const bool hasOuterRadiusChanged = m_configManager->hasChanged(SettingVRSOuterRadius);
+                if (hasQualityChanged)
+                    updateRates(mode);
 
-                if (hasInnerRadiusChanged || hasOuterRadiusChanged) {
-                    hasPatternChanged = true;
-
-                    // Enforce inner and outer radius boundaries.
-                    int innerRadius = m_configManager->getValue(SettingVRSInnerRadius);
-                    int outerRadius = m_configManager->getValue(SettingVRSOuterRadius);
-                    if (innerRadius > outerRadius) {
-                        if (hasInnerRadiusChanged) {
-                            m_configManager->setValue(SettingVRSOuterRadius, innerRadius);
-                        } else if (hasOuterRadiusChanged) {
-                            m_configManager->setValue(SettingVRSInnerRadius, outerRadius);
-                        }
-                    }
-
-                } else {
-                    hasPatternChanged = m_configManager->hasChanged(SettingVRSXScale) ||
-                                        m_configManager->hasChanged(SettingVRSXOffset) ||
-                                        m_configManager->hasChanged(SettingVRSYOffset);
+                // Only update the texture when necessary.
+                if (hasQualityChanged || hasPatternChanged) {
+                    m_mode = mode;
+                    m_needUpdateViews = true;
                 }
+
+            } else if (m_usingEyeTracking) {
+                m_usingEyeTracking = false;
             }
-
-            // Update the shading rates.
-            bool hasQualityChanged =
-                mode != prev_mode || m_device->getApi() == Api::D3D12 ||
-                (mode == VariableShadingRateType::Preset && m_configManager->hasChanged(SettingVRSQuality)) ||
-                (mode == VariableShadingRateType::Custom &&
-                 (m_configManager->hasChanged(SettingVRSInner) || m_configManager->hasChanged(SettingVRSMiddle) ||
-                  m_configManager->hasChanged(SettingVRSOuter) ||
-                  m_configManager->hasChanged(SettingVRSPreferHorizontal)));
-
-            if (hasPatternChanged)
-                updateRings();
-
-            if (hasQualityChanged)
-                updateRates();
-
-            // Only update the texture when necessary.
-            m_needUpdateViews |= (hasQualityChanged || hasPatternChanged);
         }
 
         bool onSetRenderTarget(std::shared_ptr<graphics::IContext> context,
@@ -207,14 +177,21 @@ namespace {
 
             // Attempt to update the foveation mask based on eye gaze.
             if (m_needUpdateViews) {
+                m_needUpdateViews = false;
+
                 // In normalized screen coordinates.
-                if (m_usingEyeTracking) {
-                    XrVector2f gaze[ViewCount];
-                    if (m_eyeTracker && m_eyeTracker->getProjectedGaze(gaze)) {
-                        updateGazeLocation(gaze[0], Eye::Left);
-                        updateGazeLocation(gaze[1], Eye::Right);
-                    }
+                XrVector2f gaze[ViewCount];
+                if (!m_usingEyeTracking) {
+                    gaze[1] = gaze[0] = m_gazeOffset[2];
+                    gaze[1].x = -gaze[0].x;
+
+                } else if (!m_eyeTracker || !m_eyeTracker->getProjectedGaze(gaze)) {
+                    // recenter when loosing eye tracking
+                    gaze[1] = gaze[0] = {0.f, 0.f};
                 }
+
+                updateGazeLocation(gaze[0], Eye::Left);
+                updateGazeLocation(gaze[1], Eye::Right);
 
                 // const auto updateSingleRTV = eyeHint.has_value() && info.arraySize == 1;
                 // const auto updateArrayRTV = info.arraySize > 1;
@@ -222,7 +199,6 @@ namespace {
 
                 // TODO: for now redraw all the views until we implement better logic
                 updateViews();
-                m_needUpdateViews = false;
 
                 // TODO: What do we do upon (permanent) loss of tracking?
             }
@@ -282,8 +258,14 @@ namespace {
                 m_gazeLocation[0] = gaze;
             if (eye != Eye::Left)
                 m_gazeLocation[1] = gaze;
+            if (eye == Eye::Both)
+                m_gazeLocation[2] = gaze;
+        }
 
-            m_gazeLocation[2] = {0, 0}; // updateFallbackRTV
+        void setViewProjectionCenters(XrVector2f left, XrVector2f right) override {
+            // TODO:
+            m_gazeOffset[0] = left;
+            m_gazeOffset[1] = right;
         }
 
         uint8_t getMaxRate() const override {
@@ -397,10 +379,10 @@ namespace {
                 defines.add("VRS_TILE_Y", m_tileSize);
                 defines.add("VRS_NUM_RATES", 3);
 
-                m_csShadingRate =
+                m_csShading =
                     m_device->createComputeShader(shaderFile, "mainCS", "VRS CS", {texW, texH, 1}, defines.get());
 
-                m_cbShadingRate = m_device->createBuffer(sizeof(ShadingConstants), "VRS CB");
+                m_cbShading = m_device->createBuffer(sizeof(ShadingConstants), "VRS CB");
             }
 
             // Initialize API-specific shading rate resources.
@@ -429,8 +411,8 @@ namespace {
             }
 
             // Setup shader constants
-            updateRates();
-            updateRings();
+            updateRates(m_mode);
+            updateRings(m_mode);
 
             DebugLog("VRS: renderWidth=%u renderHeight=%u tileSize=%u\n", m_renderWidth, m_renderHeight, m_tileSize);
         }
@@ -464,15 +446,27 @@ namespace {
             }
         }
 
-        void updateRates() {
-            uint32_t rates[3];
+        bool checkUpdateRates(VariableShadingRateType mode) const {
+            if (mode == VariableShadingRateType::Preset) {
+                return m_configManager->hasChanged(SettingVRSQuality);
+            }
+            if (mode == VariableShadingRateType::Custom) {
+                return m_configManager->hasChanged(SettingVRSInner) || m_configManager->hasChanged(SettingVRSMiddle) ||
+                       m_configManager->hasChanged(SettingVRSOuter) ||
+                       m_configManager->hasChanged(SettingVRSPreferHorizontal);
+            }
+            return false;
+        }
 
-            if (m_mode == VariableShadingRateType::Preset) {
+        void updateRates(VariableShadingRateType mode) {
+            uint32_t rates[3] = {0};
+
+            if (mode == VariableShadingRateType::Preset) {
                 const auto quality = m_configManager->getEnumValue<VariableShadingRateQuality>(SettingVRSQuality);
                 for (int i = 0; i < 3; i++) {
                     rates[i] = i + (quality != VariableShadingRateQuality::Quality ? i : 0);
                 }
-            } else {
+            } else if (mode == VariableShadingRateType::Custom) {
                 rates[0] = m_configManager->getValue(SettingVRSInner);
                 rates[1] = m_configManager->getValue(SettingVRSMiddle);
                 rates[2] = m_configManager->getValue(SettingVRSOuter);
@@ -487,17 +481,44 @@ namespace {
             m_constants.Rates[2] = settingsRateToShadingRate(rates[2], preferHorizontal);
             m_constants.Rates[3] = SHADING_RATE_CULL;
 
-            DebugLog("VRS: Rates = %u %u %u %u\n",
+            DebugLog("VRS: Rates= %u %u %u %u\n",
                      m_constants.Rates[0],
                      m_constants.Rates[1],
                      m_constants.Rates[2],
                      m_constants.Rates[3]);
         }
 
-        void updateRings() {
-            uint32_t radius[2];
+        bool checkUpdateRings(VariableShadingRateType mode) const {
+            if (mode == VariableShadingRateType::Preset) {
+                return m_configManager->hasChanged(SettingVRSPattern);
+            }
+            if (mode == VariableShadingRateType::Custom) {
+                const bool hasInnerRadiusChanged = m_configManager->hasChanged(SettingVRSInnerRadius);
+                const bool hasOuterRadiusChanged = m_configManager->hasChanged(SettingVRSOuterRadius);
 
-            if (m_mode == VariableShadingRateType::Preset) {
+                if (hasInnerRadiusChanged || hasOuterRadiusChanged) {
+                    // Enforce inner and outer radius boundaries.
+                    int innerRadius = m_configManager->getValue(SettingVRSInnerRadius);
+                    int outerRadius = m_configManager->getValue(SettingVRSOuterRadius);
+                    if (innerRadius > outerRadius) {
+                        if (hasInnerRadiusChanged) {
+                            m_configManager->setValue(SettingVRSOuterRadius, innerRadius);
+                        } else if (hasOuterRadiusChanged) {
+                            m_configManager->setValue(SettingVRSInnerRadius, outerRadius);
+                        }
+                    }
+                    return true;
+                }
+                return m_configManager->hasChanged(SettingVRSXScale) ||
+                       m_configManager->hasChanged(SettingVRSXOffset) || m_configManager->hasChanged(SettingVRSYOffset);
+            }
+            return false;
+        }
+
+        void updateRings(VariableShadingRateType mode) {
+            uint32_t radius[2] = {10000u, 10000u};
+
+            if (mode == VariableShadingRateType::Preset) {
                 const auto pattern = m_configManager->getEnumValue<VariableShadingRatePattern>(SettingVRSPattern);
                 if (pattern == VariableShadingRatePattern::Wide) {
                     radius[0] = 55, radius[1] = 80;
@@ -506,44 +527,44 @@ namespace {
                 } else { // VariableShadingRatePattern::Balanced
                     radius[0] = 50, radius[1] = 60;
                 }
-            } else {
+            }
+            if (mode == VariableShadingRateType::Custom) {
                 radius[0] = m_configManager->getValue(SettingVRSInnerRadius);
                 radius[1] = m_configManager->getValue(SettingVRSOuterRadius);
             }
 
             const auto semiMajorFactor = m_configManager->getValue(SettingVRSXScale);
-
             m_constants.Rings[0] = MakeRingParam({radius[0] * semiMajorFactor * 0.0001f, radius[0] * 0.01f});
             m_constants.Rings[1] = MakeRingParam({radius[1] * semiMajorFactor * 0.0001f, radius[1] * 0.01f});
             m_constants.Rings[2] = MakeRingParam({100.f, 100.f}); // large enough
             m_constants.Rings[3] = MakeRingParam({100.f, 100.f}); // large enough
 
-            DebugLog("VRS: Rings = %u %u\n", radius[0], radius[1]);
+            m_gazeOffset[2].x = m_configManager->getValue(SettingVRSXOffset) * 0.005f; // +- 50%
+            m_gazeOffset[2].y = m_configManager->getValue(SettingVRSYOffset) * 0.005f; // +- 50%
+
+            // updateFallbackRTV
+            m_gazeLocation[2].x = 0;
+            m_gazeLocation[2].y = m_gazeOffset[2].y;
+
+            DebugLog("VRS: Rings= %u %u\n", radius[0], radius[1]);
         }
 
         void updateViews(bool updateSingleRTV = true, bool updateArrayRTV = true, bool updateFallbackRTV = true) {
-            // TODO:
-            // const auto xOffset =
-            //    static_cast<int>(m_configManager->getValue(SettingVRSXOffset) * (m_renderWidth / 200.f));
-            // const auto yOffset =
-            //    static_cast<int>(m_configManager->getValue(SettingVRSYOffset) * (m_renderHeight / 200.f));
-            // const float semiMajorFactor = m_configManager->getValue(SettingVRSXScale) / 100.f;
-
             for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
                 auto update_dispatch = i != 2 ? (updateSingleRTV || updateArrayRTV) : updateFallbackRTV;
                 if (update_dispatch) {
                     m_constants.GazeXY = m_gazeLocation[i];
-                    m_cbShadingRate->uploadData(&m_constants, sizeof(m_constants));
+                    m_cbShading->uploadData(&m_constants, sizeof(m_constants));
 
-                    m_device->setShader(m_csShadingRate);
-                    m_device->setShaderInput(0, m_cbShadingRate);
+                    m_device->setShader(m_csShading);
+                    m_device->setShaderInput(0, m_cbShading);
                     m_device->setShaderInput(0, m_shadingRateMask[i]);
                     m_device->setShaderOutput(0, m_shadingRateMask[i]);
                     m_device->dispatchShader();
 
                     if (i != 2 && updateArrayRTV) {
-                        m_device->setShader(m_csShadingRate);
-                        m_device->setShaderInput(0, m_cbShadingRate);
+                        m_device->setShader(m_csShading);
+                        m_device->setShaderInput(0, m_cbShading);
                         m_device->setShaderInput(0, m_shadingRateMaskVPRT, static_cast<int>(i));
                         m_device->setShaderOutput(0, m_shadingRateMaskVPRT, static_cast<int>(i));
                         m_device->dispatchShader();
@@ -618,6 +639,12 @@ namespace {
         const float m_renderRatio;
         const float m_displayRatio;
 
+        std::shared_ptr<IShaderBuffer> m_cbShading;
+        std::shared_ptr<IComputeShader> m_csShading;
+
+        std::shared_ptr<ITexture> m_shadingRateMask[ViewCount + 1];
+        std::shared_ptr<ITexture> m_shadingRateMaskVPRT;
+
         struct {
             // Must appear first.
             struct DeferredNvAPI_Unload {
@@ -657,17 +684,12 @@ namespace {
 
         } m_NvShadingRateResources;
 
-        std::shared_ptr<IShaderBuffer> m_cbShadingRate;
-        std::shared_ptr<IComputeShader> m_csShadingRate;
-
-        std::shared_ptr<ITexture> m_shadingRateMask[ViewCount + 1];
-        std::shared_ptr<ITexture> m_shadingRateMaskVPRT;
-
-        VariableShadingRateType m_mode{VariableShadingRateType::None};
-
+        XrVector2f m_gazeOffset[ViewCount + 1];
         XrVector2f m_gazeLocation[ViewCount + 1];
+
         ShadingConstants m_constants;
 
+        VariableShadingRateType m_mode{VariableShadingRateType::None};
         bool m_usingEyeTracking{false};
         bool m_needUpdateViews{false};
 

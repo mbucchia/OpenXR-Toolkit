@@ -59,21 +59,19 @@ void mainCS(in int2 pos : SV_DispatchThreadID) {
   // texture space (w,h) to uv (0,1)
   float2 pos_uv = pos * Gaze.zw;
   
-  // uv pos to gaze ndc (-1,+1) 
-  float2 pos_ndc = 2.0f * (pos_uv - Gaze.xy) - 1.0f;
+  // pos uv to gaze ndc
+  float2 pos_xy = 2.0f * (float2(pos_uv.x, 1.f - pos_uv.y) - Gaze.xy) - 1.0f;
 
 #if VRS_USE_DIM_RATIO
   // adjust ellipse scale with texture scale ratio
   // (w > h) ? scale x by w/h : scale y by h/w 
   // (1/w < 1/h) ? scale x by (1/h)/(1/w) : scale y by (1/w)/(1/h)
   float2 scale = (Gaze.z < Gaze.w) ? float2(Gaze.w / Gaze.z, 1.0f) : float2(1.0f, Gaze.z / Gaze.w);
-  float2 pos_xy = pos_ndc * scale;
-  
+  float2 pos_xy *= scale;
+#endif
+
   // Numerators (x^2, y^2)
   float2 pos_xy2 = pos_xy * pos_xy;
-#else
-  float2 pos_xy2 = pos_ndc * pos_ndc;
-#endif
     
   uint rate;
   if      (dot(pos_xy2, Rings12.xy) <= 1.0f) rate = Rates.x;

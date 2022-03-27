@@ -759,10 +759,13 @@ namespace {
         }
 
         void setViewProjectionCenters(XrVector2f left, XrVector2f right) override {
-            m_projCenterX[0] = (int)(m_displayWidth * left.x);
-            m_projCenterY[0] = (int)(m_displayHeight * left.y);
-            m_projCenterX[1] = (int)(m_displayWidth * right.x);
-            m_projCenterY[1] = (int)(m_displayHeight * right.y);
+            left = utilities::NdcToScreen(left);
+            m_projCenterX[0] = static_cast<int>(m_displayWidth * left.x);
+            m_projCenterY[0] = static_cast<int>(m_displayHeight * left.y);
+
+            right = utilities::NdcToScreen(right);
+            m_projCenterX[1] = static_cast<int>(m_displayWidth * right.x);
+            m_projCenterY[1] = static_cast<int>(m_displayHeight * right.y);
         }
 
       private:
