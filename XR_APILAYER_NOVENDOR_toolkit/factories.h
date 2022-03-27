@@ -136,7 +136,8 @@ namespace toolkit {
                                                         bool isMotionReprojectionRateSupported,
                                                         uint8_t displayRefreshRate,
                                                         uint8_t variableRateShaderMaxDownsamplePow2,
-                                                        bool isEyeTrackingSupported);
+                                                        bool isEyeTrackingSupported,
+                                                        bool isPimaxFovHackSupported);
 
     } // namespace menu
 

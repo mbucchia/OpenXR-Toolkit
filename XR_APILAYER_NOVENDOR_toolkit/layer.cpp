@@ -129,6 +129,7 @@ namespace {
             m_configManager->setDefault(config::SettingFOVLeftRight, 100);
             m_configManager->setDefault(config::SettingFOVRightLeft, 100);
             m_configManager->setDefault(config::SettingFOVRightRight, 100);
+            m_configManager->setDefault(config::SettingPimaxFOVHack, 0);
             m_configManager->setDefault(config::SettingPredictionDampen, 100);
             m_configManager->setEnumDefault(config::SettingMotionReprojectionRate, config::MotionReprojectionRate::Off);
             m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
@@ -241,6 +242,20 @@ namespace {
             graphics::UnhookForD3D11DebugLayer();
         }
 
+        XrResult xrGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function) override {
+            const std::string apiName(name);
+            XrResult result;
+
+            if (apiName == "xrGetVisibilityMaskKHR") {
+                result = m_xrGetInstanceProcAddr(instance, name, function);
+                m_xrGetVisibilityMaskKHR = reinterpret_cast<PFN_xrGetVisibilityMaskKHR>(*function);
+                *function = reinterpret_cast<PFN_xrVoidFunction>(_xrGetVisibilityMaskKHR);
+            } else {
+                result = OpenXrApi::xrGetInstanceProcAddr(instance, name, function);
+            }
+            return result;
+        }
+
         XrResult xrGetSystem(XrInstance instance, const XrSystemGetInfo* getInfo, XrSystemId* systemId) override {
             const XrResult result = OpenXrApi::xrGetSystem(instance, getInfo, systemId);
             if (XR_SUCCEEDED(result) && getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY &&
@@ -270,8 +285,14 @@ namespace {
 
                 XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES, &eyeTrackingSystemProperties};
                 CHECK_XRCMD(OpenXrApi::xrGetSystemProperties(instance, *systemId, &systemProperties));
-                m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
 
+                m_systemName = systemProperties.systemName;
+                Log("Using OpenXR system %s\n", m_systemName.c_str());
+
+                // Detect Pimax systems.
+                m_supportFOVHack = m_applicationName == "FS2020" && m_systemName.find("aapvr") != std::string::npos;
+
+                m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
                 m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction ||
                                        m_configManager->getValue(config::SettingEyeDebugWithController);
 
@@ -463,10 +484,16 @@ namespace {
                                 }
                             }
                             if (m_variableRateShader) {
-                                if (m_variableRateShader->onSetRenderTarget(
-                                        context,
-                                        renderTarget,
-                                        m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt)) {
+                                auto eyeHint = m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt;
+
+                                // When doing the Pimax FOV hack, we swap left and right eyes.
+                                if (m_supportFOVHack && eyeHint.has_value() &&
+                                    m_configManager->peekValue(config::SettingPimaxFOVHack)) {
+                                    eyeHint = eyeHint.value() == utilities::Eye::Left ? utilities::Eye::Right
+                                                                                      : utilities::Eye::Left;
+                                }
+
+                                if (m_variableRateShader->onSetRenderTarget(context, renderTarget, eyeHint)) {
                                     m_stats.numRenderTargetsWithVRS++;
                                 }
                             }
@@ -534,7 +561,8 @@ namespace {
                             isMotionReprojectionRateSupported,
                             displayRefreshRate,
                             m_variableRateShader ? m_variableRateShader->getMaxDownsamplePow2() : 0,
-                            m_supportEyeTracking);
+                            m_supportEyeTracking,
+                            m_supportFOVHack);
                     }
 
                     // Create a reference space to calculate projection views.
@@ -1022,6 +1050,18 @@ namespace {
                 return XR_SUCCESS;
             }
 
+            if (m_visibilityMaskEventIndex != utilities::ViewCount && m_vrSession != XR_NULL_HANDLE) {
+                XrEventDataVisibilityMaskChangedKHR* const buffer =
+                    reinterpret_cast<XrEventDataVisibilityMaskChangedKHR*>(eventData);
+                buffer->type = XR_TYPE_EVENT_DATA_VISIBILITY_MASK_CHANGED_KHR;
+                buffer->next = nullptr;
+                buffer->session = m_vrSession;
+                buffer->viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+                buffer->viewIndex = m_visibilityMaskEventIndex++;
+                Log("Send XrEventDataVisibilityMaskChangedKHR event for view %u\n", buffer->viewIndex);
+                return XR_SUCCESS;
+            }
+
             return OpenXrApi::xrPollEvent(instance, eventData);
         }
 
@@ -1038,6 +1078,20 @@ namespace {
             }
 
             return OpenXrApi::xrGetCurrentInteractionProfile(session, topLevelUserPath, interactionProfile);
+        }
+
+        XrResult xrGetVisibilityMaskKHR(XrSession session,
+                                        XrViewConfigurationType viewConfigurationType,
+                                        uint32_t viewIndex,
+                                        XrVisibilityMaskTypeKHR visibilityMaskType,
+                                        XrVisibilityMaskKHR* visibilityMask) {
+            // When doing the Pimax FOV hack, we swap left and right eyes.
+            if (m_supportFOVHack && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
+                viewIndex ^= 1;
+            }
+
+            return m_xrGetVisibilityMaskKHR(
+                session, viewConfigurationType, viewIndex, visibilityMaskType, visibilityMask);
         }
 
         XrResult xrLocateViews(XrSession session,
@@ -1182,6 +1236,15 @@ namespace {
                 m_stats.fovR[1] = views[1].fov.angleDown;
                 m_stats.fovR[2] = views[1].fov.angleLeft;
                 m_stats.fovR[3] = views[1].fov.angleRight;
+
+                // When doing the Pimax FOV hack, we swap left and right eyes.
+                if (m_supportFOVHack && m_configManager->hasChanged(config::SettingPimaxFOVHack)) {
+                    // Send the necessary events to the app.
+                    m_visibilityMaskEventIndex = 0;
+                }
+                if (m_supportFOVHack && m_configManager->getValue(config::SettingPimaxFOVHack)) {
+                    std::swap(views[0], views[1]);
+                }
             }
 
             return result;
@@ -1685,6 +1748,14 @@ namespace {
 
                     spaceForOverlay = proj->space;
 
+                    // When doing the Pimax FOV hack, we swap left and right eyes.
+                    if (m_supportFOVHack && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
+                        std::swap(correctedProjectionViews[0], correctedProjectionViews[1]);
+                        std::swap(viewsForOverlay[0], viewsForOverlay[1]);
+                        std::swap(textureForOverlay[0], textureForOverlay[1]);
+                        std::swap(depthForOverlay[0], depthForOverlay[1]);
+                    }
+
                     correctedProjectionLayer->views = correctedProjectionViews;
                     correctedLayers.push_back(
                         reinterpret_cast<const XrCompositionLayerBaseHeader*>(correctedProjectionLayer));
@@ -1843,17 +1914,20 @@ namespace {
         std::string m_applicationName;
         bool m_isOpenComposite{false};
         std::string m_runtimeName;
+        std::string m_systemName;
         XrSystemId m_vrSystemId{XR_NULL_SYSTEM_ID};
         XrSession m_vrSession{XR_NULL_HANDLE};
         uint32_t m_displayWidth{0};
         uint32_t m_displayHeight{0};
         bool m_supportHandTracking{false};
         bool m_supportEyeTracking{false};
+        bool m_supportFOVHack{false};
 
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;
         bool m_isInFrame{false};
         bool m_sendInterationProfileEvent{false};
+        uint32_t m_visibilityMaskEventIndex{utilities::ViewCount};
         XrSpace m_viewSpace{XR_NULL_HANDLE};
         bool m_needCalibrateEyeProjections{true};
         float m_eyeGazeX[utilities::ViewCount];
@@ -1901,6 +1975,29 @@ namespace {
 
         // TODO: These should be auto-generated and accessible via OpenXrApi.
         PFN_xrConvertWin32PerformanceCounterToTimeKHR xrConvertWin32PerformanceCounterToTimeKHR{nullptr};
+        PFN_xrGetVisibilityMaskKHR m_xrGetVisibilityMaskKHR{nullptr};
+
+        static XrResult _xrGetVisibilityMaskKHR(XrSession session,
+                                                XrViewConfigurationType viewConfigurationType,
+                                                uint32_t viewIndex,
+                                                XrVisibilityMaskTypeKHR visibilityMaskType,
+                                                XrVisibilityMaskKHR* visibilityMask) {
+            DebugLog("--> xrGetVisibilityMaskKHR\n");
+
+            XrResult result;
+            try {
+                result = dynamic_cast<OpenXrLayer*>(GetInstance())
+                             ->xrGetVisibilityMaskKHR(
+                                 session, viewConfigurationType, viewIndex, visibilityMaskType, visibilityMask);
+            } catch (std::exception& exc) {
+                Log("%s\n", exc.what());
+                result = XR_ERROR_RUNTIME_FAILURE;
+            }
+
+            DebugLog("<-- xrGetVisibilityMaskKHR %d\n", result);
+
+            return result;
+        }
     };
 
     std::unique_ptr<OpenXrLayer> g_instance = nullptr;
