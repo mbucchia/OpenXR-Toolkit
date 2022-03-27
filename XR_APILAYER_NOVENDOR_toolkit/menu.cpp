@@ -1207,10 +1207,82 @@ namespace {
                      return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.f, m_stats.icd * 1000);
                  }});
             m_menuEntries.back().acceleration = 5;
+
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Field of view",
+                                     MenuEntryType::Choice,
+                                     SettingFOVType,
+                                     0,
+                                     1,
+                                     [&](int value) {
+                                         const std::string_view labels[] = {"Simple", "Advanced"};
+                                         return std::string(labels[value]);
+                                     }});
+            MenuGroup fovSimpleGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+                return m_configManager->peekValue(SettingFOVType) == 0;
+            } /* visible condition */);
             m_menuEntries.push_back(
-                {MenuIndent::OptionIndent, "Field of view", MenuEntryType::Slider, SettingFOV, 50, 150, [&](int value) {
-                     return fmt::format("{}% ({:.1f} deg)", value, m_stats.totalFov * 180.0f / M_PI);
+                {MenuIndent::SubGroupIndent, "Adjustment", MenuEntryType::Slider, SettingFOV, 50, 100, [&](int value) {
+                     return fmt::format(
+                         "{}% ({:.1f} deg)", value, (-m_stats.fovL[2] + m_stats.fovR[3]) * 180.0f / M_PI);
                  }});
+            fovSimpleGroup.finalize();
+
+            MenuGroup fovAdvancedGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+                return m_configManager->peekValue(SettingFOVType) == 1;
+            } /* visible condition */);
+            m_menuEntries.push_back(
+                {MenuIndent::SubGroupIndent, "FOV Up", MenuEntryType::Slider, SettingFOVUp, 50, 100, [&](int value) {
+                     return fmt::format("{}% ({:.1f}/{:.1f} deg)",
+                                        value,
+                                        m_stats.fovL[0] * 180.0f / M_PI,
+                                        m_stats.fovR[0] * 180.0f / M_PI);
+                 }});
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "FOV Down",
+                                     MenuEntryType::Slider,
+                                     SettingFOVDown,
+                                     50,
+                                     100,
+                                     [&](int value) {
+                                         return fmt::format("{}% ({:.1f}/{:.1f} deg)",
+                                                            value,
+                                                            m_stats.fovL[1] * 180.0f / M_PI,
+                                                            m_stats.fovR[1] * 180.0f / M_PI);
+                                     }});
+            m_menuEntries.push_back(
+                {MenuIndent::SubGroupIndent,
+                 "FOV Left/Left",
+                 MenuEntryType::Slider,
+                 SettingFOVLeftLeft,
+                 50,
+                 100,
+                 [&](int value) { return fmt::format("{}% ({:.1f} deg)", value, m_stats.fovL[2] * 180.0f / M_PI); }});
+            m_menuEntries.push_back(
+                {MenuIndent::SubGroupIndent,
+                 "FOV Left/Right",
+                 MenuEntryType::Slider,
+                 SettingFOVLeftRight,
+                 50,
+                 100,
+                 [&](int value) { return fmt::format("{}% ({:.1f} deg)", value, m_stats.fovL[3] * 180.0f / M_PI); }});
+            m_menuEntries.push_back(
+                {MenuIndent::SubGroupIndent,
+                 "FOV Right/Left",
+                 MenuEntryType::Slider,
+                 SettingFOVRightLeft,
+                 50,
+                 100,
+                 [&](int value) { return fmt::format("{}% ({:.1f} deg)", value, m_stats.fovR[2] * 180.0f / M_PI); }});
+            m_menuEntries.push_back(
+                {MenuIndent::SubGroupIndent,
+                 "FOV Right/Right",
+                 MenuEntryType::Slider,
+                 SettingFOVRightRight,
+                 50,
+                 100,
+                 [&](int value) { return fmt::format("{}% ({:.1f} deg)", value, m_stats.fovR[3] * 180.0f / M_PI); }});
+            fovAdvancedGroup.finalize();
 
             // Must be kept last.
             appearanceTab.finalize();
