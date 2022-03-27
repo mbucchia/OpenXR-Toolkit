@@ -114,7 +114,14 @@ namespace {
 
             // Misc features.
             m_configManager->setDefault(config::SettingICD, 1000);
+            m_configManager->setDefault(config::SettingFOVType, 0); // Simple
             m_configManager->setDefault(config::SettingFOV, 100);
+            m_configManager->setDefault(config::SettingFOVUp, 100);
+            m_configManager->setDefault(config::SettingFOVDown, 100);
+            m_configManager->setDefault(config::SettingFOVLeftLeft, 100);
+            m_configManager->setDefault(config::SettingFOVLeftRight, 100);
+            m_configManager->setDefault(config::SettingFOVRightLeft, 100);
+            m_configManager->setDefault(config::SettingFOVRightRight, 100);
             m_configManager->setDefault(config::SettingPredictionDampen, 100);
             m_configManager->setEnumDefault(config::SettingMotionReprojectionRate, config::MotionReprojectionRate::Off);
             m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
@@ -1124,21 +1131,38 @@ namespace {
                 }
 
                 // Override the FOV if requested.
-                const int fovOverride = m_configManager->getValue(config::SettingFOV);
-                if (fovOverride != 100) {
-                    const float multiplier = fovOverride / 100.0f;
-
-                    views[0].fov.angleUp *= multiplier;
-                    views[0].fov.angleDown *= multiplier;
-                    views[0].fov.angleLeft *= multiplier;
-                    views[0].fov.angleRight *= multiplier;
-                    views[1].fov.angleUp *= multiplier;
-                    views[1].fov.angleDown *= multiplier;
-                    views[1].fov.angleLeft *= multiplier;
-                    views[1].fov.angleRight *= multiplier;
+                if (m_configManager->getValue(config::SettingFOVType) == 0) {
+                    const int fovOverride = m_configManager->getValue(config::SettingFOV);
+                    if (fovOverride != 100) {
+                        const float multiplier = fovOverride / 100.0f;
+                        views[0].fov.angleUp *= multiplier;
+                        views[0].fov.angleDown *= multiplier;
+                        views[0].fov.angleLeft *= multiplier;
+                        views[0].fov.angleRight *= multiplier;
+                        views[1].fov.angleUp *= multiplier;
+                        views[1].fov.angleDown *= multiplier;
+                        views[1].fov.angleLeft *= multiplier;
+                        views[1].fov.angleRight *= multiplier;
+                    }
+                } else {
+                    views[0].fov.angleUp *= m_configManager->getValue(config::SettingFOVUp) / 100.0f;
+                    views[0].fov.angleDown *= m_configManager->getValue(config::SettingFOVDown) / 100.0f;
+                    views[0].fov.angleLeft *= m_configManager->getValue(config::SettingFOVLeftLeft) / 100.0f;
+                    views[0].fov.angleRight *= m_configManager->getValue(config::SettingFOVLeftRight) / 100.0f;
+                    views[1].fov.angleUp *= m_configManager->getValue(config::SettingFOVUp) / 100.0f;
+                    views[1].fov.angleDown *= m_configManager->getValue(config::SettingFOVDown) / 100.0f;
+                    views[1].fov.angleLeft *= m_configManager->getValue(config::SettingFOVRightLeft) / 100.0f;
+                    views[1].fov.angleRight *= m_configManager->getValue(config::SettingFOVRightRight) / 100.0f;
                 }
 
-                m_stats.totalFov = -views[0].fov.angleLeft + views[1].fov.angleRight;
+                m_stats.fovL[0] = views[0].fov.angleUp;
+                m_stats.fovL[1] = views[0].fov.angleDown;
+                m_stats.fovL[2] = views[0].fov.angleLeft;
+                m_stats.fovL[3] = views[0].fov.angleRight;
+                m_stats.fovR[0] = views[1].fov.angleUp;
+                m_stats.fovR[1] = views[1].fov.angleDown;
+                m_stats.fovR[2] = views[1].fov.angleLeft;
+                m_stats.fovR[3] = views[1].fov.angleRight;
             }
 
             return result;
@@ -1604,17 +1628,6 @@ namespace {
                         // Patch the resolution.
                         correctedProjectionViews[eye].subImage.imageRect.extent.width = m_displayWidth;
                         correctedProjectionViews[eye].subImage.imageRect.extent.height = m_displayHeight;
-
-                        // Patch the FOV when set above 100%.
-                        const int fov = m_configManager->getValue(config::SettingFOV);
-                        if (fov > 100) {
-                            const float multiplier = 100.0f / fov;
-
-                            correctedProjectionViews[eye].fov.angleUp *= multiplier;
-                            correctedProjectionViews[eye].fov.angleDown *= multiplier;
-                            correctedProjectionViews[eye].fov.angleLeft *= multiplier;
-                            correctedProjectionViews[eye].fov.angleRight *= multiplier;
-                        }
 
                         // Patch the eye poses.
                         const int cantOverride = m_configManager->getValue("canting");

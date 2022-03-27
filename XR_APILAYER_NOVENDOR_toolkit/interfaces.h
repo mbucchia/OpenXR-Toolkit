@@ -78,7 +78,14 @@ namespace toolkit {
         const std::string SettingAnamorphic = "anamorphic";
         const std::string SettingSharpness = "sharpness";
         const std::string SettingICD = "world_scale";
+        const std::string SettingFOVType = "fov_type";
         const std::string SettingFOV = "fov";
+        const std::string SettingFOVUp = "fov_up";
+        const std::string SettingFOVDown = "fov_down";
+        const std::string SettingFOVLeftLeft = "fov_ll";
+        const std::string SettingFOVLeftRight = "fov_lr";
+        const std::string SettingFOVRightLeft = "fov_rl";
+        const std::string SettingFOVRightRight = "fov_rr";
         const std::string SettingHandTrackingEnabled = "enable_hand_tracking";
         const std::string SettingHandVisibilityAndSkinTone = "hand_visibility";
         const std::string SettingHandTimeout = "hand_timeout";
@@ -707,7 +714,8 @@ namespace toolkit {
 
             uint64_t predictionTimeUs{0};
             float icd{0.0f};
-            float totalFov{0.0f};
+            float fovL[4]{0.0f, 0.0f, 0.0f, 0.0f};
+            float fovR[4]{0.0f, 0.0f, 0.0f, 0.0f};
 
             bool hasColorBuffer[utilities::ViewCount]{false, false};
             bool hasDepthBuffer[utilities::ViewCount]{false, false};
