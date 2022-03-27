@@ -151,7 +151,7 @@ namespace {
         bool m_isTab;
     };
 
-    enum class MenuTab { Performance = 0, Appearance, Inputs, Menu };
+    enum class MenuTab { Performance = 0, Appearance, Inputs, Menu, Developer };
 
     // The logic of our menus.
     class MenuHandler : public IMenuHandler {
@@ -218,11 +218,14 @@ namespace {
             }
 
             // Prepare the tabs.
-            static const std::string_view tabs[] = {"Performance", "Appearance", "Inputs", "Menu"};
-            m_menuEntries.push_back(
-                {MenuIndent::NoIndent, "", MenuEntryType::Tabs, "", 0, ARRAYSIZE(tabs) - 1, [&](int value) {
-                     return std::string(tabs[value]);
-                 }});
+            static const std::string_view tabs[] = {"Performance", "Appearance", "Inputs", "Menu", "Developer"};
+            m_menuEntries.push_back({MenuIndent::NoIndent,
+                                     "",
+                                     MenuEntryType::Tabs,
+                                     "",
+                                     0,
+                                     ARRAYSIZE(tabs) - (m_configManager->getValue(SettingDeveloper) ? 1 : 2),
+                                     [&](int value) { return std::string(tabs[value]); }});
             m_menuEntries.back().pValue = reinterpret_cast<int*>(&m_currentTab);
             m_menuEntries.back().visible = true; /* Always visible. */
 
@@ -233,6 +236,7 @@ namespace {
             setupAppearanceTab(isPimaxFovHackSupported);
             setupInputsTab(isPredictionDampeningSupported);
             setupMenuTab();
+            setupDeveloperTab();
 
             m_menuEntries.push_back(
                 {MenuIndent::NoIndent, "Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
@@ -1427,6 +1431,50 @@ namespace {
                                      "Restore defaults",
                                      MenuEntryType::RestoreDefaultsButton,
                                      BUTTON_OR_SEPARATOR});
+
+            // Must be kept last.
+            menuTab.finalize();
+        }
+
+        void setupDeveloperTab() {
+            if (!m_configManager->getValue(SettingDeveloper)) {
+                return;
+            }
+
+            MenuGroup menuTab(
+                m_configManager,
+                m_menuGroups,
+                m_menuEntries,
+                [&] { return m_currentTab == MenuTab::Developer; } /* visible condition */,
+                true /* isTab */);
+
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Simulate canting",
+                                     MenuEntryType::Slider,
+                                     "canting",
+                                     -90,
+                                     90,
+                                     [](int value) { return fmt::format("{} deg", value); }});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Simulate eye tracker*",
+                                     MenuEntryType::Choice,
+                                     SettingEyeDebugWithController,
+                                     0,
+                                     1,
+                                     [&](int value) {
+                                         const std::string_view labels[] = {"Off", "On"};
+                                         return std::string(labels[value]);
+                                     }});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Show eye gaze",
+                                     MenuEntryType::Choice,
+                                     SettingEyeDebug,
+                                     0,
+                                     1,
+                                     [&](int value) {
+                                         const std::string_view labels[] = {"Off", "On"};
+                                         return std::string(labels[value]);
+                                     }});
 
             // Must be kept last.
             menuTab.finalize();
