@@ -131,7 +131,8 @@ namespace toolkit {
                                                         bool isPredictionDampeningSupported,
                                                         bool isMotionReprojectionRateSupported,
                                                         uint8_t displayRefreshRate,
-                                                        uint8_t variableRateShaderMaxDownsamplePow2);
+                                                        uint8_t variableRateShaderMaxDownsamplePow2,
+                                                        bool isPimaxFovHackSupported);
 
     } // namespace menu
 
