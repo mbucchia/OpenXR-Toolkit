@@ -1481,7 +1481,7 @@ namespace {
             }
         }
 
-        void takeScreenshot(std::shared_ptr<graphics::ITexture> texture) const {
+        void takeScreenshot(std::shared_ptr<graphics::ITexture> texture, const std::string& suffix) const {
             SYSTEMTIME st;
             ::GetLocalTime(&st);
 
@@ -1497,6 +1497,8 @@ namespace {
                 parameters << upscaleName << m_upscalingFactor << "_"
                            << m_configManager->getValue(config::SettingSharpness);
             }
+
+            parameters << "_" << suffix;
 
             const auto fileFormat =
                 m_configManager->getEnumValue<config::ScreenshotFileFormat>(config::SettingScreenshotFileFormat);
@@ -1850,7 +1852,8 @@ namespace {
             if (textureForOverlay[0] && requestScreenshot) {
                 // TODO: this is capturing frame N-3
                 // review the command queues/lists and context flush
-                takeScreenshot(textureForOverlay[0]);
+                takeScreenshot(textureForOverlay[0], "L");
+                takeScreenshot(textureForOverlay[1], "R");
 
 #ifdef _DEBUG
                 if (m_variableRateShader) {
