@@ -135,6 +135,7 @@ namespace {
 #endif
             );
             m_configManager->setDefault("disable_frame_analyzer", 0);
+            m_configManager->setDefault("vrs_capture", 0);
 
             // Workaround: the first versions of the toolkit used a different representation for the world scale.
             // Migrate the value upon first run.
@@ -1439,9 +1440,7 @@ namespace {
 
             if (m_variableRateShader) {
                 m_variableRateShader->endFrame();
-#ifdef _DEBUG
                 m_variableRateShader->stopCapture();
-#endif
             }
 
             m_graphicsDevice->saveContext();
@@ -1743,11 +1742,9 @@ namespace {
                 // review the command queues/lists and context flush
                 takeScreenshot(textureForOverlay[0]);
 
-#ifdef _DEBUG
-                if (m_variableRateShader) {
+                if (m_variableRateShader && m_configManager->getValue("vrs_capture")) {
                     m_variableRateShader->startCapture();
                 }
-#endif
             }
 
             m_graphicsDevice->restoreContext();
@@ -1881,3 +1878,17 @@ namespace toolkit {
     }
 
 } // namespace toolkit
+
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
+    switch (ul_reason_for_call) {
+    case DLL_PROCESS_ATTACH:
+        TraceLoggingRegister(g_traceProvider);
+        break;
+
+    case DLL_THREAD_ATTACH:
+    case DLL_THREAD_DETACH:
+    case DLL_PROCESS_DETACH:
+        break;
+    }
+    return TRUE;
+}

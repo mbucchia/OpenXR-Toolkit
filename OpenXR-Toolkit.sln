@@ -19,6 +19,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scripts", "Scripts", "{1E41057B-9167-4ED0-A3FA-6F2CA6B55922}"
 	ProjectSection(SolutionItems) = preProject
 		scripts\Install-Layer.ps1 = scripts\Install-Layer.ps1
+		scripts\OXRTK.wprp = scripts\OXRTK.wprp
+		scripts\OXRTK_WMR.wprp = scripts\OXRTK_WMR.wprp
 		scripts\Uninstall-Layer.ps1 = scripts\Uninstall-Layer.ps1
 	EndProjectSection
 EndProject

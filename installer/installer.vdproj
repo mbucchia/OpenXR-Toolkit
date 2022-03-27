@@ -315,6 +315,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_C22643A7298C49FA82BBE218813CBF6F"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_CBCD2ED73778E2E132337FC81538B7EB"
         "OwnerKey" = "8:_A84030E42CA5C243CFFD46052A3956AB"
         "MsmSig" = "8:_UNDEFINED"
@@ -359,6 +365,12 @@
         {
         "MsmKey" = "8:_D391D942BF746798E89628174F3525FF"
         "OwnerKey" = "8:_20878DF3273ADBA9186EF810226E99EB"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_DDDF47DCA5044E95A43A2C4A1D87FE69"
+        "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -1285,6 +1297,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C22643A7298C49FA82BBE218813CBF6F"
+            {
+            "SourcePath" = "8:..\\scripts\\OXRTK.wprp"
+            "TargetName" = "8:OXRTK.wprp"
+            "Tag" = "8:"
+            "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_CBCD2ED73778E2E132337FC81538B7EB"
             {
             "AssemblyRegister" = "3:1"
@@ -1385,6 +1417,26 @@
             "Register" = "3:1"
             "Exclude" = "11:FALSE"
             "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DDDF47DCA5044E95A43A2C4A1D87FE69"
+            {
+            "SourcePath" = "8:..\\scripts\\OXRTK_WMR.wprp"
+            "TargetName" = "8:OXRTK_WMR.wprp"
+            "Tag" = "8:"
+            "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_DE70669819F827DECBA4C88361CDBBF6"
@@ -1557,7 +1609,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:OpenXR-Toolkit"
         "ProductCode" = "8:{FCAAACC4-9554-45C5-93C5-AB73A631C02C}"
-        "PackageCode" = "8:{447E0414-1A2A-41D6-8508-DC22FFBE34BF}"
+        "PackageCode" = "8:{3D4FCA3F-8D26-49BA-A520-10409CAF1CDF}"
         "UpgradeCode" = "8:{DE3B4392-8473-4208-A77F-812E54E09AE6}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"

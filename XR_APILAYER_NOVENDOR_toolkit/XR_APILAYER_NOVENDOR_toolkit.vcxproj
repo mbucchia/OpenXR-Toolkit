@@ -83,6 +83,8 @@ REM Copy all dependencies.
 copy $(ProjectDir)\$(ProjectName).json $(OutDir)
 copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
 copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
+copy $(SolutionDir)\scripts\OXRTK.wprp $(OutDir)
+copy $(SolutionDir)\scripts\OXRTK_WMR.wprp $(OutDir)
 md $(OutDir)\shaders
 copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
 type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-2.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
@@ -153,6 +155,8 @@ REM Copy all dependencies.
 copy $(ProjectDir)\$(ProjectName).json $(OutDir)
 copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
 copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
+copy $(SolutionDir)\scripts\OXRTK.wprp $(OutDir)
+copy $(SolutionDir)\scripts\OXRTK_WMR.wprp $(OutDir)
 md $(OutDir)\shaders
 copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
 type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-2.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2

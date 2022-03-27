@@ -83,6 +83,10 @@ T* detach(ComPtr<T>& object) {
     return object.Detach();
 }
 
+// ETL tracing
+#include <traceloggingactivity.h>
+#include <traceloggingprovider.h>
+
 // Direct3D.
 #include <d3d11_1.h>
 #include <d3d12.h>

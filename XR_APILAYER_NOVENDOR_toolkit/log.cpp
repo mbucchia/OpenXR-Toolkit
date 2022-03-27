@@ -23,8 +23,17 @@
 
 #include "pch.h"
 
+#include "log.h"
+
 namespace toolkit::log {
     extern std::ofstream logStream;
+
+    // {cbf3adcd-42b1-4c38-830b-91980af201f5}
+    TRACELOGGING_DEFINE_PROVIDER(g_traceProvider,
+                                 "OpenXRToolkit",
+                                 (0xcbf3adcd, 0x42b1, 0x4c38, 0x83, 0x0b, 0x91, 0x98, 0x0a, 0xf2, 0x01, 0xf5));
+
+    TraceLoggingActivity<g_traceProvider> g_traceActivity;
 
     namespace {
 
@@ -33,8 +42,7 @@ namespace toolkit::log {
             const std::time_t now = std::time(nullptr);
 
             char buf[1024];
-            size_t offset =
-                std::strftime(buf, sizeof(buf), "[OXRTK] %Y-%m-%d %H:%M:%S %z: ", std::localtime(&now));
+            size_t offset = std::strftime(buf, sizeof(buf), "[OXRTK] %Y-%m-%d %H:%M:%S %z: ", std::localtime(&now));
             vsnprintf_s(buf + offset, sizeof(buf) - offset, _TRUNCATE, fmt, va);
             OutputDebugStringA(buf);
             if (logStream.is_open()) {

@@ -2019,20 +2019,26 @@ namespace {
                                                                    ID3D11DepthStencilView*);
         static inline PFN_ID3D11DeviceContext_OMSetRenderTargets g_original_ID3D11DeviceContext_OMSetRenderTargets =
             nullptr;
-        static void hooked_ID3D11DeviceContext_OMSetRenderTargets(ID3D11DeviceContext* context,
+        static void hooked_ID3D11DeviceContext_OMSetRenderTargets(ID3D11DeviceContext* Context,
                                                                   UINT NumViews,
                                                                   ID3D11RenderTargetView* const* ppRenderTargetViews,
                                                                   ID3D11DepthStencilView* pDepthStencilView) {
-            DebugLog("--> ID3D11DeviceContext_OMSetRenderTargets\n");
+            TraceLocalActivity(local);
+            TraceLoggingWriteStart(local,
+                                   "ID3D11DeviceContext_OMSetRenderTargets",
+                                   TLPArg(Context),
+                                   TLArg(NumViews),
+                                   TLPArray(ppRenderTargetViews, NumViews, "RTV"),
+                                   TLPArg(pDepthStencilView, "DSV"));
 
             assert(g_instance);
-            g_instance->onSetRenderTargets(context, NumViews, ppRenderTargetViews, pDepthStencilView);
+            g_instance->onSetRenderTargets(Context, NumViews, ppRenderTargetViews, pDepthStencilView);
 
             assert(g_original_ID3D11DeviceContext_OMSetRenderTargets);
             g_original_ID3D11DeviceContext_OMSetRenderTargets(
-                context, NumViews, ppRenderTargetViews, pDepthStencilView);
+                Context, NumViews, ppRenderTargetViews, pDepthStencilView);
 
-            DebugLog("<-- ID3D11DeviceContext_OMSetRenderTargets\n");
+            TraceLoggingWriteStop(local, "ID3D11DeviceContext_OMSetRenderTargets");
         }
 
         typedef void (*PFN_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews)(
@@ -2047,7 +2053,7 @@ namespace {
         static inline PFN_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews
             g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews = nullptr;
         static void hooked_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews(
-            ID3D11DeviceContext* context,
+            ID3D11DeviceContext* Context,
             UINT NumRTVs,
             ID3D11RenderTargetView* const* ppRenderTargetViews,
             ID3D11DepthStencilView* pDepthStencilView,
@@ -2055,13 +2061,19 @@ namespace {
             UINT NumUAVs,
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
             const UINT* pUAVInitialCounts) {
-            DebugLog("--> ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews\n");
+            TraceLocalActivity(local);
+            TraceLoggingWriteStart(local,
+                                   "ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews",
+                                   TLPArg(Context),
+                                   TLArg(NumRTVs),
+                                   TLPArray(ppRenderTargetViews, NumRTVs, "RTV"),
+                                   TLPArg(pDepthStencilView, "DSV"));
 
             assert(g_instance);
-            g_instance->onSetRenderTargets(context, NumRTVs, ppRenderTargetViews, pDepthStencilView);
+            g_instance->onSetRenderTargets(Context, NumRTVs, ppRenderTargetViews, pDepthStencilView);
 
             assert(g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews);
-            g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews(context,
+            g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews(Context,
                                                                                      NumRTVs,
                                                                                      ppRenderTargetViews,
                                                                                      pDepthStencilView,
@@ -2070,30 +2082,32 @@ namespace {
                                                                                      ppUnorderedAccessViews,
                                                                                      pUAVInitialCounts);
 
-            DebugLog("<-- ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews\n");
+            TraceLoggingWriteStop(local, "ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews");
         }
 
         typedef void (*PFN_ID3D11DeviceContext_CopyResource)(ID3D11DeviceContext*, ID3D11Resource*, ID3D11Resource*);
         static inline PFN_ID3D11DeviceContext_CopyResource g_original_ID3D11DeviceContext_CopyResource = nullptr;
-        static void hooked_ID3D11DeviceContext_CopyResource(ID3D11DeviceContext* context,
+        static void hooked_ID3D11DeviceContext_CopyResource(ID3D11DeviceContext* Context,
                                                             ID3D11Resource* pDstResource,
                                                             ID3D11Resource* pSrcResource) {
-            DebugLog("--> ID3D11DeviceContext_CopyResource\n");
+            TraceLocalActivity(local);
+            TraceLoggingWriteStart(
+                local, "ID3D11DeviceContext_CopyResource", TLPArg(Context), TLPArg(pDstResource), TLPArg(pSrcResource));
 
             assert(g_instance);
-            g_instance->onCopyResource(context, pSrcResource, pDstResource);
+            g_instance->onCopyResource(Context, pSrcResource, pDstResource);
 
             assert(g_original_ID3D11DeviceContext_CopyResource);
-            g_original_ID3D11DeviceContext_CopyResource(context, pDstResource, pSrcResource);
+            g_original_ID3D11DeviceContext_CopyResource(Context, pDstResource, pSrcResource);
 
-            DebugLog("<-- ID3D11DeviceContext_CopyResource\n");
+            TraceLoggingWriteStop(local, "ID3D11DeviceContext_CopyResource");
         }
 
         typedef void (*PFN_ID3D11DeviceContext_CopySubresourceRegion)(
             ID3D11DeviceContext*, ID3D11Resource*, UINT, UINT, UINT, UINT, ID3D11Resource*, UINT, const D3D11_BOX*);
         static inline PFN_ID3D11DeviceContext_CopySubresourceRegion
             g_original_ID3D11DeviceContext_CopySubresourceRegion = nullptr;
-        static void hooked_ID3D11DeviceContext_CopySubresourceRegion(ID3D11DeviceContext* context,
+        static void hooked_ID3D11DeviceContext_CopySubresourceRegion(ID3D11DeviceContext* Context,
                                                                      ID3D11Resource* pDstResource,
                                                                      UINT DstSubresource,
                                                                      UINT DstX,
@@ -2102,16 +2116,23 @@ namespace {
                                                                      ID3D11Resource* pSrcResource,
                                                                      UINT SrcSubresource,
                                                                      const D3D11_BOX* pSrcBox) {
-            DebugLog("--> ID3D11DeviceContext_CopySubresourceRegion\n");
+            TraceLocalActivity(local);
+            TraceLoggingWriteStart(local,
+                                   "ID3D11DeviceContext_CopySubresourceRegion",
+                                   TLPArg(Context),
+                                   TLPArg(pDstResource),
+                                   TLArg(DstSubresource),
+                                   TLPArg(pSrcResource),
+                                   TLArg(SrcSubresource));
 
             assert(g_instance);
-            g_instance->onCopyResource(context, pSrcResource, pDstResource, SrcSubresource, DstSubresource);
+            g_instance->onCopyResource(Context, pSrcResource, pDstResource, SrcSubresource, DstSubresource);
 
             assert(g_original_ID3D11DeviceContext_CopySubresourceRegion);
             g_original_ID3D11DeviceContext_CopySubresourceRegion(
-                context, pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
+                Context, pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
 
-            DebugLog("<-- ID3D11DeviceContext_CopySubresourceRegion\n");
+            TraceLoggingWriteStop(local, "ID3D11DeviceContext_CopySubresourceRegion");
         }
 
         typedef void (*PFN_ID3D11DeviceContext_PSSetSamplers)(ID3D11DeviceContext*,
@@ -2119,11 +2140,17 @@ namespace {
                                                               UINT,
                                                               ID3D11SamplerState* const*);
         static inline PFN_ID3D11DeviceContext_PSSetSamplers g_original_ID3D11DeviceContext_PSSetSamplers = nullptr;
-        static void hooked_ID3D11DeviceContext_PSSetSamplers(ID3D11DeviceContext* context,
+        static void hooked_ID3D11DeviceContext_PSSetSamplers(ID3D11DeviceContext* Context,
                                                              UINT StartSlot,
                                                              UINT NumSamplers,
                                                              ID3D11SamplerState* const* ppSamplers) {
-            DebugLog("--> ID3D11DeviceContext_PSSetSamplers\n");
+            TraceLocalActivity(local);
+            TraceLoggingWriteStart(local,
+                                   "ID3D11DeviceContext_PSSetSamplers",
+                                   TLPArg(Context),
+                                   TLPArg(ppSamplers),
+                                   TLArg(StartSlot),
+                                   TLArg(NumSamplers));
 
             ID3D11SamplerState* updatedSamplers[D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT];
             for (UINT i = 0; i < NumSamplers; i++) {
@@ -2131,12 +2158,12 @@ namespace {
             }
 
             assert(g_instance);
-            g_instance->patchSamplers(context, updatedSamplers, NumSamplers);
+            g_instance->patchSamplers(Context, updatedSamplers, NumSamplers);
 
             assert(g_original_ID3D11DeviceContext_PSSetSamplers);
-            g_original_ID3D11DeviceContext_PSSetSamplers(context, StartSlot, NumSamplers, updatedSamplers);
+            g_original_ID3D11DeviceContext_PSSetSamplers(Context, StartSlot, NumSamplers, updatedSamplers);
 
-            DebugLog("<-- ID3D11DeviceContext_PSSetSamplers\n");
+            TraceLoggingWriteStop(local, "ID3D11DeviceContext_PSSetSamplers");
         }
     };
 

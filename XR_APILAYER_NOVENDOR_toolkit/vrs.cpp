@@ -109,7 +109,6 @@ namespace {
                 throw std::runtime_error("Unsupported graphics runtime");
             }
 
-            DebugLog("VRS: targetWidth=%u targetHeight=%u\n", m_targetWidth, m_targetHeight);
             m_projCenterX[(int)Eye::Left] = m_projCenterX[(int)Eye::Right] = m_targetWidth / 2;
             m_projCenterY[(int)Eye::Left] = m_projCenterY[(int)Eye::Right] = m_targetHeight / 2;
 
@@ -272,7 +271,7 @@ namespace {
                 }
             }
 
-            DebugLog("VRS: Enable\n");
+            TraceLoggingWrite(g_traceProvider, "EnableVariableRateShading");
             if (m_device->getApi() == Api::D3D11) {
                 // We set VRS on 2 viewports in case the stereo view is rendred in parallel.
                 NV_D3D11_VIEWPORT_SHADING_RATE_DESC viewports[2];
@@ -296,10 +295,8 @@ namespace {
 
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context->getNative<D3D11>(), get(mask)));
 
-#ifdef _DEBUG
                 doCapture(context /* post */);
                 doCapture(context, renderTarget, eyeHint);
-#endif
             } else if (m_device->getApi() == Api::D3D12) {
                 ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
                 if (FAILED(context->getNative<D3D12>()->QueryInterface(
@@ -343,9 +340,9 @@ namespace {
             return m_maxDownsamplePow2;
         }
 
-#ifdef _DEBUG
         void startCapture() override {
             DebugLog("VRS: Start capture\n");
+            TraceLoggingWrite(g_traceProvider, "StartVariableRateShadingCapture");
             m_captureID++;
             m_captureFileIndex = 0;
             m_isCapturing = true;
@@ -354,6 +351,7 @@ namespace {
         void stopCapture() override {
             if (m_isCapturing) {
                 DebugLog("VRS: Stop capture\n");
+                TraceLoggingWrite(g_traceProvider, "StopVariableRateShadingCapture");
                 m_isCapturing = false;
             }
         }
@@ -379,7 +377,10 @@ namespace {
                             (localAppData / "screenshots" / fmt::format("vrs_{}_mask_vprt.dds", m_captureID)).string());
                     }
 
-                    DebugLog("VRS: Capturing file ID: %d\n", m_captureFileIndex);
+                    TraceLoggingWrite(g_traceProvider,
+                                      "VariableRateShadingCapture",
+                                      TLArg(m_captureID, "CaptureID"),
+                                      TLArg(m_captureFileIndex, "CaptureFileIndex"));
 
                     renderTarget->saveToFile(
                         (localAppData / "screenshots" /
@@ -411,11 +412,10 @@ namespace {
                 }
             }
         }
-#endif
 
       private:
         void disable(std::shared_ptr<graphics::IContext> context = nullptr) {
-            DebugLog("VRS: Disable\n");
+            TraceLoggingWrite(g_traceProvider, "DisableVariableRateShading");
             if (m_device->getApi() == Api::D3D11) {
                 auto nativeContext = context ? context->getNative<D3D11>() : m_device->getContext<D3D11>();
 
@@ -425,9 +425,7 @@ namespace {
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(nativeContext, &desc));
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(nativeContext, nullptr));
 
-#ifdef _DEBUG
                 doCapture(context /* post */);
-#endif
             } else if (m_device->getApi() == Api::D3D12) {
                 auto nativeContext = context ? context->getNative<D3D12>() : m_device->getContext<D3D12>();
 
@@ -619,21 +617,24 @@ namespace {
         }
 
         bool isVariableRateShadingCandidate(const XrSwapchainCreateInfo& info) const {
+            TraceLoggingWrite(g_traceProvider,
+                              "IsVariableRateShadingCandidate",
+                              TLArg(info.width, "Width"),
+                              TLArg(info.height, "Height"),
+                              TLArg(info.arraySize, "ArraySize"),
+                              TLArg(info.format, "Format"));
+
             // Check for proportionality with the size of our render target.
             // Also check that the texture is not under 50% of the render scale. We expect that no one should use in-app
             // render scale that is so small.
-            DebugLog("VRS: info.width=%u info.height=%u\n", info.width, info.height);
             const float aspectRatio = (float)info.width / info.height;
             if (std::abs(aspectRatio - m_targetAspectRatio) > 0.01f || info.width < (50 * m_targetWidth) / 100) {
                 return false;
             }
 
-            DebugLog("VRS: info.arraySize=%u\n", info.arraySize);
             if (info.arraySize > 2) {
                 return false;
             }
-
-            DebugLog("VRS: info.format=%u\n", info.format);
 
             return true;
         }
@@ -685,14 +686,12 @@ namespace {
         std::shared_ptr<ITexture> m_shadingRateMaskGeneric;
         std::shared_ptr<ITexture> m_shadingRateMaskVPRT;
 
-#ifdef _DEBUG
         bool m_isCapturing{false};
         uint32_t m_captureID{0};
         uint32_t m_captureFileIndex;
 
         std::shared_ptr<ITexture> m_currentRenderTarget;
         std::optional<Eye> m_currentEyeHint;
-#endif
 
         // Returns inner, middle, outer downsampling as a power of 2.
         static std::tuple<int, int, int> getShadingRateForQuality(VariableShadingRateQuality quality) {
