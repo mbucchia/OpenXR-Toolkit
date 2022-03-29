@@ -79,6 +79,7 @@ namespace {
         SHADING_RATE_4x2,
         SHADING_RATE_2x4,
         SHADING_RATE_4x4,
+        SHADING_RATE_COUNT
     };
 
     // Constant buffer
@@ -206,14 +207,11 @@ namespace {
             DebugLog("VRS: Enable\n");
             if (auto context11 = context->getAs<D3D11>()) {
                 // We set VRS on 2 viewports in case the stereo view renders in parallel.
-                NV_D3D11_VIEWPORT_SHADING_RATE_DESC viewports[2];
-                viewports[1] = viewports[0] = m_NvShadingRateResources.rates;
-
                 NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
                 desc.version = NV_D3D11_VIEWPORTS_SHADING_RATE_DESC_VER;
                 desc.numViewports = 2;
-                desc.pViewports = viewports;
+                desc.pViewports = m_nvRates;
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context11, &desc));
 
                 auto& mask = info.arraySize == 2
@@ -233,14 +231,15 @@ namespace {
                     return false;
                 }
 
-                const D3D12_SHADING_RATE_COMBINER combiner[] = {D3D12_SHADING_RATE_COMBINER_PASSTHROUGH,
-                                                                D3D12_SHADING_RATE_COMBINER_OVERRIDE};
-                vrsCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiner);
+                const D3D12_SHADING_RATE_COMBINER combiner[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT] = {
+                    D3D12_SHADING_RATE_COMBINER_PASSTHROUGH, D3D12_SHADING_RATE_COMBINER_OVERRIDE};
 
                 // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
                 auto& mask = m_shadingRateMask[(uint32_t)eyeHint.value_or(Eye::Both)];
 
+                vrsCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiner);
                 vrsCommandList->RSSetShadingRateImage(mask->getAs<D3D12>());
+
             } else {
                 throw std::runtime_error("Unsupported graphics runtime");
             }
@@ -297,22 +296,22 @@ namespace {
                     // At the beginning of the frame, capture all the masks too.
                     if (!m_captureFileIndex) {
                         m_shadingRateMask[0]->saveToFile(
-                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_left.dds", m_captureID)).string());
+                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_left.png", m_captureID)).string());
                         m_shadingRateMask[1]->saveToFile(
-                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_right.dds", m_captureID))
+                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_right.png", m_captureID))
                                 .string());
                         m_shadingRateMask[2]->saveToFile(
-                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_generic.dds", m_captureID))
+                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_generic.png", m_captureID))
                                 .string());
                         m_shadingRateMaskVPRT->saveToFile(
-                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_vprt.dds", m_captureID)).string());
+                            (localAppData / "screenshots" / fmt::format("vrs_{}_mask_vprt.png", m_captureID)).string());
                     }
 
                     DebugLog("VRS: Capturing file ID: %d\n", m_captureFileIndex);
 
                     renderTarget->saveToFile(
                         (localAppData / "screenshots" /
-                         fmt::format("vrs_{}_{}_{}_pre.dds",
+                         fmt::format("vrs_{}_{}_{}_pre.png",
                                      m_captureID,
                                      m_captureFileIndex,
                                      info.arraySize == 2   ? "dual"
@@ -327,7 +326,7 @@ namespace {
 
                     m_currentRenderTarget->saveToFile(
                         (localAppData / "screenshots" /
-                         fmt::format("vrs_{}_{}_{}_post.dds",
+                         fmt::format("vrs_{}_{}_{}_post.png",
                                      m_captureID,
                                      m_captureFileIndex++,
                                      info.arraySize == 2 ? "dual"
@@ -387,8 +386,6 @@ namespace {
 
             // Initialize API-specific shading rate resources.
             if (auto device11 = m_device->getAs<D3D11>()) {
-                m_NvShadingRateResources.resetRates();
-
                 NV_D3D11_SHADING_RATE_RESOURCE_VIEW_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
                 desc.version = NV_D3D11_SHADING_RATE_RESOURCE_VIEW_DESC_VER;
@@ -406,8 +403,10 @@ namespace {
                 CHECK_NVCMD(NvAPI_D3D11_CreateShadingRateResourceView(
                     device11, m_shadingRateMaskVPRT->getAs<D3D11>(), &desc, set(m_NvShadingRateResources.viewsVPRT)));
 
+                resetShadingRates(Api::D3D11);
+
             } else if (m_device->getAs<D3D12>()) {
-                // Nothing extra to initialize.
+                resetShadingRates(Api::D3D12);
             }
 
             // Setup shader constants
@@ -459,7 +458,7 @@ namespace {
         }
 
         void updateRates(VariableShadingRateType mode) {
-            uint32_t rates[3] = {0};
+            uint32_t rates[3];
 
             if (mode == VariableShadingRateType::Preset) {
                 const auto quality = m_configManager->getEnumValue<VariableShadingRateQuality>(SettingVRSQuality);
@@ -475,11 +474,10 @@ namespace {
             const bool preferHorizontal =
                 m_mode == VariableShadingRateType::Custom && m_configManager->getValue(SettingVRSPreferHorizontal);
 
-            // TODO: D3D12 shading rates and lut
             m_constants.Rates[0] = settingsRateToShadingRate(rates[0], preferHorizontal);
             m_constants.Rates[1] = settingsRateToShadingRate(rates[1], preferHorizontal);
             m_constants.Rates[2] = settingsRateToShadingRate(rates[2], preferHorizontal);
-            m_constants.Rates[3] = SHADING_RATE_CULL;
+            m_constants.Rates[3] = m_shadingRates[SHADING_RATE_CULL];
 
             DebugLog("VRS: Rates= %u %u %u %u\n",
                      m_constants.Rates[0],
@@ -604,7 +602,50 @@ namespace {
 
             // preferHorizontal applies to odd settingsRate only, this prevents (CULL+1)
             preferHorizontal &= settingsRate < 4;
-            return lut[std::min(size_t(settingsRate), std::size(lut))] + (settingsRate & uint32_t(preferHorizontal));
+            auto rate =
+                lut[std::min(size_t(settingsRate), std::size(lut))] + (settingsRate & uint32_t(preferHorizontal));
+            return m_shadingRates[rate];
+        }
+
+        void resetShadingRates(Api api) {
+            if (api == Api::D3D11) {
+                // Implementation uses a constant table with a varying shading rate texture
+                // We set VRS on 2 viewports in case the stereo view renders in parallel.
+                m_shadingRates[SHADING_RATE_CULL] = NV_PIXEL_X0_CULL_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_x16] = NV_PIXEL_X16_PER_RASTER_PIXEL;
+                m_shadingRates[SHADING_RATE_x8] = NV_PIXEL_X8_PER_RASTER_PIXEL;
+                m_shadingRates[SHADING_RATE_x4] = NV_PIXEL_X4_PER_RASTER_PIXEL;
+                m_shadingRates[SHADING_RATE_x2] = NV_PIXEL_X2_PER_RASTER_PIXEL;
+                m_shadingRates[SHADING_RATE_x1] = NV_PIXEL_X1_PER_RASTER_PIXEL;
+                m_shadingRates[SHADING_RATE_2x1] = NV_PIXEL_X1_PER_2X1_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_1x2] = NV_PIXEL_X1_PER_1X2_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_2x2] = NV_PIXEL_X1_PER_2X2_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_4x2] = NV_PIXEL_X1_PER_4X2_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_2x4] = NV_PIXEL_X1_PER_2X4_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_4x4] = NV_PIXEL_X1_PER_4X4_RASTER_PIXELS;
+
+                for (size_t i = 0; i < std::size(m_shadingRates); i++) {
+                    m_nvRates[0].shadingRateTable[i] = static_cast<NV_PIXEL_SHADING_RATE>(m_shadingRates[i]);
+                }
+                m_nvRates[0].enableVariablePixelShadingRate = true;
+                m_nvRates[1] = m_nvRates[0];
+            }
+            if (api == Api::D3D12) {
+                // Implementation uses a varying shading rate texture.
+                // We use a constant table to lookup the shader constants only
+                m_shadingRates[SHADING_RATE_CULL] = D3D12_SHADING_RATE_4X4;
+                m_shadingRates[SHADING_RATE_x16] = D3D12_SHADING_RATE_1X1;
+                m_shadingRates[SHADING_RATE_x8] = D3D12_SHADING_RATE_1X1;
+                m_shadingRates[SHADING_RATE_x4] = D3D12_SHADING_RATE_1X1;
+                m_shadingRates[SHADING_RATE_x2] = D3D12_SHADING_RATE_1X1;
+                m_shadingRates[SHADING_RATE_x1] = D3D12_SHADING_RATE_1X1;
+                m_shadingRates[SHADING_RATE_2x1] = D3D12_SHADING_RATE_2X1;
+                m_shadingRates[SHADING_RATE_1x2] = D3D12_SHADING_RATE_1X2;
+                m_shadingRates[SHADING_RATE_2x2] = D3D12_SHADING_RATE_2X2;
+                m_shadingRates[SHADING_RATE_4x2] = D3D12_SHADING_RATE_4X2;
+                m_shadingRates[SHADING_RATE_2x4] = D3D12_SHADING_RATE_2X4;
+                m_shadingRates[SHADING_RATE_4x4] = D3D12_SHADING_RATE_4X4;
+            }
         }
 
         bool isVariableRateShadingCandidate(const XrSwapchainCreateInfo& info) const {
@@ -639,9 +680,19 @@ namespace {
         const float m_renderRatio;
         const float m_displayRatio;
 
+        XrVector2f m_gazeOffset[ViewCount + 1];
+        XrVector2f m_gazeLocation[ViewCount + 1];
+
+        VariableShadingRateType m_mode{VariableShadingRateType::None};
+        bool m_usingEyeTracking{false};
+        bool m_needUpdateViews{false};
+
+        // ShadingRates to Graphics API specific rates LUT.
+        uint8_t m_shadingRates[SHADING_RATE_COUNT];
+        ShadingConstants m_constants;
+
         std::shared_ptr<IShaderBuffer> m_cbShading;
         std::shared_ptr<IComputeShader> m_csShading;
-
         std::shared_ptr<ITexture> m_shadingRateMask[ViewCount + 1];
         std::shared_ptr<ITexture> m_shadingRateMaskVPRT;
 
@@ -658,40 +709,13 @@ namespace {
                 bool needUnload{false};
             } deferredUnloadNvAPI;
 
-            void resetRates() {
-                rates.enableVariablePixelShadingRate = true;
-                std::fill_n(rates.shadingRateTable, std::size(rates.shadingRateTable), NV_PIXEL_X1_PER_RASTER_PIXEL);
-
-                // We use a constant table and a varying shading rate texture filled with a compute shader.
-                rates.shadingRateTable[SHADING_RATE_CULL] = NV_PIXEL_X0_CULL_RASTER_PIXELS;
-                rates.shadingRateTable[SHADING_RATE_x16] = NV_PIXEL_X16_PER_RASTER_PIXEL;
-                rates.shadingRateTable[SHADING_RATE_x8] = NV_PIXEL_X8_PER_RASTER_PIXEL;
-                rates.shadingRateTable[SHADING_RATE_x4] = NV_PIXEL_X4_PER_RASTER_PIXEL;
-                rates.shadingRateTable[SHADING_RATE_x2] = NV_PIXEL_X2_PER_RASTER_PIXEL;
-                rates.shadingRateTable[SHADING_RATE_x1] = NV_PIXEL_X1_PER_RASTER_PIXEL;
-                rates.shadingRateTable[SHADING_RATE_2x1] = NV_PIXEL_X1_PER_2X1_RASTER_PIXELS;
-                rates.shadingRateTable[SHADING_RATE_1x2] = NV_PIXEL_X1_PER_1X2_RASTER_PIXELS;
-                rates.shadingRateTable[SHADING_RATE_2x2] = NV_PIXEL_X1_PER_2X2_RASTER_PIXELS;
-                rates.shadingRateTable[SHADING_RATE_4x2] = NV_PIXEL_X1_PER_4X2_RASTER_PIXELS;
-                rates.shadingRateTable[SHADING_RATE_2x4] = NV_PIXEL_X1_PER_2X4_RASTER_PIXELS;
-                rates.shadingRateTable[SHADING_RATE_4x4] = NV_PIXEL_X1_PER_4X4_RASTER_PIXELS;
-            }
-
             ComPtr<ID3D11NvShadingRateResourceView> views[ViewCount + 1];
             ComPtr<ID3D11NvShadingRateResourceView> viewsVPRT;
 
-            NV_D3D11_VIEWPORT_SHADING_RATE_DESC rates;
-
         } m_NvShadingRateResources;
 
-        XrVector2f m_gazeOffset[ViewCount + 1];
-        XrVector2f m_gazeLocation[ViewCount + 1];
-
-        ShadingConstants m_constants;
-
-        VariableShadingRateType m_mode{VariableShadingRateType::None};
-        bool m_usingEyeTracking{false};
-        bool m_needUpdateViews{false};
+        // We use a constant table and a varying shading rate texture filled with a compute shader.
+        inline static NV_D3D11_VIEWPORT_SHADING_RATE_DESC m_nvRates[2] = {};
 
 #ifdef _DEBUG
         bool m_isCapturing{false};
@@ -701,24 +725,7 @@ namespace {
         std::shared_ptr<ITexture> m_currentRenderTarget;
         std::optional<Eye> m_currentEyeHint;
 #endif
-#if 0
-        D3D12_SHADING_RATE getD3D12ShadingRate(int samplingPow2, bool preferHorizontal) {
-            switch (samplingPow2) {
-            case 0:
-                return D3D12_SHADING_RATE_1X1;
-            case 1:
-                return preferHorizontal ? D3D12_SHADING_RATE_1X2 : D3D12_SHADING_RATE_2X1;
-            case 2:
-                return D3D12_SHADING_RATE_2X2;
-            case 3:
-                return preferHorizontal ? D3D12_SHADING_RATE_2X4 : D3D12_SHADING_RATE_4X2;
-            case 4:
-            default:
-                return D3D12_SHADING_RATE_4X4;
-            }
-        }
-#endif
-    };
+    }; // namespace
 
 } // namespace
 
