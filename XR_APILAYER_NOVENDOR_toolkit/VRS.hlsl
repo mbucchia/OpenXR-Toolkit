@@ -56,9 +56,9 @@ RWTexture2D<uint> u_Output : register(u0);
 
 [numthreads(VRS_TILE_X, VRS_TILE_Y, 1)]
 void mainCS(in int2 pos : SV_DispatchThreadID) {
-  // texture space (w,h) to uv (0,1)
+  // screen space (w,h) to uv (0,1)
   float2 pos_uv = pos * Gaze.zw;
-  
+
   // pos uv to gaze ndc
   float2 pos_xy = 2.0f * (float2(pos_uv.x, 1.f - pos_uv.y) - Gaze.xy) - 1.0f;
 
@@ -67,20 +67,20 @@ void mainCS(in int2 pos : SV_DispatchThreadID) {
   // (w > h) ? scale x by w/h : scale y by h/w 
   // (1/w < 1/h) ? scale x by (1/h)/(1/w) : scale y by (1/w)/(1/h)
   float2 scale = (Gaze.z < Gaze.w) ? float2(Gaze.w / Gaze.z, 1.0f) : float2(1.0f, Gaze.z / Gaze.w);
-  float2 pos_xy *= scale;
+  pos_xy *= scale;
 #endif
-
+  
   // Numerators (x^2, y^2)
-  float2 pos_xy2 = pos_xy * pos_xy;
-    
+  pos_xy *= pos_xy;
+
   uint rate;
-  if      (dot(pos_xy2, Rings12.xy) <= 1.0f) rate = Rates.x;
+  if      (dot(pos_xy, Rings12.xy) <= 1.0f) rate = Rates.x;
 #if VRS_NUM_RATES >= 2
-  else if (dot(pos_xy2, Rings12.zw) <= 1.0f) rate = Rates.y;
+  else if (dot(pos_xy, Rings12.zw) <= 1.0f) rate = Rates.y;
 #if VRS_NUM_RATES >= 3
-  else if (dot(pos_xy2, Rings34.xy) <= 1.0f) rate = Rates.z;
+  else if (dot(pos_xy, Rings34.xy) <= 1.0f) rate = Rates.z;
 #if VRS_NUM_RATES >= 4
-  else if (dot(pos_xy2, Rings34.zw) <= 1.0f) rate = Rates.w;
+  else if (dot(pos_xy, Rings34.zw) <= 1.0f) rate = Rates.w;
 #endif
 #endif
 #endif
