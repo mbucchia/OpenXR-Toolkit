@@ -109,8 +109,6 @@ namespace {
               m_renderWidth(renderWidth), m_renderHeight(renderHeight),
               m_renderRatio(float(renderWidth) / renderHeight), m_displayRatio(float(displayHeight) / displayWidth),
               m_tileSize(tileSize), m_tileRateMax(tileRateMax) {
-            // Make sure to unload NvAPI on destruction
-            m_NvShadingRateResources.deferredUnloadNvAPI.needUnload = m_device->getApi() == Api::D3D11;
             createRenderResources(m_renderWidth, m_renderHeight);
 
             // Set initial projection center
@@ -176,36 +174,22 @@ namespace {
                 return false;
             }
 
-            // Attempt to update the foveation mask based on eye gaze.
-            if (m_needUpdateViews) {
-                m_needUpdateViews = false;
-
-                // In normalized screen coordinates.
-                XrVector2f gaze[ViewCount];
-                if (!m_usingEyeTracking) {
-                    gaze[1] = gaze[0] = m_gazeOffset[2];
-                    gaze[1].x = -gaze[0].x;
-
-                } else if (!m_eyeTracker || !m_eyeTracker->getProjectedGaze(gaze)) {
-                    // recenter when loosing eye tracking
-                    gaze[1] = gaze[0] = {0.f, 0.f};
-                }
-
-                updateGazeLocation(gaze[0], Eye::Left);
-                updateGazeLocation(gaze[1], Eye::Right);
-
-                // const auto updateSingleRTV = eyeHint.has_value() && info.arraySize == 1;
-                // const auto updateArrayRTV = info.arraySize > 1;
-                // updateViews(updateSingleRTV, updateArrayRTV, false);
-
-                // TODO: for now redraw all the views until we implement better logic
-                updateViews();
-
-                // TODO: What do we do upon (permanent) loss of tracking?
-            }
-
             DebugLog("VRS: Enable\n");
             if (auto context11 = context->getAs<D3D11>()) {
+                // Attempt to update the foveation mask based on eye gaze.
+                if (m_needUpdateViews) {
+                    m_needUpdateViews = false;
+                    // TODO: What do we do upon (permanent) loss of tracking?
+                    // Update the foveation mask based on eye gaze.
+                    updateGaze();
+
+                    // TODO: for now redraw all the views until we implement better logic
+                    // const auto updateSingleRTV = eyeHint.has_value() && info.arraySize == 1;
+                    // const auto updateArrayRTV = info.arraySize > 1;
+                    // updateViews(updateSingleRTV, updateArrayRTV, false);
+                    updateViews11();
+                }
+
                 // We set VRS on 2 viewports in case the stereo view renders in parallel.
                 NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
@@ -214,9 +198,9 @@ namespace {
                 desc.pViewports = m_nvRates;
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context11, &desc));
 
-                auto& mask = info.arraySize == 2
-                                 ? m_NvShadingRateResources.viewsVPRT
-                                 : m_NvShadingRateResources.views[(uint32_t)eyeHint.value_or(Eye::Both)];
+                auto idx = static_cast<size_t>(eyeHint.value_or(Eye::Both));
+                auto& mask =
+                    info.arraySize == 2 ? m_NvShadingRateResources.viewsVPRT : m_NvShadingRateResources.views[idx];
 
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context11, get(mask)));
 
@@ -231,14 +215,24 @@ namespace {
                     return false;
                 }
 
-                const D3D12_SHADING_RATE_COMBINER combiner[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT] = {
-                    D3D12_SHADING_RATE_COMBINER_PASSTHROUGH, D3D12_SHADING_RATE_COMBINER_OVERRIDE};
+                // Attempt to update the foveation mask based on eye gaze.
+                if (m_needUpdateViews) {
+                    m_needUpdateViews = false;
+                    // TODO: What do we do upon (permanent) loss of tracking?
+                    // Update the foveation mask based on eye gaze.
+                    updateGaze();
+
+                    // TODO: for now redraw all the views until we implement better logic
+                    updateViews12(get(vrsCommandList));
+                }
 
                 // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
-                auto& mask = m_shadingRateMask[(uint32_t)eyeHint.value_or(Eye::Both)];
 
-                vrsCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiner);
-                vrsCommandList->RSSetShadingRateImage(mask->getAs<D3D12>());
+                // Use the special SHADING_RATE_SOURCE resource state for barriers on the VRS surface
+                auto idx = static_cast<size_t>(eyeHint.value_or(Eye::Both));
+                auto mask = m_shadingRateMask[idx]->getAs<D3D12>();
+
+                m_Dx12ShadingRateResources.RSSetShadingRateImage(get(vrsCommandList), mask, idx);
 
             } else {
                 throw std::runtime_error("Unsupported graphics runtime");
@@ -262,7 +256,6 @@ namespace {
         }
 
         void setViewProjectionCenters(XrVector2f left, XrVector2f right) override {
-            // TODO:
             m_gazeOffset[0] = left;
             m_gazeOffset[1] = right;
         }
@@ -403,9 +396,11 @@ namespace {
                 CHECK_NVCMD(NvAPI_D3D11_CreateShadingRateResourceView(
                     device11, m_shadingRateMaskVPRT->getAs<D3D11>(), &desc, set(m_NvShadingRateResources.viewsVPRT)));
 
+                m_NvShadingRateResources.initialize();
                 resetShadingRates(Api::D3D11);
 
             } else if (m_device->getAs<D3D12>()) {
+                m_Dx12ShadingRateResources.initialize();
                 resetShadingRates(Api::D3D12);
             }
 
@@ -439,7 +434,8 @@ namespace {
                     return;
                 }
 
-                vrsCommandList->RSSetShadingRateImage(nullptr);
+                m_Dx12ShadingRateResources.RSUnsetShadingRateImages(get(vrsCommandList));
+
             } else {
                 throw std::runtime_error("Unsupported graphics runtime");
             }
@@ -547,7 +543,23 @@ namespace {
             DebugLog("VRS: Rings= %u %u\n", radius[0], radius[1]);
         }
 
-        void updateViews(bool updateSingleRTV = true, bool updateArrayRTV = true, bool updateFallbackRTV = true) {
+        void updateGaze() {
+            // In normalized screen coordinates.
+            XrVector2f gaze[ViewCount];
+            if (!m_usingEyeTracking) {
+                gaze[1] = gaze[0] = m_gazeOffset[2];
+                gaze[1].x = -gaze[0].x;
+
+            } else if (!m_eyeTracker || !m_eyeTracker->getProjectedGaze(gaze)) {
+                // recenter when loosing eye tracking
+                gaze[1] = gaze[0] = {0.f, 0.f};
+            }
+
+            m_gazeLocation[0] = gaze[0];
+            m_gazeLocation[1] = gaze[1];
+        }
+
+        void updateViews11(bool updateSingleRTV = true, bool updateArrayRTV = true, bool updateFallbackRTV = true) {
             for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
                 auto update_dispatch = i != 2 ? (updateSingleRTV || updateArrayRTV) : updateFallbackRTV;
                 if (update_dispatch) {
@@ -569,23 +581,21 @@ namespace {
                     }
                 }
             }
+        }
 
-            if (auto context12 = m_device->getContextAs<D3D12>()) {
-                // TODO: Need to use the immediate context instead!
-                const D3D12_RESOURCE_BARRIER barriers[] = {
-                    CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMask[0]->getAs<D3D12>(),
-                                                         D3D12_RESOURCE_STATE_COMMON,
-                                                         D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE),
-                    CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMask[1]->getAs<D3D12>(),
-                                                         D3D12_RESOURCE_STATE_COMMON,
-                                                         D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE),
-                    CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMask[2]->getAs<D3D12>(),
-                                                         D3D12_RESOURCE_STATE_COMMON,
-                                                         D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE),
-                    CD3DX12_RESOURCE_BARRIER::Transition(m_shadingRateMaskVPRT->getAs<D3D12>(),
-                                                         D3D12_RESOURCE_STATE_COMMON,
-                                                         D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE)};
-                context12->ResourceBarrier(ARRAYSIZE(barriers), barriers);
+        void updateViews12(ID3D12GraphicsCommandList5* pCommandList) {
+            for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
+                m_constants.GazeXY = m_gazeLocation[i];
+                m_cbShading->uploadData(&m_constants, sizeof(m_constants));
+
+                m_Dx12ShadingRateResources.ResourceBarrier(
+                    pCommandList, m_shadingRateMask[i]->getAs<D3D12>(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, i);
+
+                m_device->setShader(m_csShading);
+                m_device->setShaderInput(0, m_cbShading);
+                m_device->setShaderInput(0, m_shadingRateMask[i]);
+                m_device->setShaderOutput(0, m_shadingRateMask[i]);
+                m_device->dispatchShader();
             }
         }
 
@@ -709,10 +719,67 @@ namespace {
                 bool needUnload{false};
             } deferredUnloadNvAPI;
 
+            void initialize() {
+                // Make sure to unload NvAPI on destruction
+                deferredUnloadNvAPI.needUnload = true;
+            }
             ComPtr<ID3D11NvShadingRateResourceView> views[ViewCount + 1];
             ComPtr<ID3D11NvShadingRateResourceView> viewsVPRT;
 
         } m_NvShadingRateResources;
+
+        struct {
+            void initialize() {
+                // Make sure we got a valid initial state
+                state[2] = state[1] = state[0] = D3D12_RESOURCE_STATE_COMMON;
+                bound[2] = bound[1] = bound[0] = false;
+                // statesVPRT = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            }
+
+            void ResourceBarrier(ID3D12GraphicsCommandList5* pCommandList,
+                                 ID3D12Resource* pResource,
+                                 D3D12_RESOURCE_STATES newState,
+                                 size_t idx) {
+                if (!bound[idx] && state[idx] != newState) {
+                    auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(pResource, state[idx], newState);
+                    pCommandList->ResourceBarrier(1, &barrier);
+                    state[idx] = newState;
+                }
+            }
+
+            void RSSetShadingRateImage(ID3D12GraphicsCommandList5* pCommandList,
+                                       ID3D12Resource* pResource,
+                                       size_t idx) {
+                if (!bound[idx]) {
+                    ResourceBarrier(pCommandList, pResource, D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE, idx);
+
+                    // RSSetShadingRate() function sets both the combiners and the per-drawcall shading rate.
+                    // We set to 1X1 for all sources and all combiners to MAX, so that the coarsest wins (per-drawcall,
+                    // per-primitive, VRS surface).
+
+                    static const D3D12_SHADING_RATE_COMBINER combiners[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT] = {
+                        D3D12_SHADING_RATE_COMBINER_MAX, D3D12_SHADING_RATE_COMBINER_MAX};
+
+                    pCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiners);
+                    pCommandList->RSSetShadingRateImage(pResource);
+
+                    bound[idx] = true;
+                }
+            }
+
+            void RSUnsetShadingRateImages(ID3D12GraphicsCommandList5* pCommandList) {
+                // To disable VRS, set shading rate to 1X1 with no combiners, and no RSSetShadingRateImage()
+                pCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, nullptr);
+                pCommandList->RSSetShadingRateImage(nullptr);
+
+                bound[2] = bound[1] = bound[0] = false;
+            }
+
+            D3D12_RESOURCE_STATES state[ViewCount + 1];
+            // D3D12_RESOURCE_STATES statesVPRT;
+            bool bound[ViewCount + 1];
+
+        } m_Dx12ShadingRateResources;
 
         // We use a constant table and a varying shading rate texture filled with a compute shader.
         inline static NV_D3D11_VIEWPORT_SHADING_RATE_DESC m_nvRates[2] = {};
@@ -728,6 +795,10 @@ namespace {
     }; // namespace
 
 } // namespace
+
+#ifdef _DEBUG
+#include <dxgi1_3.h> // DXGIGetDebugInterface1
+#endif
 
 namespace toolkit::graphics {
     std::shared_ptr<IVariableRateShader> CreateVariableRateShader(std::shared_ptr<IConfigManager> configManager,
@@ -773,7 +844,18 @@ namespace toolkit::graphics {
                     Log("VRS (DX12 Tier2) is not supported for this adapter\n");
                     throw FeatureNotSupported();
                 }
-
+#ifdef _DEBUG
+                // For now, disable variable rate shading when running under PIX.
+                // This is only needed until PIX supports VRS.
+                IID graphicsAnalysisID;
+                if (SUCCEEDED(IIDFromString(L"{9F251514-9D4D-4902-9D60-18988AB7D4B5}", &graphicsAnalysisID))) {
+                    ComPtr<IUnknown> graphicsAnalysis;
+                    if (SUCCEEDED(DXGIGetDebugInterface1(0, graphicsAnalysisID, &graphicsAnalysis))) {
+                        Log("VRS (DX12 Tier2) is not supported undex PIX\n");
+                        throw FeatureNotSupported();
+                    }
+                }
+#endif
                 tileSize = options.ShadingRateImageTileSize;
                 tileRateMax = integer_log2(tileSize);
 
