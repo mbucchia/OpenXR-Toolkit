@@ -91,6 +91,8 @@ namespace {
     };
 
     inline XrVector2f MakeRingParam(XrVector2f size) {
+        size.x = std::max(size.x, FLT_EPSILON);
+        size.y = std::max(size.y, FLT_EPSILON);
         return {1.f / (size.x * size.x), 1.f / (size.y * size.y)};
     }
 
