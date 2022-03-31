@@ -733,15 +733,14 @@ namespace {
             void initialize() {
                 // Make sure we got a valid initial state
                 state[2] = state[1] = state[0] = D3D12_RESOURCE_STATE_COMMON;
-                bound[2] = bound[1] = bound[0] = false;
-                // statesVPRT = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                boundState = 0;
             }
 
             void ResourceBarrier(ID3D12GraphicsCommandList5* pCommandList,
                                  ID3D12Resource* pResource,
                                  D3D12_RESOURCE_STATES newState,
                                  size_t idx) {
-                if (!bound[idx] && state[idx] != newState) {
+                if (state[idx] != newState) {
                     auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(pResource, state[idx], newState);
                     pCommandList->ResourceBarrier(1, &barrier);
                     state[idx] = newState;
@@ -751,7 +750,8 @@ namespace {
             void RSSetShadingRateImage(ID3D12GraphicsCommandList5* pCommandList,
                                        ID3D12Resource* pResource,
                                        size_t idx) {
-                if (!bound[idx]) {
+                const uint32_t boundMask = 1u << idx;
+                if (!(boundState & boundMask)) {
                     ResourceBarrier(pCommandList, pResource, D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE, idx);
 
                     // RSSetShadingRate() function sets both the combiners and the per-drawcall shading rate.
@@ -764,7 +764,7 @@ namespace {
                     pCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiners);
                     pCommandList->RSSetShadingRateImage(pResource);
 
-                    bound[idx] = true;
+                    boundState = boundMask;
                 }
             }
 
@@ -772,13 +772,11 @@ namespace {
                 // To disable VRS, set shading rate to 1X1 with no combiners, and no RSSetShadingRateImage()
                 pCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, nullptr);
                 pCommandList->RSSetShadingRateImage(nullptr);
-
-                bound[2] = bound[1] = bound[0] = false;
+                boundState = 0;
             }
 
             D3D12_RESOURCE_STATES state[ViewCount + 1];
-            // D3D12_RESOURCE_STATES statesVPRT;
-            bool bound[ViewCount + 1];
+            uint32_t boundState;
 
         } m_Dx12ShadingRateResources;
 
