@@ -57,10 +57,13 @@ RWTexture2D<uint> u_Output : register(u0);
 [numthreads(VRS_TILE_X, VRS_TILE_Y, 1)]
 void mainCS(in int2 pos : SV_DispatchThreadID) {
   // screen space (w,h) to uv (0,1)
-  float2 pos_uv = pos * Gaze.zw;
+  float2 pos_uv = (pos + 0.5f) * Gaze.zw;
 
-  // pos uv to gaze ndc
-  float2 pos_xy = 2.0f * (float2(pos_uv.x, 1.f - pos_uv.y) - Gaze.xy) - 1.0f;
+  // uv to ndc (y flip)
+  float2 pos_xy = float2(2.0f,-2.0f) * pos_uv + float2(-1.0f,+1.0f);
+
+  // ndc to gaze ndc
+  pos_xy -= Gaze.xy;
 
 #if VRS_USE_DIM_RATIO
   // adjust ellipse scale with texture scale ratio
@@ -69,7 +72,7 @@ void mainCS(in int2 pos : SV_DispatchThreadID) {
   float2 scale = (Gaze.z < Gaze.w) ? float2(Gaze.w / Gaze.z, 1.0f) : float2(1.0f, Gaze.z / Gaze.w);
   pos_xy *= scale;
 #endif
-  
+
   // Numerators (x^2, y^2)
   pos_xy *= pos_xy;
 

@@ -409,6 +409,7 @@ namespace {
             // Setup shader constants
             updateRates(m_mode);
             updateRings(m_mode);
+            updateGaze();
 
             DebugLog("VRS: renderWidth=%u renderHeight=%u tileSize=%u\n", m_renderWidth, m_renderHeight, m_tileSize);
         }
@@ -535,8 +536,8 @@ namespace {
             m_constants.Rings[2] = MakeRingParam({100.f, 100.f}); // large enough
             m_constants.Rings[3] = MakeRingParam({100.f, 100.f}); // large enough
 
-            m_gazeOffset[2].x = m_configManager->getValue(SettingVRSXOffset) * 0.005f; // +- 50%
-            m_gazeOffset[2].y = m_configManager->getValue(SettingVRSYOffset) * 0.005f; // +- 50%
+            m_gazeOffset[2].x = m_configManager->getValue(SettingVRSXOffset) * 0.01f;
+            m_gazeOffset[2].y = m_configManager->getValue(SettingVRSYOffset) * 0.01f;
 
             // updateFallbackRTV
             m_gazeLocation[2].x = 0;
@@ -546,15 +547,13 @@ namespace {
         }
 
         void updateGaze() {
-            // In normalized screen coordinates.
             XrVector2f gaze[ViewCount];
-            if (!m_usingEyeTracking) {
-                gaze[1] = gaze[0] = m_gazeOffset[2];
-                gaze[1].x = -gaze[0].x;
 
-            } else if (!m_eyeTracker || !m_eyeTracker->getProjectedGaze(gaze)) {
-                // recenter when loosing eye tracking
-                gaze[1] = gaze[0] = {0.f, 0.f};
+            if (!m_usingEyeTracking || !m_eyeTracker || !m_eyeTracker->getProjectedGaze(gaze)) {
+                using namespace xr::math;
+                // view center + view offset (L/R)
+                gaze[0] = m_gazeOffset[0] + m_gazeOffset[2];
+                gaze[1] = m_gazeOffset[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
             }
 
             m_gazeLocation[0] = gaze[0];
