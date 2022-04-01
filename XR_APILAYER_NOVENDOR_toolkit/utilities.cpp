@@ -156,6 +156,40 @@ namespace toolkit::utilities {
         }
     }
 
+    // https://stackoverflow.com/questions/7808085/how-to-get-the-status-of-a-service-programmatically-running-stopped
+    bool IsServiceRunning(const std::string& name) {
+        SC_HANDLE theService, scm;
+        SERVICE_STATUS m_SERVICE_STATUS;
+        SERVICE_STATUS_PROCESS ssStatus;
+        DWORD dwBytesNeeded;
+
+        scm = OpenSCManager(nullptr, nullptr, SC_MANAGER_ENUMERATE_SERVICE);
+        if (!scm) {
+            return false;
+        }
+
+        theService = OpenServiceA(scm, name.c_str(), SERVICE_QUERY_STATUS);
+        if (!theService) {
+            CloseServiceHandle(scm);
+            return false;
+        }
+
+        auto result = QueryServiceStatusEx(theService,
+                                           SC_STATUS_PROCESS_INFO,
+                                           reinterpret_cast<LPBYTE>(&ssStatus),
+                                           sizeof(SERVICE_STATUS_PROCESS),
+                                           &dwBytesNeeded);
+
+        CloseServiceHandle(theService);
+        CloseServiceHandle(scm);
+
+        if (result == 0) {
+            return false;
+        }
+
+        return ssStatus.dwCurrentState == SERVICE_RUNNING;
+    }
+
     // [-1,+1] (+up) -> [0..1] (+dn)
     XrVector2f NdcToScreen(XrVector2f v) {
         return {(1.f + v.x) * 0.5f, (v.y - 1.f) * -0.5f};
