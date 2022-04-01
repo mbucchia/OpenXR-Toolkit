@@ -46,6 +46,8 @@ namespace toolkit {
 
         void UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate rate);
 
+        bool IsServiceRunning(const std::string& name);
+
     } // namespace utilities
 
     namespace config {
@@ -123,7 +125,9 @@ namespace toolkit {
         CreateHandTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
 
         std::shared_ptr<input::IEyeTracker>
-        CreateEyeTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
+        CreateEyeTracker(toolkit::OpenXrApi& openXR,
+                         std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                         std::unique_ptr<HP::Omnicept::Client> omniceptClient = nullptr);
 
     } // namespace input
 

@@ -291,6 +291,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_A1C0F5E75EAA4B97A0A55AACB45F8921"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_A84030E42CA5C243CFFD46052A3956AB"
         "OwnerKey" = "8:_3D61027B4363612CD161FAE9C654011C"
         "MsmSig" = "8:_UNDEFINED"
@@ -340,6 +346,12 @@
         "Entry"
         {
         "MsmKey" = "8:_D2BDD673A05840748996CEDE9C3156FA"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_D3436D5BAE9647D7A898C0413C9C7D98"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1203,6 +1215,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A1C0F5E75EAA4B97A0A55AACB45F8921"
+            {
+            "SourcePath" = "8:..\\external\\Omnicept-SDK\\bin\\Release\\jsoncpp.dll"
+            "TargetName" = "8:jsoncpp.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_A84030E42CA5C243CFFD46052A3956AB"
             {
             "AssemblyRegister" = "3:1"
@@ -1362,6 +1394,26 @@
             "TargetName" = "8:NIS.hlsl"
             "Tag" = "8:"
             "Folder" = "8:_A3E4D480BBBE4121A0414DD516E4AF66"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D3436D5BAE9647D7A898C0413C9C7D98"
+            {
+            "SourcePath" = "8:..\\external\\Omnicept-SDK\\bin\\Release\\libzmq-mt-4_3_3.dll"
+            "TargetName" = "8:libzmq-mt-4_3_3.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -1557,7 +1609,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:OpenXR-Toolkit"
         "ProductCode" = "8:{FCAAACC4-9554-45C5-93C5-AB73A631C02C}"
-        "PackageCode" = "8:{5BF8C237-AB47-4C60-A494-100D42FE0256}"
+        "PackageCode" = "8:{7A023C76-A382-4AE0-BF17-71DB8350AA52}"
         "UpgradeCode" = "8:{DE3B4392-8473-4208-A77F-812E54E09AE6}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"

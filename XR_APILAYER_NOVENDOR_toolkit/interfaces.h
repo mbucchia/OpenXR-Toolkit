@@ -685,10 +685,6 @@ namespace toolkit {
         };
 
         struct EyeGazeState {
-            float yaw{0.f};
-            float pitch{0.f};
-
-            XrVector3f origin{0.f, 0.f, 0.f};
         };
 
         struct IEyeTracker {

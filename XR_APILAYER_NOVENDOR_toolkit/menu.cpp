@@ -794,21 +794,6 @@ namespace {
                             }
 
 #undef GESTURE_STATE
-
-                            if (isEyeTrackingEnabled()) {
-                                m_device->drawString(fmt::format("e.yaw: {:.1f}", m_eyeGazeState.yaw), OVERLAY_COMMON);
-                                top += 1.05f * fontSize;
-                                m_device->drawString(fmt::format("e.pch: {:.1f}", m_eyeGazeState.pitch),
-                                                     OVERLAY_COMMON);
-                                top += 1.05f * fontSize;
-
-                                m_device->drawString(fmt::format("{:.3f}, {:.3f}, {:.3f}",
-                                                                 m_eyeGazeState.origin.x,
-                                                                 m_eyeGazeState.origin.y,
-                                                                 m_eyeGazeState.origin.z),
-                                                     OVERLAY_COMMON);
-                                top += 1.05f * fontSize;
-                            }
                         }
                     }
                 }

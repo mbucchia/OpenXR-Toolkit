@@ -228,8 +228,42 @@ namespace {
                 m_sendInterationProfileEvent = true;
             }
 
+            // For eye tracking, we try to use the Omnicept runtime if it's available. Otherwise, we will try to
+            // fallback to OpenXR.
+            std::unique_ptr<HP::Omnicept::Client> omniceptClient;
+            if (utilities::IsServiceRunning("HP Omnicept")) {
+                try {
+                    HP::Omnicept::Client::StateCallback_T stateCallback = [&](const HP::Omnicept::Client::State state) {
+                        if (state == HP::Omnicept::Client::State::RUNNING ||
+                            state == HP::Omnicept::Client::State::PAUSED) {
+                            Log("Omnicept client connected\n");
+                        } else if (state == HP::Omnicept::Client::State::DISCONNECTED) {
+                            Log("Omnicept client disconnected\n");
+                        }
+                    };
+
+                    std::unique_ptr<HP::Omnicept::Glia::AsyncClientBuilder> omniceptClientBuilder =
+                        HP::Omnicept::Glia::StartBuildClient_Async(
+                            "OpenXR-Toolkit",
+                            std::move(std::make_unique<HP::Omnicept::Abi::SessionLicense>(
+                                "", "", HP::Omnicept::Abi::LicensingModel::CORE, false)),
+                            stateCallback);
+
+                    omniceptClient = std::move(omniceptClientBuilder->getBuildClientResultOrThrow());
+                    m_isOmniceptDetected = true;
+                } catch (const HP::Omnicept::Abi::HandshakeError& e) {
+                    Log("Could not connect to Omnicept runtime HandshakeError: %s\n", e.what());
+                } catch (const HP::Omnicept::Abi::TransportError& e) {
+                    Log("Could not connect to Omnicept runtime TransportError: %s\n", e.what());
+                } catch (const HP::Omnicept::Abi::ProtocolError& e) {
+                    Log("Could not connect to Omnicept runtime ProtocolError: %s\n", e.what());
+                } catch (std::exception& e) {
+                    Log("Could not connect to Omnicept runtime: %s\n", e.what());
+                }
+            }
+
             if (m_configManager->getValue(config::SettingEyeTrackingEnabled)) {
-                m_eyeTracker = input::CreateEyeTracker(*this, m_configManager);
+                m_eyeTracker = input::CreateEyeTracker(*this, m_configManager, std::move(omniceptClient));
             }
 
             return XR_SUCCESS;
@@ -296,7 +330,7 @@ namespace {
                     isDeveloper || (m_applicationName == "FS2020" && m_systemName.find("aapvr") != std::string::npos);
 
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
-                m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction ||
+                m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction || m_isOmniceptDetected ||
                                        m_configManager->getValue(config::SettingEyeDebugWithController);
 
                 // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
@@ -913,16 +947,19 @@ namespace {
             XrSessionActionSetsAttachInfo chainAttachInfo = *attachInfo;
             std::vector<XrActionSet> newActionSets;
             if (m_eyeTracker) {
-                newActionSets.resize(chainAttachInfo.countActionSets + 1);
-                memcpy(newActionSets.data(),
-                       chainAttachInfo.actionSets,
-                       chainAttachInfo.countActionSets * sizeof(XrActionSet));
-                uint32_t nextActionSetSlot = chainAttachInfo.countActionSets;
+                const auto eyeTrackerActionSet = m_eyeTracker->getActionSet();
+                if (eyeTrackerActionSet != XR_NULL_HANDLE) {
+                    newActionSets.resize(chainAttachInfo.countActionSets + 1);
+                    memcpy(newActionSets.data(),
+                           chainAttachInfo.actionSets,
+                           chainAttachInfo.countActionSets * sizeof(XrActionSet));
+                    uint32_t nextActionSetSlot = chainAttachInfo.countActionSets;
 
-                newActionSets[nextActionSetSlot++] = m_eyeTracker->getActionSet();
+                    newActionSets[nextActionSetSlot++] = eyeTrackerActionSet;
 
-                chainAttachInfo.actionSets = newActionSets.data();
-                chainAttachInfo.countActionSets++;
+                    chainAttachInfo.actionSets = newActionSets.data();
+                    chainAttachInfo.countActionSets++;
+                }
             }
 
             return OpenXrApi::xrAttachSessionActionSets(session, &chainAttachInfo);
@@ -1909,6 +1946,7 @@ namespace {
         bool m_supportHandTracking{false};
         bool m_supportEyeTracking{false};
         bool m_supportFOVHack{false};
+        bool m_isOmniceptDetected{false};
 
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;

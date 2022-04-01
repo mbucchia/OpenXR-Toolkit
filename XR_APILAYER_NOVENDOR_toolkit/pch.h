@@ -132,3 +132,6 @@ constexpr inline T roundDown(T value, uint32_t pad) noexcept {
 
 // NVAPI SDK.
 #include <nvapi.h>
+
+// Omnicept SDK.
+#include <omnicept/Glia.h>
