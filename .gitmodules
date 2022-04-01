@@ -16,3 +16,6 @@
 [submodule "external/NVAPI"]
 	path = external/NVAPI
 	url = https://github.com/mbucchia/NVAPI.git
+[submodule "external/Omnicept-SDK"]
+	path = external/Omnicept-SDK
+	url = https://github.com/mbucchia/Omnicept-SDK.git
