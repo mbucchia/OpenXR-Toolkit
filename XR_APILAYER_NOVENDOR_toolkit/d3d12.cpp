@@ -90,7 +90,7 @@ namespace {
     // are going to be identical for a given shader, which is an acceptable constraint.
     class D3D12Shader {
       public:
-        D3D12Shader(std::shared_ptr<IDevice> device, ID3DBlob* shaderBytes, const std::optional<std::string>& debugName)
+        D3D12Shader(std::shared_ptr<IDevice> device, ID3DBlob* shaderBytes, std::string_view debugName)
             : m_device(device), m_shaderBytes(shaderBytes), m_debugName(debugName), m_shaderData{} {
         }
 
@@ -123,37 +123,37 @@ namespace {
 
         virtual void resolve() {
             // Common code for creating the root signature.
-            auto device = m_device->getNative<D3D12>();
-
-            std::vector<CD3DX12_ROOT_PARAMETER> parametersDescriptors;
-            for (const auto& range : m_parametersDescriptorRanges) {
-                parametersDescriptors.push_back({});
-                parametersDescriptors.back().InitAsDescriptorTable(1, &range);
-            }
-
-            CD3DX12_ROOT_SIGNATURE_DESC desc((UINT)parametersDescriptors.size(),
-                                             parametersDescriptors.data(),
-                                             0,
-                                             nullptr,
-                                             D3D12_ROOT_SIGNATURE_FLAG_NONE);
-
-            ComPtr<ID3DBlob> serializedRootSignature;
-            ComPtr<ID3DBlob> errors;
-            const HRESULT hr =
-                D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &serializedRootSignature, set(errors));
-            if (FAILED(hr)) {
-                if (errors) {
-                    Log("%s", (char*)errors->GetBufferPointer());
+            if (auto device = m_device->getAs<D3D12>()) {
+                std::vector<CD3DX12_ROOT_PARAMETER> parametersDescriptors;
+                for (const auto& range : m_parametersDescriptorRanges) {
+                    parametersDescriptors.push_back({});
+                    parametersDescriptors.back().InitAsDescriptorTable(1, &range);
                 }
-                CHECK_HRESULT(hr, "Failed to serialize root signature");
+
+                CD3DX12_ROOT_SIGNATURE_DESC desc((UINT)parametersDescriptors.size(),
+                                                 parametersDescriptors.data(),
+                                                 0,
+                                                 nullptr,
+                                                 D3D12_ROOT_SIGNATURE_FLAG_NONE);
+
+                ComPtr<ID3DBlob> serializedRootSignature;
+                ComPtr<ID3DBlob> errors;
+                const HRESULT hr = D3D12SerializeRootSignature(
+                    &desc, D3D_ROOT_SIGNATURE_VERSION_1, &serializedRootSignature, set(errors));
+                if (FAILED(hr)) {
+                    if (errors) {
+                        Log("%s", (char*)errors->GetBufferPointer());
+                    }
+                    CHECK_HRESULT(hr, "Failed to serialize root signature");
+                }
+
+                CHECK_HRCMD(device->CreateRootSignature(0,
+                                                        serializedRootSignature->GetBufferPointer(),
+                                                        serializedRootSignature->GetBufferSize(),
+                                                        IID_PPV_ARGS(set(m_rootSignature))));
+
+                m_parametersDescriptorRanges.clear();
             }
-
-            CHECK_HRCMD(device->CreateRootSignature(0,
-                                                    serializedRootSignature->GetBufferPointer(),
-                                                    serializedRootSignature->GetBufferSize(),
-                                                    IID_PPV_ARGS(set(m_rootSignature))));
-
-            m_parametersDescriptorRanges.clear();
         }
 
         bool needsResolve() const {
@@ -164,7 +164,7 @@ namespace {
         const std::shared_ptr<IDevice> m_device;
         // Keep a reference for memory management purposes.
         const ComPtr<ID3DBlob> m_shaderBytes;
-        const std::optional<std::string> m_debugName;
+        const std::string_view m_debugName;
 
         ComPtr<ID3D12RootSignature> m_rootSignature;
         ComPtr<ID3D12PipelineState> m_pipelineState;
@@ -182,7 +182,7 @@ namespace {
         D3D12QuadShader(std::shared_ptr<IDevice> device,
                         D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc,
                         ID3DBlob* shaderBytes,
-                        const std::optional<std::string>& debugName)
+                        std::string_view debugName)
             : D3D12Shader(device, shaderBytes, debugName), m_psoDesc(desc) {
         }
 
@@ -200,44 +200,46 @@ namespace {
 
             // Initialize the pipeline state now.
             // TODO: We must support the RTV format changing.
-            auto device = m_device->getNative<D3D12>();
-            m_psoDesc.RTVFormats[0] = (DXGI_FORMAT)m_outputInfo.format;
-            m_psoDesc.NumRenderTargets = 1;
-            m_psoDesc.SampleDesc.Count = m_outputInfo.sampleCount;
-            if (m_psoDesc.SampleDesc.Count > 1) {
-                D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS qualityLevels;
-                qualityLevels.Format = m_psoDesc.RTVFormats[0];
-                qualityLevels.SampleCount = m_psoDesc.SampleDesc.Count;
-                qualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-                CHECK_HRCMD(m_device->getNative<D3D12>()->CheckFeatureSupport(
-                    D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &qualityLevels, sizeof(qualityLevels)));
+            if (auto device = m_device->getAs<D3D12>()) {
+                m_psoDesc.RTVFormats[0] = (DXGI_FORMAT)m_outputInfo.format;
+                m_psoDesc.NumRenderTargets = 1;
+                m_psoDesc.SampleDesc.Count = m_outputInfo.sampleCount;
+                if (m_psoDesc.SampleDesc.Count > 1) {
+                    D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS qualityLevels;
+                    qualityLevels.Format = m_psoDesc.RTVFormats[0];
+                    qualityLevels.SampleCount = m_psoDesc.SampleDesc.Count;
+                    qualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+                    CHECK_HRCMD(device->CheckFeatureSupport(
+                        D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &qualityLevels, sizeof(qualityLevels)));
 
-                // Setup for highest quality multisampling if requested.
-                m_psoDesc.SampleDesc.Quality = qualityLevels.NumQualityLevels - 1;
-                m_psoDesc.RasterizerState.MultisampleEnable = true;
+                    // Setup for highest quality multisampling if requested.
+                    m_psoDesc.SampleDesc.Quality = qualityLevels.NumQualityLevels - 1;
+                    m_psoDesc.RasterizerState.MultisampleEnable = true;
+                }
+                m_psoDesc.pRootSignature = get(m_rootSignature);
+                CHECK_HRCMD(device->CreateGraphicsPipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
+
+                if (!m_debugName.empty()) {
+                    m_pipelineState->SetPrivateData(
+                        WKPDID_D3DDebugObjectName, (UINT)m_debugName.size(), m_debugName.data());
+                }
+
+                m_shaderData.rootSignature = get(m_rootSignature);
+                m_shaderData.pipelineState = get(m_pipelineState);
+
+                // Setup the pipeline to make up for the deferred initialization.
+                auto context = m_device->getContextAs<D3D12>();
+                context->SetGraphicsRootSignature(get(m_rootSignature));
+                context->SetPipelineState(get(m_pipelineState));
+                context->IASetIndexBuffer(nullptr);
+                context->IASetVertexBuffers(0, 0, nullptr);
+                context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+                for (const auto& parameter : m_parametersForFirstCall) {
+                    context->SetGraphicsRootDescriptorTable(parameter.first, parameter.second);
+                }
+
+                m_parametersForFirstCall.clear();
             }
-            m_psoDesc.pRootSignature = get(m_rootSignature);
-            CHECK_HRCMD(device->CreateGraphicsPipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
-
-            if (m_debugName) {
-                m_pipelineState->SetName(std::wstring(m_debugName->begin(), m_debugName->end()).c_str());
-            }
-
-            m_shaderData.rootSignature = get(m_rootSignature);
-            m_shaderData.pipelineState = get(m_pipelineState);
-
-            // Setup the pipeline to make up for the deferred initialization.
-            auto context = m_device->getContext<D3D12>();
-            context->SetGraphicsRootSignature(get(m_rootSignature));
-            context->SetPipelineState(get(m_pipelineState));
-            context->IASetIndexBuffer(nullptr);
-            context->IASetVertexBuffers(0, 0, nullptr);
-            context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-            for (const auto& parameter : m_parametersForFirstCall) {
-                context->SetGraphicsRootDescriptorTable(parameter.first, parameter.second);
-            }
-
-            m_parametersForFirstCall.clear();
         }
 
         void* getNativePtr() const override {
@@ -253,7 +255,7 @@ namespace {
         D3D12ComputeShader(std::shared_ptr<IDevice> device,
                            D3D12_COMPUTE_PIPELINE_STATE_DESC& desc,
                            ID3DBlob* shaderBytes,
-                           const std::optional<std::string>& debugName,
+                           std::string_view debugName,
                            std::optional<std::array<unsigned int, 3>> threadGroups)
             : D3D12Shader(device, shaderBytes, debugName), m_psoDesc(desc) {
             if (threadGroups) {
@@ -282,26 +284,28 @@ namespace {
             D3D12Shader::resolve();
 
             // Initialize the pipeline state now.
-            auto device = m_device->getNative<D3D12>();
-            m_psoDesc.pRootSignature = get(m_rootSignature);
-            CHECK_HRCMD(device->CreateComputePipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
+            if (auto device = m_device->getAs<D3D12>()) {
+                m_psoDesc.pRootSignature = get(m_rootSignature);
+                CHECK_HRCMD(device->CreateComputePipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
 
-            if (m_debugName) {
-                m_pipelineState->SetName(std::wstring(m_debugName->begin(), m_debugName->end()).c_str());
+                if (!m_debugName.empty()) {
+                    m_pipelineState->SetPrivateData(
+                        WKPDID_D3DDebugObjectName, (UINT)m_debugName.size(), m_debugName.data());
+                }
+
+                m_shaderData.rootSignature = get(m_rootSignature);
+                m_shaderData.pipelineState = get(m_pipelineState);
+
+                // Setup the pipeline to make up for the deferred initialization.
+                auto context = m_device->getContextAs<D3D12>();
+                context->SetComputeRootSignature(get(m_rootSignature));
+                context->SetPipelineState(get(m_pipelineState));
+                for (const auto& parameter : m_parametersForFirstCall) {
+                    context->SetComputeRootDescriptorTable(parameter.first, parameter.second);
+                }
+
+                m_parametersForFirstCall.clear();
             }
-
-            m_shaderData.rootSignature = get(m_rootSignature);
-            m_shaderData.pipelineState = get(m_pipelineState);
-
-            // Setup the pipeline to make up for the deferred initialization.
-            auto context = m_device->getContext<D3D12>();
-            context->SetComputeRootSignature(get(m_rootSignature));
-            context->SetPipelineState(get(m_pipelineState));
-            for (const auto& parameter : m_parametersForFirstCall) {
-                context->SetComputeRootDescriptorTable(parameter.first, parameter.second);
-            }
-
-            m_parametersForFirstCall.clear();
         }
 
         void* getNativePtr() const override {
@@ -374,36 +378,24 @@ namespace {
             return m_textureDesc.DepthOrArraySize > 1;
         }
 
-        std::shared_ptr<IShaderInputTextureView> getShaderInputView() const override {
-            return getShaderInputViewInternal(m_shaderResourceView, 0);
+        std::shared_ptr<IShaderInputTextureView> getShaderResourceView(int32_t slice) const override {
+            auto& view = slice < 0 ? m_shaderResourceView : m_shaderResourceSubView[slice];
+            return getShaderInputViewInternal(view, std::max(slice, 0));
         }
 
-        std::shared_ptr<IShaderInputTextureView> getShaderInputView(uint32_t slice) const override {
-            return getShaderInputViewInternal(m_shaderResourceSubView[slice], slice);
+        std::shared_ptr<IComputeShaderOutputView> getUnorderedAccessView(int32_t slice) const override {
+            auto& view = slice < 0 ? m_unorderedAccessView : m_unorderedAccessSubView[slice];
+            return getUnorderedAccessViewInternal(view, std::max(slice, 0));
         }
 
-        std::shared_ptr<IComputeShaderOutputView> getComputeShaderOutputView() const override {
-            return getComputeShaderOutputViewInternal(m_unorderedAccessView, 0);
+        std::shared_ptr<IRenderTargetView> getRenderTargetView(int32_t slice) const override {
+            auto& view = slice < 0 ? m_renderTargetView : m_renderTargetSubView[slice];
+            return getRenderTargetViewInternal(view, std::max(slice, 0));
         }
 
-        std::shared_ptr<IComputeShaderOutputView> getComputeShaderOutputView(uint32_t slice) const override {
-            return getComputeShaderOutputViewInternal(m_unorderedAccessSubView[slice], slice);
-        }
-
-        std::shared_ptr<IRenderTargetView> getRenderTargetView() const override {
-            return getRenderTargetViewInternal(m_renderTargetView, 0);
-        }
-
-        std::shared_ptr<IRenderTargetView> getRenderTargetView(uint32_t slice) const override {
-            return getRenderTargetViewInternal(m_renderTargetSubView[slice], slice);
-        }
-
-        std::shared_ptr<IDepthStencilView> getDepthStencilView() const override {
-            return getDepthStencilViewInternal(m_depthStencilView, 0);
-        }
-
-        std::shared_ptr<IDepthStencilView> getDepthStencilView(uint32_t slice) const override {
-            return getDepthStencilViewInternal(m_depthStencilSubView[slice], slice);
+        std::shared_ptr<IDepthStencilView> getDepthStencilView(int32_t slice) const override {
+            auto& view = slice < 0 ? m_depthStencilView : m_depthStencilSubView[slice];
+            return getDepthStencilViewInternal(view, std::max(slice, 0));
         }
 
         void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) override {
@@ -411,16 +403,16 @@ namespace {
 
             // Create an upload buffer if we don't have one already
             if (!m_uploadBuffer) {
-                m_uploadSize =
-                    Align((UINT)m_textureDesc.Width, m_device->getTextureAlignmentConstraint()) * m_textureDesc.Height;
+                m_uploadSize = alignTo((UINT)m_textureDesc.Width, m_device->getTextureAlignmentConstraint()) *
+                               m_textureDesc.Height;
                 const auto& heapType = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
                 const auto stagingDesc = CD3DX12_RESOURCE_DESC::Buffer(m_uploadSize);
-                CHECK_HRCMD(m_device->getNative<D3D12>()->CreateCommittedResource(&heapType,
-                                                                                  D3D12_HEAP_FLAG_NONE,
-                                                                                  &stagingDesc,
-                                                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
-                                                                                  nullptr,
-                                                                                  IID_PPV_ARGS(set(m_uploadBuffer))));
+                CHECK_HRCMD(m_device->getAs<D3D12>()->CreateCommittedResource(&heapType,
+                                                                              D3D12_HEAP_FLAG_NONE,
+                                                                              &stagingDesc,
+                                                                              D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                                              nullptr,
+                                                                              IID_PPV_ARGS(set(m_uploadBuffer))));
             }
 
             // Copy to the upload buffer.
@@ -432,28 +424,29 @@ namespace {
             }
 
             // Do the upload now.
-            auto context = m_device->getContext<D3D12>();
-            {
-                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                    get(m_texture), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-                context->ResourceBarrier(1, &barrier);
-            }
-            {
-                D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-                ZeroMemory(&footprint, sizeof(footprint));
-                footprint.Footprint.Width = (UINT)m_textureDesc.Width;
-                footprint.Footprint.Height = m_textureDesc.Height;
-                footprint.Footprint.Depth = 1;
-                footprint.Footprint.RowPitch = rowPitch;
-                footprint.Footprint.Format = m_textureDesc.Format;
-                CD3DX12_TEXTURE_COPY_LOCATION src(get(m_uploadBuffer), footprint);
-                CD3DX12_TEXTURE_COPY_LOCATION dst(get(m_texture), 0);
-                context->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
-            }
-            {
-                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                    get(m_texture), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
-                context->ResourceBarrier(1, &barrier);
+            if (auto context = m_device->getContextAs<D3D12>()) {
+                {
+                    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                        get(m_texture), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+                    context->ResourceBarrier(1, &barrier);
+                }
+                {
+                    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+                    ZeroMemory(&footprint, sizeof(footprint));
+                    footprint.Footprint.Width = (UINT)m_textureDesc.Width;
+                    footprint.Footprint.Height = m_textureDesc.Height;
+                    footprint.Footprint.Depth = 1;
+                    footprint.Footprint.RowPitch = rowPitch;
+                    footprint.Footprint.Format = m_textureDesc.Format;
+                    CD3DX12_TEXTURE_COPY_LOCATION src(get(m_uploadBuffer), footprint);
+                    CD3DX12_TEXTURE_COPY_LOCATION dst(get(m_texture), 0);
+                    context->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+                }
+                {
+                    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                        get(m_texture), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
+                    context->ResourceBarrier(1, &barrier);
+                }
             }
         }
 
@@ -462,22 +455,27 @@ namespace {
                                      : path.extension() == ".bmp" ? GUID_ContainerFormatBmp
                                      : path.extension() == ".jpg" ? GUID_ContainerFormatJpeg
                                                                   : GUID_ContainerFormatDds;
-
+            HRESULT hr;
             ComPtr<ID3D12CommandQueue> commandQueue;
             UINT size = sizeof(ID3D12CommandQueue*);
-            m_device->getNative<D3D12>()->GetPrivateData(IID_ID3D12CommandQueue, &size, set(commandQueue));
+            m_device->getAs<D3D12>()->GetPrivateData(IID_ID3D12CommandQueue, &size, set(commandQueue));
 
+            const auto saveAsDDS = IsEqualGUID(fileFormat, GUID_ContainerFormatDds);
             const auto forceSRGB = IsEqualGUID(fileFormat, GUID_ContainerFormatPng);
 
-            const HRESULT hr = DirectX::SaveWICTextureToFile(get(commandQueue),
-                                                             get(m_texture),
-                                                             fileFormat,
-                                                             path.c_str(),
-                                                             D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                                             D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                                             nullptr,
-                                                             nullptr,
-                                                             forceSRGB);
+            if (saveAsDDS) {
+                hr = DirectX::SaveDDSTextureToFile(get(commandQueue), get(m_texture), path.c_str());
+            } else {
+                hr = DirectX::SaveWICTextureToFile(get(commandQueue),
+                                                   get(m_texture),
+                                                   fileFormat,
+                                                   path.c_str(),
+                                                   D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                                   D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                                   nullptr,
+                                                   nullptr,
+                                                   forceSRGB);
+            }
             if (SUCCEEDED(hr)) {
                 Log("Screenshot saved to %S\n", path.c_str());
             } else {
@@ -497,49 +495,50 @@ namespace {
                     throw std::runtime_error("Texture was created with D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE");
                 }
 
-                auto device = m_device->getNative<D3D12>();
+                if (auto device = m_device->getAs<D3D12>()) {
+                    D3D12_SHADER_RESOURCE_VIEW_DESC desc;
+                    ZeroMemory(&desc, sizeof(desc));
+                    desc.Format = (DXGI_FORMAT)m_info.format;
+                    desc.ViewDimension =
+                        m_info.arraySize == 1 ? D3D12_SRV_DIMENSION_TEXTURE2D : D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                    desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                    desc.Texture2DArray.ArraySize = 1;
+                    desc.Texture2DArray.FirstArraySlice = slice;
+                    desc.Texture2DArray.MipLevels = m_info.mipCount;
+                    desc.Texture2DArray.MostDetailedMip =
+                        D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
 
-                D3D12_SHADER_RESOURCE_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = (DXGI_FORMAT)m_info.format;
-                desc.ViewDimension =
-                    m_info.arraySize == 1 ? D3D12_SRV_DIMENSION_TEXTURE2D : D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-                desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-                desc.Texture2DArray.ArraySize = 1;
-                desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipLevels = m_info.mipCount;
-                desc.Texture2DArray.MostDetailedMip = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
-
-                D3D12_CPU_DESCRIPTOR_HANDLE handle;
-                m_rvHeap.allocate(handle);
-                device->CreateShaderResourceView(get(m_texture), &desc, handle);
-                shaderResourceView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                    D3D12_CPU_DESCRIPTOR_HANDLE handle;
+                    m_rvHeap.allocate(handle);
+                    device->CreateShaderResourceView(get(m_texture), &desc, handle);
+                    shaderResourceView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                }
             }
             return shaderResourceView;
         }
 
-        std::shared_ptr<D3D12ResourceView> getComputeShaderOutputViewInternal(
+        std::shared_ptr<D3D12ResourceView> getUnorderedAccessViewInternal(
             std::shared_ptr<D3D12ResourceView>& unorderedAccessView, uint32_t slice = 0) const {
             if (!unorderedAccessView) {
                 if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)) {
                     throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS");
                 }
 
-                auto device = m_device->getNative<D3D12>();
+                if (auto device = m_device->getAs<D3D12>()) {
+                    D3D12_UNORDERED_ACCESS_VIEW_DESC desc;
+                    ZeroMemory(&desc, sizeof(desc));
+                    desc.Format = (DXGI_FORMAT)m_info.format;
+                    desc.ViewDimension =
+                        m_info.arraySize == 1 ? D3D12_UAV_DIMENSION_TEXTURE2D : D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                    desc.Texture2DArray.ArraySize = 1;
+                    desc.Texture2DArray.FirstArraySlice = slice;
+                    desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
 
-                D3D12_UNORDERED_ACCESS_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = (DXGI_FORMAT)m_info.format;
-                desc.ViewDimension =
-                    m_info.arraySize == 1 ? D3D12_UAV_DIMENSION_TEXTURE2D : D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = 1;
-                desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
-
-                D3D12_CPU_DESCRIPTOR_HANDLE handle;
-                m_rvHeap.allocate(handle);
-                device->CreateUnorderedAccessView(get(m_texture), nullptr, &desc, handle);
-                unorderedAccessView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                    D3D12_CPU_DESCRIPTOR_HANDLE handle;
+                    m_rvHeap.allocate(handle);
+                    device->CreateUnorderedAccessView(get(m_texture), nullptr, &desc, handle);
+                    unorderedAccessView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                }
             }
             return unorderedAccessView;
         }
@@ -551,21 +550,21 @@ namespace {
                     throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET");
                 }
 
-                auto device = m_device->getNative<D3D12>();
+                if (auto device = m_device->getAs<D3D12>()) {
+                    D3D12_RENDER_TARGET_VIEW_DESC desc;
+                    ZeroMemory(&desc, sizeof(desc));
+                    desc.Format = (DXGI_FORMAT)m_info.format;
+                    desc.ViewDimension =
+                        m_info.arraySize == 1 ? D3D12_RTV_DIMENSION_TEXTURE2D : D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                    desc.Texture2DArray.ArraySize = 1;
+                    desc.Texture2DArray.FirstArraySlice = slice;
+                    desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
 
-                D3D12_RENDER_TARGET_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = (DXGI_FORMAT)m_info.format;
-                desc.ViewDimension =
-                    m_info.arraySize == 1 ? D3D12_RTV_DIMENSION_TEXTURE2D : D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = 1;
-                desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
-
-                D3D12_CPU_DESCRIPTOR_HANDLE handle;
-                m_rtvHeap.allocate(handle);
-                device->CreateRenderTargetView(get(m_texture), &desc, handle);
-                renderTargetView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                    D3D12_CPU_DESCRIPTOR_HANDLE handle;
+                    m_rtvHeap.allocate(handle);
+                    device->CreateRenderTargetView(get(m_texture), &desc, handle);
+                    renderTargetView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                }
             }
             return renderTargetView;
         }
@@ -577,21 +576,21 @@ namespace {
                     throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL");
                 }
 
-                auto device = m_device->getNative<D3D12>();
+                if (auto device = m_device->getAs<D3D12>()) {
+                    D3D12_DEPTH_STENCIL_VIEW_DESC desc;
+                    ZeroMemory(&desc, sizeof(desc));
+                    desc.Format = (DXGI_FORMAT)m_info.format;
+                    desc.ViewDimension =
+                        m_info.arraySize == 1 ? D3D12_DSV_DIMENSION_TEXTURE2D : D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+                    desc.Texture2DArray.ArraySize = 1;
+                    desc.Texture2DArray.FirstArraySlice = slice;
+                    desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
 
-                D3D12_DEPTH_STENCIL_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = (DXGI_FORMAT)m_info.format;
-                desc.ViewDimension =
-                    m_info.arraySize == 1 ? D3D12_DSV_DIMENSION_TEXTURE2D : D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = 1;
-                desc.Texture2DArray.FirstArraySlice = slice;
-                desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
-
-                D3D12_CPU_DESCRIPTOR_HANDLE handle;
-                m_dsvHeap.allocate(handle);
-                device->CreateDepthStencilView(get(m_texture), &desc, handle);
-                depthStencilView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                    D3D12_CPU_DESCRIPTOR_HANDLE handle;
+                    m_dsvHeap.allocate(handle);
+                    device->CreateDepthStencilView(get(m_texture), &desc, handle);
+                    depthStencilView = std::make_shared<D3D12ResourceView>(m_device, handle);
+                }
             }
             return depthStencilView;
         }
@@ -650,28 +649,27 @@ namespace {
 
         void uploadData(const void* buffer, size_t count, ID3D12Resource* uploadBuffer) {
             D3D12_SUBRESOURCE_DATA subresourceData;
-            ZeroMemory(&subresourceData, sizeof(subresourceData));
             subresourceData.pData = buffer;
             subresourceData.RowPitch = subresourceData.SlicePitch = count;
 
-            auto context = m_device->getContext<D3D12>();
-
-            {
-                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                    get(m_buffer), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-                context->ResourceBarrier(1, &barrier);
-            }
-            UpdateSubresources<1>(context, get(m_buffer), uploadBuffer, 0, 0, 1, &subresourceData);
-            {
-                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                    get(m_buffer), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-                context->ResourceBarrier(1, &barrier);
+            if (auto context = m_device->getContextAs<D3D12>()) {
+                {
+                    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                        get(m_buffer), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+                    context->ResourceBarrier(1, &barrier);
+                }
+                UpdateSubresources<1>(context, get(m_buffer), uploadBuffer, 0, 0, 1, &subresourceData);
+                {
+                    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                        get(m_buffer), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+                    context->ResourceBarrier(1, &barrier);
+                }
             }
         }
 
         void uploadData(const void* buffer, size_t count) override {
             if (!m_uploadBuffer) {
-                throw std::runtime_error("Texture is immutable");
+                throw std::runtime_error("Buffer is immutable");
             }
             uploadData(buffer, count, get(m_uploadBuffer));
         }
@@ -685,12 +683,13 @@ namespace {
                     m_constantBufferView = handle;
                 }
 
-                auto device = m_device->getNative<D3D12>();
-
-                D3D12_CONSTANT_BUFFER_VIEW_DESC desc;
-                desc.BufferLocation = m_buffer->GetGPUVirtualAddress();
-                desc.SizeInBytes = Align(m_bufferDesc.Width, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-                device->CreateConstantBufferView(&desc, m_constantBufferView.value());
+                if (auto device = m_device->getAs<D3D12>()) {
+                    D3D12_CONSTANT_BUFFER_VIEW_DESC desc;
+                    desc.BufferLocation = m_buffer->GetGPUVirtualAddress();
+                    desc.SizeInBytes =
+                        alignTo(static_cast<UINT>(m_bufferDesc.Width), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+                    device->CreateConstantBufferView(&desc, m_constantBufferView.value());
+                }
             }
             return m_constantBufferView.value();
         }
@@ -773,11 +772,11 @@ namespace {
         }
 
         void start() override {
-            m_device->getContext<D3D12>()->EndQuery(get(m_queryHeap), D3D12_QUERY_TYPE_TIMESTAMP, m_startIndex);
+            m_device->getContextAs<D3D12>()->EndQuery(get(m_queryHeap), D3D12_QUERY_TYPE_TIMESTAMP, m_startIndex);
         }
 
         void stop() override {
-            m_device->getContext<D3D12>()->EndQuery(get(m_queryHeap), D3D12_QUERY_TYPE_TIMESTAMP, m_stopIndex);
+            m_device->getContextAs<D3D12>()->EndQuery(get(m_queryHeap), D3D12_QUERY_TYPE_TIMESTAMP, m_stopIndex);
         }
 
         uint64_t query(bool reset) const override {
@@ -861,8 +860,7 @@ namespace {
 
             // Initialize Debug layer logging.
             if (configManager->getValue("debug_layer")) {
-                if (SUCCEEDED(m_device->QueryInterface(__uuidof(ID3D12InfoQueue),
-                                                       reinterpret_cast<void**>(set(m_infoQueue))))) {
+                if (SUCCEEDED(m_device->QueryInterface(set(m_infoQueue)))) {
                     Log("D3D12 Debug layer is enabled\n");
 
                     // Disable some common warnings.
@@ -947,8 +945,7 @@ namespace {
                                                   set(textDevice),
                                                   nullptr,
                                                   nullptr));
-                CHECK_HRCMD(textDevice->QueryInterface(__uuidof(ID3D11On12Device),
-                                                       reinterpret_cast<void**>(set(m_textInteropDevice))));
+                CHECK_HRCMD(textDevice->QueryInterface(set(m_textInteropDevice)));
 
                 m_textDevice = WrapD3D11TextDevice(get(textDevice), configManager);
             }
@@ -1103,7 +1100,7 @@ namespace {
         }
 
         std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
-                                                const std::optional<std::string>& debugName,
+                                                std::string_view debugName,
                                                 int64_t overrideFormat = 0,
                                                 uint32_t rowPitch = 0,
                                                 uint32_t imageSize = 0,
@@ -1184,20 +1181,18 @@ namespace {
                 flushContext(true);
             }
 
-            if (debugName) {
-                texture->SetName(std::wstring(debugName->begin(), debugName->end()).c_str());
+            if (!debugName.empty()) {
+                texture->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
             }
 
             return std::make_shared<D3D12Texture>(
                 shared_from_this(), info, desc, get(texture), m_rtvHeap, m_dsvHeap, m_rvHeap);
         }
 
-        std::shared_ptr<IShaderBuffer> createBuffer(size_t size,
-                                                    const std::optional<std::string>& debugName,
-                                                    const void* initialData,
-                                                    bool immutable) override {
+        std::shared_ptr<IShaderBuffer>
+        createBuffer(size_t size, std::string_view debugName, const void* initialData, bool immutable) override {
             const auto desc =
-                CD3DX12_RESOURCE_DESC::Buffer(Align(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+                CD3DX12_RESOURCE_DESC::Buffer(alignTo(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 
             ComPtr<ID3D12Resource> buffer;
             {
@@ -1222,8 +1217,8 @@ namespace {
                                                               IID_PPV_ARGS(set(uploadBuffer))));
             }
 
-            if (debugName) {
-                buffer->SetName(std::wstring(debugName->begin(), debugName->end()).c_str());
+            if (!debugName.empty()) {
+                buffer->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
             }
 
             auto result = std::make_shared<D3D12Buffer>(
@@ -1239,7 +1234,7 @@ namespace {
 
         std::shared_ptr<ISimpleMesh> createSimpleMesh(std::vector<SimpleMeshVertex>& vertices,
                                                       std::vector<uint16_t>& indices,
-                                                      const std::optional<std::string>& debugName) override {
+                                                      std::string_view debugName) override {
             std::shared_ptr<IShaderBuffer> vertexBuffer =
                 createBuffer(vertices.size() * sizeof(SimpleMeshVertex), debugName, vertices.data(), true);
 
@@ -1247,23 +1242,25 @@ namespace {
                 createBuffer(indices.size() * sizeof(uint16_t), debugName, indices.data(), true);
 
             return std::make_shared<D3D12SimpleMesh>(shared_from_this(),
-                                                     vertexBuffer->getNative<D3D12>(),
+                                                     vertexBuffer->getAs<D3D12>(),
                                                      sizeof(SimpleMeshVertex),
-                                                     indexBuffer->getNative<D3D12>(),
+                                                     indexBuffer->getAs<D3D12>(),
                                                      indices.size());
         }
 
-        std::shared_ptr<IQuadShader> createQuadShader(const std::string& shaderPath,
+        std::shared_ptr<IQuadShader> createQuadShader(const std::filesystem::path& shaderFile,
                                                       const std::string& entryPoint,
-                                                      const std::optional<std::string>& debugName,
+                                                      std::string_view debugName,
                                                       const D3D_SHADER_MACRO* defines,
-                                                      const std::string includePath) override {
+                                                      std::filesystem::path includePath = "") override {
             ComPtr<ID3DBlob> psBytes;
             if (!includePath.empty()) {
-                utilities::shader::IncludeHeader includes({includePath});
-                utilities::shader::CompileShader(shaderPath, entryPoint, set(psBytes), defines, &includes, "ps_5_0");
+                utilities::shader::IncludeHeader includes({std::move(includePath)});
+                utilities::shader::CompileShader(
+                    shaderFile, entryPoint.c_str(), set(psBytes), defines, &includes, "ps_5_0");
             } else {
-                utilities::shader::CompileShader(shaderPath, entryPoint, set(psBytes), defines, nullptr, "ps_5_0");
+                utilities::shader::CompileShader(
+                    shaderFile, entryPoint.c_str(), set(psBytes), defines, nullptr, "ps_5_0");
             }
 
             D3D12_GRAPHICS_PIPELINE_STATE_DESC desc;
@@ -1281,18 +1278,20 @@ namespace {
             return std::make_shared<D3D12QuadShader>(shared_from_this(), desc, get(psBytes), debugName);
         }
 
-        std::shared_ptr<IComputeShader> createComputeShader(const std::string& shaderPath,
+        std::shared_ptr<IComputeShader> createComputeShader(const std::filesystem::path& shaderFile,
                                                             const std::string& entryPoint,
-                                                            const std::optional<std::string>& debugName,
+                                                            std::string_view debugName,
                                                             const std::array<unsigned int, 3>& threadGroups,
                                                             const D3D_SHADER_MACRO* defines,
-                                                            const std::string includePath) override {
+                                                            std::filesystem::path includePath = "") override {
             ComPtr<ID3DBlob> csBytes;
             if (!includePath.empty()) {
-                utilities::shader::IncludeHeader includes({includePath});
-                utilities::shader::CompileShader(shaderPath, entryPoint, set(csBytes), defines, &includes, "cs_5_0");
+                utilities::shader::IncludeHeader includes({std::move(includePath)});
+                utilities::shader::CompileShader(
+                    shaderFile, entryPoint.c_str(), set(csBytes), defines, &includes, "cs_5_0");
             } else {
-                utilities::shader::CompileShader(shaderPath, entryPoint, set(csBytes), defines, nullptr, "cs_5_0");
+                utilities::shader::CompileShader(
+                    shaderFile, entryPoint.c_str(), set(csBytes), defines, nullptr, "cs_5_0");
             }
 
             D3D12_COMPUTE_PIPELINE_STATE_DESC desc;
@@ -1331,7 +1330,7 @@ namespace {
 
             if (!d3d12Shader->needsResolve()) {
                 // Prepare to draw the quad.
-                const auto shaderData = shader->getNative<D3D12>();
+                const auto shaderData = shader->getAs<D3D12>();
                 // TODO: This code is duplicated in D3D12QuadShader::resolve().
                 m_context->SetGraphicsRootSignature(shaderData->rootSignature);
                 m_context->SetPipelineState(shaderData->pipelineState);
@@ -1362,7 +1361,7 @@ namespace {
             auto d3d12Shader = dynamic_cast<D3D12Shader*>(shader.get());
 
             if (!d3d12Shader->needsResolve()) {
-                const auto shaderData = shader->getNative<D3D12>();
+                const auto shaderData = shader->getAs<D3D12>();
                 m_context->SetComputeRootSignature(shaderData->rootSignature);
                 m_context->SetPipelineState(shaderData->pipelineState);
                 // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
@@ -1384,17 +1383,16 @@ namespace {
                     d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentQuadShader.get());
                 }
 
-                const auto& handle =
-                    *(slice == -1 ? input->getShaderInputView() : input->getShaderInputView(slice))->getNative<D3D12>();
+                const auto handle = input->getShaderResourceView(slice)->getAs<D3D12>();
 
                 if (!d3d12Shader->needsResolve()) {
                     if (m_currentComputeShader) {
-                        m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(handle));
+                        m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(*handle));
                     } else {
-                        m_context->SetGraphicsRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(handle));
+                        m_context->SetGraphicsRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(*handle));
                     }
                 } else {
-                    d3d12Shader->registerSRVParameter(slot, m_rvHeap.getGPUHandle(handle));
+                    d3d12Shader->registerSRVParameter(slot, m_rvHeap.getGPUHandle(*handle));
                 }
             } else {
                 throw std::runtime_error("No shader is set");
@@ -1412,7 +1410,7 @@ namespace {
 
                 auto d3d12Buffer = dynamic_cast<D3D12Buffer*>(input.get());
 
-                const auto& handle = d3d12Buffer->getConstantBufferView();
+                const auto handle = d3d12Buffer->getConstantBufferView();
 
                 if (!d3d12Shader->needsResolve()) {
                     if (m_currentComputeShader) {
@@ -1433,11 +1431,8 @@ namespace {
                 if (slot) {
                     throw std::runtime_error("Only use slot 0 for IQuadShader");
                 }
-                if (slice == -1) {
-                    setRenderTargets({output}, nullptr);
-                } else {
-                    setRenderTargets({std::make_pair(output, slice)}, {});
-                }
+
+                setRenderTargets(1, &output, &slice);
 
                 auto d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentQuadShader.get());
                 if (d3d12Shader->needsResolve()) {
@@ -1446,14 +1441,12 @@ namespace {
             } else if (m_currentComputeShader) {
                 auto d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentComputeShader.get());
 
-                const auto& handle =
-                    *(slice == -1 ? output->getComputeShaderOutputView() : output->getComputeShaderOutputView(slice))
-                         ->getNative<D3D12>();
+                const auto handle = output->getUnorderedAccessView(slice)->getAs<D3D12>();
 
                 if (!d3d12Shader->needsResolve()) {
-                    m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(handle));
+                    m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(*handle));
                 } else {
-                    d3d12Shader->registerUAVParameter(slot, m_rvHeap.getGPUHandle(handle));
+                    d3d12Shader->registerUAVParameter(slot, m_rvHeap.getGPUHandle(*handle));
                 }
             } else {
                 throw std::runtime_error("No shader is set");
@@ -1495,62 +1488,52 @@ namespace {
 
         void unsetRenderTargets() override {
             m_context->OMSetRenderTargets(0, nullptr, true, nullptr);
-
             m_currentDrawRenderTarget.reset();
             m_currentDrawDepthBuffer.reset();
             m_currentMesh.reset();
         }
 
-        void setRenderTargets(std::vector<std::shared_ptr<ITexture>> renderTargets,
-                              std::shared_ptr<ITexture> depthBuffer) override {
-            std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargetsNoSlice;
-            for (auto renderTarget : renderTargets) {
-                renderTargetsNoSlice.push_back(std::make_pair(renderTarget, -1));
-            }
-            setRenderTargets(renderTargetsNoSlice, std::make_pair(depthBuffer, -1));
-        }
-
-        void setRenderTargets(std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargets,
-                              std::pair<std::shared_ptr<ITexture>, int32_t> depthBuffer) override {
+        void setRenderTargets(size_t numRenderTargets,
+                              std::shared_ptr<ITexture>* renderTargets,
+                              int32_t* renderSlices = nullptr,
+                              std::shared_ptr<ITexture>* depthBuffer = nullptr,
+                              int32_t depthSlice = -1) override {
+            // std::vector<D3D12_RESOURCE_BARRIER> barriers;
             std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> rtvs;
-            std::vector<D3D12_RESOURCE_BARRIER> barriers;
+            rtvs.reserve(numRenderTargets);
 
-            for (auto renderTarget : renderTargets) {
-                const auto slice = renderTarget.second;
-
-                if (slice == -1) {
-                    rtvs.push_back(*renderTarget.first->getRenderTargetView()->getNative<D3D12>());
-                } else {
-                    rtvs.push_back(*renderTarget.first->getRenderTargetView(slice)->getNative<D3D12>());
-                }
+            for (size_t i = 0; i < numRenderTargets; i++) {
+                auto slice = renderSlices ? renderSlices[i] : -1;
+                rtvs.push_back(*renderTargets[i]->getRenderTargetView(slice)->getAs<D3D12>());
 
                 // We assume that the resource is always in the expected state.
-                // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(renderTarget.first->getNative<D3D12>(),
+                // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(renderTargets[i]->getAs<D3D12>(),
                 //                                                         D3D12_RESOURCE_STATE_COMMON,
                 //                                                         D3D12_RESOURCE_STATE_RENDER_TARGET));
             }
 
-            if (depthBuffer.first) {
-                // We assume that the resource is always in the expected state.
-                // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(depthBuffer.first->getNative<D3D12>(),
-                //                                                         D3D12_RESOURCE_STATE_COMMON,
-                //                                                         D3D12_RESOURCE_STATE_DEPTH_WRITE));
-            }
+            // if (depthBuffer) {
+            // We assume that the resource is always in the expected state.
+            // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(depthBuffer[0]->getAs<D3D12>(),
+            //                                                         D3D12_RESOURCE_STATE_COMMON,
+            //                                                         D3D12_RESOURCE_STATE_DEPTH_WRITE));
+            //}
 
-            if (barriers.size()) {
-                m_context->ResourceBarrier((UINT)barriers.size(), barriers.data());
-            }
-            m_context->OMSetRenderTargets(
-                (UINT)rtvs.size(),
-                rtvs.data(),
-                false,
-                depthBuffer.first ? depthBuffer.first->getDepthStencilView()->getNative<D3D12>() : nullptr);
+            // if (!barriers.empty()) {
+            //    m_context->ResourceBarrier((UINT)barriers.size(), barriers.data());
+            //}
 
-            if (renderTargets.size() > 0) {
-                m_currentDrawRenderTarget = renderTargets[0].first;
-                m_currentDrawRenderTargetSlice = renderTargets[0].second;
-                m_currentDrawDepthBuffer = depthBuffer.first;
-                m_currentDrawDepthBufferSlice = depthBuffer.second;
+            m_context->OMSetRenderTargets((UINT)rtvs.size(),
+                                          rtvs.data(),
+                                          false,
+                                          depthBuffer ? depthBuffer[0]->getDepthStencilView()->getAs<D3D12>()
+                                                      : nullptr);
+
+            if (!rtvs.empty()) {
+                m_currentDrawRenderTarget = renderTargets[0];
+                m_currentDrawRenderTargetSlice = renderSlices ? renderSlices[0] : -1;
+                m_currentDrawDepthBuffer = depthBuffer ? depthBuffer[0] : nullptr;
+                m_currentDrawDepthBufferSlice = depthBuffer ? depthSlice : -1;
 
                 const auto viewport = CD3DX12_VIEWPORT(0.0f,
                                                        0.0f,
@@ -1575,17 +1558,12 @@ namespace {
 
             // When rendering text, we must use the corresponding device.
             if (!m_isRenderingText) {
-                D3D12_CPU_DESCRIPTOR_HANDLE renderTargetView;
-                if (m_currentDrawRenderTargetSlice == -1) {
-                    renderTargetView = *m_currentDrawRenderTarget->getRenderTargetView()->getNative<D3D12>();
-                } else {
-                    renderTargetView = *m_currentDrawRenderTarget->getRenderTargetView(m_currentDrawRenderTargetSlice)
-                                            ->getNative<D3D12>();
-                }
+                auto renderTargetView =
+                    m_currentDrawRenderTarget->getRenderTargetView(m_currentDrawRenderTargetSlice)->getAs<D3D12>();
 
                 float clearColor[] = {color.r, color.g, color.b, color.a};
                 const auto rect = CD3DX12_RECT((LONG)left, (LONG)top, (LONG)right, (LONG)bottom);
-                m_context->ClearRenderTargetView(renderTargetView, clearColor, 1, &rect);
+                m_context->ClearRenderTargetView(*renderTargetView, clearColor, 1, &rect);
             } else {
                 m_textDevice->clearColor(top, left, bottom, right, color);
             }
@@ -1596,24 +1574,20 @@ namespace {
                 return;
             }
 
-            D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView;
-            if (m_currentDrawDepthBufferSlice == -1) {
-                depthStencilView = *m_currentDrawDepthBuffer->getDepthStencilView()->getNative<D3D12>();
-            } else {
-                depthStencilView =
-                    *m_currentDrawDepthBuffer->getDepthStencilView(m_currentDrawDepthBufferSlice)->getNative<D3D12>();
-            }
+            auto depthStencilView =
+                m_currentDrawDepthBuffer->getDepthStencilView(m_currentDrawDepthBufferSlice)->getAs<D3D12>();
 
-            m_context->ClearDepthStencilView(depthStencilView, D3D12_CLEAR_FLAG_DEPTH, value, 0, 0, nullptr);
+            m_context->ClearDepthStencilView(*depthStencilView, D3D12_CLEAR_FLAG_DEPTH, value, 0, 0, nullptr);
         }
 
-        void setViewProjection(const View& view) override {
-            const DirectX::XMMATRIX projectionMatrix = xr::math::ComposeProjectionMatrix(view.fov, view.nearFar);
-            const DirectX::XMMATRIX viewMatrix = xr::math::LoadInvertedXrPose(view.pose);
-
+        void setViewProjection(const xr::math::ViewProjection& view) override {
             ViewProjectionConstantBuffer staging;
-            DirectX::XMStoreFloat4x4(&staging.ViewProjection,
-                                     DirectX::XMMatrixTranspose(viewMatrix * projectionMatrix));
+
+            // viewMatrix* projMatrix
+            DirectX::XMStoreFloat4x4(
+                &staging.ViewProjection,
+                DirectX::XMMatrixTranspose(xr::math::LoadInvertedXrPose(view.Pose) *
+                                           xr::math::ComposeProjectionMatrix(view.Fov, view.NearFar)));
 
             m_currentMeshViewProjectionBuffer++;
             if (m_currentMeshViewProjectionBuffer >= ARRAYSIZE(m_meshViewProjectionBuffer)) {
@@ -1625,11 +1599,13 @@ namespace {
             }
             m_meshViewProjectionBuffer[m_currentMeshViewProjectionBuffer]->uploadData(&staging, sizeof(staging));
 
-            m_currentDrawDepthBufferIsInverted = view.nearFar.Near > view.nearFar.Far;
+            m_currentDrawDepthBufferIsInverted = view.NearFar.Near > view.NearFar.Far;
         }
 
         void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling) override {
-            auto meshData = mesh->getNative<D3D12>();
+            auto meshData = mesh->getAs<D3D12>();
+            if (!meshData)
+                return;
 
             if (mesh != m_currentMesh) {
                 // Lazily construct the pipeline state now that we know the format for the render target and whether
@@ -1721,7 +1697,7 @@ namespace {
             m_context->DrawIndexedInstanced(meshData->numIndices, 1, 0, 0, 0);
         }
 
-        float drawString(std::wstring string,
+        float drawString(std::wstring_view string,
                          TextStyle style,
                          float size,
                          float x,
@@ -1732,7 +1708,7 @@ namespace {
             return m_textDevice->drawString(string, style, size, x, y, color, measure, alignment);
         }
 
-        float drawString(std::string string,
+        float drawString(std::string_view string,
                          TextStyle style,
                          float size,
                          float x,
@@ -1743,11 +1719,11 @@ namespace {
             return m_textDevice->drawString(string, style, size, x, y, color, measure, alignment);
         }
 
-        float measureString(std::wstring string, TextStyle style, float size) const override {
+        float measureString(std::wstring_view string, TextStyle style, float size) const override {
             return m_textDevice->measureString(string, style, size);
         }
 
-        float measureString(std::string string, TextStyle style, float size) const override {
+        float measureString(std::string_view string, TextStyle style, float size) const override {
             return m_textDevice->measureString(string, style, size);
         }
 
@@ -1761,7 +1737,7 @@ namespace {
                 D3D11_RESOURCE_FLAGS flags;
                 ZeroMemory(&flags, sizeof(flags));
                 flags.BindFlags = D3D11_BIND_RENDER_TARGET;
-                CHECK_HRCMD(m_textInteropDevice->CreateWrappedResource(m_currentDrawRenderTarget->getNative<D3D12>(),
+                CHECK_HRCMD(m_textInteropDevice->CreateWrappedResource(m_currentDrawRenderTarget->getAs<D3D12>(),
                                                                        &flags,
                                                                        D3D12_RESOURCE_STATE_RENDER_TARGET,
                                                                        D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -1775,12 +1751,12 @@ namespace {
                 d3d12DrawRenderTarget->setInteropTexture(m_currentTextRenderTarget);
             }
             {
-                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getNative<D3D11>()};
+                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
                 m_textInteropDevice->AcquireWrappedResources(resources, 1);
             }
 
             // Setup the interop context for rendering.
-            m_textDevice->setRenderTargets({std::make_pair(m_currentTextRenderTarget, m_currentDrawRenderTargetSlice)});
+            m_textDevice->setRenderTargets(1, &m_currentTextRenderTarget, &m_currentDrawRenderTargetSlice);
             m_textDevice->beginText();
             m_isRenderingText = true;
         }
@@ -1791,7 +1767,7 @@ namespace {
             // Commit to the D3D12 queue.
             m_textDevice->flushContext(true);
             {
-                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getNative<D3D11>()};
+                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
                 m_textInteropDevice->ReleaseWrappedResources(resources, 1);
             }
             m_currentTextRenderTarget.reset();
@@ -2195,11 +2171,10 @@ namespace {
         std::map<D3D12_CPU_DESCRIPTOR_HANDLE, ID3D12Resource*, decltype(descriptorCompare)>
             m_renderTargetResourceDescriptors{descriptorCompare};
 
-        friend std::shared_ptr<ITexture>
-        toolkit::graphics::WrapD3D12Texture(std::shared_ptr<IDevice> device,
-                                            const XrSwapchainCreateInfo& info,
-                                            ID3D12Resource* texture,
-                                            const std::optional<std::string>& debugName);
+        friend std::shared_ptr<ITexture> toolkit::graphics::WrapD3D12Texture(std::shared_ptr<IDevice> device,
+                                                                             const XrSwapchainCreateInfo& info,
+                                                                             ID3D12Resource* texture,
+                                                                             std::string_view debugName);
 
         static XrSwapchainCreateInfo getTextureInfo(const D3D12_RESOURCE_DESC& resourceDesc) {
             XrSwapchainCreateInfo info;
@@ -2228,15 +2203,13 @@ namespace {
 
         static inline D3D12Device* g_instance = nullptr;
 
-        typedef void (*PFN_ID3D12Device_CreateRenderTargetView)(ID3D12Device*,
-                                                                ID3D12Resource*,
-                                                                const D3D12_RENDER_TARGET_VIEW_DESC*,
-                                                                D3D12_CPU_DESCRIPTOR_HANDLE);
-        static inline PFN_ID3D12Device_CreateRenderTargetView g_original_ID3D12Device_CreateRenderTargetView = nullptr;
-        static void hooked_ID3D12Device_CreateRenderTargetView(ID3D12Device* device,
-                                                               ID3D12Resource* pResource,
-                                                               const D3D12_RENDER_TARGET_VIEW_DESC* pDesc,
-                                                               D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor) {
+        DECLARE_DETOUR_FUNCTION(static void,
+                                STDMETHODCALLTYPE,
+                                ID3D12Device_CreateRenderTargetView,
+                                ID3D12Device* device,
+                                ID3D12Resource* pResource,
+                                const D3D12_RENDER_TARGET_VIEW_DESC* pDesc,
+                                D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor) {
             DebugLog("--> ID3D12Device_CreateRenderTargetView\n");
 
             assert(g_instance);
@@ -2248,19 +2221,14 @@ namespace {
             DebugLog("<-- ID3D12Device_CreateRenderTargetView\n");
         }
 
-        typedef void (*PFN_ID3D12GraphicsCommandList_OMSetRenderTargets)(ID3D12GraphicsCommandList*,
-                                                                         UINT,
-                                                                         const D3D12_CPU_DESCRIPTOR_HANDLE*,
-                                                                         BOOL,
-                                                                         const D3D12_CPU_DESCRIPTOR_HANDLE*);
-        static inline PFN_ID3D12GraphicsCommandList_OMSetRenderTargets
-            g_original_ID3D12GraphicsCommandList_OMSetRenderTargets = nullptr;
-        static void hooked_ID3D12GraphicsCommandList_OMSetRenderTargets(
-            ID3D12GraphicsCommandList* context,
-            UINT NumRenderTargetDescriptors,
-            const D3D12_CPU_DESCRIPTOR_HANDLE* pRenderTargetDescriptors,
-            BOOL RTsSingleHandleToDescriptorRange,
-            const D3D12_CPU_DESCRIPTOR_HANDLE* pDepthStencilDescriptor) {
+        DECLARE_DETOUR_FUNCTION(static void,
+                                STDMETHODCALLTYPE,
+                                ID3D12GraphicsCommandList_OMSetRenderTargets,
+                                ID3D12GraphicsCommandList* context,
+                                UINT NumRenderTargetDescriptors,
+                                const D3D12_CPU_DESCRIPTOR_HANDLE* pRenderTargetDescriptors,
+                                BOOL RTsSingleHandleToDescriptorRange,
+                                const D3D12_CPU_DESCRIPTOR_HANDLE* pDepthStencilDescriptor) {
             DebugLog("--> ID3D12GraphicsCommandList_OMSetRenderTargets\n");
 
             assert(g_instance);
@@ -2280,29 +2248,23 @@ namespace {
             DebugLog("<-- ID3D12GraphicsCommandList_OMSetRenderTargets\n");
         }
 
-        typedef void (*PFN_ID3D12GraphicsCommandList_CopyTextureRegion)(ID3D12GraphicsCommandList*,
-                                                                        const D3D12_TEXTURE_COPY_LOCATION*,
-                                                                        UINT,
-                                                                        UINT,
-                                                                        UINT,
-                                                                        const D3D12_TEXTURE_COPY_LOCATION*,
-                                                                        const D3D12_BOX*);
-        static inline PFN_ID3D12GraphicsCommandList_CopyTextureRegion
-            g_original_ID3D12GraphicsCommandList_CopyTextureRegion = nullptr;
-        static void hooked_ID3D12GraphicsCommandList_CopyTextureRegion(ID3D12GraphicsCommandList* context,
-                                                                       const D3D12_TEXTURE_COPY_LOCATION* pDst,
-                                                                       UINT DstX,
-                                                                       UINT DstY,
-                                                                       UINT DstZ,
-                                                                       const D3D12_TEXTURE_COPY_LOCATION* pSrc,
-                                                                       const D3D12_BOX* pSrcBox) {
+        DECLARE_DETOUR_FUNCTION(static void,
+                                STDMETHODCALLTYPE,
+                                ID3D12GraphicsCommandList_CopyTextureRegion,
+                                ID3D12GraphicsCommandList* context,
+                                const D3D12_TEXTURE_COPY_LOCATION* pDst,
+                                UINT DstX,
+                                UINT DstY,
+                                UINT DstZ,
+                                const D3D12_TEXTURE_COPY_LOCATION* pSrc,
+                                const D3D12_BOX* pSrcBox) {
             DebugLog("--> ID3D12GraphicsCommandList_CopyTextureRegion\n");
 
             assert(g_instance);
             g_instance->onCopyTexture(
                 context, pSrc->pResource, pDst->pResource, pSrc->SubresourceIndex, pDst->SubresourceIndex);
 
-            assert(g_original_ID3D12GraphicsCommandList_OMSetRenderTargets);
+            assert(g_original_ID3D12GraphicsCommandList_CopyTextureRegion);
             g_original_ID3D12GraphicsCommandList_CopyTextureRegion(context, pDst, DstX, DstY, DstZ, pSrc, pSrcBox);
 
             DebugLog("<-- ID3D12GraphicsCommandList_CopyTextureRegion\n");
@@ -2328,14 +2290,14 @@ namespace toolkit::graphics {
     std::shared_ptr<ITexture> WrapD3D12Texture(std::shared_ptr<IDevice> device,
                                                const XrSwapchainCreateInfo& info,
                                                ID3D12Resource* texture,
-                                               const std::optional<std::string>& debugName) {
+                                               std::string_view debugName) {
         if (device->getApi() != Api::D3D12) {
             throw std::runtime_error("Not a D3D12 device");
         }
         auto d3d12Device = dynamic_cast<D3D12Device*>(device.get());
 
-        if (debugName) {
-            texture->SetName(std::wstring(debugName->begin(), debugName->end()).c_str());
+        if (!debugName.empty()) {
+            texture->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
         }
 
         const D3D12_RESOURCE_DESC desc = texture->GetDesc();

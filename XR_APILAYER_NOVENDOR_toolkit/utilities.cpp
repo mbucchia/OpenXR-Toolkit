@@ -156,4 +156,14 @@ namespace toolkit::utilities {
         }
     }
 
+    // [-1,+1] (+up) -> [0..1] (+dn)
+    XrVector2f NdcToScreen(XrVector2f v) {
+        return {(1.f + v.x) * 0.5f, (v.y - 1.f) * -0.5f};
+    }
+
+    // [0..1] (+dn) -> [-1,+1] (+up)
+    XrVector2f ScreenToNdc(XrVector2f v) {
+        return {(v.x * 2.f) - 1.f, (v.y * -2.f) + 1.f};
+    }
+
 } // namespace toolkit::utilities

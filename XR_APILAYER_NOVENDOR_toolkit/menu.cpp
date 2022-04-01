@@ -165,7 +165,7 @@ namespace {
                     bool isPredictionDampeningSupported,
                     bool isMotionReprojectionRateSupported,
                     uint8_t displayRefreshRate,
-                    uint8_t variableRateShaderMaxDownsamplePow2,
+                    uint8_t variableRateShaderMaxRate,
                     bool isEyeTrackingSupported,
                     bool isPimaxFovHackSupported)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
@@ -229,8 +229,7 @@ namespace {
             m_menuEntries.push_back({MenuIndent::NoIndent, "", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
             m_menuEntries.back().visible = true; /* Always visible. */
 
-            setupPerformanceTab(
-                isMotionReprojectionRateSupported, displayRefreshRate, variableRateShaderMaxDownsamplePow2);
+            setupPerformanceTab(isMotionReprojectionRateSupported, displayRefreshRate, variableRateShaderMaxRate);
             setupAppearanceTab(isPimaxFovHackSupported);
             setupInputsTab(isPredictionDampeningSupported);
             setupMenuTab();
@@ -821,18 +820,20 @@ namespace {
             m_eyeGazeState = state;
         }
 
-        void setViewProjectionCenters(float leftCenterX,
-                                      float leftCenterY,
-                                      float rightCenterX,
-                                      float rightCenterY) override {
-            m_projCenter[0] = {leftCenterX, leftCenterY};
-            m_projCenter[1] = {rightCenterX, rightCenterY};
+        void setViewProjectionCenters(XrVector2f left, XrVector2f right) override {
+            left = utilities::NdcToScreen(left);
+            m_projCenter[0].x = left.x;
+            m_projCenter[0].y = left.y;
+
+            right = utilities::NdcToScreen(right);
+            m_projCenter[1].x = right.x;
+            m_projCenter[1].y = right.y;
         }
 
       private:
         void setupPerformanceTab(bool isMotionReprojectionRateSupported,
                                  uint8_t displayRefreshRate,
-                                 uint8_t variableRateShaderMaxDownsamplePow2) {
+                                 uint8_t variableRateShaderMaxRate) {
             MenuGroup performanceTab(
                 m_configManager,
                 m_menuGroups,
@@ -959,7 +960,7 @@ namespace {
             }
 
             // Fixed Foveated Rendering (VRS) Settings.
-            if (variableRateShaderMaxDownsamplePow2) {
+            if (variableRateShaderMaxRate) {
                 m_menuEntries.push_back({MenuIndent::OptionIndent,
                                          !m_isEyeTrackingSupported ? "Fixed foveated rendering" : "Foveated rendering",
                                          MenuEntryType::Choice,
@@ -1053,7 +1054,7 @@ namespace {
                                              MenuEntryType::Slider,
                                              SettingVRSInner,
                                              0,
-                                             variableRateShaderMaxDownsamplePow2,
+                                             variableRateShaderMaxRate,
                                              samplePow2ToString});
                     m_menuEntries.back().expert = true;
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
@@ -1068,7 +1069,7 @@ namespace {
                                              MenuEntryType::Slider,
                                              SettingVRSMiddle,
                                              1, // Exclude 1x to discourage people from using poor settings!
-                                             variableRateShaderMaxDownsamplePow2,
+                                             variableRateShaderMaxRate,
                                              samplePow2ToString});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Outer ring size",
@@ -1082,7 +1083,7 @@ namespace {
                                              MenuEntryType::Slider,
                                              SettingVRSOuter,
                                              1, // Exclude 1x to discourage people from using poor settings!
-                                             variableRateShaderMaxDownsamplePow2,
+                                             variableRateShaderMaxRate,
                                              samplePow2ToString});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Prefer resolution",
@@ -1559,7 +1560,7 @@ namespace toolkit::menu {
                                                     bool isPredictionDampeningSupported,
                                                     bool isMotionReprojectionRateSupported,
                                                     uint8_t displayRefreshRate,
-                                                    uint8_t variableRateShaderMaxDownsamplePow2,
+                                                    uint8_t variableRateShaderMaxRate,
                                                     bool isEyeTrackingSupported,
                                                     bool isPimaxFovHackSupported) {
         return std::make_shared<MenuHandler>(configManager,
@@ -1571,7 +1572,7 @@ namespace toolkit::menu {
                                              isPredictionDampeningSupported,
                                              isMotionReprojectionRateSupported,
                                              displayRefreshRate,
-                                             variableRateShaderMaxDownsamplePow2,
+                                             variableRateShaderMaxRate,
                                              isEyeTrackingSupported,
                                              isPimaxFovHackSupported);
     }

@@ -46,13 +46,12 @@ namespace {
             : m_configManager(configManager), m_device(graphicsDevice) {
             const auto shadersDir = dllHome / "shaders";
             const auto shaderPath = shadersDir / shaderFile;
-            m_shader = m_device->createQuadShader(
-                shaderPath.string(), "main", "Image Processor PS", nullptr, shadersDir.string());
+            m_shader = m_device->createQuadShader(shaderPath, "main", "Image Processor PS", nullptr /*,  shadersDir*/);
 
             utilities::shader::Defines defines;
             defines.add("VPRT", true);
             m_shaderVPRT = m_device->createQuadShader(
-                shaderPath.string(), "main", "Image Processor VPRT PS", defines.get(), shadersDir.string());
+                shaderPath, "main", "Image Processor VPRT PS", defines.get() /*,  shadersDir*/);
 
             // TODO: For now, we're going to require that all image processing shaders share the same configuration
             // structure.

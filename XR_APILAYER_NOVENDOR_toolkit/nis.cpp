@@ -81,7 +81,7 @@ namespace {
       private:
         void initializeScaler() {
             const auto shadersDir = dllHome / "shaders";
-            const auto shaderPath = shadersDir / "NIS.hlsl";
+            const auto shaderFile = shadersDir / "NIS.hlsl";
 
             // Identify the GPU architecture in order to infer the best settings for the shader.
             const auto gpuArchitecture = m_device->GetGpuArchitecture();
@@ -106,26 +106,23 @@ namespace {
 
             if (!m_isSharpenOnly) {
                 m_shader = m_device->createComputeShader(
-                    shaderPath.string(), "main", "NISScaler CS", threadGroups, defines.get(), shadersDir.string());
+                    shaderFile, "main", "NISScaler CS", threadGroups, defines.get() /*,  shadersDir*/);
 
                 defines.add("VPRT", true);
                 m_shaderVPRT = m_device->createComputeShader(
-                    shaderPath.string(), "main", "NISScaler VPRT CS", threadGroups, defines.get(), shadersDir.string());
+                    shaderFile, "main", "NISScaler VPRT CS", threadGroups, defines.get() /*,  shadersDir*/);
 
                 // create coefficient inputs for NISScaler only
                 initializeCoefficients();
 
             } else {
                 m_shader = m_device->createComputeShader(
-                    shaderPath.string(), "main", "NISSharpen CS", threadGroups, defines.get(), shadersDir.string());
+                    shaderFile, "main", "NISSharpen CS", threadGroups, defines.get() /*,  shadersDir*/);
 
                 defines.add("VPRT", true);
-                m_shaderVPRT = m_device->createComputeShader(shaderPath.string(),
-                                                             "main",
-                                                             "NISSharpen VPRT CS",
-                                                             threadGroups,
-                                                             defines.get(),
-                                                             shadersDir.string());
+                m_shaderVPRT =
+                    m_device->createComputeShader(shaderFile, "main", "NISSharpen VPRT CS", threadGroups, defines.get()
+                                                  /*,  shadersDir*/);
             }
 
             // TODO: Consider making immutable and create a new buffer in update(). For now, our D3D12 implementation
@@ -136,7 +133,7 @@ namespace {
 
         void initializeCoefficients() {
             const int rowPitch = kFilterSize * 4;
-            const int rowPitchAligned = Align(rowPitch, m_device->getTextureAlignmentConstraint());
+            const int rowPitchAligned = alignTo(rowPitch, m_device->getTextureAlignmentConstraint());
             const int coefSize = rowPitchAligned * kPhaseCount;
 
             XrSwapchainCreateInfo info;

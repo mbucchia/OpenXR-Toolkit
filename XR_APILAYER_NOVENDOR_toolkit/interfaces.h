@@ -43,16 +43,23 @@ namespace toolkit {
             virtual uint64_t query(bool reset = true) const = 0;
         };
 
+        // Quick and dirty API helper
+        template <class T, class... Types>
+        inline constexpr bool is_any_of_v = std::disjunction_v<std::is_same<T, Types>...>;
+
     } // namespace
 
     namespace utilities {
 
         // 2 views to process, one per eye.
         constexpr uint32_t ViewCount = 2;
-        enum class Eye : uint32_t { Left, Right };
+        enum class Eye : uint32_t { Left, Right, Both };
 
         // A CPU synchronous timer.
         struct ICpuTimer : public ITimer {};
+
+        XrVector2f NdcToScreen(XrVector2f);
+        XrVector2f ScreenToNdc(XrVector2f);
 
     } // namespace utilities
 
@@ -186,8 +193,8 @@ namespace toolkit {
             using Buffer = ID3D11Buffer*;
             struct MeshData {
                 ID3D11Buffer* vertexBuffer;
-                UINT stride;
                 ID3D11Buffer* indexBuffer;
+                UINT stride;
                 UINT numIndices;
             };
             using Mesh = MeshData*;
@@ -197,6 +204,12 @@ namespace toolkit {
             using ComputeShaderOutputView = ID3D11UnorderedAccessView*;
             using RenderTargetView = ID3D11RenderTargetView*;
             using DepthStencilView = ID3D11DepthStencilView*;
+
+            // clang-format off
+            template <typename T>
+            static constexpr bool is_concrete_api_v = is_any_of_v<T,
+              Device, Context, Texture, Buffer, Mesh, PixelShader, ComputeShader, ShaderInputView, RenderTargetView, DepthStencilView>;
+            // clang-format on
         };
 
         // Type traits for D3D12.
@@ -223,7 +236,20 @@ namespace toolkit {
             using ComputeShaderOutputView = D3D12_CPU_DESCRIPTOR_HANDLE*;
             using RenderTargetView = D3D12_CPU_DESCRIPTOR_HANDLE*;
             using DepthStencilView = D3D12_CPU_DESCRIPTOR_HANDLE*;
+
+            // clang-format off
+            template <typename T>
+            static constexpr bool is_concrete_api_v = is_any_of_v<T,
+              Device, Context, Texture, Buffer, Mesh, PixelShader, ComputeShader, ShaderInputView, RenderTargetView, DepthStencilView>;
+            // clang-format on
         };
+
+        // Graphics API helper
+        template <typename ConcreteType, typename InterfaceType>
+        inline auto GetAs(const InterfaceType* pInterface) {
+            constexpr auto api = D3D12::is_concrete_api_v<ConcreteType> ? Api::D3D12 : Api::D3D11;
+            return reinterpret_cast<ConcreteType>(api == pInterface->getApi() ? pInterface->getNativePtr() : nullptr);
+        }
 
         // A few handy texture formats.
         enum class TextureFormat { R32G32B32A32_FLOAT, R16G16B16A16_UNORM, R10G10B10A2_UNORM, R8G8B8A8_UNORM };
@@ -236,12 +262,6 @@ namespace toolkit {
         struct IDevice;
         struct ITexture;
 
-        struct View {
-            XrPosef pose;
-            XrFovf fov;
-            xr::math::NearFar nearFar;
-        };
-
         // A shader that will be rendered on a quad wrapping the entire target.
         struct IQuadShader {
             virtual ~IQuadShader() = default;
@@ -252,11 +272,8 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
-            typename ApiTraits::PixelShader getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::PixelShader>(getNativePtr());
+            auto getAs() const {
+                return GetAs<typename ApiTraits::PixelShader>(this);
             }
         };
 
@@ -273,11 +290,8 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
-            typename ApiTraits::ComputeShader getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::ComputeShader>(getNativePtr());
+            auto getAs() const {
+                return GetAs<typename ApiTraits::ComputeShader>(this);
             }
         };
 
@@ -291,11 +305,8 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
-            typename ApiTraits::ShaderInputView getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::ShaderInputView>(getNativePtr());
+            auto getAs() const {
+                return GetAs<typename ApiTraits::ShaderInputView>(this);
             }
         };
 
@@ -309,11 +320,8 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
-            typename ApiTraits::ComputeShaderOutputView getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::ComputeShaderOutputView>(getNativePtr());
+            auto getAs() const {
+                return GetAs<typename ApiTraits::ComputeShaderOutputView>(this);
             }
         };
 
@@ -327,11 +335,8 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
-            typename ApiTraits::RenderTargetView getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::RenderTargetView>(getNativePtr());
+            auto getAs() const {
+                return GetAs<typename ApiTraits::RenderTargetView>(this);
             }
         };
 
@@ -345,11 +350,8 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
-            typename ApiTraits::DepthStencilView getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::DepthStencilView>(getNativePtr());
+            auto getAs() const {
+                return GetAs<typename ApiTraits::DepthStencilView>(this);
             }
         };
 
@@ -362,14 +364,10 @@ namespace toolkit {
             virtual const XrSwapchainCreateInfo& getInfo() const = 0;
             virtual bool isArray() const = 0;
 
-            virtual std::shared_ptr<IShaderInputTextureView> getShaderInputView() const = 0;
-            virtual std::shared_ptr<IShaderInputTextureView> getShaderInputView(uint32_t slice) const = 0;
-            virtual std::shared_ptr<IComputeShaderOutputView> getComputeShaderOutputView() const = 0;
-            virtual std::shared_ptr<IComputeShaderOutputView> getComputeShaderOutputView(uint32_t slice) const = 0;
-            virtual std::shared_ptr<IRenderTargetView> getRenderTargetView() const = 0;
-            virtual std::shared_ptr<IRenderTargetView> getRenderTargetView(uint32_t slice) const = 0;
-            virtual std::shared_ptr<IDepthStencilView> getDepthStencilView() const = 0;
-            virtual std::shared_ptr<IDepthStencilView> getDepthStencilView(uint32_t slice) const = 0;
+            virtual std::shared_ptr<IShaderInputTextureView> getShaderResourceView(int32_t slice = -1) const = 0;
+            virtual std::shared_ptr<IComputeShaderOutputView> getUnorderedAccessView(int32_t slice = -1) const = 0;
+            virtual std::shared_ptr<IRenderTargetView> getRenderTargetView(int32_t slice = -1) const = 0;
+            virtual std::shared_ptr<IDepthStencilView> getDepthStencilView(int32_t slice = -1) const = 0;
 
             virtual void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) = 0;
             virtual void saveToFile(const std::filesystem::path& path) const = 0;
@@ -377,11 +375,8 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
-            typename ApiTraits::Texture getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::Texture>(getNativePtr());
+            auto getAs() const {
+                return GetAs<typename ApiTraits::Texture>(this);
             }
         };
 
@@ -397,11 +392,8 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
-            typename ApiTraits::Buffer getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::Buffer>(getNativePtr());
+            auto getAs() const {
+                return GetAs<typename ApiTraits::Buffer>(this);
             }
         };
 
@@ -420,11 +412,8 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
-            typename ApiTraits::Mesh getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::Mesh>(getNativePtr());
+            auto getAs() const {
+                return GetAs<typename ApiTraits::Mesh>(this);
             }
         };
 
@@ -444,11 +433,8 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
 
             template <typename ApiTraits>
-            typename ApiTraits::Context getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::Context>(getNativePtr());
+            auto getAs() const {
+                return GetAs<typename ApiTraits::Context>(this);
             }
         };
 
@@ -469,29 +455,34 @@ namespace toolkit {
             virtual void flushContext(bool blocking = false, bool isEndOfFrame = false) = 0;
 
             virtual std::shared_ptr<ITexture> createTexture(const XrSwapchainCreateInfo& info,
-                                                            const std::optional<std::string>& debugName,
+                                                            std::string_view debugName,
                                                             int64_t overrideFormat = 0,
                                                             uint32_t rowPitch = 0,
                                                             uint32_t imageSize = 0,
                                                             const void* initialData = nullptr) = 0;
+
             virtual std::shared_ptr<IShaderBuffer> createBuffer(size_t size,
-                                                                const std::optional<std::string>& debugName,
+                                                                std::string_view debugName,
                                                                 const void* initialData = nullptr,
                                                                 bool immutable = false) = 0;
+
             virtual std::shared_ptr<ISimpleMesh> createSimpleMesh(std::vector<SimpleMeshVertex>& vertices,
                                                                   std::vector<uint16_t>& indices,
-                                                                  const std::optional<std::string>& debugName) = 0;
-            virtual std::shared_ptr<IQuadShader> createQuadShader(const std::string& shaderPath,
+                                                                  std::string_view debugName) = 0;
+
+            virtual std::shared_ptr<IQuadShader> createQuadShader(const std::filesystem::path& shaderFile,
                                                                   const std::string& entryPoint,
-                                                                  const std::optional<std::string>& debugName,
+                                                                  std::string_view debugName,
                                                                   const D3D_SHADER_MACRO* defines = nullptr,
-                                                                  const std::string includePath = "") = 0;
-            virtual std::shared_ptr<IComputeShader> createComputeShader(const std::string& shaderPath,
+                                                                  std::filesystem::path includePath = "") = 0;
+
+            virtual std::shared_ptr<IComputeShader> createComputeShader(const std::filesystem::path& shaderFile,
                                                                         const std::string& entryPoint,
-                                                                        const std::optional<std::string>& debugName,
+                                                                        std::string_view debugName,
                                                                         const std::array<unsigned int, 3>& threadGroups,
                                                                         const D3D_SHADER_MACRO* defines = nullptr,
-                                                                        const std::string includePath = "") = 0;
+                                                                        std::filesystem::path includePath = "") = 0;
+
             virtual std::shared_ptr<IGpuTimer> createTimer() = 0;
 
             // Must be invoked prior to setting the input/output.
@@ -506,21 +497,22 @@ namespace toolkit {
 
             virtual void dispatchShader(bool doNotClear = false) const = 0;
 
+            virtual void setRenderTargets(size_t numRenderTargets,
+                                          std::shared_ptr<ITexture>* renderTargets,
+                                          int32_t* renderSlices = nullptr,
+                                          std::shared_ptr<ITexture>* depthBuffer = nullptr,
+                                          int32_t depthSlice = -1) = 0;
             virtual void unsetRenderTargets() = 0;
-            virtual void setRenderTargets(std::vector<std::shared_ptr<ITexture>> renderTargets,
-                                          std::shared_ptr<ITexture> depthBuffer = {}) = 0;
-            virtual void setRenderTargets(std::vector<std::pair<std::shared_ptr<ITexture>, int32_t>> renderTargets,
-                                          std::pair<std::shared_ptr<ITexture>, int32_t> depthBuffer = {}) = 0;
 
             virtual void clearColor(float top, float left, float bottom, float right, const XrColor4f& color) const = 0;
             virtual void clearDepth(float value) = 0;
 
-            virtual void setViewProjection(const View& view) = 0;
+            virtual void setViewProjection(const xr::math::ViewProjection& view) = 0;
             virtual void draw(std::shared_ptr<ISimpleMesh> mesh,
                               const XrPosef& pose,
                               XrVector3f scaling = {1.0f, 1.0f, 1.0f}) = 0;
 
-            virtual float drawString(std::wstring string,
+            virtual float drawString(std::wstring_view string,
                                      TextStyle style,
                                      float size,
                                      float x,
@@ -528,7 +520,7 @@ namespace toolkit {
                                      uint32_t color,
                                      bool measure = false,
                                      int alignment = FW1_LEFT) = 0;
-            virtual float drawString(std::string string,
+            virtual float drawString(std::string_view string,
                                      TextStyle style,
                                      float size,
                                      float x,
@@ -536,8 +528,8 @@ namespace toolkit {
                                      uint32_t color,
                                      bool measure = false,
                                      int alignment = FW1_LEFT) = 0;
-            virtual float measureString(std::wstring string, TextStyle style, float size) const = 0;
-            virtual float measureString(std::string string, TextStyle style, float size) const = 0;
+            virtual float measureString(std::wstring_view string, TextStyle style, float size) const = 0;
+            virtual float measureString(std::string_view string, TextStyle style, float size) const = 0;
             virtual void beginText() = 0;
             virtual void flushText() = 0;
 
@@ -570,25 +562,14 @@ namespace toolkit {
             virtual void* getContextPtr() const = 0;
 
             template <typename ApiTraits>
-            typename ApiTraits::Device getAs() const {
-                return ApiTraits::Api == getApi() ? reinterpret_cast<typename ApiTraits::Device>(getNativePtr())
-                                                  : nullptr;
+            auto getAs() const {
+                return GetAs<typename ApiTraits::Device>(this);
             }
 
             template <typename ApiTraits>
-            typename ApiTraits::Device getNative() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::Device>(getNativePtr());
-            }
-
-            template <typename ApiTraits>
-            typename ApiTraits::Context getContext() const {
-                if (ApiTraits::Api != getApi()) {
-                    throw std::runtime_error("Api mismatch");
-                }
-                return reinterpret_cast<typename ApiTraits::Context>(getContextPtr());
+            auto getContextAs() const {
+                return reinterpret_cast<typename ApiTraits::Context>(ApiTraits::Api == getApi() ? getContextPtr()
+                                                                                                : nullptr);
             }
         };
 
@@ -635,10 +616,10 @@ namespace toolkit {
                                            std::optional<utilities::Eye> eyeHint) = 0;
             virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
 
-            virtual void
-            setViewProjectionCenters(float leftCenterX, float leftCenterY, float rightCenterX, float rightCenterY) = 0;
+            virtual void updateGazeLocation(XrVector2f gaze, utilities::Eye eye) = 0;
+            virtual void setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
 
-            virtual uint8_t getMaxDownsamplePow2() const = 0;
+            virtual uint8_t getMaxRate() const = 0;
 
 #ifdef _DEBUG
             virtual void startCapture() = 0;
@@ -649,7 +630,6 @@ namespace toolkit {
     } // namespace graphics
 
     namespace input {
-
         enum class Hand : uint32_t { Left, Right };
 
         struct GesturesState {
@@ -721,8 +701,7 @@ namespace toolkit {
             virtual void update() = 0;
 
             virtual XrActionSet getActionSet() const = 0;
-            virtual bool getProjectedGaze(float gazeX[utilities::ViewCount],
-                                          float gazeY[utilities::ViewCount]) const = 0;
+            virtual bool getProjectedGaze(XrVector2f gaze[utilities::ViewCount]) const = 0;
 
             virtual const EyeGazeState& getEyeGazeState() const = 0;
         };
@@ -766,7 +745,7 @@ namespace toolkit {
             virtual void updateEyeGazeState(const input::EyeGazeState& state) = 0;
 
             virtual void
-            setViewProjectionCenters(float leftCenterX, float leftCenterY, float rightCenterX, float rightCenterY) = 0;
+            setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
         };
 
     } // namespace menu
