@@ -33,6 +33,9 @@
     <Filter Include="Utils">
       <UniqueIdentifier>{5d576e4a-db5d-4e19-ae3a-10ed2642dcda}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shader Files\VRS">
+      <UniqueIdentifier>{e1b58850-3359-4361-85e9-60b095c46aae}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -174,6 +177,9 @@
     </FxCompile>
     <FxCompile Include="FSR.hlsl">
       <Filter>Shader Files\FSR</Filter>
+    </FxCompile>
+    <FxCompile Include="VRS.hlsl">
+      <Filter>Shader Files\VRS</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

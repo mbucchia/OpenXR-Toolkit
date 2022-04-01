@@ -22,12 +22,11 @@
 
 #pragma once
 
-#define Align(value, pad_to) (((value) + (pad_to)-1) & ~((pad_to)-1))
-
 // Standard library.
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <bit>
 #include <chrono>
 #define _USE_MATH_DEFINES
 #include <cmath>
@@ -51,7 +50,7 @@
 using namespace std::chrono_literals;
 
 // Windows header files.
-#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
 #define NOMINMAX
 #include <windows.h>
 #include <unknwn.h>
@@ -63,7 +62,7 @@ using Microsoft::WRL::ComPtr;
 
 // Helpers for ComPtr manipulation.
 
-template<typename T>
+template <typename T>
 inline T* get(const ComPtr<T>& object) {
     return object.Get();
 }
@@ -81,6 +80,22 @@ void attach(ComPtr<T>& object, T* value) {
 template <typename T>
 T* detach(ComPtr<T>& object) {
     return object.Detach();
+}
+
+template <typename T>
+constexpr inline T alignTo(T value, uint32_t pad) noexcept {
+    //assert(pad && !(pad & (pad - 1)));
+    return (value + (pad - 1)) & ~static_cast<T>(pad - 1);
+}
+
+template <typename T>
+constexpr inline T roundUp(T value, uint32_t pad) noexcept {
+    return ((value + (pad - 1)) / pad) * pad;
+}
+
+template <typename T>
+constexpr inline T roundDown(T value, uint32_t pad) noexcept {
+    return (value / pad) * pad;
 }
 
 // Direct3D.

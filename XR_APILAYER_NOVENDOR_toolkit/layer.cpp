@@ -445,17 +445,16 @@ namespace {
                         break;
                     }
 
-                    uint32_t inputWidth = m_displayWidth;
-                    uint32_t inputHeight = m_displayHeight;
+                    uint32_t renderWidth = m_displayWidth;
+                    uint32_t renderHeight = m_displayHeight;
                     if (m_upscaleMode != config::ScalingType::None) {
-                        std::tie(inputWidth, inputHeight) =
+                        std::tie(renderWidth, renderHeight) =
                             config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
-                        m_upscalingFactor = m_configManager->getValue(config::SettingScaling);
                     }
 
                     // Per FSR SDK documentation.
-                    m_mipMapBiasForUpscaling =
-                        -std::log2f(static_cast<float>(m_displayWidth * m_displayHeight) / (inputWidth * inputHeight));
+                    m_mipMapBiasForUpscaling = -std::log2f(static_cast<float>(m_displayWidth * m_displayHeight) /
+                                                           (renderWidth * renderHeight));
                     Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
 
                     m_postProcessor =
@@ -465,8 +464,13 @@ namespace {
                         m_frameAnalyzer = graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice);
                     }
 
-                    m_variableRateShader = graphics::CreateVariableRateShader(
-                        m_configManager, m_graphicsDevice, m_eyeTracker, inputWidth, inputHeight);
+                    m_variableRateShader = graphics::CreateVariableRateShader(m_configManager,
+                                                                              m_graphicsDevice,
+                                                                              m_eyeTracker,
+                                                                              renderWidth,
+                                                                              renderHeight,
+                                                                              m_displayWidth,
+                                                                              m_displayHeight);
 
                     // Register intercepted events.
                     m_graphicsDevice->registerSetRenderTargetEvent(
@@ -560,7 +564,7 @@ namespace {
                             isPredictionDampeningSupported,
                             isMotionReprojectionRateSupported,
                             displayRefreshRate,
-                            m_variableRateShader ? m_variableRateShader->getMaxDownsamplePow2() : 0,
+                            m_variableRateShader ? m_variableRateShader->getMaxRate() : 0,
                             m_supportEyeTracking,
                             m_supportFOVHack);
                     }
@@ -986,12 +990,12 @@ namespace {
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D11) {
                         XrSwapchainImageD3D11KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D11KHR*>(images);
                         for (uint32_t i = 0; i < *imageCountOutput; i++) {
-                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getNative<graphics::D3D11>();
+                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getAs<graphics::D3D11>();
                         }
                     } else if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                         XrSwapchainImageD3D12KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D12KHR*>(images);
                         for (uint32_t i = 0; i < *imageCountOutput; i++) {
-                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getNative<graphics::D3D12>();
+                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getAs<graphics::D3D12>();
                         }
                     } else {
                         throw std::runtime_error("Unsupported graphics runtime");
@@ -1136,14 +1140,8 @@ namespace {
 
                     if (Pose::IsPoseValid(state.viewStateFlags)) {
                         DirectX::XMFLOAT4X4 leftView, rightView;
-                        {
-                            const auto tmp = LoadXrPose(eyeInViewSpace[0].pose);
-                            DirectX::XMStoreFloat4x4(&leftView, tmp);
-                        }
-                        {
-                            const auto tmp = LoadXrPose(eyeInViewSpace[1].pose);
-                            DirectX::XMStoreFloat4x4(&rightView, tmp);
-                        }
+                        DirectX::XMStoreFloat4x4(&leftView, LoadXrPose(eyeInViewSpace[0].pose));
+                        DirectX::XMStoreFloat4x4(&rightView, LoadXrPose(eyeInViewSpace[1].pose));
 
                         // This code is based on vrperfkit by Frydrych Holger.
                         // https://github.com/fholger/vrperfkit/blob/master/src/openvr/openvr_manager.cpp
@@ -1152,34 +1150,26 @@ namespace {
                                                  leftView.m[2][2] * rightView.m[2][2];
 
                         // In normalized screen coordinates.
-                        float projCenterX[utilities::ViewCount];
-                        float projCenterY[utilities::ViewCount];
                         for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                             const auto& fov = eyeInViewSpace[eye].fov;
                             const float cantedAngle = std::abs(std::acosf(dotForward) / 2) * (eye ? -1 : 1);
                             const float canted = std::tanf(cantedAngle);
-                            projCenterX[eye] = 0.5f * (1.f + (fov.angleRight + fov.angleLeft - 2 * canted) /
-                                                                 (fov.angleLeft - fov.angleRight));
-                            projCenterY[eye] =
-                                0.5f * (1.f + (fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown));
-
-                            m_eyeGazeX[eye] = projCenterX[eye];
-                            m_eyeGazeY[eye] = projCenterY[eye];
+                            m_projCenters[eye].x = (fov.angleRight + fov.angleLeft - 2 * canted) / (fov.angleLeft - fov.angleRight);
+                            m_projCenters[eye].y = -(fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown);
                         }
 
                         Log("Projection calibration: %.5f, %.5f | %.5f, %.5f\n",
-                            projCenterX[0],
-                            projCenterY[0],
-                            projCenterX[1],
-                            projCenterY[1]);
+                            m_projCenters[0].x,
+                            m_projCenters[0].y,
+                            m_projCenters[1].x,
+                            m_projCenters[1].y);
 
                         if (m_menuHandler) {
-                            m_menuHandler->setViewProjectionCenters(
-                                projCenterX[0], projCenterY[0], projCenterX[1], projCenterY[1]);
+                            m_menuHandler->setViewProjectionCenters(m_projCenters[0], m_projCenters[1]);
                         }
+
                         if (m_variableRateShader) {
-                            m_variableRateShader->setViewProjectionCenters(
-                                projCenterX[0], projCenterY[0], projCenterX[1], projCenterY[1]);
+                            m_variableRateShader->setViewProjectionCenters(m_projCenters[0], m_projCenters[1]);
                         }
 
                         m_needCalibrateEyeProjections = false;
@@ -1391,6 +1381,7 @@ namespace {
                 if (m_eyeTracker) {
                     m_eyeTracker->beginFrame(m_begunFrameTime);
                 }
+
                 if (m_variableRateShader) {
                     m_variableRateShader->beginFrame(m_begunFrameTime);
                 }
@@ -1494,7 +1485,7 @@ namespace {
                 const auto upscaleName = m_upscaleMode == config::ScalingType::NIS   ? "_NIS_"
                                          : m_upscaleMode == config::ScalingType::FSR ? "_FSR_"
                                                                                      : "_SCL_";
-                parameters << upscaleName << m_upscalingFactor << "_"
+                parameters << upscaleName << m_configManager->getValue(config::SettingScaling) << "_"
                            << m_configManager->getValue(config::SettingSharpness);
             }
 
@@ -1574,7 +1565,7 @@ namespace {
 
             std::shared_ptr<graphics::ITexture> textureForOverlay[utilities::ViewCount] = {};
             std::shared_ptr<graphics::ITexture> depthForOverlay[utilities::ViewCount] = {};
-            graphics::View viewsForOverlay[utilities::ViewCount];
+            xr::math::ViewProjection viewsForOverlay[utilities::ViewCount];
             XrSpace spaceForOverlay = XR_NULL_HANDLE;
 
             // Because the frame info is passed const, we are going to need to reconstruct a writable version of it
@@ -1743,9 +1734,9 @@ namespace {
                             correctedProjectionViews[eye].pose = m_posesForFrame[eye].pose;
                         }
 
-                        viewsForOverlay[eye].pose = correctedProjectionViews[eye].pose;
-                        viewsForOverlay[eye].fov = correctedProjectionViews[eye].fov;
-                        viewsForOverlay[eye].nearFar = nearFar;
+                        viewsForOverlay[eye].Pose = correctedProjectionViews[eye].pose;
+                        viewsForOverlay[eye].Fov = correctedProjectionViews[eye].fov;
+                        viewsForOverlay[eye].NearFar = nearFar;
                     }
 
                     spaceForOverlay = proj->space;
@@ -1786,31 +1777,29 @@ namespace {
 
                 // Render the hands or eye gaze helper.
                 if (m_handTracker || (m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug))) {
-                    bool isEyeGazeValid = false;
-                    if (m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGazeX, m_eyeGazeY)) {
-                        isEyeGazeValid = true;
-                    }
+                    XrVector2f eyeGaze[utilities::ViewCount];
+                    auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(eyeGaze);
 
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                        if (!useVPRT) {
-                            m_graphicsDevice->setRenderTargets({textureForOverlay[eye]}, depthForOverlay[eye]);
-                        } else {
-                            m_graphicsDevice->setRenderTargets({std::make_pair(textureForOverlay[eye], eye)},
-                                                               {std::make_pair(depthForOverlay[eye], eye)});
-                        }
+                        m_graphicsDevice->setRenderTargets(1,
+                                                           &textureForOverlay[eye],
+                                                           useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr,
+                                                           &depthForOverlay[eye],
+                                                           useVPRT ? eye : -1);
+
                         m_graphicsDevice->setViewProjection(viewsForOverlay[eye]);
 
                         if (m_handTracker) {
                             m_handTracker->render(
-                                viewsForOverlay[eye].pose, spaceForOverlay, getTimeNow(), textureForOverlay[eye]);
+                                viewsForOverlay[eye].Pose, spaceForOverlay, getTimeNow(), textureForOverlay[eye]);
                         }
 
                         if (m_eyeTracker) {
                             XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
-                            const auto centerX = m_displayWidth * m_eyeGazeX[eye];
-                            const auto centerY = m_displayHeight * m_eyeGazeY[eye];
-
-                            m_graphicsDevice->clearColor(centerY - 20, centerX - 20, centerY + 20, centerX + 20, color);
+                            auto pos = utilities::NdcToScreen(eyeGaze[eye]);
+                            pos.x *= m_displayWidth;
+                            pos.y *= m_displayHeight;
+                            m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
                         }
                     }
                 }
@@ -1824,12 +1813,8 @@ namespace {
                         m_graphicsDevice->flushContext();
                     }
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                        if (!useVPRT) {
-                            m_graphicsDevice->setRenderTargets({textureForOverlay[eye]});
-                        } else {
-                            m_graphicsDevice->setRenderTargets({std::make_pair(textureForOverlay[eye], eye)});
-                        }
-
+                        m_graphicsDevice->setRenderTargets(
+                            1, &textureForOverlay[eye], useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr);
                         m_graphicsDevice->beginText();
                         m_menuHandler->render((utilities::Eye)eye, textureForOverlay[eye]);
                         m_graphicsDevice->flushText();
@@ -1933,8 +1918,7 @@ namespace {
         uint32_t m_visibilityMaskEventIndex{utilities::ViewCount};
         XrSpace m_viewSpace{XR_NULL_HANDLE};
         bool m_needCalibrateEyeProjections{true};
-        float m_eyeGazeX[utilities::ViewCount];
-        float m_eyeGazeY[utilities::ViewCount];
+        XrVector2f m_projCenters[utilities::ViewCount];
         XrView m_posesForFrame[utilities::ViewCount];
 
         std::shared_ptr<config::IConfigManager> m_configManager;
@@ -1946,7 +1930,6 @@ namespace {
         std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
         std::shared_ptr<graphics::IImageProcessor> m_upscaler;
         config::ScalingType m_upscaleMode{config::ScalingType::None};
-        uint32_t m_upscalingFactor{100};
         float m_mipMapBiasForUpscaling{0.f};
 
         std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;

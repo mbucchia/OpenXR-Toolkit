@@ -30,22 +30,39 @@ namespace toolkit::utilities::shader {
     using namespace toolkit::log;
     using namespace toolkit::log;
 
-    inline void CompileShader(const std::string& fileName,
-                              const std::string& entryPoint,
+    inline void CompileShader(const std::filesystem::path& shaderFile,
+                              const char* entryPoint,
                               ID3DBlob** blob,
                               const D3D_SHADER_MACRO* defines = nullptr,
                               ID3DInclude* includes = nullptr,
-                              const std::string& target = "cs_5_0") {
+                              const char* target = "cs_5_0") {
         ComPtr<ID3DBlob> cdErrorBlob;
-        const HRESULT hr = D3DCompileFromFile(std::wstring(fileName.begin(), fileName.end()).c_str(),
-                                              defines,
-                                              includes,
-                                              entryPoint.c_str(),
-                                              target.c_str(),
-                                              0,
-                                              0,
-                                              blob,
-                                              &cdErrorBlob);
+        if (!includes)
+            includes = D3D_COMPILE_STANDARD_FILE_INCLUDE;
+        const HRESULT hr =
+            D3DCompileFromFile(shaderFile.c_str(), defines, includes, entryPoint, target, 0, 0, blob, &cdErrorBlob);
+        if (FAILED(hr)) {
+            if (cdErrorBlob) {
+                Log("%s", (char*)cdErrorBlob->GetBufferPointer());
+            }
+            CHECK_HRESULT(hr, "Failed to compile shader file");
+        }
+    }
+
+    inline void CompileShader(const void* data,
+                              size_t size,
+                              const char* entryPoint,
+                              ID3DBlob** blob,
+                              const D3D_SHADER_MACRO* defines = nullptr,
+                              ID3DInclude* includes = nullptr,
+                              const char* target = "cs_5_0") {
+        ComPtr<ID3DBlob> cdErrorBlob;
+        if (!includes) {
+            // TODO: pSourceName must be a file name to derive relative paths from.
+            includes = D3D_COMPILE_STANDARD_FILE_INCLUDE;
+        }
+        const HRESULT hr =
+            D3DCompile(data, size, nullptr, defines, includes, entryPoint, target, 0, 0, blob, &cdErrorBlob);
         if (FAILED(hr)) {
             if (cdErrorBlob) {
                 Log("%s", (char*)cdErrorBlob->GetBufferPointer());
@@ -55,39 +72,35 @@ namespace toolkit::utilities::shader {
     }
 
     struct IncludeHeader : ID3DInclude {
-        IncludeHeader(const std::vector<std::string>& includePath) : m_includePath(includePath), m_idx(0) {
+        IncludeHeader(std::vector<std::filesystem::path> includePaths) : m_includePaths(std::move(includePaths)) {
         }
 
         HRESULT
         Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes) {
-            m_data.push_back("");
-            std::ifstream t;
-            size_t i = 0;
-            while (!t.is_open() && i < m_includePath.size()) {
-                t.open(m_includePath[i] + "/" + pFileName);
-                i++;
+            for (auto& it : m_includePaths) {
+                auto path = it / pFileName;
+                auto file = std::ifstream(path, std::ios_base::binary);
+                if (file.is_open()) {
+                    assert(ppData && pBytes);
+                    m_data.push_back({});
+                    auto& buf = m_data.back();
+                    buf.resize(static_cast<size_t>(std::filesystem::file_size(path)));
+                    file.read(buf.data(), static_cast<std::streamsize>(buf.size()));
+                    buf.erase(std::remove(buf.begin(), buf.end(), '\0'), buf.end());
+                    *ppData = buf.data();
+                    *pBytes = static_cast<UINT>(buf.size());
+                    return S_OK;
+                }
             }
-            if (!t.is_open())
-                throw std::runtime_error("Error opening D3DCompileFromFile include header");
-            t.seekg(0, std::ios::end);
-            size_t size = t.tellg();
-            m_data[m_idx].resize(size);
-            t.seekg(0, std::ios::beg);
-            t.read(m_data[m_idx].data(), size);
-            m_data[m_idx].erase(std::remove(m_data[m_idx].begin(), m_data[m_idx].end(), '\0'), m_data[m_idx].end());
-            *ppData = m_data[m_idx].data();
-            *pBytes = UINT(m_data[m_idx].size());
-            m_idx++;
-            return S_OK;
+            throw std::runtime_error("Error opening shader file include header");
         }
 
         HRESULT Close(LPCVOID pData) {
             return S_OK;
         }
 
-        std::vector<std::string> m_data;
-        std::vector<std::string> m_includePath;
-        size_t m_idx;
+        std::vector<std::vector<char>> m_data;
+        std::vector<std::filesystem::path> m_includePaths;
     };
 
     namespace {
@@ -122,7 +135,7 @@ namespace toolkit::utilities::shader {
         void set(const std::string& define, const T& val) {
             auto it = std::find_if(m_definesVector.begin(), m_definesVector.end(), [&](const auto& entry) {
                 return entry.first == define;
-             });
+            });
             if (it != m_definesVector.end())
                 it->second = toStr(val);
         }
