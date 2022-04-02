@@ -64,7 +64,7 @@ namespace toolkit {
         const std::string SettingKeyCtrlModifier = "ctrl_modifier";
         const std::string SettingKeyAltModifier = "alt_modifier";
         const std::string SettingMenuKeyUp = "key_up";
-        const std::string SettingMenuKeyDown = "key_down";
+        const std::string SettingMenuKeyDown = "key_menu";
         const std::string SettingMenuKeyLeft = "key_left";
         const std::string SettingMenuKeyRight = "key_right";
         const std::string SettingMenuEyeVisibility = "menu_eye";
