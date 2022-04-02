@@ -106,11 +106,12 @@ namespace {
                            uint32_t displayWidth,
                            uint32_t displayHeight,
                            uint32_t tileSize,
-                           uint32_t tileRateMax)
+                           uint32_t tileRateMax,
+                           bool isPimaxFovHackSupported)
             : m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
               m_renderWidth(renderWidth), m_renderHeight(renderHeight),
               m_renderRatio(float(renderWidth) / renderHeight), m_displayRatio(float(displayHeight) / displayWidth),
-              m_tileSize(tileSize), m_tileRateMax(tileRateMax) {
+              m_tileSize(tileSize), m_tileRateMax(tileRateMax), m_supportFOVHack(isPimaxFovHackSupported) {
             createRenderResources(m_renderWidth, m_renderHeight);
 
             // Set initial projection center
@@ -507,7 +508,8 @@ namespace {
                     return true;
                 }
                 return m_configManager->hasChanged(SettingVRSXScale) ||
-                       m_configManager->hasChanged(SettingVRSXOffset) || m_configManager->hasChanged(SettingVRSYOffset);
+                       m_configManager->hasChanged(SettingVRSXOffset) || m_configManager->hasChanged(SettingVRSYOffset) ||
+                       (m_supportFOVHack && m_configManager->hasChanged(config::SettingPimaxFOVHack));
             }
             return false;
         }
@@ -554,6 +556,11 @@ namespace {
                 // view center + view offset (L/R)
                 gaze[0] = m_gazeOffset[0] + m_gazeOffset[2];
                 gaze[1] = m_gazeOffset[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
+            }
+
+            // When doing the Pimax FOV hack, we swap left and right eyes.
+            if (m_supportFOVHack && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
+                std::swap(gaze[0], gaze[1]);
             }
 
             m_gazeLocation[0] = gaze[0];
@@ -691,6 +698,8 @@ namespace {
         const float m_renderRatio;
         const float m_displayRatio;
 
+        const bool m_supportFOVHack;
+
         XrVector2f m_gazeOffset[ViewCount + 1];
         XrVector2f m_gazeLocation[ViewCount + 1];
 
@@ -806,7 +815,8 @@ namespace toolkit::graphics {
                                                                   uint32_t renderWidth,
                                                                   uint32_t renderHeight,
                                                                   uint32_t displayWidth,
-                                                                  uint32_t displayHeight) {
+                                                                  uint32_t displayHeight,
+                                                                  bool isPimaxFovHackSupported) {
         try {
             uint32_t tileSize = 0;
             uint32_t tileRateMax = 0;
@@ -870,7 +880,8 @@ namespace toolkit::graphics {
                                                         displayWidth,
                                                         displayHeight,
                                                         tileSize,
-                                                        tileRateMax);
+                                                        tileRateMax,
+                                                        isPimaxFovHackSupported);
 
         } catch (FeatureNotSupported&) {
             return nullptr;
