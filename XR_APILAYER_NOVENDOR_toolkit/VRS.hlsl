@@ -54,7 +54,7 @@ cbuffer cb : register(b0)
 
 RWTexture2D<uint> u_Output : register(u0);
 
-[numthreads(VRS_TILE_X, VRS_TILE_Y, 1)]
+[numthreads(VRS_NUM_THREADS_X, VRS_NUM_THREADS_Y, 1)]
 void mainCS(in int2 pos : SV_DispatchThreadID) {
   // screen space (w,h) to uv (0,1)
   float2 pos_uv = (pos + 0.5f) * Gaze.zw;
