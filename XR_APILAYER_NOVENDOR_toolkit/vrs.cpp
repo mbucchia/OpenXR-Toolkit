@@ -508,7 +508,8 @@ namespace {
                     return true;
                 }
                 return m_configManager->hasChanged(SettingVRSXScale) ||
-                       m_configManager->hasChanged(SettingVRSXOffset) || m_configManager->hasChanged(SettingVRSYOffset) ||
+                       m_configManager->hasChanged(SettingVRSXOffset) ||
+                       m_configManager->hasChanged(SettingVRSYOffset) ||
                        (m_supportFOVHack && m_configManager->hasChanged(config::SettingPimaxFOVHack));
             }
             return false;
@@ -531,6 +532,9 @@ namespace {
                 radius[0] = m_configManager->getValue(SettingVRSInnerRadius);
                 radius[1] = m_configManager->getValue(SettingVRSOuterRadius);
             }
+
+            // When doing the Pimax FOV hack, we swap left and right eyes.
+            m_swapViews = m_supportFOVHack && m_configManager->getValue(config::SettingPimaxFOVHack);
 
             const auto semiMajorFactor = m_configManager->getValue(SettingVRSXScale);
             m_constants.Rings[0] = MakeRingParam({radius[0] * semiMajorFactor * 0.0001f, radius[0] * 0.01f});
@@ -557,37 +561,28 @@ namespace {
                 gaze[0] = m_gazeOffset[0] + m_gazeOffset[2];
                 gaze[1] = m_gazeOffset[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
             }
+            // location = view center + view offset (L/R)
+            m_gazeLocation[0] = gaze[m_swapViews] + m_gazeOffset[2];
+            m_gazeLocation[1] = gaze[!m_swapViews] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
+        }
+
+        void updateViews11(D3D11::Context pContext) {
+            for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
+                m_constants.GazeXY = m_gazeLocation[i];
+                m_cbShading[i]->uploadData(&m_constants, sizeof(m_constants));
 
             // When doing the Pimax FOV hack, we swap left and right eyes.
             if (m_supportFOVHack && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
                 std::swap(gaze[0], gaze[1]);
             }
 
-            m_gazeLocation[0] = gaze[0];
-            m_gazeLocation[1] = gaze[1];
-        }
-
-        void updateViews11(bool updateSingleRTV = true, bool updateArrayRTV = true, bool updateFallbackRTV = true) {
-            for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
-                auto update_dispatch = i != 2 ? (updateSingleRTV || updateArrayRTV) : updateFallbackRTV;
-                if (update_dispatch) {
-                    m_constants.GazeXY = m_gazeLocation[i];
-                    m_cbShading->uploadData(&m_constants, sizeof(m_constants));
-
-                    m_device->setShader(m_csShading);
-                    m_device->setShaderInput(0, m_cbShading);
-                    m_device->setShaderInput(0, m_shadingRateMask[i]);
-                    m_device->setShaderOutput(0, m_shadingRateMask[i]);
-                    m_device->dispatchShader();
-
-                    if (i != 2 && updateArrayRTV) {
-                        m_device->setShader(m_csShading);
-                        m_device->setShaderInput(0, m_cbShading);
-                        m_device->setShaderInput(0, m_shadingRateMaskVPRT, static_cast<int>(i));
-                        m_device->setShaderOutput(0, m_shadingRateMaskVPRT, static_cast<int>(i));
-                        m_device->dispatchShader();
-                    }
-                }
+            if (pContext) {
+                // copy each SRTV to each VPRT slice
+                auto pDstResource = m_shadingRateMaskVPRT->getAs<D3D11>();
+                pContext->CopySubresourceRegion(
+                    pDstResource, 0, 0, 0, 0, m_shadingRateMask[0]->getAs<D3D11>(), 0, nullptr);
+                pContext->CopySubresourceRegion(
+                    pDstResource, 1, 0, 0, 0, m_shadingRateMask[1]->getAs<D3D11>(), 0, nullptr);
             }
         }
 
@@ -699,13 +694,14 @@ namespace {
         const float m_displayRatio;
 
         const bool m_supportFOVHack;
+        bool m_usingEyeTracking{false};
+        bool m_needUpdateViews{false};
+        bool m_swapViews{false};
 
         XrVector2f m_gazeOffset[ViewCount + 1];
         XrVector2f m_gazeLocation[ViewCount + 1];
 
         VariableShadingRateType m_mode{VariableShadingRateType::None};
-        bool m_usingEyeTracking{false};
-        bool m_needUpdateViews{false};
 
         // ShadingRates to Graphics API specific rates LUT.
         uint8_t m_shadingRates[SHADING_RATE_COUNT];
