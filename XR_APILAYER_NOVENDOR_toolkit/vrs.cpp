@@ -572,8 +572,8 @@ namespace {
                 gaze[1] = m_gazeOffset[1];
             }
             // location = view center + view offset (L/R)
-            m_gazeLocation[0] = gaze[m_swapViews] + m_gazeOffset[2];
-            m_gazeLocation[1] = gaze[!m_swapViews] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
+            m_gazeLocation[m_swapViews] = gaze[0] + m_gazeOffset[2];
+            m_gazeLocation[!m_swapViews] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
         }
 
         void updateViews11(D3D11::Context pContext) {
