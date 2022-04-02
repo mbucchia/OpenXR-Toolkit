@@ -473,7 +473,8 @@ namespace {
                                                                               renderWidth,
                                                                               renderHeight,
                                                                               m_displayWidth,
-                                                                              m_displayHeight);
+                                                                              m_displayHeight,
+                                                                              m_supportFOVHack);
 
                     // Register intercepted events.
                     m_graphicsDevice->registerSetRenderTargetEvent(
@@ -491,16 +492,10 @@ namespace {
                                 }
                             }
                             if (m_variableRateShader) {
-                                auto eyeHint = m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt;
-
-                                // When doing the Pimax FOV hack, we swap left and right eyes.
-                                if (m_supportFOVHack && eyeHint.has_value() &&
-                                    m_configManager->peekValue(config::SettingPimaxFOVHack)) {
-                                    eyeHint = eyeHint.value() == utilities::Eye::Left ? utilities::Eye::Right
-                                                                                      : utilities::Eye::Left;
-                                }
-
-                                if (m_variableRateShader->onSetRenderTarget(context, renderTarget, eyeHint)) {
+                                if (m_variableRateShader->onSetRenderTarget(
+                                        context,
+                                        renderTarget,
+                                        m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt)) {
                                     m_stats.numRenderTargetsWithVRS++;
                                 }
                             }
@@ -557,19 +552,19 @@ namespace {
                                     .value_or(0)
                                 ? 60u
                                 : 90u;
-                        m_menuHandler = menu::CreateMenuHandler(
-                            m_configManager,
-                            m_graphicsDevice,
-                            m_displayWidth,
-                            m_displayHeight,
-                            m_keyModifiers,
-                            m_supportHandTracking,
-                            isPredictionDampeningSupported,
-                            isMotionReprojectionRateSupported,
-                            displayRefreshRate,
-                            m_variableRateShader ? m_variableRateShader->getMaxRate() : 0,
-                            m_supportEyeTracking,
-                            m_supportFOVHack);
+                        m_menuHandler =
+                            menu::CreateMenuHandler(m_configManager,
+                                                    m_graphicsDevice,
+                                                    m_displayWidth,
+                                                    m_displayHeight,
+                                                    m_keyModifiers,
+                                                    m_supportHandTracking,
+                                                    isPredictionDampeningSupported,
+                                                    isMotionReprojectionRateSupported,
+                                                    displayRefreshRate,
+                                                    m_variableRateShader ? m_variableRateShader->getMaxRate() : 0,
+                                                    m_supportEyeTracking,
+                                                    m_supportFOVHack);
                     }
 
                     // Create a reference space to calculate projection views.
@@ -1157,7 +1152,8 @@ namespace {
                             const auto& fov = eyeInViewSpace[eye].fov;
                             const float cantedAngle = std::abs(std::acosf(dotForward) / 2) * (eye ? -1 : 1);
                             const float canted = std::tanf(cantedAngle);
-                            m_projCenters[eye].x = (fov.angleRight + fov.angleLeft - 2 * canted) / (fov.angleLeft - fov.angleRight);
+                            m_projCenters[eye].x =
+                                (fov.angleRight + fov.angleLeft - 2 * canted) / (fov.angleLeft - fov.angleRight);
                             m_projCenters[eye].y = -(fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown);
                         }
 
