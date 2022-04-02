@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 16.0.31911.196
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XR_APILAYER_NOVENDOR_toolkit", "XR_APILAYER_NOVENDOR_toolkit\XR_APILAYER_NOVENDOR_toolkit.vcxproj", "{93D573D0-634F-4BA0-8FE0-FB63D7D00A05}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9F62DB07-EA42-4388-82AB-E6FAA371F353} = {9F62DB07-EA42-4388-82AB-E6FAA371F353}
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution Files", "{387062F2-BCA2-4776-A414-B6DE41FC9E12}"
 	ProjectSection(SolutionItems) = preProject
@@ -39,6 +42,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GitHub", "GitHub", "{3F9F66
 		.github\workflows\msbuild.yml = .github\workflows\msbuild.yml
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FW1FontWrapper", "external\FW1FontWrapper\FW1FontWrapper.vcxproj", "{9F62DB07-EA42-4388-82AB-E6FAA371F353}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -60,6 +65,10 @@ Global
 		{F64486BA-421E-43A7-8E97-DC9981EA5C6F}.Debug|x64.Build.0 = Debug|Any CPU
 		{F64486BA-421E-43A7-8E97-DC9981EA5C6F}.Release|x64.ActiveCfg = Release|Any CPU
 		{F64486BA-421E-43A7-8E97-DC9981EA5C6F}.Release|x64.Build.0 = Release|Any CPU
+		{9F62DB07-EA42-4388-82AB-E6FAA371F353}.Debug|x64.ActiveCfg = Debug|x64
+		{9F62DB07-EA42-4388-82AB-E6FAA371F353}.Debug|x64.Build.0 = Debug|x64
+		{9F62DB07-EA42-4388-82AB-E6FAA371F353}.Release|x64.ActiveCfg = Release|x64
+		{9F62DB07-EA42-4388-82AB-E6FAA371F353}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

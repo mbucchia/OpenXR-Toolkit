@@ -62,15 +62,15 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr;$(SolutionDir)\external\d3dx12;$(SolutionDir)\external\NVAPI</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr;$(SolutionDir)\external\d3dx12;$(SolutionDir)\external\NVAPI;$(SolutionDir)\external\FW1FontWrapper\Source</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>nvapi64.lib;ws2_32.lib;dxgi.lib;dxguid.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)\external\NVAPI\amd64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>FW1FontWrapper.lib;nvapi64.lib;ws2_32.lib;dxgi.lib;dxguid.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\external\NVAPI\amd64;$(SolutionDir)\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>REM Sign the DLL.
@@ -131,7 +131,7 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr;$(SolutionDir)\external\d3dx12;$(SolutionDir)\external\NVAPI</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr;$(SolutionDir)\external\d3dx12;$(SolutionDir)\external\NVAPI;$(SolutionDir)\external\FW1FontWrapper\Source</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -140,8 +140,8 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>nvapi64.lib;ws2_32.lib;dxgi.lib;dxguid.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)\external\NVAPI\amd64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>FW1FontWrapper.lib;nvapi64.lib;ws2_32.lib;dxgi.lib;dxguid.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\external\NVAPI\amd64;$(SolutionDir)\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>REM Sign the DLL.
@@ -301,7 +301,6 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\packages\FW1FontWrapper.1.1.2017.317\build\native\FW1FontWrapper.targets" Condition="Exists('..\packages\FW1FontWrapper.1.1.2017.317\build\native\FW1FontWrapper.targets')" />
     <Import Project="..\packages\fmt.7.0.1\build\fmt.targets" Condition="Exists('..\packages\fmt.7.0.1\build\fmt.targets')" />
     <Import Project="..\packages\Detours.4.0.1\build\native\Detours.targets" Condition="Exists('..\packages\Detours.4.0.1\build\native\Detours.targets')" />
   </ImportGroup>
@@ -309,7 +308,6 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\packages\FW1FontWrapper.1.1.2017.317\build\native\FW1FontWrapper.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\FW1FontWrapper.1.1.2017.317\build\native\FW1FontWrapper.targets'))" />
     <Error Condition="!Exists('..\packages\fmt.7.0.1\build\fmt.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fmt.7.0.1\build\fmt.targets'))" />
     <Error Condition="!Exists('..\packages\Detours.4.0.1\build\native\Detours.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Detours.4.0.1\build\native\Detours.targets'))" />
   </Target>

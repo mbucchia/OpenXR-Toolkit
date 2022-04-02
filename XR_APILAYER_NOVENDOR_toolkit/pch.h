@@ -121,7 +121,7 @@ constexpr inline T roundDown(T value, uint32_t pad) noexcept {
 #include <XrMath.h>
 
 // FW1FontWrapper.
-#include "FW1FontWrapper.h"
+#include <FW1FontWrapper.h>
 
 // FMT formatter.
 #include <fmt/format.h>
