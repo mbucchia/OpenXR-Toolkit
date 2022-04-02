@@ -231,6 +231,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_7AA43EF3FFAC487494FBEC1C5615C88A"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_82ABE9AEB3CD48B61BA782EEF8213D4F"
         "OwnerKey" = "8:_00D809233FF34FF99D00DD765FD6AF01"
         "MsmSig" = "8:_UNDEFINED"
@@ -1085,6 +1091,26 @@
             {
             "SourcePath" = "8:..\\bin\\x64\\Release\\shaders\\ffx_a.h"
             "TargetName" = "8:ffx_a.h"
+            "Tag" = "8:"
+            "Folder" = "8:_A3E4D480BBBE4121A0414DD516E4AF66"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7AA43EF3FFAC487494FBEC1C5615C88A"
+            {
+            "SourcePath" = "8:..\\XR_APILAYER_NOVENDOR_toolkit\\VRS.hlsl"
+            "TargetName" = "8:VRS.hlsl"
             "Tag" = "8:"
             "Folder" = "8:_A3E4D480BBBE4121A0414DD516E4AF66"
             "Condition" = "8:"
