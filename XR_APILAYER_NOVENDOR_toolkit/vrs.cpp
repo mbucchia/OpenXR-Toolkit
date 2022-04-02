@@ -142,12 +142,16 @@ namespace {
 
         void update() override {
             const auto mode = m_configManager->getEnumValue<VariableShadingRateType>(config::SettingVRS);
+            const auto hasModeChanged = mode != m_mode;
+
+            if (hasModeChanged)
+                m_mode = mode;
+
             if (mode != VariableShadingRateType::None) {
                 m_usingEyeTracking = m_eyeTracker && m_configManager->getValue(SettingEyeTrackingEnabled);
 
-                const bool hasModeChanged = mode != m_mode;
-                const bool hasPatternChanged = hasModeChanged || checkUpdateRings(mode);
-                const bool hasQualityChanged = hasModeChanged || checkUpdateRates(mode);
+                const auto hasPatternChanged = hasModeChanged || checkUpdateRings(mode);
+                const auto hasQualityChanged = hasModeChanged || checkUpdateRates(mode);
 
                 if (hasPatternChanged)
                     updateRings(mode);
@@ -157,7 +161,6 @@ namespace {
 
                 // Only update the texture when necessary.
                 if (hasQualityChanged || hasPatternChanged) {
-                    m_mode = mode;
                     m_needUpdateViews = true;
                 }
 
@@ -176,7 +179,7 @@ namespace {
                 return false;
             }
 
-            DebugLog("VRS: Enable\n");
+            DebugLog("VRS: Enable / eye %d\n", eyeHint.value_or(Eye::Both));
             if (auto context11 = context->getAs<D3D11>()) {
                 // Attempt to update the foveation mask based on eye gaze.
                 if (m_needUpdateViews) {
@@ -189,7 +192,7 @@ namespace {
                     // const auto updateSingleRTV = eyeHint.has_value() && info.arraySize == 1;
                     // const auto updateArrayRTV = info.arraySize > 1;
                     // updateViews(updateSingleRTV, updateArrayRTV, false);
-                    updateViews11();
+                    updateViews11(context11);
                 }
 
                 // We set VRS on 2 viewports in case the stereo view renders in parallel.
@@ -373,10 +376,19 @@ namespace {
                 defines.add("VRS_TILE_Y", m_tileSize);
                 defines.add("VRS_NUM_RATES", 3);
 
-                m_csShading =
-                    m_device->createComputeShader(shaderFile, "mainCS", "VRS CS", {texW, texH, 1}, defines.get());
+                // Dispatch 64 threads per group.
+                defines.add("VRS_NUM_THREADS_X", 8);
+                defines.add("VRS_NUM_THREADS_Y", 8);
 
-                m_cbShading = m_device->createBuffer(sizeof(ShadingConstants), "VRS CB");
+                const auto dispatchX = xr::math::DivideRoundingUp(texW, 8);
+                const auto dispatchY = xr::math::DivideRoundingUp(texH, 8);
+
+                m_csShading = m_device->createComputeShader(
+                    shaderFile, "mainCS", "VRS CS", {dispatchX, dispatchY, 1}, defines.get());
+
+                for (auto& it : m_cbShading) {
+                    it = m_device->createBuffer(sizeof(ShadingConstants), "VRS CB");
+                }
             }
 
             // Initialize API-specific shading rate resources.
@@ -547,53 +559,48 @@ namespace {
         }
 
         void updateGaze() {
+            using namespace xr::math;
             XrVector2f gaze[ViewCount];
-
             if (!m_usingEyeTracking || !m_eyeTracker || !m_eyeTracker->getProjectedGaze(gaze)) {
-                using namespace xr::math;
-                // view center + view offset (L/R)
-                gaze[0] = m_gazeOffset[0] + m_gazeOffset[2];
-                gaze[1] = m_gazeOffset[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
+                gaze[0] = m_gazeOffset[0];
+                gaze[1] = m_gazeOffset[1];
             }
-
-            m_gazeLocation[0] = gaze[0];
-            m_gazeLocation[1] = gaze[1];
+            // location = view center + view offset (L/R)
+            m_gazeLocation[0] = gaze[0] + m_gazeOffset[2];
+            m_gazeLocation[1] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
         }
 
-        void updateViews11(bool updateSingleRTV = true, bool updateArrayRTV = true, bool updateFallbackRTV = true) {
+        void updateViews11(D3D11::Context pContext) {
             for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
-                auto update_dispatch = i != 2 ? (updateSingleRTV || updateArrayRTV) : updateFallbackRTV;
-                if (update_dispatch) {
-                    m_constants.GazeXY = m_gazeLocation[i];
-                    m_cbShading->uploadData(&m_constants, sizeof(m_constants));
+                m_constants.GazeXY = m_gazeLocation[i];
+                m_cbShading[i]->uploadData(&m_constants, sizeof(m_constants));
 
-                    m_device->setShader(m_csShading);
-                    m_device->setShaderInput(0, m_cbShading);
-                    m_device->setShaderInput(0, m_shadingRateMask[i]);
-                    m_device->setShaderOutput(0, m_shadingRateMask[i]);
-                    m_device->dispatchShader();
+                m_device->setShader(m_csShading);
+                m_device->setShaderInput(0, m_cbShading[i]);
+                m_device->setShaderInput(0, m_shadingRateMask[i]);
+                m_device->setShaderOutput(0, m_shadingRateMask[i]);
+                m_device->dispatchShader();
+            }
 
-                    if (i != 2 && updateArrayRTV) {
-                        m_device->setShader(m_csShading);
-                        m_device->setShaderInput(0, m_cbShading);
-                        m_device->setShaderInput(0, m_shadingRateMaskVPRT, static_cast<int>(i));
-                        m_device->setShaderOutput(0, m_shadingRateMaskVPRT, static_cast<int>(i));
-                        m_device->dispatchShader();
-                    }
-                }
+            if (pContext) {
+                auto pDstResource = m_shadingRateMaskVPRT->getAs<D3D11>();
+                pContext->CopySubresourceRegion(
+                    pDstResource, 0, 0, 0, 0, m_shadingRateMask[0]->getAs<D3D11>(), 0, nullptr);
+                pContext->CopySubresourceRegion(
+                    pDstResource, 1, 0, 0, 0, m_shadingRateMask[1]->getAs<D3D11>(), 0, nullptr);
             }
         }
 
         void updateViews12(ID3D12GraphicsCommandList5* pCommandList) {
             for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
                 m_constants.GazeXY = m_gazeLocation[i];
-                m_cbShading->uploadData(&m_constants, sizeof(m_constants));
+                m_cbShading[i]->uploadData(&m_constants, sizeof(m_constants));
 
                 m_Dx12ShadingRateResources.ResourceBarrier(
                     pCommandList, m_shadingRateMask[i]->getAs<D3D12>(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, i);
 
                 m_device->setShader(m_csShading);
-                m_device->setShaderInput(0, m_cbShading);
+                m_device->setShaderInput(0, m_cbShading[i]);
                 m_device->setShaderInput(0, m_shadingRateMask[i]);
                 m_device->setShaderOutput(0, m_shadingRateMask[i]);
                 m_device->dispatchShader();
@@ -702,8 +709,8 @@ namespace {
         uint8_t m_shadingRates[SHADING_RATE_COUNT];
         ShadingConstants m_constants;
 
-        std::shared_ptr<IShaderBuffer> m_cbShading;
         std::shared_ptr<IComputeShader> m_csShading;
+        std::shared_ptr<IShaderBuffer> m_cbShading[ViewCount + 1];
         std::shared_ptr<ITexture> m_shadingRateMask[ViewCount + 1];
         std::shared_ptr<ITexture> m_shadingRateMaskVPRT;
 
