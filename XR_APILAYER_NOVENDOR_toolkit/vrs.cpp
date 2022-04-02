@@ -62,9 +62,11 @@ namespace {
         VariableRateShader(std::shared_ptr<IConfigManager> configManager,
                            std::shared_ptr<IDevice> graphicsDevice,
                            uint32_t targetWidth,
-                           uint32_t targetHeight)
+                           uint32_t targetHeight,
+                           bool isPimaxFovHackSupported)
             : m_configManager(configManager), m_device(graphicsDevice), m_targetWidth(targetWidth),
-              m_targetHeight(targetHeight), m_targetAspectRatio((float)m_targetWidth / m_targetHeight) {
+              m_targetHeight(targetHeight), m_targetAspectRatio((float)m_targetWidth / m_targetHeight),
+              m_supportFOVHack(isPimaxFovHackSupported) {
             // Check that the device is capable of doing VRS.
             if (m_device->getApi() == Api::D3D11) {
                 auto status = NvAPI_Initialize();
@@ -195,7 +197,7 @@ namespace {
                     (mode == VariableShadingRateType::Custom &&
                      (hasInnerRadiusChanged || hasOuterRadiusChanged ||
                       m_configManager->hasChanged(SettingVRSXOffset) || m_configManager->hasChanged(SettingVRSXScale) ||
-                      m_configManager->hasChanged(SettingVRSYOffset))) ||
+                      m_configManager->hasChanged(SettingVRSYOffset) || m_configManager->hasChanged(SettingPimaxFOVHack))) ||
                     (m_device->getApi() == Api::D3D12 &&
                      ((mode == VariableShadingRateType::Preset && m_configManager->hasChanged(SettingVRSQuality)) ||
                       (mode == VariableShadingRateType::Custom &&
@@ -298,6 +300,11 @@ namespace {
                                              innerValue,
                                              middleValue,
                                              outerValue);
+
+                    // When doing the Pimax FOV hack, we swap left and right eyes.
+                    if (m_supportFOVHack && m_configManager->peekValue(SettingPimaxFOVHack)) {
+                        std::swap(leftPattern, rightPattern);
+                    }
 
                     m_shadingRateMask[0]->uploadData(leftPattern.data(), rowPitchAligned);
                     m_shadingRateMask[1]->uploadData(rightPattern.data(), rowPitchAligned);
@@ -580,6 +587,7 @@ namespace {
         const uint32_t m_targetWidth;
         const uint32_t m_targetHeight;
         const float m_targetAspectRatio;
+        const bool m_supportFOVHack;
 
         int m_projCenterX[ViewCount];
         int m_projCenterY[ViewCount];
@@ -698,9 +706,11 @@ namespace toolkit::graphics {
     std::shared_ptr<IVariableRateShader> CreateVariableRateShader(std::shared_ptr<IConfigManager> configManager,
                                                                   std::shared_ptr<IDevice> graphicsDevice,
                                                                   uint32_t targetWidth,
-                                                                  uint32_t targetHeight) {
+                                                                  uint32_t targetHeight,
+                                                                  bool isPimaxFovHackSupported) {
         try {
-            return std::make_shared<VariableRateShader>(configManager, graphicsDevice, targetWidth, targetHeight);
+            return std::make_shared<VariableRateShader>(configManager, graphicsDevice, targetWidth, targetHeight,
+                                                        isPimaxFovHackSupported);
         } catch (FeatureNotSupported&) {
             return nullptr;
         }

@@ -490,7 +490,8 @@ namespace {
                         m_frameAnalyzer = graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice);
                     }
                     m_variableRateShader =
-                        graphics::CreateVariableRateShader(m_configManager, m_graphicsDevice, inputWidth, inputHeight);
+                        graphics::CreateVariableRateShader(m_configManager, m_graphicsDevice, inputWidth, inputHeight,
+                                                           m_supportFOVHack);
 
                     // Register intercepted events.
                     m_graphicsDevice->registerSetRenderTargetEvent(
@@ -508,16 +509,10 @@ namespace {
                                 }
                             }
                             if (m_variableRateShader) {
-                                auto eyeHint = m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt;
-
-                                // When doing the Pimax FOV hack, we swap left and right eyes.
-                                if (m_supportFOVHack && eyeHint.has_value() &&
-                                    m_configManager->peekValue(config::SettingPimaxFOVHack)) {
-                                    eyeHint = eyeHint.value() == utilities::Eye::Left ? utilities::Eye::Right
-                                                                                      : utilities::Eye::Left;
-                                }
-
-                                if (m_variableRateShader->onSetRenderTarget(context, renderTarget, eyeHint)) {
+                                if (m_variableRateShader->onSetRenderTarget(
+                                        context,
+                                        renderTarget,
+                                        m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt)) {
                                     m_stats.numRenderTargetsWithVRS++;
                                 }
                             }

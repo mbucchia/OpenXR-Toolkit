@@ -104,7 +104,8 @@ namespace toolkit {
         CreateVariableRateShader(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                  std::shared_ptr<IDevice> graphicsDevice,
                                  uint32_t targetWidth,
-                                 uint32_t targetHeight);
+                                 uint32_t targetHeight,
+                                 bool isPimaxFovHackSupported);
 
         bool IsDeviceSupportingFP16(std::shared_ptr<IDevice> device);
 

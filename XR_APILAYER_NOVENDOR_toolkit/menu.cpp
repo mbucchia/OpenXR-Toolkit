@@ -169,7 +169,8 @@ namespace {
                     bool isPimaxFovHackSupported)
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
               m_displayHeight(displayHeight), m_keyModifiers(keyModifiers),
-              m_isHandTrackingSupported(isHandTrackingSupported) {
+              m_isHandTrackingSupported(isHandTrackingSupported),
+              m_supportFOVHack(isPimaxFovHackSupported) {
             m_lastInput = std::chrono::steady_clock::now();
 
             // We display the hint for menu hotkeys for the first few runs.
@@ -354,9 +355,13 @@ namespace {
 
             const auto& renderTargetInfo = renderTarget->getInfo();
 
-            const float leftEyeOffset = 0.0f;
-            const float rightEyeOffset = 2.f * (m_projCenter[1].x - m_projCenter[0].x) * renderTargetInfo.width +
-                                         m_configManager->getValue(SettingMenuEyeOffset);
+            float leftEyeOffset = 0.0f;
+            float rightEyeOffset = 2.f * (m_projCenter[1].x - m_projCenter[0].x) * renderTargetInfo.width +
+                                   m_configManager->getValue(SettingMenuEyeOffset);
+            // When doing the Pimax FOV hack, we swap left and right eyes.
+            if (m_supportFOVHack && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
+                std::swap(leftEyeOffset, rightEyeOffset);
+            }
             const float eyeOffset = eye == Eye::Left ? leftEyeOffset : rightEyeOffset;
 
             const float leftAnchor = m_projCenter[0].x * renderTargetInfo.width - m_menuBackgroundWidth / 2;
@@ -1367,6 +1372,7 @@ namespace {
         const uint32_t m_displayWidth;
         const uint32_t m_displayHeight;
         const bool m_isHandTrackingSupported;
+        const bool m_supportFOVHack;
         MenuStatistics m_stats{};
         GesturesState m_gesturesState{};
 
