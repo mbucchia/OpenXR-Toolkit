@@ -1,0 +1,144 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Precompiled Header">
+      <UniqueIdentifier>{76a87c04-8801-4479-974a-70dfbc8eeab9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Interface Implementations">
+      <UniqueIdentifier>{b9a7a8f7-55d0-4adc-b779-43c9018e7887}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Other">
+      <UniqueIdentifier>{6a111903-dbdb-4427-9f61-7b83490858ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FW1FontWrapper">
+      <UniqueIdentifier>{615aae11-afe5-4f40-9f2d-19977ca2a0f6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Source\CFW1ColorRGBA.h">
+      <Filter>Interface Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CFW1DWriteRenderTarget.h">
+      <Filter>Interface Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CFW1Factory.h">
+      <Filter>Interface Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CFW1FontWrapper.h">
+      <Filter>Interface Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CFW1GlyphAtlas.h">
+      <Filter>Interface Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CFW1GlyphProvider.h">
+      <Filter>Interface Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CFW1GlyphRenderStates.h">
+      <Filter>Interface Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CFW1GlyphSheet.h">
+      <Filter>Interface Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CFW1GlyphVertexDrawer.h">
+      <Filter>Interface Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CFW1TextGeometry.h">
+      <Filter>Interface Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CFW1TextRenderer.h">
+      <Filter>Interface Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\FW1Precompiled.h">
+      <Filter>Precompiled Header</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\FW1FontWrapper.h">
+      <Filter>FW1FontWrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\FW1CompileSettings.h">
+      <Filter>FW1FontWrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CFW1StateSaver.h">
+      <Filter>Other</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CFW1Object.h">
+      <Filter>Other</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\CFW1ColorRGBAInterface.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1DWriteRenderTarget.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1DWriteRenderTargetInterface.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1Factory.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1FactoryInterface.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1FontWrapper.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1FontWrapperInterface.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1GlyphAtlas.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1GlyphAtlasInterface.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1GlyphProvider.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1GlyphProviderInterface.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1GlyphRenderStates.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1GlyphRenderStatesInterface.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1GlyphSheet.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1GlyphSheetInterface.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1GlyphVertexDrawer.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1GlyphVertexDrawerInterface.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1TextGeometry.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1TextGeometryInterface.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1TextRenderer.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1TextRendererInterface.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1ColorRGBA.cpp">
+      <Filter>Interface Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\FW1Precompiled.cpp">
+      <Filter>Precompiled Header</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\FW1FontWrapper.cpp">
+      <Filter>FW1FontWrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CFW1StateSaver.cpp">
+      <Filter>Other</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
