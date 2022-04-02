@@ -387,12 +387,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_FA0F6C6A872B48C1BF2DE695456C779F"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_UNDEFINED"
         "OwnerKey" = "8:_00D809233FF34FF99D00DD765FD6AF01"
         "MsmSig" = "8:_UNDEFINED"
@@ -1469,26 +1463,6 @@
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FA0F6C6A872B48C1BF2DE695456C779F"
-            {
-            "SourcePath" = "8:..\\bin\\x64\\Release\\FW1FontWrapper.dll"
-            "TargetName" = "8:FW1FontWrapper.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
         }
         "FileType"
         {
@@ -1556,8 +1530,8 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:OpenXR-Toolkit"
-        "ProductCode" = "8:{63ACF630-56B2-4E9C-A523-D3F3F703B028}"
-        "PackageCode" = "8:{0A397BC2-8408-495D-9A0C-3D759A2163E9}"
+        "ProductCode" = "8:{FCAAACC4-9554-45C5-93C5-AB73A631C02C}"
+        "PackageCode" = "8:{5BF8C237-AB47-4C60-A494-100D42FE0256}"
         "UpgradeCode" = "8:{DE3B4392-8473-4208-A77F-812E54E09AE6}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
