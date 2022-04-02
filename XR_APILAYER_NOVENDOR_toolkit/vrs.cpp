@@ -106,11 +106,12 @@ namespace {
                            uint32_t displayWidth,
                            uint32_t displayHeight,
                            uint32_t tileSize,
-                           uint32_t tileRateMax)
+                           uint32_t tileRateMax,
+                           bool isPimaxFovHackSupported)
             : m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
               m_renderWidth(renderWidth), m_renderHeight(renderHeight),
               m_renderRatio(float(renderWidth) / renderHeight), m_displayRatio(float(displayHeight) / displayWidth),
-              m_tileSize(tileSize), m_tileRateMax(tileRateMax) {
+              m_tileSize(tileSize), m_tileRateMax(tileRateMax), m_supportFOVHack(isPimaxFovHackSupported) {
             createRenderResources(m_renderWidth, m_renderHeight);
 
             // Set initial projection center
@@ -519,7 +520,9 @@ namespace {
                     return true;
                 }
                 return m_configManager->hasChanged(SettingVRSXScale) ||
-                       m_configManager->hasChanged(SettingVRSXOffset) || m_configManager->hasChanged(SettingVRSYOffset);
+                       m_configManager->hasChanged(SettingVRSXOffset) ||
+                       m_configManager->hasChanged(SettingVRSYOffset) ||
+                       (m_supportFOVHack && m_configManager->hasChanged(config::SettingPimaxFOVHack));
             }
             return false;
         }
@@ -541,6 +544,9 @@ namespace {
                 radius[0] = m_configManager->getValue(SettingVRSInnerRadius);
                 radius[1] = m_configManager->getValue(SettingVRSOuterRadius);
             }
+
+            // When doing the Pimax FOV hack, we swap left and right eyes.
+            m_swapViews = m_supportFOVHack && m_configManager->getValue(config::SettingPimaxFOVHack);
 
             const auto semiMajorFactor = m_configManager->getValue(SettingVRSXScale);
             m_constants.Rings[0] = MakeRingParam({radius[0] * semiMajorFactor * 0.0001f, radius[0] * 0.01f});
@@ -566,8 +572,8 @@ namespace {
                 gaze[1] = m_gazeOffset[1];
             }
             // location = view center + view offset (L/R)
-            m_gazeLocation[0] = gaze[0] + m_gazeOffset[2];
-            m_gazeLocation[1] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
+            m_gazeLocation[0] = gaze[m_swapViews] + m_gazeOffset[2];
+            m_gazeLocation[1] = gaze[!m_swapViews] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
         }
 
         void updateViews11(D3D11::Context pContext) {
@@ -583,6 +589,7 @@ namespace {
             }
 
             if (pContext) {
+                // copy each SRTV to each VPRT slice
                 auto pDstResource = m_shadingRateMaskVPRT->getAs<D3D11>();
                 pContext->CopySubresourceRegion(
                     pDstResource, 0, 0, 0, 0, m_shadingRateMask[0]->getAs<D3D11>(), 0, nullptr);
@@ -698,12 +705,15 @@ namespace {
         const float m_renderRatio;
         const float m_displayRatio;
 
+        const bool m_supportFOVHack;
+        bool m_usingEyeTracking{false};
+        bool m_needUpdateViews{false};
+        bool m_swapViews{false};
+
         XrVector2f m_gazeOffset[ViewCount + 1];
         XrVector2f m_gazeLocation[ViewCount + 1];
 
         VariableShadingRateType m_mode{VariableShadingRateType::None};
-        bool m_usingEyeTracking{false};
-        bool m_needUpdateViews{false};
 
         // ShadingRates to Graphics API specific rates LUT.
         uint8_t m_shadingRates[SHADING_RATE_COUNT];
@@ -813,7 +823,8 @@ namespace toolkit::graphics {
                                                                   uint32_t renderWidth,
                                                                   uint32_t renderHeight,
                                                                   uint32_t displayWidth,
-                                                                  uint32_t displayHeight) {
+                                                                  uint32_t displayHeight,
+                                                                  bool isPimaxFovHackSupported) {
         try {
             uint32_t tileSize = 0;
             uint32_t tileRateMax = 0;
@@ -877,7 +888,8 @@ namespace toolkit::graphics {
                                                         displayWidth,
                                                         displayHeight,
                                                         tileSize,
-                                                        tileRateMax);
+                                                        tileRateMax,
+                                                        isPimaxFovHackSupported);
 
         } catch (FeatureNotSupported&) {
             return nullptr;

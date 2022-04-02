@@ -107,7 +107,8 @@ namespace toolkit {
                                  uint32_t renderWidth,
                                  uint32_t renderHeight,
                                  uint32_t displayWidth,
-                                 uint32_t displayHeight);
+                                 uint32_t displayHeight,
+                                 bool isPimaxFovHackSupported);
 
         bool IsDeviceSupportingFP16(std::shared_ptr<IDevice> device);
 
