@@ -43,6 +43,10 @@ nav_order: 6
 - Hotfix #2: Fix position of the FPS overlay.
 - Hotfix #2: Disable the OpenXR Toolkit when the application is Edge/Chrome (eg: 360 videos).
 - Hotfix #3: Fix menu display with certain applications, such as OpenComposite-ACC.
+- Hotfix #4: Fix issue caused by EVGA software.
+- Hotfix #4: Introduce Pimax culling workaround ("WFOV Hack") for Flight Simulator 2020.
+- Hotfix #4: Add override for each field of view angles independently.
+- Hotfix #4: Unlock Motion Reprojection when exiting.
 
 ## Changes in Beta #2 (Jan 2022 / v0.9.4 - 0.9.7)
 
