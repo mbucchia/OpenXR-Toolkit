@@ -380,22 +380,30 @@ namespace {
 
         std::shared_ptr<IShaderInputTextureView> getShaderResourceView(int32_t slice) const override {
             auto& view = slice < 0 ? m_shaderResourceView : m_shaderResourceSubView[slice];
-            return getShaderInputViewInternal(view, std::max(slice, 0));
+            if (!view)
+                view = makeShaderInputViewInternal(std::max(slice, 0));
+            return view;
         }
 
         std::shared_ptr<IComputeShaderOutputView> getUnorderedAccessView(int32_t slice) const override {
             auto& view = slice < 0 ? m_unorderedAccessView : m_unorderedAccessSubView[slice];
-            return getUnorderedAccessViewInternal(view, std::max(slice, 0));
+            if (!view)
+                view = makeUnorderedAccessViewInternal(std::max(slice, 0));
+            return view;
         }
 
         std::shared_ptr<IRenderTargetView> getRenderTargetView(int32_t slice) const override {
             auto& view = slice < 0 ? m_renderTargetView : m_renderTargetSubView[slice];
-            return getRenderTargetViewInternal(view, std::max(slice, 0));
+            if (!view)
+                view = makeRenderTargetViewInternal(std::max(slice, 0));
+            return view;
         }
 
         std::shared_ptr<IDepthStencilView> getDepthStencilView(int32_t slice) const override {
             auto& view = slice < 0 ? m_depthStencilView : m_depthStencilSubView[slice];
-            return getDepthStencilViewInternal(view, std::max(slice, 0));
+            if (!view)
+                view = makeDepthStencilViewInternal(std::max(slice, 0));
+            return view;
         }
 
         void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) override {
@@ -488,111 +496,94 @@ namespace {
         }
 
       private:
-        std::shared_ptr<D3D12ResourceView>
-        getShaderInputViewInternal(std::shared_ptr<D3D12ResourceView>& shaderResourceView, uint32_t slice = 0) const {
-            if (!shaderResourceView) {
-                if (m_textureDesc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) {
-                    throw std::runtime_error("Texture was created with D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE");
-                }
-
-                if (auto device = m_device->getAs<D3D12>()) {
-                    D3D12_SHADER_RESOURCE_VIEW_DESC desc;
-                    ZeroMemory(&desc, sizeof(desc));
-                    desc.Format = (DXGI_FORMAT)m_info.format;
-                    desc.ViewDimension =
-                        m_info.arraySize == 1 ? D3D12_SRV_DIMENSION_TEXTURE2D : D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-                    desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-                    desc.Texture2DArray.ArraySize = 1;
-                    desc.Texture2DArray.FirstArraySlice = slice;
-                    desc.Texture2DArray.MipLevels = m_info.mipCount;
-                    desc.Texture2DArray.MostDetailedMip =
-                        D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
-
-                    D3D12_CPU_DESCRIPTOR_HANDLE handle;
-                    m_rvHeap.allocate(handle);
-                    device->CreateShaderResourceView(get(m_texture), &desc, handle);
-                    shaderResourceView = std::make_shared<D3D12ResourceView>(m_device, handle);
-                }
+        std::shared_ptr<D3D12ResourceView> makeShaderInputViewInternal(uint32_t slice) const {
+            if (m_textureDesc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) {
+                throw std::runtime_error("Texture was created with D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE");
             }
-            return shaderResourceView;
+            if (auto device = m_device->getAs<D3D12>()) {
+                D3D12_SHADER_RESOURCE_VIEW_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.Format = (DXGI_FORMAT)m_info.format;
+                desc.ViewDimension =
+                    m_info.arraySize == 1 ? D3D12_SRV_DIMENSION_TEXTURE2D : D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                desc.Texture2DArray.ArraySize = 1;
+                desc.Texture2DArray.FirstArraySlice = slice;
+                desc.Texture2DArray.MipLevels = m_info.mipCount;
+                desc.Texture2DArray.MostDetailedMip = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
+
+                D3D12_CPU_DESCRIPTOR_HANDLE handle;
+                m_rvHeap.allocate(handle);
+                device->CreateShaderResourceView(get(m_texture), &desc, handle);
+                return std::make_shared<D3D12ResourceView>(m_device, handle);
+            }
+            return nullptr;
         }
 
-        std::shared_ptr<D3D12ResourceView> getUnorderedAccessViewInternal(
-            std::shared_ptr<D3D12ResourceView>& unorderedAccessView, uint32_t slice = 0) const {
-            if (!unorderedAccessView) {
-                if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)) {
-                    throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS");
-                }
-
-                if (auto device = m_device->getAs<D3D12>()) {
-                    D3D12_UNORDERED_ACCESS_VIEW_DESC desc;
-                    ZeroMemory(&desc, sizeof(desc));
-                    desc.Format = (DXGI_FORMAT)m_info.format;
-                    desc.ViewDimension =
-                        m_info.arraySize == 1 ? D3D12_UAV_DIMENSION_TEXTURE2D : D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-                    desc.Texture2DArray.ArraySize = 1;
-                    desc.Texture2DArray.FirstArraySlice = slice;
-                    desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
-
-                    D3D12_CPU_DESCRIPTOR_HANDLE handle;
-                    m_rvHeap.allocate(handle);
-                    device->CreateUnorderedAccessView(get(m_texture), nullptr, &desc, handle);
-                    unorderedAccessView = std::make_shared<D3D12ResourceView>(m_device, handle);
-                }
+        std::shared_ptr<D3D12ResourceView> makeUnorderedAccessViewInternal(uint32_t slice) const {
+            if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)) {
+                throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS");
             }
-            return unorderedAccessView;
+            if (auto device = m_device->getAs<D3D12>()) {
+                D3D12_UNORDERED_ACCESS_VIEW_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.Format = (DXGI_FORMAT)m_info.format;
+                desc.ViewDimension =
+                    m_info.arraySize == 1 ? D3D12_UAV_DIMENSION_TEXTURE2D : D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                desc.Texture2DArray.ArraySize = 1;
+                desc.Texture2DArray.FirstArraySlice = slice;
+                desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
+
+                D3D12_CPU_DESCRIPTOR_HANDLE handle;
+                m_rvHeap.allocate(handle);
+                device->CreateUnorderedAccessView(get(m_texture), nullptr, &desc, handle);
+                return std::make_shared<D3D12ResourceView>(m_device, handle);
+            }
+            return nullptr;
         }
 
-        std::shared_ptr<D3D12ResourceView>
-        getRenderTargetViewInternal(std::shared_ptr<D3D12ResourceView>& renderTargetView, uint32_t slice = 0) const {
-            if (!renderTargetView) {
-                if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)) {
-                    throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET");
-                }
-
-                if (auto device = m_device->getAs<D3D12>()) {
-                    D3D12_RENDER_TARGET_VIEW_DESC desc;
-                    ZeroMemory(&desc, sizeof(desc));
-                    desc.Format = (DXGI_FORMAT)m_info.format;
-                    desc.ViewDimension =
-                        m_info.arraySize == 1 ? D3D12_RTV_DIMENSION_TEXTURE2D : D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-                    desc.Texture2DArray.ArraySize = 1;
-                    desc.Texture2DArray.FirstArraySlice = slice;
-                    desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
-
-                    D3D12_CPU_DESCRIPTOR_HANDLE handle;
-                    m_rtvHeap.allocate(handle);
-                    device->CreateRenderTargetView(get(m_texture), &desc, handle);
-                    renderTargetView = std::make_shared<D3D12ResourceView>(m_device, handle);
-                }
+        std::shared_ptr<D3D12ResourceView> makeRenderTargetViewInternal(uint32_t slice) const {
+            if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)) {
+                throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET");
             }
-            return renderTargetView;
+            if (auto device = m_device->getAs<D3D12>()) {
+                D3D12_RENDER_TARGET_VIEW_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.Format = (DXGI_FORMAT)m_info.format;
+                desc.ViewDimension =
+                    m_info.arraySize == 1 ? D3D12_RTV_DIMENSION_TEXTURE2D : D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                desc.Texture2DArray.ArraySize = 1;
+                desc.Texture2DArray.FirstArraySlice = slice;
+                desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
+
+                D3D12_CPU_DESCRIPTOR_HANDLE handle;
+                m_rtvHeap.allocate(handle);
+                device->CreateRenderTargetView(get(m_texture), &desc, handle);
+                return std::make_shared<D3D12ResourceView>(m_device, handle);
+            }
+            return nullptr;
         }
 
-        std::shared_ptr<D3D12ResourceView>
-        getDepthStencilViewInternal(std::shared_ptr<D3D12ResourceView>& depthStencilView, uint32_t slice = 0) const {
-            if (!depthStencilView) {
-                if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)) {
-                    throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL");
-                }
-
-                if (auto device = m_device->getAs<D3D12>()) {
-                    D3D12_DEPTH_STENCIL_VIEW_DESC desc;
-                    ZeroMemory(&desc, sizeof(desc));
-                    desc.Format = (DXGI_FORMAT)m_info.format;
-                    desc.ViewDimension =
-                        m_info.arraySize == 1 ? D3D12_DSV_DIMENSION_TEXTURE2D : D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-                    desc.Texture2DArray.ArraySize = 1;
-                    desc.Texture2DArray.FirstArraySlice = slice;
-                    desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
-
-                    D3D12_CPU_DESCRIPTOR_HANDLE handle;
-                    m_dsvHeap.allocate(handle);
-                    device->CreateDepthStencilView(get(m_texture), &desc, handle);
-                    depthStencilView = std::make_shared<D3D12ResourceView>(m_device, handle);
-                }
+        std::shared_ptr<D3D12ResourceView> makeDepthStencilViewInternal(uint32_t slice) const {
+            if (!(m_textureDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)) {
+                throw std::runtime_error("Texture was not created with D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL");
             }
-            return depthStencilView;
+            if (auto device = m_device->getAs<D3D12>()) {
+                D3D12_DEPTH_STENCIL_VIEW_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.Format = (DXGI_FORMAT)m_info.format;
+                desc.ViewDimension =
+                    m_info.arraySize == 1 ? D3D12_DSV_DIMENSION_TEXTURE2D : D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+                desc.Texture2DArray.ArraySize = 1;
+                desc.Texture2DArray.FirstArraySlice = slice;
+                desc.Texture2DArray.MipSlice = D3D12CalcSubresource(0, 0, 0, m_info.mipCount, m_info.arraySize);
+
+                D3D12_CPU_DESCRIPTOR_HANDLE handle;
+                m_dsvHeap.allocate(handle);
+                device->CreateDepthStencilView(get(m_texture), &desc, handle);
+                return std::make_shared<D3D12ResourceView>(m_device, handle);
+            }
+            return nullptr;
         }
 
         void setInteropTexture(std::shared_ptr<ITexture> interopTexture) {
@@ -1061,8 +1052,8 @@ namespace {
 
             CHECK_HRCMD(m_context->Close());
 
-            ID3D12CommandList* lists[] = {get(m_context)};
-            m_queue->ExecuteCommandLists(1, lists);
+            ID3D12CommandList* const lists[] = {get(m_context)};
+            m_queue->ExecuteCommandLists(ARRAYSIZE(lists), lists);
 
             if (blocking) {
                 m_queue->Signal(get(m_fence), ++m_fenceValue);
@@ -1320,14 +1311,13 @@ namespace {
             m_currentComputeShader.reset();
             m_currentRootSlot = 0;
 
-            ID3D12DescriptorHeap* heaps[] = {
+            ID3D12DescriptorHeap* const heaps[] = {
                 get(m_rvHeap.heap),
                 get(m_samplerHeap.heap),
             };
             m_context->SetDescriptorHeaps(ARRAYSIZE(heaps), heaps);
 
             auto d3d12Shader = dynamic_cast<D3D12Shader*>(shader.get());
-
             if (!d3d12Shader->needsResolve()) {
                 // Prepare to draw the quad.
                 const auto shaderData = shader->getAs<D3D12>();
@@ -1352,14 +1342,13 @@ namespace {
             m_currentComputeShader.reset();
             m_currentRootSlot = 0;
 
-            ID3D12DescriptorHeap* heaps[] = {
+            ID3D12DescriptorHeap* const heaps[] = {
                 get(m_rvHeap.heap),
                 get(m_samplerHeap.heap),
             };
             m_context->SetDescriptorHeaps(ARRAYSIZE(heaps), heaps);
 
             auto d3d12Shader = dynamic_cast<D3D12Shader*>(shader.get());
-
             if (!d3d12Shader->needsResolve()) {
                 const auto shaderData = shader->getAs<D3D12>();
                 m_context->SetComputeRootSignature(shaderData->rootSignature);
@@ -1375,24 +1364,20 @@ namespace {
         }
 
         void setShaderInput(uint32_t slot, std::shared_ptr<ITexture> input, int32_t slice) override {
-            if (m_currentQuadShader || m_currentComputeShader) {
-                D3D12Shader* d3d12Shader;
-                if (m_currentComputeShader) {
-                    d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentComputeShader.get());
-                } else {
-                    d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentQuadShader.get());
-                }
-
-                const auto handle = input->getShaderResourceView(slice)->getAs<D3D12>();
-
+            auto d3d12Shader = m_currentComputeShader ? dynamic_cast<D3D12Shader*>(m_currentComputeShader.get())
+                               : m_currentQuadShader  ? dynamic_cast<D3D12Shader*>(m_currentQuadShader.get())
+                                                      : nullptr;
+            if (d3d12Shader) {
+                const auto pView = input->getShaderResourceView(slice)->getAs<D3D12>();
+                const auto descriptorHandle = m_rvHeap.getGPUHandle(*pView);
                 if (!d3d12Shader->needsResolve()) {
                     if (m_currentComputeShader) {
-                        m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(*handle));
+                        m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, descriptorHandle);
                     } else {
-                        m_context->SetGraphicsRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(*handle));
+                        m_context->SetGraphicsRootDescriptorTable(m_currentRootSlot++, descriptorHandle);
                     }
                 } else {
-                    d3d12Shader->registerSRVParameter(slot, m_rvHeap.getGPUHandle(*handle));
+                    d3d12Shader->registerSRVParameter(slot, descriptorHandle);
                 }
             } else {
                 throw std::runtime_error("No shader is set");
@@ -1400,26 +1385,20 @@ namespace {
         }
 
         void setShaderInput(uint32_t slot, std::shared_ptr<IShaderBuffer> input) override {
-            if (m_currentQuadShader || m_currentComputeShader) {
-                D3D12Shader* d3d12Shader;
-                if (m_currentComputeShader) {
-                    d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentComputeShader.get());
-                } else {
-                    d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentQuadShader.get());
-                }
-
-                auto d3d12Buffer = dynamic_cast<D3D12Buffer*>(input.get());
-
-                const auto handle = d3d12Buffer->getConstantBufferView();
-
+            auto d3d12Shader = m_currentComputeShader ? dynamic_cast<D3D12Shader*>(m_currentComputeShader.get())
+                               : m_currentQuadShader  ? dynamic_cast<D3D12Shader*>(m_currentQuadShader.get())
+                                                      : nullptr;
+            if (d3d12Shader) {
+                const auto pBuffer = dynamic_cast<D3D12Buffer*>(input.get());
+                const auto descriptorHandle = m_rvHeap.getGPUHandle(pBuffer->getConstantBufferView());
                 if (!d3d12Shader->needsResolve()) {
                     if (m_currentComputeShader) {
-                        m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(handle));
+                        m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, descriptorHandle);
                     } else {
-                        m_context->SetGraphicsRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(handle));
+                        m_context->SetGraphicsRootDescriptorTable(m_currentRootSlot++, descriptorHandle);
                     }
                 } else {
-                    d3d12Shader->registerCBVParameter(slot, m_rvHeap.getGPUHandle(handle));
+                    d3d12Shader->registerCBVParameter(slot, descriptorHandle);
                 }
             } else {
                 throw std::runtime_error("No shader is set");
@@ -1428,25 +1407,23 @@ namespace {
 
         void setShaderOutput(uint32_t slot, std::shared_ptr<ITexture> output, int32_t slice) override {
             if (m_currentQuadShader) {
-                if (slot) {
+                if (!slot) {
+                    setRenderTargets(1, &output, &slice);
+                    auto d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentQuadShader.get());
+                    if (d3d12Shader->needsResolve()) {
+                        d3d12Shader->setOutputFormat(output->getInfo());
+                    }
+                } else {
                     throw std::runtime_error("Only use slot 0 for IQuadShader");
                 }
-
-                setRenderTargets(1, &output, &slice);
-
-                auto d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentQuadShader.get());
-                if (d3d12Shader->needsResolve()) {
-                    d3d12Shader->setOutputFormat(output->getInfo());
-                }
             } else if (m_currentComputeShader) {
+                const auto pView = output->getUnorderedAccessView(slice)->getAs<D3D12>();
+                auto descriptorHandle = m_rvHeap.getGPUHandle(*pView);
                 auto d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentComputeShader.get());
-
-                const auto handle = output->getUnorderedAccessView(slice)->getAs<D3D12>();
-
                 if (!d3d12Shader->needsResolve()) {
-                    m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, m_rvHeap.getGPUHandle(*handle));
+                    m_context->SetComputeRootDescriptorTable(m_currentRootSlot++, descriptorHandle);
                 } else {
-                    d3d12Shader->registerUAVParameter(slot, m_rvHeap.getGPUHandle(*handle));
+                    d3d12Shader->registerUAVParameter(slot, descriptorHandle);
                 }
             } else {
                 throw std::runtime_error("No shader is set");
@@ -1454,23 +1431,17 @@ namespace {
         }
 
         void dispatchShader(bool doNotClear) const override {
-            if (m_currentQuadShader || m_currentComputeShader) {
-                {
-                    D3D12Shader* d3d12Shader;
-                    if (m_currentComputeShader) {
-                        d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentComputeShader.get());
-                    } else {
-                        d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentQuadShader.get());
-                    }
-
-                    // The first time, we need to resolve the root signature and create the pipeline state.
-                    if (d3d12Shader->needsResolve()) {
-                        d3d12Shader->resolve();
-                    }
+            auto d3d12Shader = m_currentComputeShader ? dynamic_cast<D3D12Shader*>(m_currentComputeShader.get())
+                               : m_currentQuadShader  ? dynamic_cast<D3D12Shader*>(m_currentQuadShader.get())
+                                                      : nullptr;
+            if (d3d12Shader) {
+                // The first time, we need to resolve the root signature and create the pipeline state.
+                if (d3d12Shader->needsResolve()) {
+                    d3d12Shader->resolve();
                 }
-
                 if (m_currentQuadShader) {
                     m_context->DrawInstanced(3, 1, 0, 0);
+
                 } else if (m_currentComputeShader) {
                     m_context->Dispatch(m_currentComputeShader->getThreadGroups()[0],
                                         m_currentComputeShader->getThreadGroups()[1],
@@ -1496,15 +1467,19 @@ namespace {
         void setRenderTargets(size_t numRenderTargets,
                               std::shared_ptr<ITexture>* renderTargets,
                               int32_t* renderSlices = nullptr,
-                              std::shared_ptr<ITexture>* depthBuffer = nullptr,
+                              std::shared_ptr<ITexture> depthBuffer = nullptr,
                               int32_t depthSlice = -1) override {
-            // std::vector<D3D12_RESOURCE_BARRIER> barriers;
-            std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> rtvs;
-            rtvs.reserve(numRenderTargets);
+            assert(renderTargets || !numRenderTargets);
+            assert(depthBuffer || depthSlice < 0);
+
+            D3D12_CPU_DESCRIPTOR_HANDLE rtvs[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT] = {0};
+
+            if (numRenderTargets > size_t(D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT))
+                numRenderTargets = size_t(D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
 
             for (size_t i = 0; i < numRenderTargets; i++) {
                 auto slice = renderSlices ? renderSlices[i] : -1;
-                rtvs.push_back(*renderTargets[i]->getRenderTargetView(slice)->getAs<D3D12>());
+                rtvs[i] = *renderTargets[i]->getRenderTargetView(slice)->getAs<D3D12>();
 
                 // We assume that the resource is always in the expected state.
                 // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(renderTargets[i]->getAs<D3D12>(),
@@ -1523,26 +1498,26 @@ namespace {
             //    m_context->ResourceBarrier((UINT)barriers.size(), barriers.data());
             //}
 
-            m_context->OMSetRenderTargets((UINT)rtvs.size(),
-                                          rtvs.data(),
-                                          false,
-                                          depthBuffer ? depthBuffer[0]->getDepthStencilView()->getAs<D3D12>()
-                                                      : nullptr);
+            auto pDepthStencilView =
+                depthBuffer ? depthBuffer->getDepthStencilView(depthSlice)->getAs<D3D12>() : nullptr;
 
-            if (!rtvs.empty()) {
+            m_context->OMSetRenderTargets(static_cast<UINT>(numRenderTargets), rtvs, false, pDepthStencilView);
+
+            if (numRenderTargets) {
                 m_currentDrawRenderTarget = renderTargets[0];
                 m_currentDrawRenderTargetSlice = renderSlices ? renderSlices[0] : -1;
-                m_currentDrawDepthBuffer = depthBuffer ? depthBuffer[0] : nullptr;
-                m_currentDrawDepthBufferSlice = depthBuffer ? depthSlice : -1;
+                m_currentDrawDepthBuffer = std::move(depthBuffer);
+                m_currentDrawDepthBufferSlice = depthSlice;
 
-                const auto viewport = CD3DX12_VIEWPORT(0.0f,
-                                                       0.0f,
+                const auto viewport = CD3DX12_VIEWPORT(0.f,
+                                                       0.f,
                                                        (float)m_currentDrawRenderTarget->getInfo().width,
                                                        (float)m_currentDrawRenderTarget->getInfo().height);
                 m_context->RSSetViewports(1, &viewport);
 
                 const auto scissorRect = CD3DX12_RECT(
                     0, 0, m_currentDrawRenderTarget->getInfo().width, m_currentDrawRenderTarget->getInfo().height);
+
                 m_context->RSSetScissorRects(1, &scissorRect);
             } else {
                 m_currentDrawRenderTarget.reset();
@@ -1552,32 +1527,31 @@ namespace {
         }
 
         void clearColor(float top, float left, float bottom, float right, const XrColor4f& color) const override {
-            if (!m_currentDrawRenderTarget) {
-                return;
-            }
+            if (m_currentDrawRenderTarget) {
+                // When rendering text, we must use the corresponding device.
+                if (!m_isRenderingText) {
+                    const auto rect = CD3DX12_RECT(static_cast<LONG>(left),
+                                                   static_cast<LONG>(top),
+                                                   static_cast<LONG>(right),
+                                                   static_cast<LONG>(bottom));
+                    auto renderTargetView =
+                        m_currentDrawRenderTarget->getRenderTargetView(m_currentDrawRenderTargetSlice)->getAs<D3D12>();
 
-            // When rendering text, we must use the corresponding device.
-            if (!m_isRenderingText) {
-                auto renderTargetView =
-                    m_currentDrawRenderTarget->getRenderTargetView(m_currentDrawRenderTargetSlice)->getAs<D3D12>();
-
-                float clearColor[] = {color.r, color.g, color.b, color.a};
-                const auto rect = CD3DX12_RECT((LONG)left, (LONG)top, (LONG)right, (LONG)bottom);
-                m_context->ClearRenderTargetView(*renderTargetView, clearColor, 1, &rect);
-            } else {
-                m_textDevice->clearColor(top, left, bottom, right, color);
+                    // XrColor4f components are in the expected order
+                    m_context->ClearRenderTargetView(*renderTargetView, &color.r, 1, &rect);
+                } else {
+                    m_textDevice->clearColor(top, left, bottom, right, color);
+                }
             }
         }
 
         void clearDepth(float value) override {
-            if (!m_currentDrawDepthBuffer) {
-                return;
+            if (m_currentDrawDepthBuffer) {
+                auto depthStencilView =
+                    m_currentDrawDepthBuffer->getDepthStencilView(m_currentDrawDepthBufferSlice)->getAs<D3D12>();
+
+                m_context->ClearDepthStencilView(*depthStencilView, D3D12_CLEAR_FLAG_DEPTH, value, 0, 0, nullptr);
             }
-
-            auto depthStencilView =
-                m_currentDrawDepthBuffer->getDepthStencilView(m_currentDrawDepthBufferSlice)->getAs<D3D12>();
-
-            m_context->ClearDepthStencilView(*depthStencilView, D3D12_CLEAR_FLAG_DEPTH, value, 0, 0, nullptr);
         }
 
         void setViewProjection(const xr::math::ViewProjection& view) override {
@@ -1657,7 +1631,7 @@ namespace {
                 m_context->IASetIndexBuffer(meshData->indexBuffer);
                 m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-                ID3D12DescriptorHeap* heaps[] = {
+                ID3D12DescriptorHeap* const heaps[] = {
                     get(m_rvHeap.heap),
                 };
                 m_context->SetDescriptorHeaps(ARRAYSIZE(heaps), heaps);
@@ -1751,8 +1725,8 @@ namespace {
                 d3d12DrawRenderTarget->setInteropTexture(m_currentTextRenderTarget);
             }
             {
-                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
-                m_textInteropDevice->AcquireWrappedResources(resources, 1);
+                ID3D11Resource* const resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
+                m_textInteropDevice->AcquireWrappedResources(resources, ARRAYSIZE(resources));
             }
 
             // Setup the interop context for rendering.
@@ -1767,8 +1741,8 @@ namespace {
             // Commit to the D3D12 queue.
             m_textDevice->flushContext(true);
             {
-                ID3D11Resource* resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
-                m_textInteropDevice->ReleaseWrappedResources(resources, 1);
+                ID3D11Resource* const resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
+                m_textInteropDevice->ReleaseWrappedResources(resources, ARRAYSIZE(resources));
             }
             m_currentTextRenderTarget.reset();
             m_isRenderingText = false;
