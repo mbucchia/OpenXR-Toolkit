@@ -501,7 +501,7 @@ namespace toolkit {
             virtual void setRenderTargets(size_t numRenderTargets,
                                           std::shared_ptr<ITexture>* renderTargets,
                                           int32_t* renderSlices = nullptr,
-                                          std::shared_ptr<ITexture>* depthBuffer = nullptr,
+                                          std::shared_ptr<ITexture> depthBuffer = nullptr,
                                           int32_t depthSlice = -1) = 0;
             virtual void unsetRenderTargets() = 0;
 
@@ -745,8 +745,7 @@ namespace toolkit {
             virtual void updateGesturesState(const input::GesturesState& state) = 0;
             virtual void updateEyeGazeState(const input::EyeGazeState& state) = 0;
 
-            virtual void
-            setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
+            virtual void setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
         };
 
     } // namespace menu

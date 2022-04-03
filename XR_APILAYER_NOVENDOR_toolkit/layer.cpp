@@ -1783,7 +1783,7 @@ namespace {
                         m_graphicsDevice->setRenderTargets(1,
                                                            &textureForOverlay[eye],
                                                            useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr,
-                                                           &depthForOverlay[eye],
+                                                           depthForOverlay[eye],
                                                            useVPRT ? eye : -1);
 
                         m_graphicsDevice->setViewProjection(viewsForOverlay[eye]);
