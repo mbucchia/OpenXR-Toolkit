@@ -20,14 +20,16 @@ nav_order: 5
 | Brightness/contrast/saturation       | [Experimental](){: .btn .btn-purple }   | Released        |
 | Texture LOD biasing                  | [Stable](){: .btn .btn-green }          | Released        |
 | Field of view override               | [Experimental](){: .btn .btn-purple}    | Released        |
+| Pimax culling workaround             | [Experimental](){: .btn .btn-purple}    | Released        |
 | Foveated rendering (w/ eye tracking) | [Implementation](){: .btn .btn-blue }   | Apr 2022        |
-| Hand tracking haptics cues           | [Implementation](){: .btn .btn-blue }   | Apr 2022?       |
-| Post-processing enhancements         | [Implementation](){: .btn .btn-blue }   | Apr 2022?       |
-| Improved desktop companion app       | [Implementation](){: .btn .btn-blue }   | Apr 2022?       |
+| Hand tracking haptics cues           | [Implementation](){: .btn .btn-blue }   |                 |
+| Post-processing enhancements         | [Implementation](){: .btn .btn-blue }   |                 |
+| Improved desktop companion app       | [Implementation](){: .btn .btn-blue }   |                 |
 | Exposure control                     | [Investigation](){: .btn .btn-blue }    |                 |
 | Field of view override v2 / zoom     | [Investigation](){: .btn .btn-blue }    |                 |
 | Per-application disable setting      | [Not started](){: .btn .btn-outline }   |                 |
 | DLSS                                 | [Blocked](){: .btn .btn-primary }       |                 |
+| "Neck Saver"                         | [Not started](){: .btn .btn-outline }   |                 |
 | Motion compensation                  | [Not started](){: .btn .btn-outline }   |                 |
 | Quality of life improvements         | [Implementation](){: .btn .btn-blue }   | Periodic        |
 
