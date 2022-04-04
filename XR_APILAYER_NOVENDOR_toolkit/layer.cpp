@@ -982,7 +982,7 @@ namespace {
             if (XR_SUCCEEDED(result) && images) {
                 auto swapchainIt = m_swapchains.find(swapchain);
                 if (swapchainIt != m_swapchains.end()) {
-                    auto swapchainState = swapchainIt->second;
+                    auto& swapchainState = swapchainIt->second;
 
                     // Return the application texture (first entry in the processing chain).
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D11) {
@@ -1626,7 +1626,7 @@ namespace {
                                     if (depthSwapchainIt == m_swapchains.end()) {
                                         throw std::runtime_error("Swapchain is not registered");
                                     }
-                                    auto depthSwapchainState = depthSwapchainIt->second;
+                                    auto& depthSwapchainState = depthSwapchainIt->second;
 
                                     assert(depthSwapchainState.images[depthSwapchainState.acquiredImageIndex]
                                                .chain.size() == 1);
