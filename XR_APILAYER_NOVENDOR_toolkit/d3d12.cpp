@@ -1079,8 +1079,7 @@ namespace {
                 }
             }
 
-            m_currentContext++;
-            if (m_currentContext == NumInflightContexts) {
+            if (++m_currentContext == NumInflightContexts) {
                 m_currentContext = 0;
             }
             CHECK_HRCMD(m_commandAllocator[m_currentContext]->Reset());
@@ -2095,7 +2094,7 @@ namespace {
 
         ComPtr<ID3D12CommandAllocator> m_commandAllocator[NumInflightContexts];
         ComPtr<ID3D12GraphicsCommandList> m_commandList[NumInflightContexts];
-        uint32_t m_currentContext{0};
+        size_t m_currentContext{0};
 
         ComPtr<ID3D12GraphicsCommandList> m_context;
         D3D12Heap m_rtvHeap;
