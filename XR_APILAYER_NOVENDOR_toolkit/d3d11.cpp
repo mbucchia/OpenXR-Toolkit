@@ -1909,7 +1909,7 @@ namespace {
         D3D11ContextState m_state;
         std::string m_deviceName;
         GpuArchitecture m_gpuArchitecture;
-        int m_lateInitCountdown{0};
+        uint32_t m_lateInitCountdown{0};
 
         ComPtr<ID3D11SamplerState> m_linearClampSamplerPS;
         ComPtr<ID3D11SamplerState> m_linearClampSamplerCS;
@@ -2074,6 +2074,9 @@ namespace {
                                 UINT NumSamplers,
                                 ID3D11SamplerState* const* ppSamplers) {
             DebugLog("--> ID3D11DeviceContext_PSSetSamplers\n");
+
+            if (NumSamplers > UINT(D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT))
+                NumSamplers = UINT(D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT);
 
             ID3D11SamplerState* updatedSamplers[D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT];
             for (UINT i = 0; i < NumSamplers; i++) {
