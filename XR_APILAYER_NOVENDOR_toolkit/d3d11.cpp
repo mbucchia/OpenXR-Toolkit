@@ -1224,23 +1224,26 @@ namespace {
 
                 static void* const kClearResources[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT] = {nullptr};
 
+                const auto numRTV =
+                    std::min(m_currentShaderHighestRTV + 1, uint32_t(D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT));
                 auto renderTargetViews = reinterpret_cast<ID3D11RenderTargetView* const*>(kClearResources);
-                m_context->OMSetRenderTargets(static_cast<UINT>(m_currentShaderHighestRTV), renderTargetViews, nullptr);
+                m_context->OMSetRenderTargets(numRTV, renderTargetViews, nullptr);
                 m_currentShaderHighestRTV = 0;
 
+                const auto numSRV =
+                    std::min(m_currentShaderHighestSRV + 1, uint32_t(D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT));
                 auto shaderResourceViews = reinterpret_cast<ID3D11ShaderResourceView* const*>(kClearResources);
                 if (m_currentQuadShader) {
-                    m_context->PSSetShaderResources(
-                        0, static_cast<UINT>(m_currentShaderHighestSRV), shaderResourceViews);
+                    m_context->PSSetShaderResources(0, numSRV, shaderResourceViews);
                 } else {
-                    m_context->CSSetShaderResources(
-                        0, static_cast<UINT>(m_currentShaderHighestSRV), shaderResourceViews);
+                    m_context->CSSetShaderResources(0, numSRV, shaderResourceViews);
                 }
                 m_currentShaderHighestSRV = 0;
 
+                const auto numUAV =
+                    std::min(m_currentShaderHighestUAV + 1, uint32_t(D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT));
                 auto unorderedAccessViews = reinterpret_cast<ID3D11UnorderedAccessView* const*>(kClearResources);
-                m_context->CSSetUnorderedAccessViews(
-                    0, static_cast<UINT>(m_currentShaderHighestUAV), unorderedAccessViews, nullptr);
+                m_context->CSSetUnorderedAccessViews(0, numUAV, unorderedAccessViews, nullptr);
                 m_currentShaderHighestUAV = 0;
 
                 m_currentQuadShader.reset();
