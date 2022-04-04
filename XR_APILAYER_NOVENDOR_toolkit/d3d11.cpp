@@ -1206,16 +1206,8 @@ namespace {
 
             if (!doNotClear) {
                 // We must unbind all the resources to avoid D3D debug layer issues.
-                //
-                // NB: Maximum resources possible are:
-                // - D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT (128)
-                // - D3D11_1_UAV_SLOT_COUNT (64)
-                // - D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT (8)
-
-                static void* const kClearResources[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT] = {nullptr};
-
                 const auto numRTV =
-                    std::min(m_currentShaderHighestRTV + 1, uint32_t(D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT));
+                    std::min(m_currentShaderHighestRTV + 1, uint32_t(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT));
                 auto renderTargetViews = reinterpret_cast<ID3D11RenderTargetView* const*>(kClearResources);
                 m_context->OMSetRenderTargets(numRTV, renderTargetViews, nullptr);
                 m_currentShaderHighestRTV = 0;
@@ -1230,8 +1222,7 @@ namespace {
                 }
                 m_currentShaderHighestSRV = 0;
 
-                const auto numUAV =
-                    std::min(m_currentShaderHighestUAV + 1, uint32_t(D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT));
+                const auto numUAV = std::min(m_currentShaderHighestUAV + 1, uint32_t(D3D11_1_UAV_SLOT_COUNT));
                 auto unorderedAccessViews = reinterpret_cast<ID3D11UnorderedAccessView* const*>(kClearResources);
                 m_context->CSSetUnorderedAccessViews(0, numUAV, unorderedAccessViews, nullptr);
                 m_currentShaderHighestUAV = 0;
@@ -1242,8 +1233,8 @@ namespace {
         }
 
         void unsetRenderTargets() override {
-            static ID3D11RenderTargetView* const rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = {nullptr};
-            m_context->OMSetRenderTargets((UINT)std::size(rtvs), rtvs, nullptr);
+            auto renderTargetViews = reinterpret_cast<ID3D11RenderTargetView* const*>(kClearResources);
+            m_context->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, renderTargetViews, nullptr);
             m_currentDrawRenderTarget.reset();
             m_currentDrawDepthBuffer.reset();
             m_currentMesh.reset();
@@ -1976,6 +1967,12 @@ namespace {
         }
 
         static inline D3D11Device* g_instance = nullptr;
+        // NB: Maximum resources possible are:
+        // - D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT (128)
+        // - D3D11_1_UAV_SLOT_COUNT (64)
+        // - D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT (8)
+
+        static inline void* const kClearResources[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT] = {nullptr};
 
         DECLARE_DETOUR_FUNCTION(static void,
                                 STDMETHODCALLTYPE,
