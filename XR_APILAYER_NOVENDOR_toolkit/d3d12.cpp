@@ -1039,20 +1039,6 @@ namespace {
             // the command queue.
         }
 
-        static void LogInfoQueueMessage12(ID3D12InfoQueue* infoQueue, UINT64 messageCount) {
-            assert(infoQueue);
-            for (UINT64 i = 0u; i < messageCount; i++) {
-                SIZE_T size = 0;
-                infoQueue->GetMessage(i, nullptr, &size);
-                if (size) {
-                    auto message_data = std::make_unique<char[]>(size);
-                    auto message = reinterpret_cast<D3D12_MESSAGE*>(message_data.get());
-                    CHECK_HRCMD(infoQueue->GetMessage(i, message, &size));
-                    Log("D3D12: %.*s\n", message->DescriptionByteLength, message->pDescription);
-                }
-            }
-        }
-
         void flushContext(bool blocking, bool isEndOfFrame = false) override {
             if (isEndOfFrame) {
                 // Resolve the timers.
@@ -1088,7 +1074,7 @@ namespace {
 
             // Log any messages from the Debug layer.
             if (auto count = m_infoQueue ? m_infoQueue->GetNumStoredMessages() : 0) {
-                LogInfoQueueMessage12(get(m_infoQueue), count);
+                LogInfoQueueMessage(get(m_infoQueue), count);
                 m_infoQueue->ClearStoredMessages();
             }
         }
@@ -2176,6 +2162,20 @@ namespace {
             }
 
             return info;
+        }
+
+        static void LogInfoQueueMessage(ID3D12InfoQueue* infoQueue, UINT64 messageCount) {
+            assert(infoQueue);
+            for (UINT64 i = 0u; i < messageCount; i++) {
+                SIZE_T size = 0;
+                infoQueue->GetMessage(i, nullptr, &size);
+                if (size) {
+                    auto message_data = std::make_unique<char[]>(size);
+                    auto message = reinterpret_cast<D3D12_MESSAGE*>(message_data.get());
+                    CHECK_HRCMD(infoQueue->GetMessage(i, message, &size));
+                    Log("D3D12: %.*s\n", message->DescriptionByteLength, message->pDescription);
+                }
+            }
         }
 
         static inline D3D12Device* g_instance = nullptr;
