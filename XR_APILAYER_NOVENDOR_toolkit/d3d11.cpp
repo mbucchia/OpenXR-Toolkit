@@ -435,6 +435,7 @@ namespace {
             m_shaderResourceSubView.resize(info.arraySize);
             m_unorderedAccessSubView.resize(info.arraySize);
             m_renderTargetSubView.resize(info.arraySize);
+            m_depthStencilSubView.resize(info.arraySize);
         }
 
         Api getApi() const override {
@@ -454,6 +455,7 @@ namespace {
         }
 
         std::shared_ptr<IShaderInputTextureView> getShaderResourceView(int32_t slice) const override {
+            assert(slice < 0 || m_shaderResourceSubView.size() > size_t(slice));
             auto& view = slice < 0 ? m_shaderResourceView : m_shaderResourceSubView[slice];
             if (!view)
                 view = makeShaderInputViewInternal(std::max(slice, 0));
@@ -461,6 +463,7 @@ namespace {
         }
 
         std::shared_ptr<IComputeShaderOutputView> getUnorderedAccessView(int32_t slice) const override {
+            assert(slice < 0 || m_unorderedAccessSubView.size() > size_t(slice));
             auto& view = slice < 0 ? m_unorderedAccessView : m_unorderedAccessSubView[slice];
             if (!view)
                 view = makeUnorderedAccessViewInternal(std::max(slice, 0));
@@ -468,6 +471,7 @@ namespace {
         }
 
         std::shared_ptr<IRenderTargetView> getRenderTargetView(int32_t slice) const override {
+            assert(slice < 0 || m_renderTargetSubView.size() > size_t(slice));
             auto& view = slice < 0 ? m_renderTargetView : m_renderTargetSubView[slice];
             if (!view)
                 view = makeRenderTargetViewInternal(std::max(slice, 0));
@@ -475,6 +479,7 @@ namespace {
         }
 
         std::shared_ptr<IDepthStencilView> getDepthStencilView(int32_t slice) const override {
+            assert(slice < 0 || m_depthStencilSubView.size() > size_t(slice));
             auto& view = slice < 0 ? m_depthStencilView : m_depthStencilSubView[slice];
             if (!view)
                 view = makeDepthStencilViewInternal(std::max(slice, 0));
