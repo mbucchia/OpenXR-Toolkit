@@ -302,7 +302,7 @@ namespace {
                 // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
                 // will (falsely) advertise hand tracking support. Check for the Ultraleap layer in this case.
                 if (m_supportHandTracking &&
-                    (!isDeveloper || (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck) &&
+                    (!isDeveloper && (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck) &&
                                      m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos))) {
                     bool hasUltraleapLayer = false;
                     for (const auto& layer : GetUpstreamLayers()) {
@@ -319,7 +319,7 @@ namespace {
                 // Workaround: the WMR runtime supports emulating eye tracking for development through
                 // XR_EXT_eye_gaze_interaction, which will (falsely) advertise eye tracking support. Disable it.
                 if (m_supportEyeTracking &&
-                    (!isDeveloper || (!m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck) &&
+                    (!isDeveloper && (!m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck) &&
                                      m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos))) {
                     Log("Ignoring XR_EXT_eye_gaze_interaction for %s\n", m_runtimeName.c_str());
                     m_supportEyeTracking = false;
