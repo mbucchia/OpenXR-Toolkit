@@ -922,6 +922,20 @@ namespace {
             m_state.clear();
         }
 
+        static void LogInfoQueueMessage11(ID3D11InfoQueue* infoQueue, UINT64 messageCount) {
+            assert(infoQueue);
+            for (UINT64 i = 0u; i < messageCount; i++) {
+                SIZE_T size = 0;
+                infoQueue->GetMessage(i, nullptr, &size);
+                if (size) {
+                    auto message_data = std::make_unique<char[]>(size);
+                    auto message = reinterpret_cast<D3D11_MESSAGE*>(message_data.get());
+                    CHECK_HRCMD(infoQueue->GetMessage(i, message, &size));
+                    Log("D3D11: %.*s\n", message->DescriptionByteLength, message->pDescription);
+                }
+            }
+        }
+
         void flushContext(bool blocking, bool isEndOfFrame = false) override {
             // Ensure we are not dropping an unfinished context.
             assert(!m_state.isValid());
@@ -939,18 +953,8 @@ namespace {
             }
 
             // Log any messages from the Debug layer.
-            if (m_infoQueue) {
-                auto count = m_infoQueue->GetNumStoredMessages();
-                for (auto i = 0u; i < count; i++) {
-                    SIZE_T size = 0;
-                    m_infoQueue->GetMessage(i, nullptr, &size);
-
-                    D3D11_MESSAGE* message = (D3D11_MESSAGE*)malloc(size);
-                    CHECK_HRCMD(m_infoQueue->GetMessage(i, message, &size));
-
-                    Log("D3D11: %.*s\n", message->DescriptionByteLength, message->pDescription);
-                    free(message);
-                }
+            if (auto count = m_infoQueue ? m_infoQueue->GetNumStoredMessages() : 0) {
+                LogInfoQueueMessage11(get(m_infoQueue), count);
                 m_infoQueue->ClearStoredMessages();
             }
         }
