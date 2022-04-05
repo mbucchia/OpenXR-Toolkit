@@ -47,6 +47,11 @@ namespace toolkit {
         template <class T, class... Types>
         inline constexpr bool is_any_of_v = std::disjunction_v<std::is_same<T, Types>...>;
 
+        template <typename E>
+        inline constexpr auto to_integral(E e) -> typename std::underlying_type_t<E> {
+            return static_cast<std::underlying_type_t<E>>(e);
+        }
+
     } // namespace
 
     namespace utilities {
@@ -127,18 +132,26 @@ namespace toolkit {
         const std::string SettingEyeDebug = "eye_debug";
         const std::string SettingEyeDebugWithController = "eye_controller_debug";
 
+        enum class OffOnType { Off = 0, On, MaxValue };
+        enum class NoYesType { No = 0, Yes, MaxValue };
         enum class OverlayType { None = 0, FPS, Advanced, Developer, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
         enum class MenuTimeout { Small = 0, Medium, Large, MaxValue };
         enum class ScalingType { None = 0, NIS, FSR, MaxValue };
+        enum class MipMapBias { Off = 0, Anisotropic, All, MaxValue };
         enum class HandTrackingEnabled { Off = 0, Both, Left, Right, MaxValue };
         enum class HandTrackingVisibility { Hidden = 0, Bright, Medium, Dark, Darker, MaxValue };
         enum class MotionReprojectionRate { Off = 1, R_45Hz, R_30Hz, R_22Hz, MaxValue };
         enum class VariableShadingRateType { None = 0, Preset, Custom, MaxValue };
         enum class VariableShadingRateQuality { Performance = 0, Quality, MaxValue };
         enum class VariableShadingRatePattern { Wide = 0, Balanced, Narrow, MaxValue };
-        enum class MipMapBias { Off = 0, Anisotropic, All, MaxValue };
-        enum class ScreenshotFileFormat { DDS = 0, PNG, JPG, BMP };
+        enum class VariableShadingRateDir { Vertical, Horizontal, MaxValue };
+        enum class SaturationModeType { Global, Selective, MaxValue };
+        enum class FovModeType { Simple, Advanced, MaxValue };
+        enum class ScreenshotFileFormat { DDS = 0, PNG, JPG, BMP, MaxValue };
+
+        template <typename ConfigEnumType>
+        extern std::string_view to_string_view(ConfigEnumType);
 
         struct IConfigManager {
             virtual ~IConfigManager() = default;
