@@ -243,7 +243,7 @@ namespace {
             }
         }
 
-        bool getOpenXrEyeGaze(XrVector3f projectedPoint) const {
+        bool getOpenXrEyeGaze(XrVector3f& projectedPoint) const {
             XrSpaceLocation location{XR_TYPE_SPACE_LOCATION, nullptr};
 
             // Query the latest eye gaze pose.
