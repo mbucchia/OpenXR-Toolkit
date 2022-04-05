@@ -159,7 +159,6 @@ namespace toolkit::utilities {
     // https://stackoverflow.com/questions/7808085/how-to-get-the-status-of-a-service-programmatically-running-stopped
     bool IsServiceRunning(const std::string& name) {
         SC_HANDLE theService, scm;
-        SERVICE_STATUS m_SERVICE_STATUS;
         SERVICE_STATUS_PROCESS ssStatus;
         DWORD dwBytesNeeded;
 
