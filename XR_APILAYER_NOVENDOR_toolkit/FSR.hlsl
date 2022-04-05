@@ -17,6 +17,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+// clang-format off
+
 // combine EASU and RCAS constants in a single buffer
 cbuffer cb : register(b0)
 {
@@ -44,8 +46,13 @@ SamplerState		samLinearClamp : register(s0);
   #endif
   #if SAMPLE_RCAS
     #define FSR_RCAS_F
-    AF4 FsrRcasLoadF(ASU2 p) { return InputTexture.Load(int3(ASU2(p), 0)); }
-    void FsrRcasInputF(inout AF1 r, inout AF1 g, inout AF1 b) {}
+    #if SAMPLE_HDR_OUTPUT
+      AF4 FsrRcasLoadF(ASU2 p) { return sqrt(InputTexture.Load(int3(ASU2(p), 0))); }
+    #else
+      AF4 FsrRcasLoadF(ASU2 p) { return InputTexture.Load(int3(ASU2(p), 0)); }
+    #endif
+    void FsrRcasInputF(inout AF1 r, inout AF1 g, inout AF1 b) {
+    }
   #endif
 #else
   #define A_HALF
@@ -123,3 +130,4 @@ void mainCS(uint3 LocalThreadId : SV_GroupThreadID, uint3 WorkGroupId : SV_Group
   CurrFilter(gxy);
 }
 
+// clang-format on

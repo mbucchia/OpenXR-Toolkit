@@ -107,17 +107,18 @@ namespace {
             defines.add("FSR_THREAD_GROUP_SIZE", 64);
             defines.add("SAMPLE_SLOW_FALLBACK", 1);
             defines.add("SAMPLE_BILINEAR", 0);
-            defines.add("SAMPLE_HDR_OUTPUT", 0);
 
             // EASU specific
             defines.add("SAMPLE_RCAS", 0);
             defines.add("SAMPLE_EASU", 1);
+            defines.add("SAMPLE_HDR_OUTPUT", 0);
             m_shaderEASU = m_device->createComputeShader(
                 shaderFile, "mainCS", "FSR EASU CS", threadGroups, defines.get() /*,  shadersDir*/);
 
             // RCAS specific
             defines.set("SAMPLE_EASU", 0);
             defines.set("SAMPLE_RCAS", 1);
+            defines.add("SAMPLE_HDR_OUTPUT", 1);
             m_shaderRCAS = m_device->createComputeShader(
                 shaderFile, "mainCS", "FSR RCAS CS", threadGroups, defines.get() /*,  shadersDir*/);
 
