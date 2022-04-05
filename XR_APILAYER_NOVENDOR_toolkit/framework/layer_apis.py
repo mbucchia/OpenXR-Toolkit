@@ -33,6 +33,7 @@ override_functions = [
 # The list of OpenXR functions our layer will use from the runtime.
 # Might repeat entries from override_functions above.
 requested_functions = [
+    "xrGetSystem",
     "xrGetInstanceProperties",
     "xrGetSystemProperties",
     "xrEnumerateViewConfigurationViews",

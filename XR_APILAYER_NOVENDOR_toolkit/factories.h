@@ -127,9 +127,13 @@ namespace toolkit {
         CreateHandTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
 
         std::shared_ptr<input::IEyeTracker>
-        CreateEyeTracker(toolkit::OpenXrApi& openXR,
-                         std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                         std::unique_ptr<HP::Omnicept::Client> omniceptClient = nullptr);
+        CreateEyeTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
+        std::shared_ptr<input::IEyeTracker>
+        CreateOmniceptEyeTracker(toolkit::OpenXrApi& openXR,
+                                 std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                                 std::unique_ptr<HP::Omnicept::Client> omniceptClient);
+        std::shared_ptr<input::IEyeTracker> CreatePimaxEyeTracker(
+            toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
 
     } // namespace input
 

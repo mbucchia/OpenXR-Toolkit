@@ -705,6 +705,9 @@ namespace toolkit {
         };
 
         struct EyeGazeState {
+            XrVector3f gazeRay{};
+            XrVector2f leftPoint{};
+            XrVector2f rightPoint{};
         };
 
         struct IEyeTracker {
