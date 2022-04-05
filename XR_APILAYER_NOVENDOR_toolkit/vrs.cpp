@@ -193,7 +193,7 @@ namespace {
                     // const auto updateSingleRTV = eyeHint.has_value() && info.arraySize == 1;
                     // const auto updateArrayRTV = info.arraySize > 1;
                     // updateViews(updateSingleRTV, updateArrayRTV, false);
-                    updateViews11(context11);
+                    updateViews(context11);
                 }
 
                 // We set VRS on 2 viewports in case the stereo view renders in parallel.
@@ -229,7 +229,7 @@ namespace {
                     updateGaze();
 
                     // TODO: for now redraw all the views until we implement better logic
-                    updateViews12(get(vrsCommandList));
+                    updateViews(get(vrsCommandList));
                 }
 
                 // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
@@ -346,7 +346,7 @@ namespace {
             auto texH = xr::math::DivideRoundingUp(renderHeigh, m_tileSize);
 
             // Initialize VRS shader constants
-            m_constants.InvDim = {1.f / texW, 1.f / texH};
+            m_InvDim = {1.f / texW, 1.f / texH};
 
             // Initialize shading rate resources
             {
@@ -464,38 +464,40 @@ namespace {
             if (mode == VariableShadingRateType::Custom) {
                 return m_configManager->hasChanged(SettingVRSInner) || m_configManager->hasChanged(SettingVRSMiddle) ||
                        m_configManager->hasChanged(SettingVRSOuter) ||
-                       m_configManager->hasChanged(SettingVRSPreferHorizontal);
+                       m_configManager->hasChanged(SettingVRSPreferHorizontal) ||
+                       m_configManager->hasChanged(SettingVRSLeftRightBias);
             }
             return false;
         }
 
         void updateRates(VariableShadingRateType mode) {
-            uint32_t rates[3];
-
             if (mode == VariableShadingRateType::Preset) {
                 const auto quality = m_configManager->getEnumValue<VariableShadingRateQuality>(SettingVRSQuality);
-                for (int i = 0; i < 3; i++) {
-                    rates[i] = i + (quality != VariableShadingRateQuality::Quality ? i : 0);
+                for (size_t i = 0; i < 3; i++) {
+                    const auto rate = i + (quality != VariableShadingRateQuality::Quality ? i : 0);
+                    m_Rates[2][i] = m_Rates[1][i] = m_Rates[0][i] = settingsRateToShadingRate(rate);
+                    m_Rates[i][3] = m_shadingRates[SHADING_RATE_CULL];
                 }
+
             } else if (mode == VariableShadingRateType::Custom) {
-                rates[0] = m_configManager->getValue(SettingVRSInner);
-                rates[1] = m_configManager->getValue(SettingVRSMiddle);
-                rates[2] = m_configManager->getValue(SettingVRSOuter);
+                const auto leftRightBias = m_configManager->getValue(SettingVRSLeftRightBias);
+                const auto preferHorizontal = m_configManager->getValue(SettingVRSPreferHorizontal) != 0;
+
+                const int rates[3] = {m_configManager->getValue(SettingVRSInner),
+                                      m_configManager->getValue(SettingVRSMiddle),
+                                      m_configManager->getValue(SettingVRSOuter)};
+
+                const int rateBias[3] = {std::min(leftRightBias, 0), std::max(leftRightBias, 0), 0};
+
+                for (size_t eye = 0; eye < 3; eye++) {
+                    m_Rates[eye][0] = settingsRateToShadingRate(rates[0], rateBias[eye], preferHorizontal);
+                    m_Rates[eye][1] = settingsRateToShadingRate(rates[1], rateBias[eye], preferHorizontal);
+                    m_Rates[eye][2] = settingsRateToShadingRate(rates[2], rateBias[eye], preferHorizontal);
+                    m_Rates[eye][3] = m_shadingRates[SHADING_RATE_CULL];
+                }
             }
 
-            const bool preferHorizontal =
-                m_mode == VariableShadingRateType::Custom && m_configManager->getValue(SettingVRSPreferHorizontal);
-
-            m_constants.Rates[0] = settingsRateToShadingRate(rates[0], preferHorizontal);
-            m_constants.Rates[1] = settingsRateToShadingRate(rates[1], preferHorizontal);
-            m_constants.Rates[2] = settingsRateToShadingRate(rates[2], preferHorizontal);
-            m_constants.Rates[3] = m_shadingRates[SHADING_RATE_CULL];
-
-            DebugLog("VRS: Rates= %u %u %u %u\n",
-                     m_constants.Rates[0],
-                     m_constants.Rates[1],
-                     m_constants.Rates[2],
-                     m_constants.Rates[3]);
+            DebugLog("VRS: Rates= %u %u %u %u\n", m_Rates[2][0], m_Rates[2][1], m_Rates[2][2], m_Rates[2][3]);
         }
 
         bool checkUpdateRings(VariableShadingRateType mode) const {
@@ -549,10 +551,10 @@ namespace {
             m_swapViews = m_supportFOVHack && m_configManager->getValue(config::SettingPimaxFOVHack);
 
             const auto semiMajorFactor = m_configManager->getValue(SettingVRSXScale);
-            m_constants.Rings[0] = MakeRingParam({radius[0] * semiMajorFactor * 0.0001f, radius[0] * 0.01f});
-            m_constants.Rings[1] = MakeRingParam({radius[1] * semiMajorFactor * 0.0001f, radius[1] * 0.01f});
-            m_constants.Rings[2] = MakeRingParam({100.f, 100.f}); // large enough
-            m_constants.Rings[3] = MakeRingParam({100.f, 100.f}); // large enough
+            m_Rings[0] = MakeRingParam({radius[0] * semiMajorFactor * 0.0001f, radius[0] * 0.01f});
+            m_Rings[1] = MakeRingParam({radius[1] * semiMajorFactor * 0.0001f, radius[1] * 0.01f});
+            m_Rings[2] = MakeRingParam({100.f, 100.f}); // large enough
+            m_Rings[3] = MakeRingParam({100.f, 100.f}); // large enough
 
             m_gazeOffset[2].x = m_configManager->getValue(SettingVRSXOffset) * 0.01f;
             m_gazeOffset[2].y = m_configManager->getValue(SettingVRSYOffset) * 0.01f;
@@ -576,10 +578,10 @@ namespace {
             m_gazeLocation[!m_swapViews] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
         }
 
-        void updateViews11(D3D11::Context pContext) {
+        void updateViews(D3D11::Context pContext) {
             for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
-                m_constants.GazeXY = m_gazeLocation[i];
-                m_cbShading[i]->uploadData(&m_constants, sizeof(m_constants));
+                const auto constants = makeShadingConstants(i);
+                m_cbShading[i]->uploadData(&constants, sizeof(constants));
 
                 m_device->setShader(m_csShading);
                 m_device->setShaderInput(0, m_cbShading[i]);
@@ -597,10 +599,10 @@ namespace {
             }
         }
 
-        void updateViews12(ID3D12GraphicsCommandList5* pCommandList) {
+        void updateViews(ID3D12GraphicsCommandList5* pCommandList) {
             for (size_t i = 0; i < std::size(m_shadingRateMask); i++) {
-                m_constants.GazeXY = m_gazeLocation[i];
-                m_cbShading[i]->uploadData(&m_constants, sizeof(m_constants));
+                const auto constants = makeShadingConstants(i);
+                m_cbShading[i]->uploadData(&constants, sizeof(constants));
 
                 m_Dx12ShadingRateResources.ResourceBarrier(
                     pCommandList, m_shadingRateMask[i]->getAs<D3D12>(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, i);
@@ -613,22 +615,32 @@ namespace {
             }
         }
 
-        uint32_t settingsRateToShadingRate(uint32_t settingsRate, bool preferHorizontal) const {
-            static const uint8_t lut[] = {SHADING_RATE_x1,
-                                          SHADING_RATE_2x1,
-                                          SHADING_RATE_2x2,
-                                          SHADING_RATE_4x2,
-                                          SHADING_RATE_4x4,
-                                          SHADING_RATE_CULL};
+        ShadingConstants makeShadingConstants(size_t eye) {
+            ShadingConstants constants;
+            constants.GazeXY = m_gazeLocation[eye];
+            constants.InvDim = m_InvDim;
+            for (size_t i = 0; i < std::size(m_Rings); i++) {
+                constants.Rings[i] = m_Rings[i];
+                constants.Rates[i] = m_Rates[eye][i];
+            }
+            return constants;
+        }
 
-            static_assert(SHADING_RATE_1x2 == (SHADING_RATE_2x1 + 1), "preferHorizonal shading rate arithmetic");
-            static_assert(SHADING_RATE_2x4 == (SHADING_RATE_4x2 + 1), "preferHorizonal shading rate arithmetic");
+        uint8_t settingsRateToShadingRate(size_t settingsRate, int rateBias = 0, bool preferHorizontal = false) const {
+            static const uint8_t lut[] = {
+                SHADING_RATE_x1, SHADING_RATE_2x1, SHADING_RATE_2x2, SHADING_RATE_4x2, SHADING_RATE_4x4};
 
-            // preferHorizontal applies to odd settingsRate only, this prevents (CULL+1)
-            preferHorizontal &= settingsRate < 4;
-            auto rate =
-                lut[std::min(size_t(settingsRate), std::size(lut))] + (settingsRate & uint32_t(preferHorizontal));
-            return m_shadingRates[rate];
+            static_assert(SHADING_RATE_1x2 == (SHADING_RATE_2x1 + 1), "preferHorizonal arithmetic");
+            static_assert(SHADING_RATE_2x4 == (SHADING_RATE_4x2 + 1), "preferHorizonal arithmetic");
+
+            if (settingsRate < std::size(lut)) {
+                auto rate = lut[std::min(settingsRate + abs(rateBias), std::size(lut) - 1)];
+                if (preferHorizontal) {
+                    rate += (rate == SHADING_RATE_2x1 || rate == SHADING_RATE_4x2);
+                }
+                return m_shadingRates[rate];
+            }
+            return m_shadingRates[SHADING_RATE_CULL];
         }
 
         void resetShadingRates(Api api) {
@@ -709,14 +721,17 @@ namespace {
         bool m_needUpdateViews{false};
         bool m_swapViews{false};
 
+        VariableShadingRateType m_mode{VariableShadingRateType::None};
+
+        // ShadingConstants
         XrVector2f m_gazeOffset[ViewCount + 1];
         XrVector2f m_gazeLocation[ViewCount + 1];
-
-        VariableShadingRateType m_mode{VariableShadingRateType::None};
+        XrVector2f m_InvDim;
+        XrVector2f m_Rings[4];
+        uint8_t m_Rates[ViewCount + 1][4];
 
         // ShadingRates to Graphics API specific rates LUT.
         uint8_t m_shadingRates[SHADING_RATE_COUNT];
-        ShadingConstants m_constants;
 
         std::shared_ptr<IComputeShader> m_csShading;
         std::shared_ptr<IShaderBuffer> m_cbShading[ViewCount + 1];

@@ -91,6 +91,7 @@ namespace {
         template <typename E>
         static std::string FmtEnum(int value);
         static std::string FmtPercent(int value);
+        static std::string FmtVrsRate(int value);
 
         MenuIndent indent;
         std::string title;
@@ -1034,23 +1035,16 @@ namespace {
                            VariableShadingRateType::Custom;
                 } /* visible condition */);
                 {
-                    static auto samplePow2ToString = [](int value) -> std::string {
-                        switch (value) {
-                        case 0:
-                            return "1x";
-                        default:
-                            return fmt::format("1/{}x", 1 << value);
-                        case 5:
-                            return "Cull";
-                        }
-                    };
+                    const auto maxVRSLeftRightBias =
+                        std::min(int(variableRateShaderMaxRate), to_integral(VariableShadingRateVal::R_4x4));
+
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Inner resolution",
                                              MenuEntryType::Slider,
                                              SettingVRSInner,
                                              0,
                                              variableRateShaderMaxRate,
-                                             samplePow2ToString});
+                                             MenuEntry::FmtEnum<VariableShadingRateVal>});
                     m_menuEntries.back().expert = true;
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Inner ring size",
@@ -1065,7 +1059,7 @@ namespace {
                                              SettingVRSMiddle,
                                              1, // Exclude 1x to discourage people from using poor settings!
                                              variableRateShaderMaxRate,
-                                             samplePow2ToString});
+                                             MenuEntry::FmtEnum<VariableShadingRateVal>});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Outer ring size",
                                              MenuEntryType::Slider,
@@ -1079,7 +1073,14 @@ namespace {
                                              SettingVRSOuter,
                                              1, // Exclude 1x to discourage people from using poor settings!
                                              variableRateShaderMaxRate,
-                                             samplePow2ToString});
+                                             MenuEntry::FmtEnum<VariableShadingRateVal>});
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Prefer resolution",
+                                             MenuEntryType::Choice,
+                                             SettingVRSPreferHorizontal,
+                                             0,
+                                             MenuEntry::LastVal<VariableShadingRateDir>(),
+                                             MenuEntry::FmtEnum<VariableShadingRateDir>});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Horizontal scale",
                                              MenuEntryType::Slider,
@@ -1088,13 +1089,6 @@ namespace {
                                              200,
                                              MenuEntry::FmtPercent});
                     m_menuEntries.back().expert = true;
-                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                             "Prefer resolution",
-                                             MenuEntryType::Choice,
-                                             SettingVRSPreferHorizontal,
-                                             0,
-                                             MenuEntry::LastVal<VariableShadingRateDir>(),
-                                             MenuEntry::FmtEnum<VariableShadingRateDir>});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Horizontal offset",
                                              MenuEntryType::Slider,
@@ -1110,6 +1104,14 @@ namespace {
                                              -100,
                                              100,
                                              MenuEntry::FmtPercent});
+                    m_menuEntries.back().expert = true;
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Left/Right Bias",
+                                             MenuEntryType::Slider,
+                                             SettingVRSLeftRightBias,
+                                             -maxVRSLeftRightBias,
+                                             maxVRSLeftRightBias,
+                                             MenuEntry::FmtVrsRate});
                     m_menuEntries.back().expert = true;
                 }
                 variableRateShaderCustomGroup.finalize();
@@ -1566,6 +1568,11 @@ namespace {
 
     std::string MenuEntry::FmtPercent(int value) {
         return fmt::format("{}%", value);
+    }
+
+    std::string MenuEntry::FmtVrsRate(int value) {
+        auto idx = (std::clamp(value, -4, 4) + 4) * 4;
+        return std::string(&"+4 L+3 L+2 L+1 Lnone+1 R+2 R+3 R+4 R"[idx], 4);
     }
 
 } // namespace
