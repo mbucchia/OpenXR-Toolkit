@@ -73,6 +73,34 @@ namespace toolkit::config {
                                   outputHeight, settingAnamophic > 0 ? settingAnamophic : settingScaling, blockSize));
     }
 
+#define DECLARE_ENUM_TO_STRING_VIEW(E, ...)                                                                             \
+    template <>                                                                                                        \
+    std::string_view to_string_view(E e) {                                                                        \
+        const std::string_view labels[] = ##__VA_ARGS__;                                                               \
+        static_assert(std::size(labels) == static_cast<std::underlying_type_t<E>>(E::MaxValue));                       \
+        return labels[static_cast<std::underlying_type_t<E>>(e)];                                                      \
+    }
+
+    DECLARE_ENUM_TO_STRING_VIEW(OffOnType, {"Off", "On"})
+    DECLARE_ENUM_TO_STRING_VIEW(NoYesType, {"No", "Yes"})
+    DECLARE_ENUM_TO_STRING_VIEW(OverlayType, {"Off", "FPS", "Advanced", "Developer"})
+    DECLARE_ENUM_TO_STRING_VIEW(MenuFontSize, {"Small", "Medium", "Large"})
+    DECLARE_ENUM_TO_STRING_VIEW(MenuTimeout, {"Short", "Medium", "Long"})
+    DECLARE_ENUM_TO_STRING_VIEW(ScalingType, {"Off", "NIS", "FSR"})
+    DECLARE_ENUM_TO_STRING_VIEW(MipMapBias, {"Off", "Conservative", "All"})
+    DECLARE_ENUM_TO_STRING_VIEW(HandTrackingEnabled, {"Off", "Both", "Left", "Right"})
+    DECLARE_ENUM_TO_STRING_VIEW(HandTrackingVisibility, {"Hidden", "Bright", "Medium", "Dark", "Darker"})
+    DECLARE_ENUM_TO_STRING_VIEW(MotionReprojectionRate, {"", "Off", "R_45Hz", "R_30Hz", "R_22Hz"})
+    DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRateType, {"Off", "Preset", "Custom"})
+    DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRateQuality, {"Performance", "Quality"})
+    DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRatePattern, {"Wide", "Balanced", "Narrow"})
+    DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRateDir, {"Vertical", "Horizontal"})
+    DECLARE_ENUM_TO_STRING_VIEW(SaturationModeType, {"Global", "Selective"})
+    DECLARE_ENUM_TO_STRING_VIEW(FovModeType, {"Simple", "Advanced"})
+    DECLARE_ENUM_TO_STRING_VIEW(ScreenshotFileFormat, {"DDS", "PNG", "JPG", "BMP"})
+
+#undef DECLARE_ENUM_TO_STRING_VIEW
+
 } // namespace toolkit::config
 
 namespace toolkit::utilities {
