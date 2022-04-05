@@ -784,7 +784,7 @@ namespace {
                                                        d3dImages[i].texture,
                                                        fmt::format("Runtime swapchain {} TEX2D", i)));
 
-                        swapchainState.images.push_back(images);
+                        swapchainState.images.push_back(std::move(images));
                     }
                 } else if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                     std::vector<XrSwapchainImageD3D12KHR> d3dImages(imageCount, {XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR});
@@ -820,7 +820,7 @@ namespace {
                                                        d3dImages[i].texture,
                                                        fmt::format("Runtime swapchain {} TEX2D", i)));
 
-                        swapchainState.images.push_back(images);
+                        swapchainState.images.push_back(std::move(images));
                     }
                 } else {
                     throw std::runtime_error("Unsupported graphics runtime");
