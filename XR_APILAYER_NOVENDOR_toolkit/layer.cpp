@@ -110,6 +110,7 @@ namespace {
             m_configManager->setDefault(config::SettingVRSXScale, 125);
             m_configManager->setDefault(config::SettingVRSYOffset, 0);
             m_configManager->setDefault(config::SettingVRSPreferHorizontal, 0);
+            m_configManager->setDefault(config::SettingVRSLeftRightBias, 0);
 
             // Appearance.
             m_configManager->setDefault(config::SettingBrightness, 500);

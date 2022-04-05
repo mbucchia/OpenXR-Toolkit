@@ -119,6 +119,7 @@ namespace toolkit {
         const std::string SettingVRSXScale = "vrs_x_scale";
         const std::string SettingVRSYOffset = "vrs_y_offset";
         const std::string SettingVRSPreferHorizontal = "vrs_prefer_horizontal";
+        const std::string SettingVRSLeftRightBias = "vrs_lr_bias";
         const std::string SettingMipMapBias = "mipmap_bias";
         const std::string SettingBrightness = "brightness";
         const std::string SettingContrast = "contrast2";
@@ -146,6 +147,7 @@ namespace toolkit {
         enum class VariableShadingRateQuality { Performance = 0, Quality, MaxValue };
         enum class VariableShadingRatePattern { Wide = 0, Balanced, Narrow, MaxValue };
         enum class VariableShadingRateDir { Vertical, Horizontal, MaxValue };
+        enum class VariableShadingRateVal { R_x1, R_2x1, R_2x2, R_4x2, R_4x4, R_Cull, MaxValue };
         enum class SaturationModeType { Global, Selective, MaxValue };
         enum class FovModeType { Simple, Advanced, MaxValue };
         enum class ScreenshotFileFormat { DDS = 0, PNG, JPG, BMP, MaxValue };

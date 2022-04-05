@@ -73,9 +73,9 @@ namespace toolkit::config {
                                   outputHeight, settingAnamophic > 0 ? settingAnamophic : settingScaling, blockSize));
     }
 
-#define DECLARE_ENUM_TO_STRING_VIEW(E, ...)                                                                             \
+#define DECLARE_ENUM_TO_STRING_VIEW(E, ...)                                                                            \
     template <>                                                                                                        \
-    std::string_view to_string_view(E e) {                                                                        \
+    std::string_view to_string_view(E e) {                                                                             \
         const std::string_view labels[] = ##__VA_ARGS__;                                                               \
         static_assert(std::size(labels) == static_cast<std::underlying_type_t<E>>(E::MaxValue));                       \
         return labels[static_cast<std::underlying_type_t<E>>(e)];                                                      \
@@ -95,6 +95,7 @@ namespace toolkit::config {
     DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRateQuality, {"Performance", "Quality"})
     DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRatePattern, {"Wide", "Balanced", "Narrow"})
     DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRateDir, {"Vertical", "Horizontal"})
+    DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRateVal, {"1x", "1/2", "1/4", "1/8", "1/16", "Cull"})
     DECLARE_ENUM_TO_STRING_VIEW(SaturationModeType, {"Global", "Selective"})
     DECLARE_ENUM_TO_STRING_VIEW(FovModeType, {"Simple", "Advanced"})
     DECLARE_ENUM_TO_STRING_VIEW(ScreenshotFileFormat, {"DDS", "PNG", "JPG", "BMP"})
