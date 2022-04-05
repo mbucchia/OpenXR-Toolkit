@@ -818,8 +818,28 @@ namespace {
                                                      OVERLAY_COMMON);
                                 top += 1.05f * fontSize;
                             }
-
 #undef GESTURE_STATE
+
+                            if (isEyeTrackingEnabled()) {
+                                m_device->drawString(fmt::format("gaze: {:.3f},{:.3f},{:.3f}",
+                                                                 m_eyeGazeState.gazeRay.x,
+                                                                 m_eyeGazeState.gazeRay.y,
+                                                                 m_eyeGazeState.gazeRay.z),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
+
+                                m_device->drawString(fmt::format("eye.l: {:.3f},{:.3f}",
+                                                                 m_eyeGazeState.leftPoint.x,
+                                                                 m_eyeGazeState.leftPoint.y),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
+
+                                m_device->drawString(fmt::format("eye.r: {:.3f},{:.3f}",
+                                                                 m_eyeGazeState.rightPoint.x,
+                                                                 m_eyeGazeState.rightPoint.y),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
+                            }
                         }
                     }
                 }

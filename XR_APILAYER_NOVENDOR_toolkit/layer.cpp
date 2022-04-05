@@ -238,8 +238,7 @@ namespace {
                 m_sendInterationProfileEvent = true;
             }
 
-            // For eye tracking, we try to use the Omnicept runtime if it's available. Otherwise, we will try to
-            // fallback to OpenXR.
+            // For eye tracking, we try to use the Omnicept runtime if it's available.
             std::unique_ptr<HP::Omnicept::Client> omniceptClient;
             if (utilities::IsServiceRunning("HP Omnicept")) {
                 try {
@@ -260,6 +259,7 @@ namespace {
                             stateCallback);
 
                     omniceptClient = std::move(omniceptClientBuilder->getBuildClientResultOrThrow());
+                    Log("Detected HP Omnicept support\n");
                     m_isOmniceptDetected = true;
                 } catch (const HP::Omnicept::Abi::HandshakeError& e) {
                     Log("Could not connect to Omnicept runtime HandshakeError: %s\n", e.what());
@@ -272,9 +272,38 @@ namespace {
                 }
             }
 
+            // ...and the Pimax eye tracker if available.
+            {
+                XrSystemGetInfo getInfo{XR_TYPE_SYSTEM_GET_INFO};
+                getInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
+                XrSystemId systemId;
+                CHECK_XRCMD(OpenXrApi::xrGetSystem(GetXrInstance(), &getInfo, &systemId));
+
+                XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES};
+                CHECK_XRCMD(OpenXrApi::xrGetSystemProperties(GetXrInstance(), systemId, &systemProperties));
+                if (std::string(systemProperties.systemName).find("aapvr") != std::string::npos) {
+                    aSeeVRInitParam param;
+                    param.ports[0] = 5777;
+                    Log("--> aSeeVR_connect_server\n");
+                    m_hasPimaxEyeTracker = aSeeVR_connect_server(&param) == ASEEVR_RETURN_CODE::success;
+                    Log("<-- aSeeVR_connect_server\n");
+                    if (m_hasPimaxEyeTracker) {
+                        Log("Detected Pimax Droolon support\n");
+                    }
+                }
+            }
+
+            // ...otherwise, we will try to fallback to OpenXR.
+
             // TODO: If Foveated Rendering is disabled, maybe do not initialize the eye tracker?
             if (m_configManager->getValue(config::SettingEyeTrackingEnabled)) {
-                m_eyeTracker = input::CreateEyeTracker(*this, m_configManager, std::move(omniceptClient));
+                if (omniceptClient) {
+                    m_eyeTracker = input::CreateOmniceptEyeTracker(*this, m_configManager, std::move(omniceptClient));
+                } else if (m_hasPimaxEyeTracker) {
+                    m_eyeTracker = input::CreatePimaxEyeTracker(*this, m_configManager);
+                } else {
+                    m_eyeTracker = input::CreateEyeTracker(*this, m_configManager);
+                }
             }
 
             return XR_SUCCESS;
@@ -360,6 +389,7 @@ namespace {
 
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
                 m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction || m_isOmniceptDetected ||
+                                       m_hasPimaxEyeTracker ||
                                        m_configManager->getValue(config::SettingEyeDebugWithController);
 
                 // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
@@ -2063,6 +2093,7 @@ namespace {
         bool m_supportFOVHack{false};
         bool m_supportMotionReprojectionLock{false};
         bool m_isOmniceptDetected{false};
+        bool m_hasPimaxEyeTracker{false};
 
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;
