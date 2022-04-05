@@ -85,6 +85,13 @@ namespace {
     enum class MenuEntryType { Tabs, Slider, Choice, Separator, RestoreDefaultsButton, ExitButton };
 
     struct MenuEntry {
+        template <typename E>
+        static int LastVal();
+
+        template <typename E>
+        static std::string FmtEnum(int value);
+        static std::string FmtPercent(int value);
+
         MenuIndent indent;
         std::string title;
         MenuEntryType type;
@@ -376,14 +383,14 @@ namespace {
             const float overlayAlign = (2 * renderTargetInfo.width / 3.0f) + eyeOffset;
             const float topAlign = m_projCenter[0].y * renderTargetInfo.height - m_menuBackgroundHeight / 2;
 
-            const float fontSizes[(int)MenuFontSize::MaxValue] = {
+            const float fontSizes[to_integral(MenuFontSize::MaxValue)] = {
                 renderTargetInfo.height * 0.0075f,
                 renderTargetInfo.height * 0.015f,
                 renderTargetInfo.height * 0.02f,
             };
             const float fontSize = fontSizes[m_configManager->getValue(SettingMenuFontSize)];
 
-            const double timeouts[(int)MenuTimeout::MaxValue] = {3.0, 12.0, 60.0};
+            const double timeouts[to_integral(MenuTimeout::MaxValue)] = {3.0, 12.0, 60.0};
             const double timeout =
                 m_state == MenuState::Splash ? 10.0 : timeouts[m_configManager->getValue(SettingMenuTimeout)];
 
@@ -840,11 +847,8 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingOverlayType,
                                      0,
-                                     (int)OverlayType::MaxValue - (m_configManager->isExperimentalMode() ? 1 : 2),
-                                     [](int value) {
-                                         const std::string_view labels[] = {"Off", "FPS", "Advanced", "Developer"};
-                                         return std::string(labels[value]);
-                                     }});
+                                     MenuEntry::LastVal<OverlayType>() - !m_configManager->isExperimentalMode(),
+                                     MenuEntry::FmtEnum<OverlayType>});
 
             // Upscaling Settings.
             m_originalScalingType = getCurrentScalingType();
@@ -857,22 +861,21 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingScalingType,
                                      0,
-                                     (int)ScalingType::MaxValue - 1,
-                                     [](int value) {
-                                         const std::string_view labels[] = {"Off", "NIS", "FSR"};
-                                         return std::string(labels[value]);
-                                     }});
+                                     MenuEntry::LastVal<ScalingType>(),
+                                     MenuEntry::FmtEnum<ScalingType>});
             m_menuEntries.back().noCommitDelay = true;
 
             // Scaling sub-group.
             MenuGroup upscalingGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
                 return getCurrentScalingType() != ScalingType::None;
             } /* visible condition */);
-            m_menuEntries.push_back(
-                {MenuIndent::SubGroupIndent, "Anamorphic", MenuEntryType::Choice, "", 0, 1, [](int value) {
-                     const std::string_view labels[] = {"Off", "On"};
-                     return std::string(labels[value]);
-                 }});
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Anamorphic",
+                                     MenuEntryType::Choice,
+                                     "",
+                                     0,
+                                     MenuEntry::LastVal<OffOnType>(),
+                                     MenuEntry::FmtEnum<OffOnType>});
             m_menuEntries.back().noCommitDelay = true;
             m_menuEntries.back().pValue = &m_useAnamorphic;
 
@@ -920,7 +923,7 @@ namespace {
                                      SettingSharpness,
                                      0,
                                      100,
-                                     [](int value) { return fmt::format("{}%", value); }});
+                                     MenuEntry::FmtPercent});
             // TODO: Mip-map biasing is only support on D3D11.
             if (m_device->getApi() == Api::D3D11) {
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
@@ -928,11 +931,8 @@ namespace {
                                          MenuEntryType::Slider,
                                          SettingMipMapBias,
                                          0,
-                                         (int)MipMapBias::MaxValue - 1,
-                                         [](int value) {
-                                             const std::string_view labels[] = {"Off", "Conservative", "All"};
-                                             return std::string(labels[value]);
-                                         }});
+                                         MenuEntry::LastVal<MipMapBias>(),
+                                         MenuEntry::FmtEnum<MipMapBias>});
                 m_menuEntries.back().expert = true;
             }
             upscalingGroup.finalize();
@@ -944,7 +944,7 @@ namespace {
                                          MenuEntryType::Slider,
                                          SettingMotionReprojectionRate,
                                          (int)MotionReprojectionRate::Off,
-                                         (int)MotionReprojectionRate::MaxValue - 1,
+                                         MenuEntry::LastVal<MotionReprojectionRate>(),
                                          [displayRefreshRate](int value) {
                                              return (MotionReprojectionRate)value == MotionReprojectionRate::Off
                                                         ? "Unlocked"
@@ -959,11 +959,8 @@ namespace {
                                          MenuEntryType::Choice,
                                          SettingVRS,
                                          0,
-                                         (int)VariableShadingRateType::MaxValue - 1,
-                                         [&](int value) {
-                                             const std::string_view labels[] = {"Off", "Preset", "Custom"};
-                                             return std::string(labels[value]);
-                                         }});
+                                         MenuEntry::LastVal<VariableShadingRateType>(),
+                                         MenuEntry::FmtEnum<VariableShadingRateType>});
 
                 // Common sub-group.
                 MenuGroup variableRateShaderCommonGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
@@ -976,11 +973,8 @@ namespace {
                                              MenuEntryType::Choice,
                                              SettingEyeTrackingEnabled,
                                              0,
-                                             1,
-                                             [&](int value) {
-                                                 const std::string_view labels[] = {"Off", "On"};
-                                                 return std::string(labels[value]);
-                                             }});
+                                             MenuEntry::LastVal<OffOnType>(),
+                                             MenuEntry::FmtEnum<OffOnType>});
                     m_originalEyeTrackingEnabled = isEyeTrackingEnabled();
                     // Eye tracking sub-group.
                     MenuGroup variableRateShaderEyeTrackingGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
@@ -1008,21 +1002,15 @@ namespace {
                                          MenuEntryType::Slider,
                                          SettingVRSQuality,
                                          0,
-                                         (int)VariableShadingRateQuality::MaxValue - 1,
-                                         [&](int value) {
-                                             const std::string_view labels[] = {"Performance", "Quality"};
-                                             return std::string(labels[value]);
-                                         }});
+                                         MenuEntry::LastVal<VariableShadingRateQuality>(),
+                                         MenuEntry::FmtEnum<VariableShadingRateQuality>});
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Pattern",
                                          MenuEntryType::Slider,
                                          SettingVRSPattern,
                                          0,
-                                         (int)VariableShadingRatePattern::MaxValue - 1,
-                                         [&](int value) {
-                                             const std::string_view labels[] = {"Wide", "Balanced", "Narrow"};
-                                             return std::string(labels[value]);
-                                         }});
+                                         MenuEntry::LastVal<VariableShadingRatePattern>(),
+                                         MenuEntry::FmtEnum<VariableShadingRatePattern>});
                 variableRateShaderPresetGroup.finalize();
 
                 // Custom sub-group.
@@ -1041,7 +1029,6 @@ namespace {
                             return "Cull";
                         }
                     };
-                    static auto radiusToString = [](int value) { return fmt::format("{}%", value); };
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Inner resolution",
                                              MenuEntryType::Slider,
@@ -1056,7 +1043,7 @@ namespace {
                                              SettingVRSInnerRadius,
                                              0,
                                              100,
-                                             radiusToString});
+                                             MenuEntry::FmtPercent});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Middle resolution",
                                              MenuEntryType::Slider,
@@ -1070,7 +1057,7 @@ namespace {
                                              SettingVRSOuterRadius,
                                              0,
                                              100,
-                                             radiusToString});
+                                             MenuEntry::FmtPercent});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Outer resolution",
                                              MenuEntryType::Slider,
@@ -1079,30 +1066,27 @@ namespace {
                                              variableRateShaderMaxRate,
                                              samplePow2ToString});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Horizontal scale",
+                                             MenuEntryType::Slider,
+                                             SettingVRSXScale,
+                                             10,
+                                             200,
+                                             MenuEntry::FmtPercent});
+                    m_menuEntries.back().expert = true;
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Prefer resolution",
                                              MenuEntryType::Choice,
                                              SettingVRSPreferHorizontal,
                                              0,
-                                             1,
-                                             [](int value) {
-                                                 const std::string_view labels[] = {"Vertical", "Horizontal"};
-                                                 return std::string(labels[value]);
-                                             }});
+                                             MenuEntry::LastVal<VariableShadingRateDir>(),
+                                             MenuEntry::FmtEnum<VariableShadingRateDir>});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Horizontal offset",
                                              MenuEntryType::Slider,
                                              SettingVRSXOffset,
                                              -100,
                                              100,
-                                             [](int value) { return fmt::format("{}%", value); }});
-                    m_menuEntries.back().expert = true;
-                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                             "Horizontal scale",
-                                             MenuEntryType::Slider,
-                                             SettingVRSXScale,
-                                             10,
-                                             200,
-                                             [](int value) { return fmt::format("{}%", value); }});
+                                             MenuEntry::FmtPercent});
                     m_menuEntries.back().expert = true;
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Vertical offset",
@@ -1110,7 +1094,7 @@ namespace {
                                              SettingVRSYOffset,
                                              -100,
                                              100,
-                                             [](int value) { return fmt::format("{}%", value); }});
+                                             MenuEntry::FmtPercent});
                     m_menuEntries.back().expert = true;
                 }
                 variableRateShaderCustomGroup.finalize();
@@ -1149,11 +1133,8 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingSaturationMode,
                                      0,
-                                     1,
-                                     [&](int value) {
-                                         const std::string_view labels[] = {"Global", "Selective"};
-                                         return std::string(labels[value]);
-                                     }});
+                                     MenuEntry::LastVal<SaturationModeType>(),
+                                     MenuEntry::FmtEnum<SaturationModeType>});
 
             MenuGroup saturationAllGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
                 return !m_configManager->peekValue(SettingSaturationMode);
@@ -1208,11 +1189,8 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingFOVType,
                                      0,
-                                     1,
-                                     [&](int value) {
-                                         const std::string_view labels[] = {"Simple", "Advanced"};
-                                         return std::string(labels[value]);
-                                     }});
+                                     MenuEntry::LastVal<FovModeType>(),
+                                     MenuEntry::FmtEnum<FovModeType>});
             MenuGroup fovSimpleGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
                 return m_configManager->peekValue(SettingFOVType) == 0;
             } /* visible condition */);
@@ -1285,11 +1263,8 @@ namespace {
                                          MenuEntryType::Choice,
                                          SettingPimaxFOVHack,
                                          0,
-                                         1,
-                                         [&](int value) {
-                                             const std::string_view labels[] = {"Off", "On"};
-                                             return std::string(labels[value]);
-                                         }});
+                                         MenuEntry::LastVal<OffOnType>(),
+                                         MenuEntry::FmtEnum<OffOnType>});
             }
 
             // Must be kept last.
@@ -1328,27 +1303,20 @@ namespace {
                                          MenuEntryType::Choice,
                                          SettingHandTrackingEnabled,
                                          0,
-                                         (int)HandTrackingEnabled::MaxValue - 1,
-                                         [](int value) {
-                                             const std::string_view labels[] = {"Off", "Both", "Left", "Right"};
-                                             return std::string(labels[value]);
-                                         }});
+                                         MenuEntry::LastVal<HandTrackingEnabled>(),
+                                         MenuEntry::FmtEnum<HandTrackingEnabled>});
                 m_originalHandTrackingEnabled = isHandTrackingEnabled();
 
                 MenuGroup handTrackingGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
                     return isHandTrackingEnabled();
                 } /* visible condition */);
-                m_menuEntries.push_back(
-                    {MenuIndent::SubGroupIndent,
-                     "Hand skeleton",
-                     MenuEntryType::Slider,
-                     SettingHandVisibilityAndSkinTone,
-                     0,
-                     (int)HandTrackingVisibility::MaxValue - 1,
-                     [](int value) {
-                         const std::string_view labels[] = {"Hidden", "Bright", "Medium", "Dark", "Darker"};
-                         return std::string(labels[value]);
-                     }});
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                         "Hand skeleton",
+                                         MenuEntryType::Slider,
+                                         SettingHandVisibilityAndSkinTone,
+                                         0,
+                                         MenuEntry::LastVal<HandTrackingVisibility>(),
+                                         MenuEntry::FmtEnum<HandTrackingVisibility>});
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Controller timeout",
                                          MenuEntryType::Slider,
@@ -1382,31 +1350,22 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingMenuExpert,
                                      0,
-                                     1,
-                                     [](int value) {
-                                         const std::string_view labels[] = {"No", "Yes"};
-                                         return std::string(labels[value]);
-                                     }});
+                                     MenuEntry::LastVal<NoYesType>(),
+                                     MenuEntry::FmtEnum<NoYesType>});
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Font size",
                                      MenuEntryType::Slider,
                                      SettingMenuFontSize,
                                      0,
-                                     (int)MenuFontSize::MaxValue - 1,
-                                     [](int value) {
-                                         const std::string_view labels[] = {"Small", "Medium", "Large"};
-                                         return std::string(labels[value]);
-                                     }});
+                                     MenuEntry::LastVal<MenuFontSize>(),
+                                     MenuEntry::FmtEnum<MenuFontSize>});
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Menu timeout",
                                      MenuEntryType::Slider,
                                      SettingMenuTimeout,
                                      0,
-                                     (int)MenuTimeout::MaxValue - 1,
-                                     [](int value) {
-                                         const std::string_view labels[] = {"Short", "Medium", "Long"};
-                                         return std::string(labels[value]);
-                                     }});
+                                     MenuEntry::LastVal<MenuTimeout>(),
+                                     MenuEntry::FmtEnum<MenuTimeout>});
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Menu eye offset",
                                      MenuEntryType::Slider,
@@ -1449,21 +1408,15 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingEyeDebugWithController,
                                      0,
-                                     1,
-                                     [&](int value) {
-                                         const std::string_view labels[] = {"Off", "On"};
-                                         return std::string(labels[value]);
-                                     }});
+                                     MenuEntry::LastVal<OffOnType>(),
+                                     MenuEntry::FmtEnum<OffOnType>});
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Show eye gaze",
                                      MenuEntryType::Choice,
                                      SettingEyeDebug,
                                      0,
-                                     1,
-                                     [&](int value) {
-                                         const std::string_view labels[] = {"Off", "On"};
-                                         return std::string(labels[value]);
-                                     }});
+                                     MenuEntry::LastVal<OffOnType>(),
+                                     MenuEntry::FmtEnum<OffOnType>});
 
             // Must be kept last.
             menuTab.finalize();
@@ -1585,6 +1538,20 @@ namespace {
         mutable bool m_resetTextLayout{true};
         mutable bool m_resetBackgroundLayout{true};
     };
+
+    template <typename E>
+    int MenuEntry::LastVal() {
+        return static_cast<std::underlying_type_t<E>>(E::MaxValue) - 1;
+    }
+
+    template <typename E>
+    std::string MenuEntry::FmtEnum(int value) {
+        return std::string(config::to_string_view(static_cast<E>(value)));
+    }
+
+    std::string MenuEntry::FmtPercent(int value) {
+        return fmt::format("{}%", value);
+    }
 
 } // namespace
 
