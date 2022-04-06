@@ -129,16 +129,21 @@ See [Features](features) for more details.
   - **Mip-map bias** (Expert setting): This settings changes how the game is rendering some of the textures in order to reveal a little bit more details when used with FSR/NIS upscalers.
 - **Lock motion reprojection** (only with Windows Mixed Reality): Disable automatic motion reprojection adjustment, and lock the frame rate to the desired fraction of the refresh rate.
 - **Fixed foveated rendering**: These settings adjust the [VRS](glossary.html#vrs) parameters in order to balance out peripheral visual details with rendering performance.
-  - **Mode** (with _Preset_ mode): Whether to prefer performance over quality.
-  - **Pattern** (with _Preset_ mode): The size of the foveated regions.
-  - **Inner resolution** (with _Custom_ mode, Expert setting): The resolution inside the inner ring of foveation. Should be left at full resolution (1x).
-  - **Inner ring size** (with _Custom_ mode): The size of the inner ring of foveation, in percent of the height of the image.
-  - **Middle resolution** (with _Custom_ mode): The resolution inside the middle ring of foveation.
-  - **Outer ring size** (with _Custom_ mode): The size of the outer ring of foveation, in percent of the height of the image.
-  - **Outer resolution** (with _Custom_ mode): The resolution inside the outer ring of foveation.
-  - **Horizontal offset** (with _Custom_ mode, Expert setting): Add a horizontal offset to the center of the foveation rings. The offset is expressed relative to the left eye, and its opposite value will be applied to the right eye.
-  - **Horizontal scale** (with _Custom_ mode, Expert setting): The rings for foveation can be configured as ellipses. This setting controls the scale of the horizontal radius (or semi-major axis) based on the vertical radius (or semi-minor axis). A value of 100% means that the rings are circles. A value larger than 100% will result in flattened, oval-shaped rings.
-  - **Vertical offset** (with _Custom_ mode, Expert setting): Add a vertical offset to the center of the foveation rings.
+  
+  [_Preset_ _mode_ ](ffr.html#preset-mode)
+  - **Mode**: Whether to prefer performance over quality.
+  - **Pattern**: The size of the foveated regions.
+  
+  [_Custom_ _mode_](ffr.html#custom-mode)
+  - **Inner resolution** (_Expert_ _setting_): The resolution inside the inner ring of foveation. Should be left at full resolution (1x).
+  - **Inner ring size**: The size of the inner ring of foveation, in percent of the height of the image.
+  - **Middle resolution**: The resolution inside the middle ring of foveation.
+  - **Outer ring size**: The size of the outer ring of foveation, in percent of the height of the image.
+  - **Outer resolution**: The resolution inside the outer ring of foveation.
+  - **Horizontal scale** (_Expert_ _setting_): The rings for foveation can be configured as ellipses. This setting controls the scale of the horizontal radius (or semi-major axis) based on the vertical radius (or semi-minor axis). A value of 100% means that the rings are circles. A value larger than 100% will result in flattened, oval-shaped rings.
+  - **Horizontal offset** (_Expert_ _setting_): Add a horizontal offset to the center of the foveation rings. The offset is expressed relative to the left eye, and its opposite value will be applied to the right eye.
+  - **Vertical offset** (_Expert_ _setting_): Add a vertical offset to the center of the foveation rings.
+  - **Left/Right Bias** (_Expert_ _setting_): Lower the resolution of all the regions at once, either for the left or the right eye only at a time.
 
 **Appearance** tab:
 - **Brightness**: Adjust the brightness of the image.
