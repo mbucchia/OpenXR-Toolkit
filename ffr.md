@@ -76,7 +76,9 @@ When enabled in the _Menu_ tab, Expert settings are also unlocked, allowing you 
 
 The _Horizontal offset_ and _Vertical offset_ settings allow you to move the center of the regions. Note that the _Horizontal offset_ is expressed relative to the left eye (meaning a negative value moves the center towards the left), however the offset is applied in the opposite direction to the right eye (a negative value moves the center towards the right).
 
-Finally, the _Horizontal scale_ value lets you control the scale of the horizontal radius (also known as the semi-major axis) based on the vertical radius (also known as the semi-minor axis). A value of 100% means that the rings are circles. A value larger than 100% will result in flattened, oval-shaped rings.
+The _Horizontal scale_ value lets you control the scale of the horizontal radius (also known as the semi-major axis) based on the vertical radius (also known as the semi-minor axis). A value of 100% means that the rings are circles. A value larger than 100% will result in flattened, oval-shaped rings.
+
+Finally, the _Left/Right_ _Bias_ value lets you lower the resolution of all the regions at once, either for the left or the right eye only at a time. Each setting value changes the regions resolutions one notch down (for example +1 changes 1/2 to 1/4 and +2 changes 1/2 to 1/8). This setting can adjust the bias up to _+4_ on either eye. Select _none_ to remove any bias.
 
 ### Improving the quality of Fixed Foveated Rendering
 
