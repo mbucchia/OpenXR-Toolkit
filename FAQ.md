@@ -45,6 +45,15 @@ This software only works with OpenXR applications, not OpenVR applications.
 
 Even with OpenXR applications, we cannot guarantee it will work, as I've only implemented the bare minimum for MSFS.
 
+## Q: Do I need to uninstall the OpenXR Toolkit if a game is not compatible?
+
+<details>
+  <summary>Use The Companion App "Disable the OpenXR Toolkit" feature instead...</summary>
+
+  <img alt="Companion app" src="site/companion.png">
+  
+</details>
+
 ## Q: I used your previous NIS Scaler or Hand-To-Controller software.
 
 Please uninstall the previous software. All of the functionality is included in the new OpenXR Toolkit!
