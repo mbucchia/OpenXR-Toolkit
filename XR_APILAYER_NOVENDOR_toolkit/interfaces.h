@@ -128,6 +128,15 @@ namespace toolkit {
         const std::string SettingSaturationRed = "saturation_red";
         const std::string SettingSaturationGreen = "saturation_green";
         const std::string SettingSaturationBlue = "saturation_blue";
+
+        const std::string SettingPostBrightness = "post_brightness";
+        const std::string SettingPostContrast = "post_contrast";
+        const std::string SettingPostExposure = "post_exposure";
+        const std::string SettingPostVibrance = "post_vibrance";
+        const std::string SettingPostSaturation = "post_saturation";
+        const std::string SettingPostHighlights = "post_highlights";
+        const std::string SettingPostShadows = "post_shadows";
+
         const std::string SettingEyeTrackingEnabled = "eye_tracking";
         const std::string SettingEyeProjectionDistance = "eye_projection";
         const std::string SettingEyeDebug = "eye_debug";

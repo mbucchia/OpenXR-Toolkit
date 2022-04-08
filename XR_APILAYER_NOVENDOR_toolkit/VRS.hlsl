@@ -20,6 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+// clang-format off
+
 #ifndef VRS_TILE_X
 #define VRS_TILE_X 16
 #endif
@@ -91,3 +93,5 @@ void mainCS(in int2 pos : SV_DispatchThreadID) {
 
   u_Output[pos] = rate;
 }
+
+// clang-format on

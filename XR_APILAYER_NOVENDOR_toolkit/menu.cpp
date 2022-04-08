@@ -90,6 +90,8 @@ namespace {
 
         template <typename E>
         static std::string FmtEnum(int value);
+        template <size_t N>
+        static std::string FmtDecimal(int value);
         static std::string FmtPercent(int value);
         static std::string FmtVrsRate(int value);
 
@@ -1114,6 +1116,64 @@ namespace {
                 [&] { return m_currentTab == MenuTab::Appearance; } /* visible condition */,
                 true /* isTab */);
             m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Contrast",
+                                     MenuEntryType::Slider,
+                                     SettingPostContrast,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Brightness",
+                                     MenuEntryType::Slider,
+                                     SettingPostBrightness,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Exposure",
+                                     MenuEntryType::Slider,
+                                     SettingPostExposure,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Saturation",
+                                     MenuEntryType::Slider,
+                                     SettingPostSaturation,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Vibrance",
+                                     MenuEntryType::Slider,
+                                     SettingPostVibrance,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Highlights",
+                                     MenuEntryType::Slider,
+                                     SettingPostHighlights,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Shadows",
+                                     MenuEntryType::Slider,
+                                     SettingPostShadows,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+
+#if 0
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Brightness",
                                      MenuEntryType::Slider,
                                      SettingBrightness,
@@ -1179,7 +1239,7 @@ namespace {
                                      [](int value) { return fmt::format("{:.1f}", value / 10.f); }});
             m_menuEntries.back().acceleration = 5;
             saturationChannelsGroup.finalize();
-
+#endif
             m_menuEntries.push_back(
                 {MenuIndent::OptionIndent, "World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
                      return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.f, m_stats.icd * 1000);
@@ -1271,7 +1331,7 @@ namespace {
 
             // Must be kept last.
             appearanceTab.finalize();
-        }
+        } // namespace
 
         void setupInputsTab(bool isPredictionDampeningSupported) {
             MenuGroup inputsTab(
@@ -1553,6 +1613,13 @@ namespace {
 
     std::string MenuEntry::FmtPercent(int value) {
         return fmt::format("{}%", value);
+    }
+
+    template <size_t N>
+    std::string MenuEntry::FmtDecimal(int value) {
+        const uint32_t pow10 = N == 0 ? 1u : N == 1 ? 10u : N == 2 ? 100u : 1000u; // crude but working
+        auto prec = value % pow10;
+        return fmt::format("{:.{}f}", static_cast<float>(value) / pow10, prec ? N : 0);
     }
 
     std::string MenuEntry::FmtVrsRate(int value) {

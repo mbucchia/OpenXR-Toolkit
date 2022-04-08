@@ -120,6 +120,14 @@ namespace {
             m_configManager->setDefault(config::SettingSaturationGreen, 500);
             m_configManager->setDefault(config::SettingSaturationBlue, 500);
 
+            m_configManager->setDefault(config::SettingPostContrast, 500);
+            m_configManager->setDefault(config::SettingPostBrightness, 500);
+            m_configManager->setDefault(config::SettingPostExposure, 500);
+            m_configManager->setDefault(config::SettingPostSaturation, 1000);
+            m_configManager->setDefault(config::SettingPostVibrance, 500);
+            m_configManager->setDefault(config::SettingPostHighlights, 1000);
+            m_configManager->setDefault(config::SettingPostShadows, 0);
+
             // Misc features.
             m_configManager->setDefault(config::SettingICD, 1000);
             m_configManager->setDefault(config::SettingFOVType, 0); // Simple
@@ -510,8 +518,7 @@ namespace {
                                                            (renderWidth * renderHeight));
                     Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
 
-                    m_postProcessor =
-                        graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
+                    m_postProcessor = graphics::CreateImageProcessor(m_configManager, m_graphicsDevice);
 
                     if (!m_configManager->getValue("disable_frame_analyzer")) {
                         m_frameAnalyzer = graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice);

@@ -83,6 +83,12 @@ namespace toolkit {
                                                    ID3D12Resource* texture,
                                                    std::string_view debugName);
 
+        std::shared_ptr<IImageProcessor> CreateImageProcessor(
+            std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
+
+        std::shared_ptr<IFrameAnalyzer> CreateFrameAnalyzer(
+            std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
+
         std::shared_ptr<IImageProcessor>
         CreateNISUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                           std::shared_ptr<IDevice> graphicsDevice,
@@ -95,13 +101,6 @@ namespace toolkit {
                           uint32_t outputWidth,
                           uint32_t outputHeight);
 
-        std::shared_ptr<IImageProcessor>
-        CreateImageProcessor(std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                             std::shared_ptr<IDevice> graphicsDevice,
-                             const std::string& shaderFile);
-
-        std::shared_ptr<IFrameAnalyzer> CreateFrameAnalyzer(
-            std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
         std::shared_ptr<IVariableRateShader>
         CreateVariableRateShader(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                  std::shared_ptr<IDevice> graphicsDevice,

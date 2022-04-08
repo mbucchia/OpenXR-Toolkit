@@ -36,28 +36,24 @@ namespace {
     using namespace toolkit::graphics;
     using namespace toolkit::log;
 
-    __declspec(align(256)) struct ImageProcessorConfig { DirectX::XMFLOAT4X4 BrightnessContrastSaturationMatrix; };
+    struct alignas(16) ImageProcessorConfig {
+        // DirectX::XMFLOAT4X4 BrightnessContrastSaturationMatrix;
+        XrVector4f Scale;  // Contrast, Brightness, Exposure, Vibrance (-1..+1 params)
+        XrVector4f Amount; // Saturation, Highlights, Shadows (0..1 params)
+    };
+
+    inline XrVector4f MakeXrVector4f(int x, int y, int z, int w) {
+        return {static_cast<float>(x), static_cast<float>(y), static_cast<float>(z), static_cast<float>(w)};
+    }
 
     class ImageProcessor : public IImageProcessor {
       public:
-        ImageProcessor(std::shared_ptr<IConfigManager> configManager,
-                       std::shared_ptr<IDevice> graphicsDevice,
-                       const std::string& shaderFile)
+        ImageProcessor(std::shared_ptr<IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice)
             : m_configManager(configManager), m_device(graphicsDevice) {
-            const auto shadersDir = dllHome / "shaders";
-            const auto shaderPath = shadersDir / shaderFile;
-            m_shader = m_device->createQuadShader(shaderPath, "main", "Image Processor PS", nullptr /*,  shadersDir*/);
-
-            utilities::shader::Defines defines;
-            defines.add("VPRT", true);
-            m_shaderVPRT = m_device->createQuadShader(
-                shaderPath, "main", "Image Processor VPRT PS", defines.get() /*,  shadersDir*/);
-
-            // TODO: For now, we're going to require that all image processing shaders share the same configuration
-            // structure.
-            m_configBuffer = m_device->createBuffer(sizeof(ImageProcessorConfig), "Image Processor Configuration CB");
+            createRenderResources();
         }
 
+#if 0
         void update() override {
             const bool hasSaturationModeChanged = m_configManager->hasChanged(SettingSaturationMode);
             const bool saturationPerChannel = m_configManager->getValue(SettingSaturationMode);
@@ -131,6 +127,12 @@ namespace {
                 m_configBuffer->uploadData(&staging, sizeof(staging));
             }
         }
+#endif
+        void update() override {
+            if (checkUpdateConfig()) {
+                updateConfig();
+            }
+        }
 
         void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
             m_device->setShader(!input->isArray() ? m_shader : m_shaderVPRT);
@@ -142,6 +144,67 @@ namespace {
         }
 
       private:
+        void createRenderResources() {
+            const auto shadersDir = dllHome / "shaders";
+            const auto shaderFile = shadersDir / "postprocess.hlsl";
+
+            m_shader = m_device->createQuadShader(shaderFile, "main", "Image Processor PS", nullptr /*,  shadersDir*/);
+
+            utilities::shader::Defines defines;
+            defines.add("VPRT", true);
+            m_shaderVPRT = m_device->createQuadShader(
+                shaderFile, "main", "Image Processor VPRT PS", defines.get() /*,  shadersDir*/);
+
+            // TODO: For now, we're going to require that all image processing shaders share the same configuration
+            // structure.
+            m_configBuffer = m_device->createBuffer(sizeof(ImageProcessorConfig), "Image Processor Configuration CB");
+
+            updateConfig();
+        }
+
+        bool checkUpdateConfig() {
+            return m_configManager->hasChanged(SettingPostBrightness) ||
+                   m_configManager->hasChanged(SettingPostContrast) ||
+                   m_configManager->hasChanged(SettingPostExposure) ||
+                   m_configManager->hasChanged(SettingPostVibrance) ||
+                   m_configManager->hasChanged(SettingPostSaturation) ||
+                   m_configManager->hasChanged(SettingPostHighlights) ||
+                   m_configManager->hasChanged(SettingPostShadows);
+        }
+
+        void updateConfig() {
+            using namespace DirectX;
+            using namespace xr::math;
+
+            // const auto saturationMode = m_configManager->getValue(SettingSaturationMode);
+            // const auto saturationR = saturationMode ? m_configManager->getValue(SettingSaturationRed) : saturation;
+            // const auto saturationG = saturationMode ? m_configManager->getValue(SettingSaturationGreen) : saturation;
+            // const auto saturationB = saturationMode ? m_configManager->getValue(SettingSaturationBlue) : saturation;
+            
+            ImageProcessorConfig config;
+
+            const auto params1 = LoadXrVector4(MakeXrVector4f(m_configManager->getValue(SettingPostContrast),
+                                                              m_configManager->getValue(SettingPostBrightness),
+                                                              m_configManager->getValue(SettingPostExposure),
+                                                              m_configManager->getValue(SettingPostVibrance)));
+
+            const auto params2 = LoadXrVector4(MakeXrVector4f(m_configManager->getValue(SettingPostSaturation),
+                                                              m_configManager->getValue(SettingPostHighlights),
+                                                              m_configManager->getValue(SettingPostShadows),
+                                                              0));
+            
+            // reduce contrast strength, increase exposure and vibrance gains.
+            const auto gains = XMVectorSet(0.1f, 1.0f, 4.0f, 3.0f);
+
+            // [0..1000] -> [-1..+1]
+            StoreXrVector4(&config.Scale, (XMVectorSaturate(params1 * 0.001f) * 2.0 - XMVectorSplatOne()) * gains);
+
+            // [0..1000] -> [0..1]
+            StoreXrVector4(&config.Amount, XMVectorSaturate(params2 * 0.001f));
+
+            m_configBuffer->uploadData(&config, sizeof(config));
+        }
+
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
 
@@ -203,9 +266,8 @@ namespace toolkit::graphics {
     }
 
     std::shared_ptr<IImageProcessor> CreateImageProcessor(std::shared_ptr<IConfigManager> configManager,
-                                                          std::shared_ptr<IDevice> graphicsDevice,
-                                                          const std::string& shaderFile) {
-        return std::make_shared<ImageProcessor>(configManager, graphicsDevice, shaderFile);
+                                                          std::shared_ptr<IDevice> graphicsDevice) {
+        return std::make_shared<ImageProcessor>(configManager, graphicsDevice);
     }
 
 } // namespace toolkit::graphics
