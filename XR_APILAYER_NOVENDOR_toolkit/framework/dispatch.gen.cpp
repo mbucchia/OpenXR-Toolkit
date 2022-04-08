@@ -41,7 +41,8 @@ namespace LAYER_NAMESPACE
 
 	XrResult xrPollEvent(XrInstance instance, XrEventDataBuffer* eventData)
 	{
-		DebugLog("--> xrPollEvent\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrPollEvent");
 
 		XrResult result;
 		try
@@ -50,18 +51,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrPollEvent_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrPollEvent %d\n", result);
+		TraceLoggingWriteStop(local, "xrPollEvent", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrGetSystem(XrInstance instance, const XrSystemGetInfo* getInfo, XrSystemId* systemId)
 	{
-		DebugLog("--> xrGetSystem\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrGetSystem");
 
 		XrResult result;
 		try
@@ -70,18 +72,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrGetSystem_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrGetSystem %d\n", result);
+		TraceLoggingWriteStop(local, "xrGetSystem", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrCreateSession(XrInstance instance, const XrSessionCreateInfo* createInfo, XrSession* session)
 	{
-		DebugLog("--> xrCreateSession\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrCreateSession");
 
 		XrResult result;
 		try
@@ -90,18 +93,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrCreateSession_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrCreateSession %d\n", result);
+		TraceLoggingWriteStop(local, "xrCreateSession", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrDestroySession(XrSession session)
 	{
-		DebugLog("--> xrDestroySession\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrDestroySession");
 
 		XrResult result;
 		try
@@ -110,18 +114,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrDestroySession_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrDestroySession %d\n", result);
+		TraceLoggingWriteStop(local, "xrDestroySession", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrCreateActionSpace(XrSession session, const XrActionSpaceCreateInfo* createInfo, XrSpace* space)
 	{
-		DebugLog("--> xrCreateActionSpace\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrCreateActionSpace");
 
 		XrResult result;
 		try
@@ -130,18 +135,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrCreateActionSpace_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrCreateActionSpace %d\n", result);
+		TraceLoggingWriteStop(local, "xrCreateActionSpace", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrLocateSpace(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation* location)
 	{
-		DebugLog("--> xrLocateSpace\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrLocateSpace");
 
 		XrResult result;
 		try
@@ -150,18 +156,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrLocateSpace_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrLocateSpace %d\n", result);
+		TraceLoggingWriteStop(local, "xrLocateSpace", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrDestroySpace(XrSpace space)
 	{
-		DebugLog("--> xrDestroySpace\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrDestroySpace");
 
 		XrResult result;
 		try
@@ -170,18 +177,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrDestroySpace_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrDestroySpace %d\n", result);
+		TraceLoggingWriteStop(local, "xrDestroySpace", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrEnumerateViewConfigurationViews(XrInstance instance, XrSystemId systemId, XrViewConfigurationType viewConfigurationType, uint32_t viewCapacityInput, uint32_t* viewCountOutput, XrViewConfigurationView* views)
 	{
-		DebugLog("--> xrEnumerateViewConfigurationViews\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrEnumerateViewConfigurationViews");
 
 		XrResult result;
 		try
@@ -190,18 +198,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrEnumerateViewConfigurationViews_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrEnumerateViewConfigurationViews %d\n", result);
+		TraceLoggingWriteStop(local, "xrEnumerateViewConfigurationViews", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrCreateSwapchain(XrSession session, const XrSwapchainCreateInfo* createInfo, XrSwapchain* swapchain)
 	{
-		DebugLog("--> xrCreateSwapchain\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrCreateSwapchain");
 
 		XrResult result;
 		try
@@ -210,18 +219,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrCreateSwapchain_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrCreateSwapchain %d\n", result);
+		TraceLoggingWriteStop(local, "xrCreateSwapchain", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrDestroySwapchain(XrSwapchain swapchain)
 	{
-		DebugLog("--> xrDestroySwapchain\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrDestroySwapchain");
 
 		XrResult result;
 		try
@@ -230,18 +240,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrDestroySwapchain_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrDestroySwapchain %d\n", result);
+		TraceLoggingWriteStop(local, "xrDestroySwapchain", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrEnumerateSwapchainImages(XrSwapchain swapchain, uint32_t imageCapacityInput, uint32_t* imageCountOutput, XrSwapchainImageBaseHeader* images)
 	{
-		DebugLog("--> xrEnumerateSwapchainImages\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrEnumerateSwapchainImages");
 
 		XrResult result;
 		try
@@ -250,18 +261,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrEnumerateSwapchainImages_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrEnumerateSwapchainImages %d\n", result);
+		TraceLoggingWriteStop(local, "xrEnumerateSwapchainImages", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrAcquireSwapchainImage(XrSwapchain swapchain, const XrSwapchainImageAcquireInfo* acquireInfo, uint32_t* index)
 	{
-		DebugLog("--> xrAcquireSwapchainImage\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrAcquireSwapchainImage");
 
 		XrResult result;
 		try
@@ -270,18 +282,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrAcquireSwapchainImage_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrAcquireSwapchainImage %d\n", result);
+		TraceLoggingWriteStop(local, "xrAcquireSwapchainImage", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrReleaseSwapchainImage(XrSwapchain swapchain, const XrSwapchainImageReleaseInfo* releaseInfo)
 	{
-		DebugLog("--> xrReleaseSwapchainImage\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrReleaseSwapchainImage");
 
 		XrResult result;
 		try
@@ -290,18 +303,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrReleaseSwapchainImage_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrReleaseSwapchainImage %d\n", result);
+		TraceLoggingWriteStop(local, "xrReleaseSwapchainImage", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrWaitFrame(XrSession session, const XrFrameWaitInfo* frameWaitInfo, XrFrameState* frameState)
 	{
-		DebugLog("--> xrWaitFrame\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrWaitFrame");
 
 		XrResult result;
 		try
@@ -310,18 +324,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrWaitFrame_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrWaitFrame %d\n", result);
+		TraceLoggingWriteStop(local, "xrWaitFrame", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrBeginFrame(XrSession session, const XrFrameBeginInfo* frameBeginInfo)
 	{
-		DebugLog("--> xrBeginFrame\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrBeginFrame");
 
 		XrResult result;
 		try
@@ -330,18 +345,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrBeginFrame_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrBeginFrame %d\n", result);
+		TraceLoggingWriteStop(local, "xrBeginFrame", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo)
 	{
-		DebugLog("--> xrEndFrame\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrEndFrame");
 
 		XrResult result;
 		try
@@ -350,18 +366,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrEndFrame_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrEndFrame %d\n", result);
+		TraceLoggingWriteStop(local, "xrEndFrame", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrLocateViews(XrSession session, const XrViewLocateInfo* viewLocateInfo, XrViewState* viewState, uint32_t viewCapacityInput, uint32_t* viewCountOutput, XrView* views)
 	{
-		DebugLog("--> xrLocateViews\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrLocateViews");
 
 		XrResult result;
 		try
@@ -370,18 +387,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrLocateViews_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrLocateViews %d\n", result);
+		TraceLoggingWriteStop(local, "xrLocateViews", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrCreateAction(XrActionSet actionSet, const XrActionCreateInfo* createInfo, XrAction* action)
 	{
-		DebugLog("--> xrCreateAction\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrCreateAction");
 
 		XrResult result;
 		try
@@ -390,18 +408,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrCreateAction_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrCreateAction %d\n", result);
+		TraceLoggingWriteStop(local, "xrCreateAction", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrDestroyAction(XrAction action)
 	{
-		DebugLog("--> xrDestroyAction\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrDestroyAction");
 
 		XrResult result;
 		try
@@ -410,18 +429,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrDestroyAction_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrDestroyAction %d\n", result);
+		TraceLoggingWriteStop(local, "xrDestroyAction", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrSuggestInteractionProfileBindings(XrInstance instance, const XrInteractionProfileSuggestedBinding* suggestedBindings)
 	{
-		DebugLog("--> xrSuggestInteractionProfileBindings\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrSuggestInteractionProfileBindings");
 
 		XrResult result;
 		try
@@ -430,18 +450,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrSuggestInteractionProfileBindings_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrSuggestInteractionProfileBindings %d\n", result);
+		TraceLoggingWriteStop(local, "xrSuggestInteractionProfileBindings", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrAttachSessionActionSets(XrSession session, const XrSessionActionSetsAttachInfo* attachInfo)
 	{
-		DebugLog("--> xrAttachSessionActionSets\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrAttachSessionActionSets");
 
 		XrResult result;
 		try
@@ -450,18 +471,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrAttachSessionActionSets_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrAttachSessionActionSets %d\n", result);
+		TraceLoggingWriteStop(local, "xrAttachSessionActionSets", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrGetCurrentInteractionProfile(XrSession session, XrPath topLevelUserPath, XrInteractionProfileState* interactionProfile)
 	{
-		DebugLog("--> xrGetCurrentInteractionProfile\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrGetCurrentInteractionProfile");
 
 		XrResult result;
 		try
@@ -470,18 +492,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrGetCurrentInteractionProfile_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrGetCurrentInteractionProfile %d\n", result);
+		TraceLoggingWriteStop(local, "xrGetCurrentInteractionProfile", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrGetActionStateBoolean(XrSession session, const XrActionStateGetInfo* getInfo, XrActionStateBoolean* state)
 	{
-		DebugLog("--> xrGetActionStateBoolean\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrGetActionStateBoolean");
 
 		XrResult result;
 		try
@@ -490,18 +513,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrGetActionStateBoolean_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrGetActionStateBoolean %d\n", result);
+		TraceLoggingWriteStop(local, "xrGetActionStateBoolean", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrGetActionStateFloat(XrSession session, const XrActionStateGetInfo* getInfo, XrActionStateFloat* state)
 	{
-		DebugLog("--> xrGetActionStateFloat\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrGetActionStateFloat");
 
 		XrResult result;
 		try
@@ -510,18 +534,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrGetActionStateFloat_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrGetActionStateFloat %d\n", result);
+		TraceLoggingWriteStop(local, "xrGetActionStateFloat", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrGetActionStatePose(XrSession session, const XrActionStateGetInfo* getInfo, XrActionStatePose* state)
 	{
-		DebugLog("--> xrGetActionStatePose\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrGetActionStatePose");
 
 		XrResult result;
 		try
@@ -530,18 +555,19 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrGetActionStatePose_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrGetActionStatePose %d\n", result);
+		TraceLoggingWriteStop(local, "xrGetActionStatePose", TLArg((int)result, "Result"));
 
 		return result;
 	}
 
 	XrResult xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo)
 	{
-		DebugLog("--> xrSyncActions\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrSyncActions");
 
 		XrResult result;
 		try
@@ -550,11 +576,11 @@ namespace LAYER_NAMESPACE
 		}
 		catch (std::exception& exc)
 		{
-			Log("%s\n", exc.what());
+			TraceLoggingWriteTagged(local, "xrSyncActions_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		DebugLog("<-- xrSyncActions %d\n", result);
+		TraceLoggingWriteStop(local, "xrSyncActions", TLArg((int)result, "Result"));
 
 		return result;
 	}

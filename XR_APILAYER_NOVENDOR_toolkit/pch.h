@@ -98,6 +98,10 @@ constexpr inline T roundDown(T value, uint32_t pad) noexcept {
     return (value / pad) * pad;
 }
 
+// ETL tracing
+#include <traceloggingactivity.h>
+#include <traceloggingprovider.h>
+
 // Direct3D.
 #include <d3d11_1.h>
 #include <d3d12.h>

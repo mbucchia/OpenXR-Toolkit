@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" standalone='yes'?>
+
+<WindowsPerformanceRecorder Version="1.0">
+  <Profiles>
+    <SystemCollector Id="SystemCollector" Name="NT Kernel Logger" Realtime="false">
+      <BufferSize Value="1024"/>
+      <Buffers Value="40"/>
+    </SystemCollector>
+    <EventCollector Id="EventCollector" Name="Event Collector" Private="false" ProcessPrivate="false" Secure="false" Realtime="false">
+      <BufferSize Value="128"/>
+      <Buffers Value="40"/>
+    </EventCollector>
+
+    <EventProvider Name="CBF3ADCD-42B1-4C38-830B-91980AF201F5" Id="OpenXRToolkit" />
+
+    <!-- Watson logging -->
+    <EventProvider Name="1377561D-9312-452C-AD13-C4A1C9C906E0" Id="Microsoft.Windows.FaultReporting" />
+    <EventProvider Name="CC79CF77-70D9-4082-9B52-23F3A3E92FE4" Id="Microsoft.Windows.WindowsErrorReporting" />
+    <EventProvider Name="3E0D88DE-AE5C-438A-BB1C-C2E627F8AECB" Id="Microsoft.Windows.HangReporting" />
+
+    <!-- Debug layer traces (only works when debug layer is enabled) -->
+    <EventProvider Name="F1FF64EF-FAF3-5699-8E51-F6EC2FBD97D1" Id="Microsoft-Windows-DXGIDebug" />
+
+    <Profile Id="OXRTK.Verbose.File" LoggingMode="File" Name="OXRTK" DetailLevel="Verbose" Description="Collect traces for OXRTK" Default="true">
+      <Collectors>
+        <EventCollectorId Value="EventCollector">
+          <EventProviders>
+            <EventProviderId Value="OpenXRToolkit"/>
+            <EventProviderId Value="Microsoft.Windows.FaultReporting" />
+            <EventProviderId Value="Microsoft.Windows.WindowsErrorReporting" />
+            <EventProviderId Value="Microsoft.Windows.HangReporting" />
+            <EventProviderId Value="Microsoft-Windows-DXGIDebug"/>
+          </EventProviders>
+        </EventCollectorId>
+      </Collectors>
+    </Profile>
+  </Profiles>
+
+  <TraceMergeProperties>
+    <TraceMergeProperty  Id="TraceMerge_Default" Name="TraceMerge_Default" Base="">
+      <DeletePreMergedTraceFiles Value="true"/>
+      <CustomEvents>
+        <CustomEvent Value="ImageId"/>
+        <CustomEvent Value="BuildInfo"/>
+        <CustomEvent Value="VolumeMapping"/>
+        <CustomEvent Value="EventMetadata"/>
+        <CustomEvent Value="PerfTrackMetadata"/>
+        <CustomEvent Value="WinSAT"/>
+        <CustomEvent Value="NetworkInterface"/>
+      </CustomEvents>
+    </TraceMergeProperty>
+  </TraceMergeProperties>
+
+</WindowsPerformanceRecorder>

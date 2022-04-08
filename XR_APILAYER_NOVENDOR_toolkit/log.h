@@ -26,6 +26,18 @@
 
 namespace toolkit::log {
 
+    TRACELOGGING_DECLARE_PROVIDER(g_traceProvider);
+
+    extern TraceLoggingActivity<g_traceProvider> g_traceGlobal;
+
+#define IsTraceEnabled() TraceLoggingProviderEnabled(g_traceProvider, 0, 0)
+
+#define TraceLocalActivity(activity) TraceLoggingActivity<g_traceProvider> activity;
+
+#define TLArg(var, ...) TraceLoggingValue(var, ##__VA_ARGS__)
+#define TLPArg(var, ...) TraceLoggingPointer(var, ##__VA_ARGS__)
+#define TLPArray(var, count, ...) TraceLoggingCodePointerArray((void**)var, (UINT16)count, ##__VA_ARGS__)
+
     // General logging function.
     void Log(const char* fmt, ...);
 

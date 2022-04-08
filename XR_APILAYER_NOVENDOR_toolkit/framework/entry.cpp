@@ -54,6 +54,9 @@ XrResult __declspec(dllexport) XRAPI_CALL
     xrNegotiateLoaderApiLayerInterface(const XrNegotiateLoaderInfo* const loaderInfo,
                                        const char* const apiLayerName,
                                        XrNegotiateApiLayerRequest* const apiLayerRequest) {
+    TraceLocalActivity(local);
+    TraceLoggingWriteStart(local, "xrNegotiateLoaderApiLayerInterface");
+
     // Retrieve the path of the DLL.
     if (dllHome.empty()) {
         HMODULE module;
@@ -85,8 +88,6 @@ XrResult __declspec(dllexport) XRAPI_CALL
     Log("%s\n", LayerPrettyNameFull.c_str());
     Log("dllHome is \"%s\"\n", dllHome.string().c_str());
 
-    DebugLog("--> xrNegotiateLoaderApiLayerInterface\n");
-
     // Initialize Detours early on.
     DetourRestoreAfterWith();
 
@@ -115,9 +116,9 @@ XrResult __declspec(dllexport) XRAPI_CALL
     apiLayerRequest->getInstanceProcAddr = reinterpret_cast<PFN_xrGetInstanceProcAddr>(xrGetInstanceProcAddr);
     apiLayerRequest->createApiLayerInstance = reinterpret_cast<PFN_xrCreateApiLayerInstance>(xrCreateApiLayerInstance);
 
-    DebugLog("<-- xrNegotiateLoaderApiLayerInterface\n");
-
     Log("%s layer is active\n", LayerPrettyName.c_str());
+
+    TraceLoggingWriteStop(local, "xrNegotiateLoaderApiLayerInterface");
 
     return XR_SUCCESS;
 }
@@ -125,5 +126,4 @@ XrResult __declspec(dllexport) XRAPI_CALL
 __declspec(dllexport) const char* WINAPI getVersionString() {
     return LayerPrettyNameFull.c_str();
 }
-
 }

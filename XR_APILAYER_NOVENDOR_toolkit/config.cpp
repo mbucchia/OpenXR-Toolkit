@@ -202,9 +202,12 @@ namespace {
             }
             entry.value = value.value_or(entry.defaultValue);
             entry.changedSinceLastQuery = true;
+
+            TraceLoggingWrite(g_traceProvider, "Config_ReadValue", TLArg(name.c_str(), "Name"), TLArg(entry.value, "Value"));            
         }
 
         void writeValue(const std::string& name, ConfigValue& entry) const {
+            TraceLoggingWrite(g_traceProvider, "Config_WriteValue", TLArg(name.c_str(), "Name"), TLArg(entry.value, "Value"));
             RegSetDword(HKEY_CURRENT_USER, m_baseKey, std::wstring(name.begin(), name.end()), entry.value);
         }
 
