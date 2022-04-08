@@ -64,6 +64,7 @@ namespace companion
             this.label12 = new System.Windows.Forms.Label();
             this.licences = new System.Windows.Forms.LinkLabel();
             this.screenshotFormat = new System.Windows.Forms.ComboBox();
+            this.traceButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -80,11 +81,11 @@ namespace companion
             // reportIssuesLink
             // 
             this.reportIssuesLink.AutoSize = true;
-            this.reportIssuesLink.Location = new System.Drawing.Point(7, 632);
+            this.reportIssuesLink.Location = new System.Drawing.Point(7, 647);
             this.reportIssuesLink.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.reportIssuesLink.Name = "reportIssuesLink";
             this.reportIssuesLink.Size = new System.Drawing.Size(71, 13);
-            this.reportIssuesLink.TabIndex = 28;
+            this.reportIssuesLink.TabIndex = 29;
             this.reportIssuesLink.TabStop = true;
             this.reportIssuesLink.Text = "Report issues";
             this.reportIssuesLink.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.reportIssuesLink_LinkClicked);
@@ -103,11 +104,11 @@ namespace companion
             // checkUpdatesLink
             // 
             this.checkUpdatesLink.AutoSize = true;
-            this.checkUpdatesLink.Location = new System.Drawing.Point(274, 632);
+            this.checkUpdatesLink.Location = new System.Drawing.Point(274, 647);
             this.checkUpdatesLink.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.checkUpdatesLink.Name = "checkUpdatesLink";
             this.checkUpdatesLink.Size = new System.Drawing.Size(131, 13);
-            this.checkUpdatesLink.TabIndex = 30;
+            this.checkUpdatesLink.TabIndex = 31;
             this.checkUpdatesLink.TabStop = true;
             this.checkUpdatesLink.Text = "Check for a newer version";
             this.checkUpdatesLink.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.checkUpdatesLink_LinkClicked);
@@ -116,7 +117,7 @@ namespace companion
             // 
             this.disableCheckbox.AutoSize = true;
             this.disableCheckbox.Location = new System.Drawing.Point(25, 130);
-            this.disableCheckbox.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.disableCheckbox.Margin = new System.Windows.Forms.Padding(2);
             this.disableCheckbox.Name = "disableCheckbox";
             this.disableCheckbox.Size = new System.Drawing.Size(158, 17);
             this.disableCheckbox.TabIndex = 1;
@@ -128,7 +129,7 @@ namespace companion
             // 
             this.safemodeCheckbox.AutoSize = true;
             this.safemodeCheckbox.Location = new System.Drawing.Point(25, 183);
-            this.safemodeCheckbox.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.safemodeCheckbox.Margin = new System.Windows.Forms.Padding(2);
             this.safemodeCheckbox.Name = "safemodeCheckbox";
             this.safemodeCheckbox.Size = new System.Drawing.Size(111, 17);
             this.safemodeCheckbox.TabIndex = 3;
@@ -150,7 +151,7 @@ namespace companion
             // 
             this.experimentalCheckbox.AutoSize = true;
             this.experimentalCheckbox.Location = new System.Drawing.Point(25, 249);
-            this.experimentalCheckbox.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.experimentalCheckbox.Margin = new System.Windows.Forms.Padding(2);
             this.experimentalCheckbox.Name = "experimentalCheckbox";
             this.experimentalCheckbox.Size = new System.Drawing.Size(160, 17);
             this.experimentalCheckbox.TabIndex = 5;
@@ -191,7 +192,7 @@ namespace companion
             // openLog
             // 
             this.openLog.Location = new System.Drawing.Point(18, 562);
-            this.openLog.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.openLog.Margin = new System.Windows.Forms.Padding(2);
             this.openLog.Name = "openLog";
             this.openLog.Size = new System.Drawing.Size(150, 31);
             this.openLog.TabIndex = 26;
@@ -202,7 +203,7 @@ namespace companion
             // openScreenshots
             // 
             this.openScreenshots.Location = new System.Drawing.Point(187, 562);
-            this.openScreenshots.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.openScreenshots.Margin = new System.Windows.Forms.Padding(2);
             this.openScreenshots.Name = "openScreenshots";
             this.openScreenshots.Size = new System.Drawing.Size(150, 31);
             this.openScreenshots.TabIndex = 27;
@@ -364,7 +365,7 @@ namespace companion
             "Left eye only",
             "Right eye only"});
             this.menuVisibility.Location = new System.Drawing.Point(154, 364);
-            this.menuVisibility.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.menuVisibility.Margin = new System.Windows.Forms.Padding(2);
             this.menuVisibility.Name = "menuVisibility";
             this.menuVisibility.Size = new System.Drawing.Size(119, 21);
             this.menuVisibility.TabIndex = 11;
@@ -383,11 +384,11 @@ namespace companion
             // licences
             // 
             this.licences.AutoSize = true;
-            this.licences.Location = new System.Drawing.Point(311, 610);
+            this.licences.Location = new System.Drawing.Point(311, 625);
             this.licences.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.licences.Name = "licences";
             this.licences.Size = new System.Drawing.Size(94, 13);
-            this.licences.TabIndex = 29;
+            this.licences.TabIndex = 30;
             this.licences.TabStop = true;
             this.licences.Text = "3rd Party Licenses";
             this.licences.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.licences_LinkClicked);
@@ -407,11 +408,22 @@ namespace companion
             this.screenshotFormat.TabIndex = 8;
             this.screenshotFormat.SelectedIndexChanged += new System.EventHandler(this.screenshotFormat_SelectedIndexChanged);
             // 
+            // traceButton
+            // 
+            this.traceButton.Location = new System.Drawing.Point(18, 598);
+            this.traceButton.Name = "traceButton";
+            this.traceButton.Size = new System.Drawing.Size(150, 31);
+            this.traceButton.TabIndex = 37;
+            this.traceButton.Text = "Capture trace";
+            this.traceButton.UseVisualStyleBackColor = true;
+            this.traceButton.Click += new System.EventHandler(this.traceButton_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(411, 650);
+            this.ClientSize = new System.Drawing.Size(411, 668);
+            this.Controls.Add(this.traceButton);
             this.Controls.Add(this.screenshotFormat);
             this.Controls.Add(this.licences);
             this.Controls.Add(this.label12);
@@ -489,6 +501,7 @@ namespace companion
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.LinkLabel licences;
         private System.Windows.Forms.ComboBox screenshotFormat;
+        private System.Windows.Forms.Button traceButton;
     }
 }
 
