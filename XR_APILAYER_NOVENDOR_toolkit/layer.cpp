@@ -145,6 +145,7 @@ namespace {
             );
             m_configManager->setDefault("disable_frame_analyzer", 0);
             m_configManager->setDefault("canting", 0);
+            m_configManager->setDefault("vrs_capture", 0);
 
             // Workaround: the first versions of the toolkit used a different representation for the world scale.
             // Migrate the value upon first run.
@@ -191,6 +192,12 @@ namespace {
                                         XR_VERSION_MINOR(instanceProperties.runtimeVersion),
                                         XR_VERSION_PATCH(instanceProperties.runtimeVersion));
             Log("Using OpenXR runtime %s\n", m_runtimeName.c_str());
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrCreateInstance",
+                              TLArg(m_applicationName.c_str(), "Application"),
+                              TLArg(createInfo->applicationInfo.engineName, "Engine"),
+                              TLArg(m_runtimeName.c_str(), "Runtime"));
 
             // TODO: This should be auto-generated in the call above, but today our generator only looks at core spec.
             // We may let this fail intentionally and check that the pointer is populated later.
@@ -324,6 +331,14 @@ namespace {
                 CHECK_XRCMD(OpenXrApi::xrGetSystemProperties(instance, *systemId, &systemProperties));
 
                 m_systemName = systemProperties.systemName;
+                TraceLoggingWrite(
+                    g_traceProvider,
+                    "xrGetSystem",
+                    TLArg(m_systemName.c_str(), "System"),
+                    TLArg(m_displayWidth, "RecommendedResolutionX"),
+                    TLArg(m_displayHeight, "RecommendedResolutionY"),
+                    TLArg(handTrackingSystemProperties.supportsHandTracking, "SupportsHandTracking"),
+                    TLArg(eyeTrackingSystemProperties.supportsEyeGazeInteraction, "SupportsEyeGazeInteraction"));
                 Log("Using OpenXR system %s\n", m_systemName.c_str());
 
                 // Detect Pimax systems.
@@ -338,7 +353,7 @@ namespace {
                 // will (falsely) advertise hand tracking support. Check for the Ultraleap layer in this case.
                 if (m_supportHandTracking &&
                     (!isDeveloper && (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck) &&
-                                     m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos))) {
+                                      m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos))) {
                     bool hasUltraleapLayer = false;
                     for (const auto& layer : GetUpstreamLayers()) {
                         if (layer == "XR_APILAYER_ULTRALEAP_hand_tracking") {
@@ -355,7 +370,7 @@ namespace {
                 // XR_EXT_eye_gaze_interaction, which will (falsely) advertise eye tracking support. Disable it.
                 if (m_supportEyeTracking &&
                     (!isDeveloper && (!m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck) &&
-                                     m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos))) {
+                                      m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos))) {
                     Log("Ignoring XR_EXT_eye_gaze_interaction for %s\n", m_runtimeName.c_str());
                     m_supportEyeTracking = false;
                 }
@@ -1575,9 +1590,7 @@ namespace {
 
             if (m_variableRateShader) {
                 m_variableRateShader->endFrame();
-#ifdef _DEBUG
                 m_variableRateShader->stopCapture();
-#endif
             }
 
             m_graphicsDevice->saveContext();
@@ -1877,11 +1890,9 @@ namespace {
                 takeScreenshot(textureForOverlay[0], "L");
                 takeScreenshot(textureForOverlay[1], "R");
 
-#ifdef _DEBUG
-                if (m_variableRateShader) {
+                if (m_variableRateShader && m_configManager->getValue("vrs_capture")) {
                     m_variableRateShader->startCapture();
                 }
-#endif
             }
 
             m_graphicsDevice->restoreContext();
@@ -2006,7 +2017,13 @@ namespace {
                                                 uint32_t viewIndex,
                                                 XrVisibilityMaskTypeKHR visibilityMaskType,
                                                 XrVisibilityMaskKHR* visibilityMask) {
-            DebugLog("--> xrGetVisibilityMaskKHR\n");
+            TraceLocalActivity(local);
+            TraceLoggingWriteStart(local,
+                                   "xrGetVisibilityMaskKHR",
+                                   TLPArg(session),
+                                   TLArg((int)viewConfigurationType),
+                                   TLArg(viewIndex),
+                                   TLArg((int)visibilityMaskType));
 
             XrResult result;
             try {
@@ -2014,11 +2031,12 @@ namespace {
                              ->xrGetVisibilityMaskKHR(
                                  session, viewConfigurationType, viewIndex, visibilityMaskType, visibilityMask);
             } catch (std::exception& exc) {
+                TraceLoggingWriteTagged(local, "xrGetVisibilityMaskKHR_Error", TLArg(exc.what(), "Error"));
                 Log("%s\n", exc.what());
                 result = XR_ERROR_RUNTIME_FAILURE;
             }
 
-            DebugLog("<-- xrGetVisibilityMaskKHR %d\n", result);
+            TraceLoggingWriteStop(local, "xrGetVisibilityMaskKHR", TLArg((int)result));
 
             return result;
         }
@@ -2041,3 +2059,17 @@ namespace toolkit {
     }
 
 } // namespace toolkit
+
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
+    switch (ul_reason_for_call) {
+    case DLL_PROCESS_ATTACH:
+        TraceLoggingRegister(g_traceProvider);
+        break;
+
+    case DLL_THREAD_ATTACH:
+    case DLL_THREAD_DETACH:
+    case DLL_PROCESS_DETACH:
+        break;
+    }
+    return TRUE;
+}

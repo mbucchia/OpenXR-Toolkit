@@ -637,10 +637,8 @@ namespace toolkit {
 
             virtual uint8_t getMaxRate() const = 0;
 
-#ifdef _DEBUG
             virtual void startCapture() = 0;
             virtual void stopCapture() = 0;
-#endif
         };
 
     } // namespace graphics

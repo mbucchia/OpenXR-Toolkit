@@ -42,7 +42,8 @@ namespace LAYER_NAMESPACE {
     XrResult xrCreateApiLayerInstance(const XrInstanceCreateInfo* const instanceCreateInfo,
                                       const struct XrApiLayerCreateInfo* const apiLayerInfo,
                                       XrInstance* const instance) {
-        DebugLog("--> xrCreateApiLayerInstance\n");
+        TraceLocalActivity(local);
+        TraceLoggingWriteStart(local, "xrCreateApiLayerInstance");
 
         if (!apiLayerInfo || apiLayerInfo->structType != XR_LOADER_INTERFACE_STRUCT_API_LAYER_CREATE_INFO ||
             apiLayerInfo->structVersion != XR_API_LAYER_CREATE_INFO_STRUCT_VERSION ||
@@ -127,11 +128,15 @@ namespace LAYER_NAMESPACE {
                 auto info = apiLayerInfo->nextInfo;
                 while (info && info->next) {
                     if (std::string_view(info->next->layerName).substr(0, 17) == "XR_APILAYER_VIVE_") {
+                        TraceLoggingWriteTagged(
+                            local, "xrCreateApiLayerInstance_SkipLayer", TLArg(info->next->layerName, "Layer"));
                         Log("Skipping unsupported layer: %s\n", info->next->layerName);
                         info->nextCreateApiLayerInstance = info->next->nextCreateApiLayerInstance;
                         info->nextGetInstanceProcAddr = info->next->nextGetInstanceProcAddr;
                         info->next = info->next->next;
                     } else {
+                        TraceLoggingWriteTagged(
+                            local, "xrCreateApiLayerInstance_UseLayer", TLArg(info->next->layerName, "Layer"));
                         Log("Using layer: %s\n", info->next->layerName);
                         info = info->next;
                     }
@@ -152,6 +157,8 @@ namespace LAYER_NAMESPACE {
                 CHECK_XRCMD(apiLayerInfo->nextInfo->nextGetInstanceProcAddr(
                     dummyInstance, "xrDestroyInstance", reinterpret_cast<PFN_xrVoidFunction*>(&xrDestroyInstance)));
             } else {
+                TraceLoggingWriteTagged(
+                    local, "xrCreateApiLayerInstance_Error_CreateInstance", TLArg((int)result, "Result"));
                 Log("Failed to create bootstrap instance: %d\n", result);
             }
 
@@ -164,6 +171,8 @@ namespace LAYER_NAMESPACE {
                 for (auto extension : extensions) {
                     const std::string extensionName(extension.extensionName);
 
+                    TraceLoggingWriteTagged(
+                        local, "xrCreateApiLayerInstance_HasExtension", TLArg(extension.extensionName, "Extension"));
                     Log("Runtime supports extension: %s\n", extension.extensionName);
                     if (extensionName == "XR_EXT_hand_tracking") {
                         hasHandTrackingExt = true;
@@ -223,7 +232,9 @@ namespace LAYER_NAMESPACE {
         }
 
         for (uint32_t i = 0; i < chainInstanceCreateInfo.enabledExtensionCount; i++) {
-            Log("Layer requests extension: %s\n", chainInstanceCreateInfo.enabledExtensionNames[i]);
+            TraceLoggingWriteTagged(local,
+                                    "xrCreateApiLayerInstance_UseExtension",
+                                    TLArg(chainInstanceCreateInfo.enabledExtensionNames[i], "Extension"));
         }
 
         // Call the chain to create the instance.
@@ -254,7 +265,7 @@ namespace LAYER_NAMESPACE {
             try {
                 result = LAYER_NAMESPACE::GetInstance()->xrCreateInstance(instanceCreateInfo);
             } catch (std::runtime_error& exc) {
-                Log("%s\n", exc.what());
+                TraceLoggingWriteTagged(local, "xrCreateApiLayerInstance_Error", TLArg(exc.what(), "Error"));
             }
 
             // Cleanup attempt before returning an error.
@@ -267,14 +278,15 @@ namespace LAYER_NAMESPACE {
             }
         }
 
-        DebugLog("<-- xrCreateApiLayerInstance %d\n", result);
+        TraceLoggingWriteStop(local, "xrCreateApiLayerInstance", TLArg((int)result, "Result"));
 
         return result;
     }
 
     // Handle cleanup of the layer's singleton.
     XrResult xrDestroyInstance(XrInstance instance) {
-        DebugLog("--> xrDestroyInstance\n");
+        TraceLocalActivity(local);
+        TraceLoggingWriteStart(local, "xrDestroyInstance");
 
         XrResult result;
         try {
@@ -283,17 +295,23 @@ namespace LAYER_NAMESPACE {
                 LAYER_NAMESPACE::ResetInstance();
             }
         } catch (std::runtime_error& exc) {
-            Log("%s\n", exc.what());
+            TraceLoggingWriteTagged(local, "xrDestroyInstance_Error", TLArg(exc.what(), "Error"));
             result = XR_ERROR_RUNTIME_FAILURE;
         }
 
-        DebugLog("<-- xrDestroyInstance %d\n", result);
+        TraceLoggingWriteStop(local, "xrDestroyInstance", TLArg((int)result, "Result"));
 
         return result;
     }
 
     // Forward the xrGetInstanceProcAddr() call to the dispatcher.
     XrResult xrGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function) {
+        TraceLoggingWrite(g_traceProvider,
+                          "xrGetInstanceProcAddr",
+                          TLArg(!!g_bypass, "Bypass"),
+                          TLPArg(instance, "Instance"),
+                          TLArg(name));
+
         if (g_bypass) {
             return g_bypass(instance, name, function);
         }
@@ -301,6 +319,7 @@ namespace LAYER_NAMESPACE {
         try {
             return LAYER_NAMESPACE::GetInstance()->xrGetInstanceProcAddr(instance, name, function);
         } catch (std::runtime_error& exc) {
+            TraceLoggingWrite(g_traceProvider, "xrGetInstanceProcAddr", TLArg(exc.what(), "Error"));
             Log("%s\n", exc.what());
             return XR_ERROR_RUNTIME_FAILURE;
         }

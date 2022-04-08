@@ -163,7 +163,8 @@ namespace LAYER_NAMESPACE
                     generated += f'''
 	XrResult {cur_cmd.name}({parameters_list})
 	{{
-		DebugLog("--> {cur_cmd.name}\\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "{cur_cmd.name}");
 
 		XrResult result;
 		try
@@ -172,11 +173,11 @@ namespace LAYER_NAMESPACE
 		}}
 		catch (std::exception& exc)
 		{{
-			Log("%s\\n", exc.what());
+			TraceLoggingWriteTagged(local, "{cur_cmd.name}_Error", TLArg(exc.what(), "Error"));
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}}
 
-		DebugLog("<-- {cur_cmd.name} %d\\n", result);
+		TraceLoggingWriteStop(local, "{cur_cmd.name}", TLArg((int)result, "Result"));
 
 		return result;
 	}}
@@ -185,7 +186,8 @@ namespace LAYER_NAMESPACE
                     generated += f'''
 	void {cur_cmd.name}({parameters_list})
 	{{
-		DebugLog("--> {cur_cmd.name}\\n");
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "{cur_cmd.name}");
 
 		try
 		{{
@@ -193,10 +195,11 @@ namespace LAYER_NAMESPACE
 		}}
 		catch (std::runtime_error& exc)
 		{{
+			TraceLoggingWriteTagged(local, "{cur_cmd.name}_Error", TLArg(exc.what(), "Error"));
 			Log("%s\\n", exc.what());
 		}}
 
-		DebugLog("<-- {cur_cmd.name} %d\\n");
+		TraceLoggingWriteStop(local, "{cur_cmd.name}");
 	}}
 '''
                 

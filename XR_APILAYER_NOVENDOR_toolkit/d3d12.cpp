@@ -2188,68 +2188,78 @@ namespace {
         DECLARE_DETOUR_FUNCTION(static void,
                                 STDMETHODCALLTYPE,
                                 ID3D12Device_CreateRenderTargetView,
-                                ID3D12Device* device,
+                                ID3D12Device* Device,
                                 ID3D12Resource* pResource,
                                 const D3D12_RENDER_TARGET_VIEW_DESC* pDesc,
                                 D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor) {
-            DebugLog("--> ID3D12Device_CreateRenderTargetView\n");
+            TraceLocalActivity(local);
+            TraceLoggingWriteStart(local, "ID3D12Device_CreateRenderTargetView", TLPArg(Device), TLPArg(pResource));
 
             assert(g_instance);
             g_instance->registerRenderTargetView(pResource, pDesc, DestDescriptor);
 
             assert(g_original_ID3D12Device_CreateRenderTargetView);
-            g_original_ID3D12Device_CreateRenderTargetView(device, pResource, pDesc, DestDescriptor);
+            g_original_ID3D12Device_CreateRenderTargetView(Device, pResource, pDesc, DestDescriptor);
 
-            DebugLog("<-- ID3D12Device_CreateRenderTargetView\n");
+            TraceLoggingWriteStop(local, "ID3D12Device_CreateRenderTargetView");
         }
 
         DECLARE_DETOUR_FUNCTION(static void,
                                 STDMETHODCALLTYPE,
                                 ID3D12GraphicsCommandList_OMSetRenderTargets,
-                                ID3D12GraphicsCommandList* context,
+                                ID3D12GraphicsCommandList* Context,
                                 UINT NumRenderTargetDescriptors,
                                 const D3D12_CPU_DESCRIPTOR_HANDLE* pRenderTargetDescriptors,
                                 BOOL RTsSingleHandleToDescriptorRange,
                                 const D3D12_CPU_DESCRIPTOR_HANDLE* pDepthStencilDescriptor) {
-            DebugLog("--> ID3D12GraphicsCommandList_OMSetRenderTargets\n");
+            TraceLocalActivity(local);
+            TraceLoggingWriteStart(local,
+                                   "ID3D12GraphicsCommandList_OMSetRenderTargets",
+                                   TLPArg(Context),
+                                   TLArg(NumRenderTargetDescriptors),
+                                   TLPArray(pRenderTargetDescriptors, NumRenderTargetDescriptors, "RTV"),
+                                   TLArg(RTsSingleHandleToDescriptorRange),
+                                   TLPArg(pDepthStencilDescriptor, "DSV"));
 
             assert(g_instance);
-            g_instance->onSetRenderTargets(context,
+            g_instance->onSetRenderTargets(Context,
                                            NumRenderTargetDescriptors,
                                            pRenderTargetDescriptors,
                                            RTsSingleHandleToDescriptorRange,
                                            pDepthStencilDescriptor);
 
             assert(g_original_ID3D12GraphicsCommandList_OMSetRenderTargets);
-            g_original_ID3D12GraphicsCommandList_OMSetRenderTargets(context,
+            g_original_ID3D12GraphicsCommandList_OMSetRenderTargets(Context,
                                                                     NumRenderTargetDescriptors,
                                                                     pRenderTargetDescriptors,
                                                                     RTsSingleHandleToDescriptorRange,
                                                                     pDepthStencilDescriptor);
 
-            DebugLog("<-- ID3D12GraphicsCommandList_OMSetRenderTargets\n");
+            TraceLoggingWriteStop(local, "ID3D12GraphicsCommandList_OMSetRenderTargets");
         }
 
         DECLARE_DETOUR_FUNCTION(static void,
                                 STDMETHODCALLTYPE,
                                 ID3D12GraphicsCommandList_CopyTextureRegion,
-                                ID3D12GraphicsCommandList* context,
+                                ID3D12GraphicsCommandList* Context,
                                 const D3D12_TEXTURE_COPY_LOCATION* pDst,
                                 UINT DstX,
                                 UINT DstY,
                                 UINT DstZ,
                                 const D3D12_TEXTURE_COPY_LOCATION* pSrc,
                                 const D3D12_BOX* pSrcBox) {
-            DebugLog("--> ID3D12GraphicsCommandList_CopyTextureRegion\n");
+            TraceLocalActivity(local);
+            TraceLoggingWriteStart(
+                local, "ID3D12GraphicsCommandList_CopyTextureRegion", TLPArg(Context), TLPArg(pDst), TLPArg(pSrc));
 
             assert(g_instance);
             g_instance->onCopyTexture(
-                context, pSrc->pResource, pDst->pResource, pSrc->SubresourceIndex, pDst->SubresourceIndex);
+                Context, pSrc->pResource, pDst->pResource, pSrc->SubresourceIndex, pDst->SubresourceIndex);
 
             assert(g_original_ID3D12GraphicsCommandList_CopyTextureRegion);
-            g_original_ID3D12GraphicsCommandList_CopyTextureRegion(context, pDst, DstX, DstY, DstZ, pSrc, pSrcBox);
+            g_original_ID3D12GraphicsCommandList_CopyTextureRegion(Context, pDst, DstX, DstY, DstZ, pSrc, pSrcBox);
 
-            DebugLog("<-- ID3D12GraphicsCommandList_CopyTextureRegion\n");
+            TraceLoggingWriteStop(local, "ID3D12GraphicsCommandList_CopyTextureRegion");
         }
     };
 

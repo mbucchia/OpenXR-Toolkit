@@ -214,7 +214,8 @@ namespace {
                 return false;
             }
 
-            DebugLog("VRS: Enable / eye %d\n", eyeHint.value_or(Eye::Both));
+            TraceLoggingWrite(
+                g_traceProvider, "EnableVariableRateShading", TLArg((int)eyeHint.value_or(Eye::Both), "Eye"));
             if (auto context11 = context->getAs<D3D11>()) {
                 // TODO: for now redraw all the views until we implement better logic
                 // const auto updateSingleRTV = eyeHint.has_value() && info.arraySize == 1;
@@ -237,10 +238,8 @@ namespace {
 
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context11, get(mask)));
 
-#ifdef _DEBUG
                 doCapture(context /* post */);
                 doCapture(context, renderTarget, eyeHint);
-#endif
             } else if (auto context12 = context->getAs<D3D12>()) {
                 ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
                 if (FAILED(context12->QueryInterface(set(vrsCommandList)))) {
@@ -290,9 +289,9 @@ namespace {
             return static_cast<uint8_t>(m_tileRateMax);
         }
 
-#ifdef _DEBUG
         void startCapture() override {
             DebugLog("VRS: Start capture\n");
+            TraceLoggingWrite(g_traceProvider, "StartVariableRateShadingCapture");
             m_captureID++;
             m_captureFileIndex = 0;
             m_isCapturing = true;
@@ -301,6 +300,7 @@ namespace {
         void stopCapture() override {
             if (m_isCapturing) {
                 DebugLog("VRS: Stop capture\n");
+                TraceLoggingWrite(g_traceProvider, "StopVariableRateShadingCapture");
                 m_isCapturing = false;
             }
         }
@@ -312,7 +312,10 @@ namespace {
                 if (renderTarget) {
                     const auto& info = renderTarget->getInfo();
 
-                    DebugLog("VRS: Capturing file ID: %d\n", m_captureFileIndex);
+                    TraceLoggingWrite(g_traceProvider,
+                                      "VariableRateShadingCapture",
+                                      TLArg(m_captureID, "CaptureID"),
+                                      TLArg(m_captureFileIndex, "CaptureFileIndex"));
 
                     renderTarget->saveToFile(
                         (localAppData / "screenshots" /
@@ -344,7 +347,6 @@ namespace {
                 }
             }
         }
-#endif
 
       private:
         void createRenderResources(uint32_t renderWidth, uint32_t renderHeigh) {
@@ -379,12 +381,10 @@ namespace {
             updateRates(m_mode);
             updateRings(m_mode);
             updateGaze();
-
-            DebugLog("VRS: renderWidth=%u renderHeight=%u tileSize=%u\n", m_renderWidth, m_renderHeight, m_tileSize);
         }
 
         void disable(std::shared_ptr<graphics::IContext> context = nullptr) {
-            DebugLog("VRS: Disable\n");
+            TraceLoggingWrite(g_traceProvider, "DisableVariableRateShading");
             if (m_device->getApi() == Api::D3D11) {
                 auto context11 = context ? context->getAs<D3D11>() : m_device->getContextAs<D3D11>();
 
@@ -394,9 +394,7 @@ namespace {
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context11, &desc));
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context11, nullptr));
 
-#ifdef _DEBUG
                 doCapture(context /* post */);
-#endif
             } else if (m_device->getApi() == Api::D3D12) {
                 auto context12 = context ? context->getAs<D3D12>() : m_device->getContextAs<D3D12>();
 
@@ -453,7 +451,12 @@ namespace {
                 }
             }
 
-            DebugLog("VRS: Rates= %u %u %u %u\n", m_Rates[2][0], m_Rates[2][1], m_Rates[2][2], m_Rates[2][3]);
+            TraceLoggingWrite(g_traceProvider,
+                              "VariableRateShading_Rates",
+                              TLArg(m_Rates[2][0], "Rate1"),
+                              TLArg(m_Rates[2][1], "Rate2"),
+                              TLArg(m_Rates[2][2], "Rate3"),
+                              TLArg(m_Rates[2][3], "Rate4"));
         }
 
         bool checkUpdateRings(VariableShadingRateType mode) const {
@@ -519,7 +522,8 @@ namespace {
             m_gazeLocation[2].x = 0;
             m_gazeLocation[2].y = m_gazeOffset[2].y;
 
-            DebugLog("VRS: Rings= %u %u\n", radius[0], radius[1]);
+            TraceLoggingWrite(
+                g_traceProvider, "VariableRateShading_Rings", TLArg(radius[0], "Ring1"), TLArg(radius[1], "Ring2"));
         }
 
         void updateGaze() {
@@ -548,7 +552,8 @@ namespace {
                 }
             }
 
-            Log("VRS: Create mask for size %ux%u\n", width, height);
+            TraceLoggingWrite(
+                g_traceProvider, "VariableRateShading_Mask", TLArg(width), TLArg(height));
 
             ShadingRateMask newMask;
             newMask.widthInTiles = texW;
@@ -745,10 +750,16 @@ namespace {
         }
 
         bool isVariableRateShadingCandidate(const XrSwapchainCreateInfo& info) const {
+            TraceLoggingWrite(g_traceProvider,
+                              "IsVariableRateShadingCandidate",
+                              TLArg(info.width, "Width"),
+                              TLArg(info.height, "Height"),
+                              TLArg(info.arraySize, "ArraySize"),
+                              TLArg(info.format, "Format"));
+
             // Check for proportionality with the size of our render target.
             // Also check that the texture is not under ~50% (45% for margin) of the render scale. We expect that no one
             // should use in-app render scale that is so small.
-            DebugLog("VRS: info.width=%u info.height=%u\n", info.width, info.height);
             if (info.width < (m_renderWidth * 0.45f))
                 return false;
 
@@ -756,11 +767,8 @@ namespace {
             if (std::abs(aspectRatio - m_renderRatio) > 0.01f)
                 return false;
 
-            DebugLog("VRS: info.arraySize=%u\n", info.arraySize);
             if (info.arraySize > 2)
                 return false;
-
-            DebugLog("VRS: info.format=%u\n", info.format);
 
             return true;
         }
@@ -872,14 +880,12 @@ namespace {
         // We use a constant table and a varying shading rate texture filled with a compute shader.
         inline static NV_D3D11_VIEWPORT_SHADING_RATE_DESC m_nvRates[2] = {};
 
-#ifdef _DEBUG
         bool m_isCapturing{false};
         uint32_t m_captureID{0};
         uint32_t m_captureFileIndex;
 
         std::shared_ptr<ITexture> m_currentRenderTarget;
         std::optional<Eye> m_currentEyeHint;
-#endif
     }; // namespace
 
 } // namespace
