@@ -65,6 +65,7 @@ namespace companion
             this.licences = new System.Windows.Forms.LinkLabel();
             this.screenshotFormat = new System.Windows.Forms.ComboBox();
             this.traceButton = new System.Windows.Forms.Button();
+            this.label13 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -81,7 +82,7 @@ namespace companion
             // reportIssuesLink
             // 
             this.reportIssuesLink.AutoSize = true;
-            this.reportIssuesLink.Location = new System.Drawing.Point(7, 647);
+            this.reportIssuesLink.Location = new System.Drawing.Point(7, 673);
             this.reportIssuesLink.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.reportIssuesLink.Name = "reportIssuesLink";
             this.reportIssuesLink.Size = new System.Drawing.Size(71, 13);
@@ -93,7 +94,7 @@ namespace companion
             // screenshotCheckbox
             // 
             this.screenshotCheckbox.AutoSize = true;
-            this.screenshotCheckbox.Location = new System.Drawing.Point(25, 301);
+            this.screenshotCheckbox.Location = new System.Drawing.Point(25, 327);
             this.screenshotCheckbox.Name = "screenshotCheckbox";
             this.screenshotCheckbox.Size = new System.Drawing.Size(114, 17);
             this.screenshotCheckbox.TabIndex = 7;
@@ -104,7 +105,7 @@ namespace companion
             // checkUpdatesLink
             // 
             this.checkUpdatesLink.AutoSize = true;
-            this.checkUpdatesLink.Location = new System.Drawing.Point(274, 647);
+            this.checkUpdatesLink.Location = new System.Drawing.Point(274, 673);
             this.checkUpdatesLink.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.checkUpdatesLink.Name = "checkUpdatesLink";
             this.checkUpdatesLink.Size = new System.Drawing.Size(131, 13);
@@ -116,7 +117,7 @@ namespace companion
             // disableCheckbox
             // 
             this.disableCheckbox.AutoSize = true;
-            this.disableCheckbox.Location = new System.Drawing.Point(25, 130);
+            this.disableCheckbox.Location = new System.Drawing.Point(25, 156);
             this.disableCheckbox.Margin = new System.Windows.Forms.Padding(2);
             this.disableCheckbox.Name = "disableCheckbox";
             this.disableCheckbox.Size = new System.Drawing.Size(158, 17);
@@ -128,7 +129,7 @@ namespace companion
             // safemodeCheckbox
             // 
             this.safemodeCheckbox.AutoSize = true;
-            this.safemodeCheckbox.Location = new System.Drawing.Point(25, 183);
+            this.safemodeCheckbox.Location = new System.Drawing.Point(25, 209);
             this.safemodeCheckbox.Margin = new System.Windows.Forms.Padding(2);
             this.safemodeCheckbox.Name = "safemodeCheckbox";
             this.safemodeCheckbox.Size = new System.Drawing.Size(111, 17);
@@ -140,7 +141,7 @@ namespace companion
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(41, 155);
+            this.label1.Location = new System.Drawing.Point(41, 181);
             this.label1.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(297, 13);
@@ -150,7 +151,7 @@ namespace companion
             // experimentalCheckbox
             // 
             this.experimentalCheckbox.AutoSize = true;
-            this.experimentalCheckbox.Location = new System.Drawing.Point(25, 249);
+            this.experimentalCheckbox.Location = new System.Drawing.Point(25, 275);
             this.experimentalCheckbox.Margin = new System.Windows.Forms.Padding(2);
             this.experimentalCheckbox.Name = "experimentalCheckbox";
             this.experimentalCheckbox.Size = new System.Drawing.Size(160, 17);
@@ -161,7 +162,7 @@ namespace companion
             // 
             // label2
             // 
-            this.label2.Location = new System.Drawing.Point(41, 208);
+            this.label2.Location = new System.Drawing.Point(41, 234);
             this.label2.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(348, 26);
@@ -172,7 +173,7 @@ namespace companion
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(41, 273);
+            this.label3.Location = new System.Drawing.Point(41, 299);
             this.label3.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(312, 13);
@@ -182,7 +183,7 @@ namespace companion
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(41, 326);
+            this.label4.Location = new System.Drawing.Point(41, 352);
             this.label4.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(360, 13);
@@ -191,7 +192,7 @@ namespace companion
             // 
             // openLog
             // 
-            this.openLog.Location = new System.Drawing.Point(18, 562);
+            this.openLog.Location = new System.Drawing.Point(18, 588);
             this.openLog.Margin = new System.Windows.Forms.Padding(2);
             this.openLog.Name = "openLog";
             this.openLog.Size = new System.Drawing.Size(150, 31);
@@ -202,7 +203,7 @@ namespace companion
             // 
             // openScreenshots
             // 
-            this.openScreenshots.Location = new System.Drawing.Point(187, 562);
+            this.openScreenshots.Location = new System.Drawing.Point(187, 588);
             this.openScreenshots.Margin = new System.Windows.Forms.Padding(2);
             this.openScreenshots.Name = "openScreenshots";
             this.openScreenshots.Size = new System.Drawing.Size(150, 31);
@@ -215,7 +216,7 @@ namespace companion
             // 
             this.leftKey.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.leftKey.FormattingEnabled = true;
-            this.leftKey.Location = new System.Drawing.Point(154, 451);
+            this.leftKey.Location = new System.Drawing.Point(154, 477);
             this.leftKey.Name = "leftKey";
             this.leftKey.Size = new System.Drawing.Size(75, 21);
             this.leftKey.TabIndex = 14;
@@ -225,7 +226,7 @@ namespace companion
             // 
             this.nextKey.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.nextKey.FormattingEnabled = true;
-            this.nextKey.Location = new System.Drawing.Point(234, 451);
+            this.nextKey.Location = new System.Drawing.Point(234, 477);
             this.nextKey.Name = "nextKey";
             this.nextKey.Size = new System.Drawing.Size(75, 21);
             this.nextKey.TabIndex = 18;
@@ -235,7 +236,7 @@ namespace companion
             // 
             this.rightKey.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.rightKey.FormattingEnabled = true;
-            this.rightKey.Location = new System.Drawing.Point(314, 451);
+            this.rightKey.Location = new System.Drawing.Point(314, 477);
             this.rightKey.Name = "rightKey";
             this.rightKey.Size = new System.Drawing.Size(75, 21);
             this.rightKey.TabIndex = 20;
@@ -244,7 +245,7 @@ namespace companion
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(22, 454);
+            this.label5.Location = new System.Drawing.Point(22, 480);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(125, 13);
             this.label5.TabIndex = 12;
@@ -253,7 +254,7 @@ namespace companion
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(93, 518);
+            this.label6.Location = new System.Drawing.Point(93, 544);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(49, 13);
             this.label6.TabIndex = 23;
@@ -262,7 +263,7 @@ namespace companion
             // ctrlModifierCheckbox
             // 
             this.ctrlModifierCheckbox.AutoSize = true;
-            this.ctrlModifierCheckbox.Location = new System.Drawing.Point(156, 518);
+            this.ctrlModifierCheckbox.Location = new System.Drawing.Point(156, 544);
             this.ctrlModifierCheckbox.Name = "ctrlModifierCheckbox";
             this.ctrlModifierCheckbox.Size = new System.Drawing.Size(41, 17);
             this.ctrlModifierCheckbox.TabIndex = 24;
@@ -273,7 +274,7 @@ namespace companion
             // altModifierCheckbox
             // 
             this.altModifierCheckbox.AutoSize = true;
-            this.altModifierCheckbox.Location = new System.Drawing.Point(207, 518);
+            this.altModifierCheckbox.Location = new System.Drawing.Point(207, 544);
             this.altModifierCheckbox.Name = "altModifierCheckbox";
             this.altModifierCheckbox.Size = new System.Drawing.Size(38, 17);
             this.altModifierCheckbox.TabIndex = 25;
@@ -284,7 +285,7 @@ namespace companion
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(179, 435);
+            this.label7.Location = new System.Drawing.Point(179, 461);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(21, 13);
             this.label7.TabIndex = 13;
@@ -293,7 +294,7 @@ namespace companion
             // label8
             // 
             this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(254, 435);
+            this.label8.Location = new System.Drawing.Point(254, 461);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(33, 13);
             this.label8.TabIndex = 17;
@@ -302,7 +303,7 @@ namespace companion
             // label9
             // 
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(339, 435);
+            this.label9.Location = new System.Drawing.Point(339, 461);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(27, 13);
             this.label9.TabIndex = 19;
@@ -321,7 +322,7 @@ namespace companion
             // label10
             // 
             this.label10.AutoSize = true;
-            this.label10.Location = new System.Drawing.Point(60, 481);
+            this.label10.Location = new System.Drawing.Point(60, 507);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(87, 13);
             this.label10.TabIndex = 21;
@@ -331,7 +332,7 @@ namespace companion
             // 
             this.screenshotKey.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.screenshotKey.FormattingEnabled = true;
-            this.screenshotKey.Location = new System.Drawing.Point(154, 478);
+            this.screenshotKey.Location = new System.Drawing.Point(154, 504);
             this.screenshotKey.Name = "screenshotKey";
             this.screenshotKey.Size = new System.Drawing.Size(75, 21);
             this.screenshotKey.TabIndex = 22;
@@ -340,7 +341,7 @@ namespace companion
             // label11
             // 
             this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(259, 397);
+            this.label11.Location = new System.Drawing.Point(259, 423);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(19, 13);
             this.label11.TabIndex = 15;
@@ -350,7 +351,7 @@ namespace companion
             // 
             this.previousKey.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.previousKey.FormattingEnabled = true;
-            this.previousKey.Location = new System.Drawing.Point(234, 413);
+            this.previousKey.Location = new System.Drawing.Point(234, 439);
             this.previousKey.Name = "previousKey";
             this.previousKey.Size = new System.Drawing.Size(75, 21);
             this.previousKey.TabIndex = 16;
@@ -364,7 +365,7 @@ namespace companion
             "Both eyes",
             "Left eye only",
             "Right eye only"});
-            this.menuVisibility.Location = new System.Drawing.Point(154, 364);
+            this.menuVisibility.Location = new System.Drawing.Point(154, 390);
             this.menuVisibility.Margin = new System.Windows.Forms.Padding(2);
             this.menuVisibility.Name = "menuVisibility";
             this.menuVisibility.Size = new System.Drawing.Size(119, 21);
@@ -374,7 +375,7 @@ namespace companion
             // label12
             // 
             this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(23, 366);
+            this.label12.Location = new System.Drawing.Point(23, 392);
             this.label12.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(124, 13);
@@ -384,7 +385,7 @@ namespace companion
             // licences
             // 
             this.licences.AutoSize = true;
-            this.licences.Location = new System.Drawing.Point(311, 625);
+            this.licences.Location = new System.Drawing.Point(311, 651);
             this.licences.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.licences.Name = "licences";
             this.licences.Size = new System.Drawing.Size(94, 13);
@@ -402,7 +403,7 @@ namespace companion
             "PNG",
             "JPG",
             "BMP"});
-            this.screenshotFormat.Location = new System.Drawing.Point(143, 299);
+            this.screenshotFormat.Location = new System.Drawing.Point(143, 325);
             this.screenshotFormat.Name = "screenshotFormat";
             this.screenshotFormat.Size = new System.Drawing.Size(75, 21);
             this.screenshotFormat.TabIndex = 8;
@@ -410,7 +411,7 @@ namespace companion
             // 
             // traceButton
             // 
-            this.traceButton.Location = new System.Drawing.Point(18, 598);
+            this.traceButton.Location = new System.Drawing.Point(18, 624);
             this.traceButton.Name = "traceButton";
             this.traceButton.Size = new System.Drawing.Size(150, 31);
             this.traceButton.TabIndex = 37;
@@ -418,11 +419,22 @@ namespace companion
             this.traceButton.UseVisualStyleBackColor = true;
             this.traceButton.Click += new System.EventHandler(this.traceButton_Click);
             // 
+            // label13
+            // 
+            this.label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label13.Location = new System.Drawing.Point(23, 120);
+            this.label13.Name = "label13";
+            this.label13.Size = new System.Drawing.Size(365, 13);
+            this.label13.TabIndex = 0;
+            this.label13.Text = "You do not need to keep this window open";
+            this.label13.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(411, 668);
+            this.ClientSize = new System.Drawing.Size(411, 691);
+            this.Controls.Add(this.label13);
             this.Controls.Add(this.traceButton);
             this.Controls.Add(this.screenshotFormat);
             this.Controls.Add(this.licences);
@@ -502,6 +514,7 @@ namespace companion
         private System.Windows.Forms.LinkLabel licences;
         private System.Windows.Forms.ComboBox screenshotFormat;
         private System.Windows.Forms.Button traceButton;
+        private System.Windows.Forms.Label label13;
     }
 }
 
