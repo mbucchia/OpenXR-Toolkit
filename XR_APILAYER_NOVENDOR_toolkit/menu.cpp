@@ -391,7 +391,7 @@ namespace {
             };
             const float fontSize = fontSizes[m_configManager->getValue(SettingMenuFontSize)];
 
-            const double timeouts[to_integral(MenuTimeout::MaxValue)] = {3.0, 12.0, 60.0};
+            const double timeouts[to_integral(MenuTimeout::MaxValue)] = {3.0, 12.0, 60.0, INFINITY};
             const double timeout =
                 m_state == MenuState::Splash ? 10.0 : timeouts[m_configManager->getValue(SettingMenuTimeout)];
 
@@ -567,7 +567,7 @@ namespace {
                         break;
 
                     case MenuEntryType::ExitButton:
-                        if (duration > 1.0) {
+                        if (duration > 1.0 && duration <= 60.0) {
                             left += m_device->drawString(fmt::format("({}s)", (int)(std::ceil(timeout - duration))),
                                                          TextStyle::Normal,
                                                          fontSize,
