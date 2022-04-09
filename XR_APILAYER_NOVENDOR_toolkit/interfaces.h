@@ -129,6 +129,7 @@ namespace toolkit {
         const std::string SettingSaturationGreen = "saturation_green";
         const std::string SettingSaturationBlue = "saturation_blue";
 
+        const std::string SettingPostSunGlasses = "post_sunglasses";
         const std::string SettingPostBrightness = "post_brightness";
         const std::string SettingPostContrast = "post_contrast";
         const std::string SettingPostExposure = "post_exposure";

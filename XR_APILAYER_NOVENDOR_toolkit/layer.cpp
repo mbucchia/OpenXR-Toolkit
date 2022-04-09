@@ -120,6 +120,7 @@ namespace {
             m_configManager->setDefault(config::SettingSaturationGreen, 500);
             m_configManager->setDefault(config::SettingSaturationBlue, 500);
 
+            m_configManager->setDefault(config::SettingPostSunGlasses, 0);
             m_configManager->setDefault(config::SettingPostContrast, 500);
             m_configManager->setDefault(config::SettingPostBrightness, 500);
             m_configManager->setDefault(config::SettingPostExposure, 500);

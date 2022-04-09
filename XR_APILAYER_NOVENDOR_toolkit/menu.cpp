@@ -1116,6 +1116,13 @@ namespace {
                 [&] { return m_currentTab == MenuTab::Appearance; } /* visible condition */,
                 true /* isTab */);
             m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Sun Glasses",
+                                     MenuEntryType::Choice,
+                                     SettingPostSunGlasses,
+                                     0,
+                                     MenuEntry::LastVal<OffOnType>(),
+                                     MenuEntry::FmtEnum<OffOnType>});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Contrast",
                                      MenuEntryType::Slider,
                                      SettingPostContrast,

@@ -169,7 +169,8 @@ namespace {
                    m_configManager->hasChanged(SettingPostVibrance) ||
                    m_configManager->hasChanged(SettingPostSaturation) ||
                    m_configManager->hasChanged(SettingPostHighlights) ||
-                   m_configManager->hasChanged(SettingPostShadows);
+                   m_configManager->hasChanged(SettingPostShadows) ||
+                   m_configManager->hasChanged(SettingPostSunGlasses);
         }
 
         void updateConfig() {
@@ -180,7 +181,7 @@ namespace {
             // const auto saturationR = saturationMode ? m_configManager->getValue(SettingSaturationRed) : saturation;
             // const auto saturationG = saturationMode ? m_configManager->getValue(SettingSaturationGreen) : saturation;
             // const auto saturationB = saturationMode ? m_configManager->getValue(SettingSaturationBlue) : saturation;
-            
+
             ImageProcessorConfig config;
 
             const auto params1 = LoadXrVector4(MakeXrVector4f(m_configManager->getValue(SettingPostContrast),
@@ -192,15 +193,24 @@ namespace {
                                                               m_configManager->getValue(SettingPostHighlights),
                                                               m_configManager->getValue(SettingPostShadows),
                                                               0));
-            
-            // reduce contrast strength, increase exposure and vibrance gains.
-            const auto gains = XMVectorSet(0.1f, 1.0f, 4.0f, 3.0f);
+
+            const auto sunglasses = std::clamp(m_configManager->getValue(SettingPostSunGlasses), 0, 1);
+
+            // standard gains: reduce contrast, increase exposure, increase vibrance.
+            auto gains1 = XMVECTOR{0.1f, 1.0f, 4.0f, 3.0f};
+            auto gains2 = XMVECTOR{1.0f, 1.0f, 1.0f, 1.0f};
+
+            // with sunglasses: +15% contrast, -25% exposure, -75% highlights
+            if (sunglasses == 1) {
+                gains1 *= XMVECTOR{1.15f, 1.0f, 0.75f, 1.0f};
+                gains2 *= XMVECTOR{1.0f, 0.25f, 1.0f, 1.0f};
+            }
 
             // [0..1000] -> [-1..+1]
-            StoreXrVector4(&config.Scale, (XMVectorSaturate(params1 * 0.001f) * 2.0 - XMVectorSplatOne()) * gains);
+            StoreXrVector4(&config.Scale, (XMVectorSaturate(params1 * 0.001f) * 2.0 - XMVectorSplatOne()) * gains1);
 
             // [0..1000] -> [0..1]
-            StoreXrVector4(&config.Amount, XMVectorSaturate(params2 * 0.001f));
+            StoreXrVector4(&config.Amount, XMVectorSaturate(params2 * 0.001f) * gains2);
 
             m_configBuffer->uploadData(&config, sizeof(config));
         }
