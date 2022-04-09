@@ -132,6 +132,8 @@ namespace {
             m_configManager->setDefault(config::SettingFOVRightRight, 100);
             m_configManager->setDefault(config::SettingPimaxFOVHack, 0);
             m_configManager->setDefault(config::SettingPredictionDampen, 100);
+            m_configManager->setDefault(config::SettingResolutionOverride, 0);
+            m_configManager->setDefault(config::SettingMotionReprojection, 0);
             m_configManager->setEnumDefault(config::SettingMotionReprojectionRate, config::MotionReprojectionRate::Off);
             m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
 
@@ -279,7 +281,7 @@ namespace {
 
         ~OpenXrLayer() override {
             // We cleanup after ourselves (again) to avoid leaving state registry entries.
-            utilities::UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate::Off);
+            utilities::ClearWindowsMixedRealityReprojection();
 
             graphics::UnhookForD3D11DebugLayer();
         }
@@ -304,7 +306,7 @@ namespace {
                 m_vrSystemId == XR_NULL_SYSTEM_ID) {
                 const bool isDeveloper = m_configManager->getValue(config::SettingDeveloper);
 
-                // Store the actual OpenXR resolution.
+                // Retrieve the actual OpenXR resolution.
                 XrViewConfigurationView views[utilities::ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW, nullptr},
                                                                        {XR_TYPE_VIEW_CONFIGURATION_VIEW, nullptr}};
                 uint32_t viewCount;
@@ -316,7 +318,12 @@ namespace {
                                                                          views));
 
                 m_displayWidth = views[0].recommendedImageRectWidth;
+                m_configManager->setDefault(config::SettingResolutionWidth, m_displayWidth);
                 m_displayHeight = views[0].recommendedImageRectHeight;
+
+                m_resolutionHeightRatio = (float)m_displayHeight / m_displayWidth;
+                m_maxDisplayWidth = std::min(views[0].maxImageRectWidth,
+                                             (uint32_t)(views[0].maxImageRectHeight / m_resolutionHeightRatio));
 
                 // Check for hand and eye tracking support.
                 XrSystemHandTrackingPropertiesEXT handTrackingSystemProperties{
@@ -341,9 +348,11 @@ namespace {
                     TLArg(eyeTrackingSystemProperties.supportsEyeGazeInteraction, "SupportsEyeGazeInteraction"));
                 Log("Using OpenXR system %s\n", m_systemName.c_str());
 
-                // Detect Pimax systems.
+                // Detect when the Pimax FOV hask is applicable.
                 m_supportFOVHack =
                     isDeveloper || (m_applicationName == "FS2020" && m_systemName.find("aapvr") != std::string::npos);
+
+                const auto isWMR = m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
 
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
                 m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction || m_isOmniceptDetected ||
@@ -352,8 +361,8 @@ namespace {
                 // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
                 // will (falsely) advertise hand tracking support. Check for the Ultraleap layer in this case.
                 if (m_supportHandTracking &&
-                    (!isDeveloper && (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck) &&
-                                      m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos))) {
+                    (!isDeveloper &&
+                     (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck) && isWMR))) {
                     bool hasUltraleapLayer = false;
                     for (const auto& layer : GetUpstreamLayers()) {
                         if (layer == "XR_APILAYER_ULTRALEAP_hand_tracking") {
@@ -369,8 +378,8 @@ namespace {
                 // Workaround: the WMR runtime supports emulating eye tracking for development through
                 // XR_EXT_eye_gaze_interaction, which will (falsely) advertise eye tracking support. Disable it.
                 if (m_supportEyeTracking &&
-                    (!isDeveloper && (!m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck) &&
-                                      m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos))) {
+                    (!isDeveloper &&
+                     (!m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck) && isWMR))) {
                     Log("Ignoring XR_EXT_eye_gaze_interaction for %s\n", m_runtimeName.c_str());
                     m_supportEyeTracking = false;
                 }
@@ -383,6 +392,20 @@ namespace {
                 }
                 if (!m_supportEyeTracking) {
                     m_eyeTracker.reset();
+                }
+
+                // Apply override to the target resolution.
+                if (m_configManager->getValue(config::SettingResolutionOverride)) {
+                    m_displayWidth = m_configManager->getValue(config::SettingResolutionWidth);
+                    m_displayHeight = (uint32_t)(m_displayWidth * m_resolutionHeightRatio);
+
+                    Log("Overriding OpenXR resolution: %ux%u\n", m_displayWidth, m_displayHeight);
+                }
+
+                // Force motion reprojection if requested.
+                if (isWMR) {
+                    utilities::ToggleWindowsMixedRealityReprojection(
+                        m_configManager->getValue(config::SettingMotionReprojection));
                 }
 
                 // Remember the XrSystemId to use.
@@ -422,22 +445,19 @@ namespace {
                     break;
                 }
 
-                if (inputWidth != m_displayWidth || inputHeight != m_displayHeight) {
-                    // Override the recommended image size to account for scaling.
-                    for (uint32_t i = 0; i < *viewCountOutput; i++) {
-                        views[i].recommendedImageRectWidth = inputWidth;
-                        views[i].recommendedImageRectHeight = inputHeight;
+                // Override the recommended image size to account for scaling.
+                for (uint32_t i = 0; i < *viewCountOutput; i++) {
+                    views[i].recommendedImageRectWidth = inputWidth;
+                    views[i].recommendedImageRectHeight = inputHeight;
+                }
 
-                        if (i == 0) {
-                            Log("Upscaling from %ux%u to %ux%u (%u%%)\n",
-                                views[i].recommendedImageRectWidth,
-                                views[i].recommendedImageRectHeight,
-                                m_displayWidth,
-                                m_displayHeight,
-                                (unsigned int)((((float)m_displayWidth / views[i].recommendedImageRectWidth) + 0.001f) *
-                                               100));
-                        }
-                    }
+                if (inputWidth != m_displayWidth || inputHeight != m_displayHeight) {
+                    Log("Upscaling from %ux%u to %ux%u (%u%%)\n",
+                        inputWidth,
+                        inputHeight,
+                        m_displayWidth,
+                        m_displayHeight,
+                        (unsigned int)((((float)m_displayWidth / inputWidth) + 0.001f) * 100));
                 } else {
                     Log("Using OpenXR resolution (no upscaling): %ux%u\n", m_displayWidth, m_displayHeight);
                 }
@@ -610,6 +630,8 @@ namespace {
                                                     m_keyModifiers,
                                                     m_supportHandTracking,
                                                     isPredictionDampeningSupported,
+                                                    m_maxDisplayWidth,
+                                                    m_resolutionHeightRatio,
                                                     isMotionReprojectionRateSupported,
                                                     displayRefreshRate,
                                                     m_variableRateShader ? m_variableRateShader->getMaxRate() : 0,
@@ -651,7 +673,7 @@ namespace {
             const XrResult result = OpenXrApi::xrDestroySession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 // We cleanup after ourselves as soon as possible to avoid leaving state registry entries.
-                utilities::UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate::Off);
+                utilities::ClearWindowsMixedRealityReprojection();
 
                 // Wait for any pending operation to complete.
                 if (m_graphicsDevice) {
@@ -1602,7 +1624,7 @@ namespace {
 
             // Forward the motion reprojection locking values to WMR.
             if (m_configManager->hasChanged(config::SettingMotionReprojectionRate)) {
-                utilities::UpdateWindowsMixedRealityReprojection(
+                utilities::UpdateWindowsMixedRealityReprojectionRate(
                     m_configManager->getEnumValue<config::MotionReprojectionRate>(
                         config::SettingMotionReprojectionRate));
             }
@@ -1955,6 +1977,8 @@ namespace {
         XrSession m_vrSession{XR_NULL_HANDLE};
         uint32_t m_displayWidth{0};
         uint32_t m_displayHeight{0};
+        float m_resolutionHeightRatio{1.f};
+        uint32_t m_maxDisplayWidth{0};
         bool m_supportHandTracking{false};
         bool m_supportEyeTracking{false};
         bool m_supportFOVHack{false};

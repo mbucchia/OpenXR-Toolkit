@@ -173,7 +173,12 @@ namespace toolkit::utilities {
         return isPressed && (!wasPressed || isRepeat);
     }
 
-    void UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate rate) {
+    void ToggleWindowsMixedRealityReprojection(bool enable) {
+        utilities::RegSetDword(
+            HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MotionVectorEnabled", enable ? 2 /* Always on */ : 0);
+    }
+
+    void UpdateWindowsMixedRealityReprojectionRate(config::MotionReprojectionRate rate) {
         if (rate != config::MotionReprojectionRate::Off) {
             utilities::RegSetDword(
                 HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval", (DWORD)rate);
@@ -183,6 +188,12 @@ namespace toolkit::utilities {
             utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
             utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
         }
+    }
+
+    void ClearWindowsMixedRealityReprojection() {
+        utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MotionVectorEnabled");
+        utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
+        utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
     }
 
     // https://stackoverflow.com/questions/7808085/how-to-get-the-status-of-a-service-programmatically-running-stopped

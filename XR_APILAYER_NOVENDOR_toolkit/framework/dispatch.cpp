@@ -88,7 +88,7 @@ namespace LAYER_NAMESPACE {
                 g_bypass = apiLayerInfo->nextInfo->nextGetInstanceProcAddr;
 
                 // Make sure we clean up the global settings we write for WMR motion reprojection.
-                utilities::UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate::Off);
+                utilities::ClearWindowsMixedRealityReprojection();
 
                 // Call the chain to create the instance, and nothing else.
                 XrApiLayerCreateInfo chainApiLayerInfo = *apiLayerInfo;
