@@ -106,6 +106,7 @@ namespace toolkit {
         const std::string SettingPredictionDampen = "prediction_dampen";
         const std::string SettingBypassMsftHandInteractionCheck = "allow_msft_hand_interaction";
         const std::string SettingBypassMsftEyeGazeInteractionCheck = "allow_msft_eye_gaze_interaction";
+        const std::string SettingMotionReprojection = "motion_reprojection";
         const std::string SettingMotionReprojectionRate = "motion_reprojection_rate";
         const std::string SettingVRS = "vrs";
         const std::string SettingVRSQuality = "vrs_quality";
@@ -132,6 +133,8 @@ namespace toolkit {
         const std::string SettingEyeProjectionDistance = "eye_projection";
         const std::string SettingEyeDebug = "eye_debug";
         const std::string SettingEyeDebugWithController = "eye_controller_debug";
+        const std::string SettingResolutionOverride = "override_resolution";
+        const std::string SettingResolutionWidth = "resolution_width";
 
         enum class OffOnType { Off = 0, On, MaxValue };
         enum class NoYesType { No = 0, Yes, MaxValue };
