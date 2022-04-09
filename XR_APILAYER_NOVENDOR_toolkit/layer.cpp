@@ -356,6 +356,7 @@ namespace {
                     isDeveloper || (m_applicationName == "FS2020" && m_systemName.find("aapvr") != std::string::npos);
 
                 const auto isWMR = m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
+                m_supportMotionReprojectionLock = isWMR;
 
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
                 m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction || m_isOmniceptDetected ||
@@ -403,12 +404,6 @@ namespace {
                     m_displayHeight = (uint32_t)(m_displayWidth * m_resolutionHeightRatio);
 
                     Log("Overriding OpenXR resolution: %ux%u\n", m_displayWidth, m_displayHeight);
-                }
-
-                // Force motion reprojection if requested.
-                if (isWMR) {
-                    utilities::ToggleWindowsMixedRealityReprojection(
-                        m_configManager->getValue(config::SettingMotionReprojection));
                 }
 
                 // Remember the XrSystemId to use.
@@ -479,6 +474,12 @@ namespace {
         XrResult xrCreateSession(XrInstance instance,
                                  const XrSessionCreateInfo* createInfo,
                                  XrSession* session) override {
+            // Force motion reprojection if requested.
+            if (m_supportMotionReprojectionLock) {
+                utilities::ToggleWindowsMixedRealityReprojection(
+                    m_configManager->getValue(config::SettingMotionReprojection));
+            }
+
             const XrResult result = OpenXrApi::xrCreateSession(instance, createInfo, session);
             if (XR_SUCCEEDED(result) && isVrSystem(createInfo->systemId)) {
                 // Get the graphics device.
@@ -622,8 +623,6 @@ namespace {
                     {
                         const bool isPredictionDampeningSupported =
                             xrConvertWin32PerformanceCounterToTimeKHR != nullptr;
-                        const bool isMotionReprojectionRateSupported =
-                            m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
                         const auto displayRefreshRate =
                             utilities::RegGetDword(
                                 HKEY_LOCAL_MACHINE,
@@ -642,7 +641,7 @@ namespace {
                                                     isPredictionDampeningSupported,
                                                     m_maxDisplayWidth,
                                                     m_resolutionHeightRatio,
-                                                    isMotionReprojectionRateSupported,
+                                                    m_supportMotionReprojectionLock,
                                                     displayRefreshRate,
                                                     m_variableRateShader ? m_variableRateShader->getMaxRate() : 0,
                                                     m_supportEyeTracking,
@@ -2002,6 +2001,7 @@ namespace {
         bool m_supportHandTracking{false};
         bool m_supportEyeTracking{false};
         bool m_supportFOVHack{false};
+        bool m_supportMotionReprojectionLock{false};
         bool m_isOmniceptDetected{false};
 
         XrTime m_waitedFrameTime;
