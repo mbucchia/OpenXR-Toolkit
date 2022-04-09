@@ -137,7 +137,7 @@ namespace toolkit {
         enum class NoYesType { No = 0, Yes, MaxValue };
         enum class OverlayType { None = 0, FPS, Advanced, Developer, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
-        enum class MenuTimeout { Small = 0, Medium, Large, MaxValue };
+        enum class MenuTimeout { Small = 0, Medium, Large, None, MaxValue };
         enum class ScalingType { None = 0, NIS, FSR, MaxValue };
         enum class MipMapBias { Off = 0, Anisotropic, All, MaxValue };
         enum class HandTrackingEnabled { Off = 0, Both, Left, Right, MaxValue };
