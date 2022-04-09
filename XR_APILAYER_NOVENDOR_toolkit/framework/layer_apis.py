@@ -23,6 +23,8 @@ override_functions = [
     "xrGetActionStateBoolean",
     "xrGetActionStateFloat",
     "xrGetActionStatePose",
+    "xrApplyHapticFeedback",
+    "xrStopHapticFeedback",
     "xrWaitFrame",
     "xrBeginFrame",
     "xrEndFrame"

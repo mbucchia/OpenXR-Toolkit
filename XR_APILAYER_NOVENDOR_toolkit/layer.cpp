@@ -1353,21 +1353,81 @@ namespace {
         XrResult xrGetActionStatePose(XrSession session,
                                       const XrActionStateGetInfo* getInfo,
                                       XrActionStatePose* state) override {
-            if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO) {
+            if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
+                state->type == XR_TYPE_ACTION_STATE_POSE) {
+                m_performanceCounters.handTrackingTimer->start();
                 const std::string fullPath = m_handTracker->getFullPath(getInfo->action, getInfo->subactionPath);
-                if (state->type == XR_TYPE_ACTION_STATE_POSE) {
-                    if (fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") {
-                        state->isActive = m_handTracker->isTrackedRecently(input::Hand::Left);
-                        return XR_SUCCESS;
-                    } else if (fullPath == "/user/hand/right/input/grip/pose" ||
-                               fullPath == "/user/hand/right/input/aim/pose") {
-                        state->isActive = m_handTracker->isTrackedRecently(input::Hand::Right);
-                        return XR_SUCCESS;
-                    }
+                bool supportedPath = false;
+                input::Hand hand = input::Hand::Left;
+                if (fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") {
+                    supportedPath = true;
+                    hand = input::Hand::Left;
+                } else if (fullPath == "/user/hand/right/input/grip/pose" ||
+                           fullPath == "/user/hand/right/input/aim/pose") {
+                    supportedPath = true;
+                    hand = input::Hand::Right;
+                }
+                if (supportedPath) {
+                    state->isActive = m_handTracker->isTrackedRecently(hand);
+                    m_performanceCounters.handTrackingTimer->stop();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                    return XR_SUCCESS;
                 }
             }
 
             return OpenXrApi::xrGetActionStatePose(session, getInfo, state);
+        }
+
+        XrResult xrApplyHapticFeedback(XrSession session,
+                                       const XrHapticActionInfo* hapticActionInfo,
+                                       const XrHapticBaseHeader* hapticFeedback) override {
+            if (m_handTracker && isVrSession(session) && hapticActionInfo->type == XR_TYPE_HAPTIC_ACTION_INFO &&
+                hapticFeedback->type == XR_TYPE_HAPTIC_VIBRATION) {
+                m_performanceCounters.handTrackingTimer->start();
+                const std::string fullPath =
+                    m_handTracker->getFullPath(hapticActionInfo->action, hapticActionInfo->subactionPath);
+                bool supportedPath = false;
+                input::Hand hand = input::Hand::Left;
+                if (fullPath == "/user/hand/left/output/haptic") {
+                    supportedPath = true;
+                    hand = input::Hand::Left;
+                } else if (fullPath == "/user/hand/right/output/haptic") {
+                    supportedPath = true;
+                    hand = input::Hand::Right;
+                }
+                if (supportedPath) {
+                    auto haptics = reinterpret_cast<const XrHapticVibration*>(hapticFeedback);
+                    m_handTracker->handleOutput(hand, haptics->frequency, haptics->duration);
+                    m_performanceCounters.handTrackingTimer->stop();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                }
+            }
+
+            return OpenXrApi::xrApplyHapticFeedback(session, hapticActionInfo, hapticFeedback);
+        }
+
+        XrResult xrStopHapticFeedback(XrSession session, const XrHapticActionInfo* hapticActionInfo) override {
+            if (m_handTracker && isVrSession(session) && hapticActionInfo->type == XR_TYPE_HAPTIC_ACTION_INFO) {
+                m_performanceCounters.handTrackingTimer->start();
+                const std::string fullPath =
+                    m_handTracker->getFullPath(hapticActionInfo->action, hapticActionInfo->subactionPath);
+                bool supportedPath = false;
+                input::Hand hand = input::Hand::Left;
+                if (fullPath == "/user/hand/left/output/haptic") {
+                    supportedPath = true;
+                    hand = input::Hand::Left;
+                } else if (fullPath == "/user/hand/right/output/haptic") {
+                    supportedPath = true;
+                    hand = input::Hand::Right;
+                }
+                if (supportedPath) {
+                    m_handTracker->handleOutput(hand, NAN, 0);
+                    m_performanceCounters.handTrackingTimer->stop();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                }
+            }
+
+            return OpenXrApi::xrStopHapticFeedback(session, hapticActionInfo);
         }
 
         XrResult xrWaitFrame(XrSession session,

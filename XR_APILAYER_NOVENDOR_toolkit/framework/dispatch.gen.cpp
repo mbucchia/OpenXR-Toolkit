@@ -585,6 +585,48 @@ namespace LAYER_NAMESPACE
 		return result;
 	}
 
+	XrResult xrApplyHapticFeedback(XrSession session, const XrHapticActionInfo* hapticActionInfo, const XrHapticBaseHeader* hapticFeedback)
+	{
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrApplyHapticFeedback");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrApplyHapticFeedback(session, hapticActionInfo, hapticFeedback);
+		}
+		catch (std::exception& exc)
+		{
+			TraceLoggingWriteTagged(local, "xrApplyHapticFeedback_Error", TLArg(exc.what(), "Error"));
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		TraceLoggingWriteStop(local, "xrApplyHapticFeedback", TLArg((int)result, "Result"));
+
+		return result;
+	}
+
+	XrResult xrStopHapticFeedback(XrSession session, const XrHapticActionInfo* hapticActionInfo)
+	{
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrStopHapticFeedback");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrStopHapticFeedback(session, hapticActionInfo);
+		}
+		catch (std::exception& exc)
+		{
+			TraceLoggingWriteTagged(local, "xrStopHapticFeedback_Error", TLArg(exc.what(), "Error"));
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		TraceLoggingWriteStop(local, "xrStopHapticFeedback", TLArg((int)result, "Result"));
+
+		return result;
+	}
+
 
 	// Auto-generated dispatcher handler.
 	XrResult OpenXrApi::xrGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function)
@@ -729,6 +771,16 @@ namespace LAYER_NAMESPACE
 			{
 				m_xrSyncActions = reinterpret_cast<PFN_xrSyncActions>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrSyncActions);
+			}
+			else if (apiName == "xrApplyHapticFeedback")
+			{
+				m_xrApplyHapticFeedback = reinterpret_cast<PFN_xrApplyHapticFeedback>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrApplyHapticFeedback);
+			}
+			else if (apiName == "xrStopHapticFeedback")
+			{
+				m_xrStopHapticFeedback = reinterpret_cast<PFN_xrStopHapticFeedback>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrStopHapticFeedback);
 			}
 
 		}

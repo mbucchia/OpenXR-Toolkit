@@ -350,6 +350,22 @@ namespace LAYER_NAMESPACE
 	private:
 		PFN_xrSyncActions m_xrSyncActions{ nullptr };
 
+	public:
+		virtual XrResult xrApplyHapticFeedback(XrSession session, const XrHapticActionInfo* hapticActionInfo, const XrHapticBaseHeader* hapticFeedback)
+		{
+			return m_xrApplyHapticFeedback(session, hapticActionInfo, hapticFeedback);
+		}
+	private:
+		PFN_xrApplyHapticFeedback m_xrApplyHapticFeedback{ nullptr };
+
+	public:
+		virtual XrResult xrStopHapticFeedback(XrSession session, const XrHapticActionInfo* hapticActionInfo)
+		{
+			return m_xrStopHapticFeedback(session, hapticActionInfo);
+		}
+	private:
+		PFN_xrStopHapticFeedback m_xrStopHapticFeedback{ nullptr };
+
 
 
 	};
