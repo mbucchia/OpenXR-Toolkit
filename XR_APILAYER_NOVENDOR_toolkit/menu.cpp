@@ -766,10 +766,12 @@ namespace {
                             top += 1.05f * fontSize;
 
 #define GESTURE_STATE(label, name)                                                                                     \
-    m_device->drawString(                                                                                              \
-        fmt::format(label ": {:.2f}/{:.2f}", m_gesturesState.name##Value[0], m_gesturesState.name##Value[1]),          \
-        OVERLAY_COMMON);                                                                                               \
-    top += 1.05f * fontSize;
+    if (!isnan(m_gesturesState.name##Value[0]) || !isnan(m_gesturesState.name##Value[1])) {                            \
+        m_device->drawString(                                                                                          \
+            fmt::format(label ": {:.2f}/{:.2f}", m_gesturesState.name##Value[0], m_gesturesState.name##Value[1]),      \
+            OVERLAY_COMMON);                                                                                           \
+        top += 1.05f * fontSize;                                                                                       \
+    }
 
                             if (isHandTrackingEnabled()) {
                                 GESTURE_STATE("pinch", pinch);
@@ -781,6 +783,17 @@ namespace {
                                 GESTURE_STATE("palm", palmTap);
                                 GESTURE_STATE("tiptap", indexTipTap);
                                 GESTURE_STATE("cust1", custom1);
+
+                                m_device->drawString(fmt::format("hptf: {:.3f}/{:.3f}",
+                                                                 m_gesturesState.hapticsFrequency[0],
+                                                                 m_gesturesState.hapticsFrequency[1]),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
+                                m_device->drawString(fmt::format("hptd: {:.1f}/{:.1f}",
+                                                                 m_gesturesState.hapticsDurationUs[0] / 1000000.0f,
+                                                                 m_gesturesState.hapticsDurationUs[1] / 1000000.0f),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
 
                                 m_device->drawString(fmt::format("loss: {}/{}",
                                                                  m_gesturesState.numTrackingLosses[0] % 256,
@@ -1539,7 +1552,7 @@ namespace {
         mutable float m_menuHeaderHeight{0.0f};
         mutable bool m_resetTextLayout{true};
         mutable bool m_resetBackgroundLayout{true};
-    };
+    }; // namespace
 
     template <typename E>
     int MenuEntry::LastVal() {

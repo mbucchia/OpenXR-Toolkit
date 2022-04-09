@@ -660,6 +660,8 @@ namespace toolkit {
             int64_t handposeAgeUs[2]{0, 0};
             size_t cacheSize[2]{0, 0};
             uint32_t numTrackingLosses[2]{0, 0};
+            float hapticsFrequency[2]{NAN, NAN};
+            int64_t hapticsDurationUs[2]{-2, -2};
         };
 
         struct IHandTracker {
@@ -693,6 +695,8 @@ namespace toolkit {
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateBoolean& state) const = 0;
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateFloat& state) const = 0;
             virtual bool isTrackedRecently(Hand hand) const = 0;
+
+            virtual void handleOutput(Hand hand, float frequency, XrDuration duration) = 0;
 
             virtual const GesturesState& getGesturesState() const = 0;
         };
