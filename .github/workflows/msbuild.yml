@@ -30,6 +30,9 @@ jobs:
 
     - name: Create LFS file list
       run: |
+        du -h --max-depth=1
+        git lfs ls-files
+        git submodule foreach git lfs ls-files
         git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
       shell: bash
 
@@ -41,7 +44,7 @@ jobs:
         key: git-lfs-${{ hashFiles('.lfs-assets-id') }}-v1
 
     - name: Git LFS Pull
-      run: git lfs pull --include  "${{ inputs.include }}" --exclude  "${{ inputs.exclude }}"
+      run: git lfs pull
       shell: bash
 
     - name: Setup DevEnv
