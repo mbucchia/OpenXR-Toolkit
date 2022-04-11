@@ -135,7 +135,7 @@ namespace {
         }
 
         void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
-            m_device->setShader(!input->isArray() ? m_shader : m_shaderVPRT);
+            m_device->setShader(!input->isArray() ? m_shader : m_shaderVPRT, SamplerType::NearestClamp);
             m_device->setShaderInput(0, m_configBuffer);
             m_device->setShaderInput(0, input, slice);
             m_device->setShaderOutput(0, output, slice);

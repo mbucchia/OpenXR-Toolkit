@@ -1300,7 +1300,7 @@ namespace {
                 stopGpuTimestampIndex);
         }
 
-        void setShader(std::shared_ptr<IQuadShader> shader) override {
+        void setShader(std::shared_ptr<IQuadShader> shader, SamplerType sampler) override {
             m_currentQuadShader.reset();
             m_currentComputeShader.reset();
             m_currentRootSlot = 0;
@@ -1323,15 +1323,15 @@ namespace {
                 m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
                 // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
                 m_context->SetGraphicsRootDescriptorTable(m_currentRootSlot++,
-                                                          m_samplerHeap.getGPUHandle(m_linearClampSamplerPS));
+                                                          m_samplerHeap.getGPUHandle(m_samplers[to_integral(sampler)]));
             } else {
-                d3d12Shader->registerSamplerParameter(0, m_samplerHeap.getGPUHandle(m_linearClampSamplerPS));
+                d3d12Shader->registerSamplerParameter(0, m_samplerHeap.getGPUHandle(m_samplers[to_integral(sampler)]));
             }
 
             m_currentQuadShader = shader;
         }
 
-        void setShader(std::shared_ptr<IComputeShader> shader) override {
+        void setShader(std::shared_ptr<IComputeShader> shader, SamplerType sampler) override {
             m_currentQuadShader.reset();
             m_currentComputeShader.reset();
             m_currentRootSlot = 0;
@@ -1349,9 +1349,9 @@ namespace {
                 m_context->SetPipelineState(shaderData->pipelineState);
                 // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
                 m_context->SetComputeRootDescriptorTable(m_currentRootSlot++,
-                                                         m_samplerHeap.getGPUHandle(m_linearClampSamplerCS));
+                                                         m_samplerHeap.getGPUHandle(m_samplers[to_integral(sampler)]));
             } else {
-                d3d12Shader->registerSamplerParameter(0, m_samplerHeap.getGPUHandle(m_linearClampSamplerCS));
+                d3d12Shader->registerSamplerParameter(0, m_samplerHeap.getGPUHandle(m_samplers[to_integral(sampler)]));
             }
 
             m_currentComputeShader = shader;
@@ -1853,22 +1853,16 @@ namespace {
                 desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                 desc.MaxAnisotropy = 1;
                 desc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-                m_samplerHeap.allocate(m_linearClampSamplerPS);
-                m_device->CreateSampler(&desc, m_linearClampSamplerPS);
-            }
-            {
-                D3D12_SAMPLER_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
+                desc.BorderColor[3] = 1.0f;
+                m_samplerHeap.allocate(m_samplers[to_integral(SamplerType::NearestClamp)]);
+                m_device->CreateSampler(&desc, m_samplers[to_integral(SamplerType::NearestClamp)]);
+
                 desc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                desc.MaxAnisotropy = 1;
                 desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
                 desc.MinLOD = D3D12_MIP_LOD_BIAS_MIN;
                 desc.MaxLOD = D3D12_MIP_LOD_BIAS_MAX;
-                m_samplerHeap.allocate(m_linearClampSamplerCS);
-                m_device->CreateSampler(&desc, m_linearClampSamplerCS);
+                m_samplerHeap.allocate(m_samplers[to_integral(SamplerType::LinearClamp)]);
+                m_device->CreateSampler(&desc, m_samplers[to_integral(SamplerType::LinearClamp)]);
             }
             {
                 ComPtr<ID3DBlob> errors;
@@ -2095,8 +2089,7 @@ namespace {
         ComPtr<ID3D12QueryHeap> m_queryHeap;
         ComPtr<ID3D12Resource> m_queryReadbackBuffer;
         ComPtr<ID3DBlob> m_quadVertexShaderBytes;
-        D3D12_CPU_DESCRIPTOR_HANDLE m_linearClampSamplerPS;
-        D3D12_CPU_DESCRIPTOR_HANDLE m_linearClampSamplerCS;
+        D3D12_CPU_DESCRIPTOR_HANDLE m_samplers[2];
         std::shared_ptr<IShaderBuffer> m_meshViewProjectionBuffer[4];
         uint32_t m_currentMeshViewProjectionBuffer{0};
         std::shared_ptr<IShaderBuffer> m_meshModelBuffer[MaxModelBuffers];

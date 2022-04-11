@@ -280,6 +280,8 @@ namespace toolkit {
         // A few handy texture formats.
         enum class TextureFormat { R32G32B32A32_FLOAT, R16G16B16A16_UNORM, R10G10B10A2_UNORM, R8G8B8A8_UNORM };
 
+        enum class SamplerType { NearestClamp, LinearClamp };
+
         // A list of supported GPU Architectures.
         enum class GpuArchitecture { Unknown, AMD, Intel, NVidia };
 
@@ -512,10 +514,10 @@ namespace toolkit {
             virtual std::shared_ptr<IGpuTimer> createTimer() = 0;
 
             // Must be invoked prior to setting the input/output.
-            virtual void setShader(std::shared_ptr<IQuadShader> shader) = 0;
+            virtual void setShader(std::shared_ptr<IQuadShader> shader, SamplerType sampler) = 0;
 
             // Must be invoked prior to setting the input/output.
-            virtual void setShader(std::shared_ptr<IComputeShader> shader) = 0;
+            virtual void setShader(std::shared_ptr<IComputeShader> shader, SamplerType sampler) = 0;
 
             virtual void setShaderInput(uint32_t slot, std::shared_ptr<ITexture> input, int32_t slice = -1) = 0;
             virtual void setShaderInput(uint32_t slot, std::shared_ptr<IShaderBuffer> input) = 0;

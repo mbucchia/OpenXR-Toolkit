@@ -637,7 +637,7 @@ namespace {
                 mask.cbShading[i]->uploadData(&constants, sizeof(constants));
 
                 m_csShading->updateThreadGroups({dispatchX, dispatchY, 1});
-                m_device->setShader(m_csShading);
+                m_device->setShader(m_csShading, SamplerType::NearestClamp);
                 m_device->setShaderInput(0, mask.cbShading[i]);
                 m_device->setShaderInput(0, mask.mask[i]);
                 m_device->setShaderOutput(0, mask.mask[i]);
@@ -672,7 +672,7 @@ namespace {
                     pCommandList, mask.mask[i]->getAs<D3D12>(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, i);
 
                 m_csShading->updateThreadGroups({dispatchX, dispatchY, 1});
-                m_device->setShader(m_csShading);
+                m_device->setShader(m_csShading, SamplerType::NearestClamp);
                 m_device->setShaderInput(0, mask.cbShading[i]);
                 m_device->setShaderInput(0, mask.mask[i]);
                 m_device->setShaderOutput(0, mask.mask[i]);
