@@ -148,12 +148,15 @@ namespace {
             const auto shadersDir = dllHome / "shaders";
             const auto shaderFile = shadersDir / "postprocess.hlsl";
 
-            m_shader = m_device->createQuadShader(shaderFile, "main", "Image Processor PS", nullptr /*,  shadersDir*/);
+            m_shader = m_device->createQuadShader(shaderFile, "mainPostProcess", "Image Processor PS", nullptr /*,  shadersDir*/);
 
             utilities::shader::Defines defines;
             defines.add("VPRT", true);
+            //defines.add("POST_PROCESS_SRC_SRGB", true);
+            //defines.add("POST_PROCESS_DST_SRGB", true);
+
             m_shaderVPRT = m_device->createQuadShader(
-                shaderFile, "main", "Image Processor VPRT PS", defines.get() /*,  shadersDir*/);
+                shaderFile, "mainPostProcess", "Image Processor VPRT PS", defines.get() /*,  shadersDir*/);
 
             // TODO: For now, we're going to require that all image processing shaders share the same configuration
             // structure.
@@ -196,14 +199,17 @@ namespace {
 
             const auto sunglasses = std::clamp(m_configManager->getValue(SettingPostSunGlasses), 0, 1);
 
-            // standard gains: reduce contrast, increase exposure, increase vibrance.
-            auto gains1 = XMVECTOR{0.1f, 1.0f, 4.0f, 3.0f};
-            auto gains2 = XMVECTOR{1.0f, 1.0f, 1.0f, 1.0f};
+            // standard gains:
+            // - reduce contrast and brighness ranges
+            // - increase exposure and vibrance effect
+            // - limit shadows range
+            auto gains1 = XMVectorSet(0.1f, 0.8f, 4.0f, 3.0f);
+            auto gains2 = XMVectorSet(1.0f, 1.0f, 0.5f, 1.0f);
 
             // with sunglasses: +15% contrast, -25% exposure, -75% highlights
             if (sunglasses == 1) {
-                gains1 *= XMVECTOR{1.15f, 1.0f, 0.75f, 1.0f};
-                gains2 *= XMVECTOR{1.0f, 0.25f, 1.0f, 1.0f};
+                gains1 *= XMVectorSet(1.15f, 1.0f, 0.75f, 1.0f);
+                gains2 *= XMVectorSet(1.0f, 0.25f, 1.0f, 1.0f);
             }
 
             // [0..1000] -> [-1..+1]
