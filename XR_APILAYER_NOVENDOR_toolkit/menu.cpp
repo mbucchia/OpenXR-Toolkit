@@ -1266,7 +1266,9 @@ namespace {
             m_menuEntries.push_back(
                 {MenuIndent::SubGroupIndent, "Adjustment", MenuEntryType::Slider, SettingFOV, 50, 100, [&](int value) {
                      return fmt::format(
-                         "{}% ({:.1f} deg)", value, (-m_stats.fovL[2] + m_stats.fovR[3]) * 180.0f / M_PI);
+                         "{}% ({:.1f}\xB0)",
+                         value,
+                         DirectX::XMConvertToDegrees(m_stats.fov[1].angleRight - m_stats.fov[0].angleLeft));
                  }});
             fovSimpleGroup.finalize();
 
@@ -1274,56 +1276,59 @@ namespace {
                 return m_configManager->peekValue(SettingFOVType) == 1;
             } /* visible condition */);
             m_menuEntries.push_back(
-                {MenuIndent::SubGroupIndent, "FOV Up", MenuEntryType::Slider, SettingFOVUp, 50, 100, [&](int value) {
-                     return fmt::format("{}% ({:.1f}/{:.1f} deg)",
+                {MenuIndent::SubGroupIndent, "Up", MenuEntryType::Slider, SettingFOVUp, 50, 100, [&](int value) {
+                     return fmt::format("{}% ({:.1f}\xB0/{:.1f}\xB0)",
                                         value,
-                                        m_stats.fovL[0] * 180.0f / M_PI,
-                                        m_stats.fovR[0] * 180.0f / M_PI);
+                                        DirectX::XMConvertToDegrees(m_stats.fov[0].angleUp),
+                                        DirectX::XMConvertToDegrees(m_stats.fov[1].angleUp));
                  }});
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "FOV Down",
-                                     MenuEntryType::Slider,
-                                     SettingFOVDown,
-                                     50,
-                                     100,
-                                     [&](int value) {
-                                         return fmt::format("{}% ({:.1f}/{:.1f} deg)",
-                                                            value,
-                                                            m_stats.fovL[1] * 180.0f / M_PI,
-                                                            m_stats.fovR[1] * 180.0f / M_PI);
-                                     }});
+            m_menuEntries.push_back(
+                {MenuIndent::SubGroupIndent, "Down", MenuEntryType::Slider, SettingFOVDown, 50, 100, [&](int value) {
+                     return fmt::format("{}% ({:.1f}\xB0/{:.1f}\xB0)",
+                                        value,
+                                        DirectX::XMConvertToDegrees(m_stats.fov[0].angleDown),
+                                        DirectX::XMConvertToDegrees(m_stats.fov[1].angleDown));
+                 }});
             m_menuEntries.push_back(
                 {MenuIndent::SubGroupIndent,
-                 "FOV Left/Left",
+                 "Left/Left",
                  MenuEntryType::Slider,
                  SettingFOVLeftLeft,
                  50,
                  100,
-                 [&](int value) { return fmt::format("{}% ({:.1f} deg)", value, m_stats.fovL[2] * 180.0f / M_PI); }});
+                 [&](int value) {
+                     return fmt::format("{}% ({:.1f}\xB0)", value, DirectX::XMConvertToDegrees(m_stats.fov[0].angleLeft));
+                 }});
             m_menuEntries.push_back(
                 {MenuIndent::SubGroupIndent,
-                 "FOV Left/Right",
+                 "Left/Right",
                  MenuEntryType::Slider,
                  SettingFOVLeftRight,
                  50,
                  100,
-                 [&](int value) { return fmt::format("{}% ({:.1f} deg)", value, m_stats.fovL[3] * 180.0f / M_PI); }});
+                 [&](int value) {
+                     return fmt::format("{}% ({:.1f}\xB0)", value, DirectX::XMConvertToDegrees(m_stats.fov[0].angleRight));
+                 }});
             m_menuEntries.push_back(
                 {MenuIndent::SubGroupIndent,
-                 "FOV Right/Left",
+                 "Right/Left",
                  MenuEntryType::Slider,
                  SettingFOVRightLeft,
                  50,
                  100,
-                 [&](int value) { return fmt::format("{}% ({:.1f} deg)", value, m_stats.fovR[2] * 180.0f / M_PI); }});
+                 [&](int value) {
+                     return fmt::format("{}% ({:.1f}\xB0)", value, DirectX::XMConvertToDegrees(m_stats.fov[1].angleLeft));
+                 }});
             m_menuEntries.push_back(
                 {MenuIndent::SubGroupIndent,
-                 "FOV Right/Right",
+                 "Right/Right",
                  MenuEntryType::Slider,
                  SettingFOVRightRight,
                  50,
                  100,
-                 [&](int value) { return fmt::format("{}% ({:.1f} deg)", value, m_stats.fovR[3] * 180.0f / M_PI); }});
+                 [&](int value) {
+                     return fmt::format("{}% ({:.1f}\xB0)", value, DirectX::XMConvertToDegrees(m_stats.fov[1].angleRight));
+                 }});
             fovAdvancedGroup.finalize();
 
             if (isPimaxFovHackSupported) {
@@ -1471,7 +1476,7 @@ namespace {
                                      "canting",
                                      -90,
                                      90,
-                                     [](int value) { return fmt::format("{} deg", value); }});
+                                     [](int value) { return fmt::format("{}\xB0", value); }});
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Simulate eye tracker*",
                                      MenuEntryType::Choice,

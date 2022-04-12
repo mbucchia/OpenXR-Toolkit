@@ -1400,13 +1400,13 @@ namespace {
                          bool measure,
                          int alignment) override {
             // fast path, use the stack for most of our strings
+            auto src = reinterpret_cast<const uint8_t*>(string.data());
             if (string.size() < size_t(64)) {
-                wchar_t buffer[64];
-                std::copy_n(string.begin(), string.size(), buffer)[0] = '\0';
-                return drawString(
-                    std::wstring_view(buffer, string.size()), style, size, x, y, color, measure, alignment);
+                wchar_t buf[64];
+                std::copy_n(src, string.size(), buf)[0] = '\0';
+                return drawString(std::wstring_view(buf, string.size()), style, size, x, y, color, measure, alignment);
             }
-            return drawString(std::wstring(string.begin(), string.end()), style, size, x, y, color, measure, alignment);
+            return drawString(std::wstring(src, src + string.size()), style, size, x, y, color, measure, alignment);
         }
 
         float measureString(std::wstring_view string, TextStyle style, float size) const override {
@@ -1423,12 +1423,13 @@ namespace {
 
         float measureString(std::string_view string, TextStyle style, float size) const override {
             // fast path, use the stack for most of our strings
+            auto src = reinterpret_cast<const uint8_t*>(string.data());
             if (string.size() < size_t(64)) {
-                wchar_t buffer[64];
-                std::copy_n(string.begin(), string.size(), buffer)[0] = '\0';
-                return measureString(std::wstring_view(buffer, string.size()), style, size);
+                wchar_t buf[64];
+                std::copy_n(src, string.size(), buf)[0] = '\0';
+                return measureString(std::wstring_view(buf, string.size()), style, size);
             }
-            return measureString(std::wstring(string.begin(), string.end()), style, size);
+            return measureString(std::wstring(src, src + string.size()), style, size);
         }
 
         void beginText() override {

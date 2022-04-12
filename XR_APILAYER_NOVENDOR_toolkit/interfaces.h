@@ -54,6 +54,19 @@ namespace toolkit {
 
     } // namespace
 
+    namespace math {
+
+        // Missing helpers in XrMath.h
+        inline DirectX::XMVECTOR XM_CALLCONV LoadXrFov(const XrFovf& fov) {
+            return DirectX::XMLoadFloat4(&xr::math::detail::implement_math_cast<DirectX::XMFLOAT4>(fov));
+        }
+
+        inline void XM_CALLCONV StoreXrFov(XrFovf* outVec, DirectX::FXMVECTOR inVec) {
+            DirectX::XMStoreFloat4(&xr::math::detail::implement_math_cast<DirectX::XMFLOAT4>(*outVec), inVec);
+        }
+
+    } // namespace math
+
     namespace utilities {
 
         // 2 views to process, one per eye.
@@ -63,8 +76,15 @@ namespace toolkit {
         // A CPU synchronous timer.
         struct ICpuTimer : public ITimer {};
 
-        XrVector2f NdcToScreen(XrVector2f);
-        XrVector2f ScreenToNdc(XrVector2f);
+        // [-1,+1] (+up) -> [0..1] (+dn)
+        inline constexpr XrVector2f NdcToScreen(XrVector2f v) {
+            return {(v.x + 1.f) * 0.5f, (v.y - 1.f) * -0.5f};
+        }
+
+        // [0..1] (+dn) -> [-1,+1] (+up)
+        inline constexpr XrVector2f ScreenToNdc(XrVector2f v) {
+            return {(v.x * 2.f) - 1.f, (v.y * -2.f) + 1.f};
+        }
 
     } // namespace utilities
 
@@ -709,8 +729,7 @@ namespace toolkit {
             virtual const GesturesState& getGesturesState() const = 0;
         };
 
-        struct EyeGazeState {
-        };
+        struct EyeGazeState {};
 
         struct IEyeTracker {
             virtual ~IEyeTracker() = default;
@@ -733,7 +752,6 @@ namespace toolkit {
     namespace menu {
 
         struct MenuStatistics {
-            float fps{0.0f};
             uint64_t appCpuTimeUs{0};
             uint64_t appGpuTimeUs{0};
             uint64_t waitCpuTimeUs{0};
@@ -744,16 +762,16 @@ namespace toolkit {
             uint64_t overlayCpuTimeUs{0};
             uint64_t overlayGpuTimeUs{0};
             uint64_t handTrackingCpuTimeUs{0};
-
             uint64_t predictionTimeUs{0};
+
+            float fps{0.0f};
             float icd{0.0f};
-            float fovL[4]{0.0f, 0.0f, 0.0f, 0.0f};
-            float fovR[4]{0.0f, 0.0f, 0.0f, 0.0f};
+            XrFovf fov[2]{{0}};
+            uint32_t numBiasedSamplers{0};
+            uint32_t numRenderTargetsWithVRS{0};
 
             bool hasColorBuffer[utilities::ViewCount]{false, false};
             bool hasDepthBuffer[utilities::ViewCount]{false, false};
-            uint32_t numBiasedSamplers{0};
-            uint32_t numRenderTargetsWithVRS{0};
         };
 
         // A menu handler.
