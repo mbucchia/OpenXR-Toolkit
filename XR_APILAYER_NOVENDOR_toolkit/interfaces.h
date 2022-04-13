@@ -739,8 +739,12 @@ namespace toolkit {
             virtual const GesturesState& getGesturesState() const = 0;
         };
 
-        struct EyeGazeState {};
-
+        struct EyeGazeState {
+            XrVector3f gazeRay{};
+            XrVector2f leftPoint{};
+            XrVector2f rightPoint{};
+        };
+        
         struct IEyeTracker {
             virtual ~IEyeTracker() = default;
 
