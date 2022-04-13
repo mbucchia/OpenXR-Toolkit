@@ -130,6 +130,14 @@ namespace {
             m_configManager->setDefault(config::SettingPostHighlights, 1000);
             m_configManager->setDefault(config::SettingPostShadows, 0);
 
+            m_configManager->setDefault(config::SettingPostContrast + "User", 500);
+            m_configManager->setDefault(config::SettingPostBrightness + "User", 500);
+            m_configManager->setDefault(config::SettingPostExposure + "User", 500);
+            m_configManager->setDefault(config::SettingPostSaturation + "User", 1000);
+            m_configManager->setDefault(config::SettingPostVibrance + "User", 500);
+            m_configManager->setDefault(config::SettingPostHighlights + "User", 1000);
+            m_configManager->setDefault(config::SettingPostShadows + "User", 0);
+
             // Misc features.
             m_configManager->setDefault(config::SettingICD, 1000);
             m_configManager->setDefault(config::SettingFOVType, 0); // Simple
@@ -1266,7 +1274,7 @@ namespace {
                                              m_configManager->getValue(config::SettingFOVLeftRight),
                                              m_configManager->getValue(config::SettingFOVUp),
                                              m_configManager->getValue(config::SettingFOVDown));
-                    
+
                     const auto fov2 = XMINT4(m_configManager->getValue(config::SettingFOVRightLeft),
                                              m_configManager->getValue(config::SettingFOVRightRight),
                                              fov1.z,

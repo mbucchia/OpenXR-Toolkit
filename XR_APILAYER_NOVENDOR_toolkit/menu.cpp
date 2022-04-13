@@ -1116,24 +1116,24 @@ namespace {
                 [&] { return m_currentTab == MenuTab::Appearance; } /* visible condition */,
                 true /* isTab */);
             m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                     "Sun Glasses",
+                                     "Sun Glasses / Presets",
                                      MenuEntryType::Choice,
                                      SettingPostSunGlasses,
                                      0,
-                                     MenuEntry::LastVal<OffOnType>(),
-                                     MenuEntry::FmtEnum<OffOnType>});
+                                     MenuEntry::LastVal<PostSunGlassesType>(),
+                                     MenuEntry::FmtEnum<PostSunGlassesType>});
             m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                     "Contrast",
+                                     "Brightness",
                                      MenuEntryType::Slider,
-                                     SettingPostContrast,
+                                     SettingPostBrightness,
                                      0,
                                      1000,
                                      MenuEntry::FmtDecimal<1>});
             m_menuEntries.back().acceleration = 5;
             m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                     "Brightness",
+                                     "Contrast",
                                      MenuEntryType::Slider,
-                                     SettingPostBrightness,
+                                     SettingPostContrast,
                                      0,
                                      1000,
                                      MenuEntry::FmtDecimal<1>});
@@ -1615,7 +1615,7 @@ namespace {
 
     template <typename E>
     int MenuEntry::LastVal() {
-        return static_cast<std::underlying_type_t<E>>(E::MaxValue) - 1;
+        return to_integral(E::MaxValue) - 1;
     }
 
     template <typename E>

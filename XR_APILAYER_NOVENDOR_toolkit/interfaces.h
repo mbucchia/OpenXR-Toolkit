@@ -180,6 +180,7 @@ namespace toolkit {
         enum class VariableShadingRateVal { R_x1, R_2x1, R_2x2, R_4x2, R_4x4, R_Cull, MaxValue };
         enum class SaturationModeType { Global, Selective, MaxValue };
         enum class FovModeType { Simple, Advanced, MaxValue };
+        enum class PostSunGlassesType { None = 0, User, Light, Dark, Night, MaxValue };
         enum class ScreenshotFileFormat { DDS = 0, PNG, JPG, BMP, MaxValue };
 
         template <typename ConfigEnumType>
@@ -209,17 +210,19 @@ namespace toolkit {
 
             template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
             void setEnumDefault(const std::string& name, T value) {
-                setDefault(name, (int)value);
+                setDefault(name, static_cast<int>(to_integral(value)));
             }
 
             template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
             T getEnumValue(const std::string& name) const {
-                return (T)getValue(name);
+                const auto value = getValue(name);
+                return static_cast<T>(std::clamp(value, std::underlying_type_t<T>(0), to_integral(T::MaxValue) - 1));
             }
 
             template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
             T peekEnumValue(const std::string& name) const {
-                return (T)peekValue(name);
+                const auto value = peekValue(name);
+                return static_cast<T>(std::clamp(value, std::underlying_type_t<T>(0), to_integral(T::MaxValue) - 1));
             }
         };
 

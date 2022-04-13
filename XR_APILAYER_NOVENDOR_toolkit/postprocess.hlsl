@@ -114,6 +114,9 @@ float3 linear2srgb(float3 c) {
 }
 #endif
 
+float SafePow(float value, float power) {
+  return pow(max(abs(value), FLT_EPSILON), power);
+}
 float3 SafePow(float3 value, float3 power) {
   return pow(max(abs(value), FLT_EPSILON), power);
 }
@@ -175,22 +178,22 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
 
   float3 color = SAMPLE_TEXTURE(sourceTexture, texcoord);
 
-  color = AdjustContrast(color, Scale.x);
 
 #ifdef POST_PROCESS_SRC_SRGB
   color = srgb2linear(color);
  #endif
 
   color = AdjustBrightness(color, Scale.y);
+  color = AdjustContrast(color, Scale.x);
   color = AdjustExposure(color, Scale.z);
   color = AdjustSaturation(color, Amount.x);
+  color = AdjustVibrance(color, Scale.w);
   color = AdjustHighlightsShadows(color, Amount.y, Amount.z);
 
 #ifdef POST_PROCESS_DST_SRGB
   color = linear2srgb(color);
 #endif
 
-  color = AdjustVibrance(color, Scale.w);
   return float4(saturate(color), 1.0);
 #endif
 }

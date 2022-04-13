@@ -42,14 +42,11 @@ namespace {
         XrVector4f Amount; // Saturation, Highlights, Shadows (0..1 params)
     };
 
-    inline XrVector4f MakeXrVector4f(int x, int y, int z, int w) {
-        return {static_cast<float>(x), static_cast<float>(y), static_cast<float>(z), static_cast<float>(w)};
-    }
-
     class ImageProcessor : public IImageProcessor {
       public:
         ImageProcessor(std::shared_ptr<IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice)
-            : m_configManager(configManager), m_device(graphicsDevice) {
+            : m_configManager(configManager), m_device(graphicsDevice),
+              m_userParams(GetUserParams(configManager.get())) {
             createRenderResources();
         }
 
@@ -148,12 +145,13 @@ namespace {
             const auto shadersDir = dllHome / "shaders";
             const auto shaderFile = shadersDir / "postprocess.hlsl";
 
-            m_shader = m_device->createQuadShader(shaderFile, "mainPostProcess", "Image Processor PS", nullptr /*,  shadersDir*/);
+            m_shader = m_device->createQuadShader(
+                shaderFile, "mainPostProcess", "Image Processor PS", nullptr /*,  shadersDir*/);
 
             utilities::shader::Defines defines;
             defines.add("VPRT", true);
-            //defines.add("POST_PROCESS_SRC_SRGB", true);
-            //defines.add("POST_PROCESS_DST_SRGB", true);
+            // defines.add("POST_PROCESS_SRC_SRGB", true);
+            // defines.add("POST_PROCESS_DST_SRGB", true);
 
             m_shaderVPRT = m_device->createQuadShader(
                 shaderFile, "mainPostProcess", "Image Processor VPRT PS", defines.get() /*,  shadersDir*/);
@@ -179,50 +177,85 @@ namespace {
         void updateConfig() {
             using namespace DirectX;
             using namespace xr::math;
+            using namespace utilities;
 
             // const auto saturationMode = m_configManager->getValue(SettingSaturationMode);
             // const auto saturationR = saturationMode ? m_configManager->getValue(SettingSaturationRed) : saturation;
             // const auto saturationG = saturationMode ? m_configManager->getValue(SettingSaturationGreen) : saturation;
             // const auto saturationB = saturationMode ? m_configManager->getValue(SettingSaturationBlue) : saturation;
 
-            ImageProcessorConfig config;
-
-            const auto params1 = LoadXrVector4(MakeXrVector4f(m_configManager->getValue(SettingPostContrast),
-                                                              m_configManager->getValue(SettingPostBrightness),
-                                                              m_configManager->getValue(SettingPostExposure),
-                                                              m_configManager->getValue(SettingPostVibrance)));
-
-            const auto params2 = LoadXrVector4(MakeXrVector4f(m_configManager->getValue(SettingPostSaturation),
-                                                              m_configManager->getValue(SettingPostHighlights),
-                                                              m_configManager->getValue(SettingPostShadows),
-                                                              0));
-
-            const auto sunglasses = std::clamp(m_configManager->getValue(SettingPostSunGlasses), 0, 1);
-
             // standard gains:
             // - reduce contrast and brighness ranges
             // - increase exposure and vibrance effect
             // - limit shadows range
-            auto gains1 = XMVectorSet(0.1f, 0.8f, 4.0f, 3.0f);
-            auto gains2 = XMVectorSet(1.0f, 1.0f, 0.5f, 1.0f);
+            static constexpr XMVECTORF32 kGain[1][2] = {
+                {{{{0.10f, 0.80f, 4.0f, 3.0f}}}, {{{1.0f, 1.0f, 0.50f, 1.0f}}}},
+            };
 
-            // with sunglasses: +15% contrast, -25% exposure, -75% highlights
-            if (sunglasses == 1) {
-                gains1 *= XMVectorSet(1.15f, 1.0f, 0.75f, 1.0f);
-                gains2 *= XMVectorSet(1.0f, 0.25f, 1.0f, 1.0f);
-            }
+            // standard presets
+            static constexpr XMVECTORF32 kBias[to_integral(PostSunGlassesType::MaxValue)][2] = {
+                // none
+                {{{{0.0f, 0.0f, 0.0f, 0.0f}}}, {{{0.0f, 0.0f, 0.0f, 0.0f}}}},
+                
+                // user
+                {{{{0.0f, 0.0f, 0.0f, 0.0f}}}, {{{0.0f, 0.0f, 0.0f, 0.0f}}}},
+                
+                // sunglasses light: +2.5 contrast, -5 bright, -5 expo, -20 highlights
+                {{{{0.025f, -0.05f, -0.05f, 0.0f}}}, {{{0.0f, -0.20f, 0.0f, 0.f}}}},
+                
+                // sunglasses dark: +2.5 contrast, -10 bright, -10 expo, -40 highlights, +5 shad
+                {{{{0.025f, -0.10f, -0.10f, 0.0f}}}, {{{0.0f, -0.40f, 0.0f, 0.05f}}}},
+                
+                // deep night: +2 contrast, -40 bright, +20 expo, +2 vib, +5 sat, -75 high, +5 shad
+                {{{{0.02f, -0.40f, 0.20f, 0.02f}}}, {{{0.05f, -0.75f, 0.05f, 0.05f}}}},
+            };
+
+            ImageProcessorConfig config;
+
+            const auto sunglasses = m_configManager->getEnumValue<PostSunGlassesType>(SettingPostSunGlasses);
+            const auto is_user = sunglasses == PostSunGlassesType::User;
+
+            const auto params1 = is_user ? m_userParams[0]
+                                         : XMINT4(m_configManager->getValue(SettingPostContrast),
+                                                  m_configManager->getValue(SettingPostBrightness),
+                                                  m_configManager->getValue(SettingPostExposure),
+                                                  m_configManager->getValue(SettingPostVibrance));
+
+            const auto params2 = is_user ? m_userParams[1]
+                                         : XMINT4(m_configManager->getValue(SettingPostSaturation),
+                                                  m_configManager->getValue(SettingPostHighlights),
+                                                  m_configManager->getValue(SettingPostShadows),
+                                                  0);
 
             // [0..1000] -> [-1..+1]
-            StoreXrVector4(&config.Scale, (XMVectorSaturate(params1 * 0.001f) * 2.0 - XMVectorSplatOne()) * gains1);
+            const auto scale = XMVectorSaturate(XMLoadSInt4(&params1) * 0.001f + kBias[to_integral(sunglasses)][0]);
+            StoreXrVector4(&config.Scale, (scale * 2.0 - XMVectorSplatOne()) * kGain[0][0]);
 
             // [0..1000] -> [0..1]
-            StoreXrVector4(&config.Amount, XMVectorSaturate(params2 * 0.001f) * gains2);
+            const auto amount = XMVectorSaturate(XMLoadSInt4(&params2) * 0.001f + kBias[to_integral(sunglasses)][1]);
+            StoreXrVector4(&config.Amount, amount * kGain[0][1]);
 
             m_configBuffer->uploadData(&config, sizeof(config));
         }
 
+        static std::array<DirectX::XMINT4, 2> GetUserParams(const IConfigManager* configManager) {
+            using namespace DirectX;
+            if (configManager) {
+                return {XMINT4(configManager->getValue(SettingPostContrast + "User"),
+                               configManager->getValue(SettingPostBrightness + "User"),
+                               configManager->getValue(SettingPostExposure + "User"),
+                               configManager->getValue(SettingPostVibrance + "User")),
+                        XMINT4(configManager->getValue(SettingPostSaturation + "User"),
+                               configManager->getValue(SettingPostHighlights + "User"),
+                               configManager->getValue(SettingPostShadows + "User"),
+                               0)};
+            }
+            return {XMINT4(500, 500, 500, 1000), XMINT4(500, 1000, 0, 0)};
+        }
+
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
+        const std::array<DirectX::XMINT4, 2> m_userParams;
 
         std::shared_ptr<IQuadShader> m_shader;
         std::shared_ptr<IQuadShader> m_shaderVPRT;
