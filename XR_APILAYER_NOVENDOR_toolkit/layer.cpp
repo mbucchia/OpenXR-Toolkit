@@ -150,6 +150,8 @@ namespace {
             m_configManager->setDefault(config::SettingFOVRightRight, 100);
             m_configManager->setDefault(config::SettingPimaxFOVHack, 0);
             m_configManager->setDefault(config::SettingPredictionDampen, 100);
+            m_configManager->setDefault(config::SettingResolutionOverride, 0);
+            m_configManager->setDefault(config::SettingMotionReprojection, 0);
             m_configManager->setEnumDefault(config::SettingMotionReprojectionRate, config::MotionReprojectionRate::Off);
             m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
 
@@ -219,8 +221,8 @@ namespace {
 
             // TODO: This should be auto-generated in the call above, but today our generator only looks at core spec.
             // We may let this fail intentionally and check that the pointer is populated later.
-            // Workaround: the implementation of this function on the Varjo runtime seems to be using a time base than
-            // the timings returned by xrWaitFrame(). Do not use it.
+            // Workaround: the implementation of this function on the Varjo runtime seems to be using a time base
+            // different than the timings returned by xrWaitFrame(). Do not use it.
             if (m_runtimeName.find("Varjo") == std::string::npos) {
                 xrGetInstanceProcAddr(
                     GetXrInstance(),
@@ -231,7 +233,7 @@ namespace {
             m_configManager = config::CreateConfigManager(createInfo->applicationInfo.applicationName);
             setOptionsDefaults();
 
-            // Hook to enable Direct3D 11 Debug layer on request.
+            // Hook to enable Direct3D Debug layer on request.
             if (m_configManager->getValue("debug_layer")) {
                 graphics::HookForD3D11DebugLayer();
                 graphics::EnableD3D12DebugLayer();
@@ -254,8 +256,7 @@ namespace {
                 m_sendInterationProfileEvent = true;
             }
 
-            // For eye tracking, we try to use the Omnicept runtime if it's available. Otherwise, we will try to
-            // fallback to OpenXR.
+            // For eye tracking, we try to use the Omnicept runtime if it's available.
             std::unique_ptr<HP::Omnicept::Client> omniceptClient;
             if (utilities::IsServiceRunning("HP Omnicept")) {
                 try {
@@ -276,6 +277,7 @@ namespace {
                             stateCallback);
 
                     omniceptClient = std::move(omniceptClientBuilder->getBuildClientResultOrThrow());
+                    Log("Detected HP Omnicept support\n");
                     m_isOmniceptDetected = true;
                 } catch (const HP::Omnicept::Abi::HandshakeError& e) {
                     Log("Could not connect to Omnicept runtime HandshakeError: %s\n", e.what());
@@ -288,8 +290,38 @@ namespace {
                 }
             }
 
+            // ...and the Pimax eye tracker if available.
+            {
+                XrSystemGetInfo getInfo{XR_TYPE_SYSTEM_GET_INFO};
+                getInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
+                XrSystemId systemId;
+                CHECK_XRCMD(OpenXrApi::xrGetSystem(GetXrInstance(), &getInfo, &systemId));
+
+                XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES};
+                CHECK_XRCMD(OpenXrApi::xrGetSystemProperties(GetXrInstance(), systemId, &systemProperties));
+                if (std::string(systemProperties.systemName).find("aapvr") != std::string::npos) {
+                    aSeeVRInitParam param;
+                    param.ports[0] = 5777;
+                    Log("--> aSeeVR_connect_server\n");
+                    m_hasPimaxEyeTracker = aSeeVR_connect_server(&param) == ASEEVR_RETURN_CODE::success;
+                    Log("<-- aSeeVR_connect_server\n");
+                    if (m_hasPimaxEyeTracker) {
+                        Log("Detected Pimax Droolon support\n");
+                    }
+                }
+            }
+
+            // ...otherwise, we will try to fallback to OpenXR.
+
+            // TODO: If Foveated Rendering is disabled, maybe do not initialize the eye tracker?
             if (m_configManager->getValue(config::SettingEyeTrackingEnabled)) {
-                m_eyeTracker = input::CreateEyeTracker(*this, m_configManager, std::move(omniceptClient));
+                if (omniceptClient) {
+                    m_eyeTracker = input::CreateOmniceptEyeTracker(*this, m_configManager, std::move(omniceptClient));
+                } else if (m_hasPimaxEyeTracker) {
+                    m_eyeTracker = input::CreatePimaxEyeTracker(*this, m_configManager);
+                } else {
+                    m_eyeTracker = input::CreateEyeTracker(*this, m_configManager);
+                }
             }
 
             return XR_SUCCESS;
@@ -297,7 +329,7 @@ namespace {
 
         ~OpenXrLayer() override {
             // We cleanup after ourselves (again) to avoid leaving state registry entries.
-            utilities::UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate::Off);
+            utilities::ClearWindowsMixedRealityReprojection();
 
             graphics::UnhookForD3D11DebugLayer();
         }
@@ -306,6 +338,8 @@ namespace {
             const std::string apiName(name);
             XrResult result;
 
+            // TODO: This should be auto-generated by the dispatch layer, but today our generator only looks at core
+            // spec. We may let this fail intentionally and check that the pointer is populated later.
             if (apiName == "xrGetVisibilityMaskKHR") {
                 result = m_xrGetInstanceProcAddr(instance, name, function);
                 m_xrGetVisibilityMaskKHR = reinterpret_cast<PFN_xrGetVisibilityMaskKHR>(*function);
@@ -322,7 +356,7 @@ namespace {
                 m_vrSystemId == XR_NULL_SYSTEM_ID) {
                 const bool isDeveloper = m_configManager->getValue(config::SettingDeveloper);
 
-                // Store the actual OpenXR resolution.
+                // Retrieve the actual OpenXR resolution.
                 XrViewConfigurationView views[utilities::ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW, nullptr},
                                                                        {XR_TYPE_VIEW_CONFIGURATION_VIEW, nullptr}};
                 uint32_t viewCount;
@@ -334,7 +368,12 @@ namespace {
                                                                          views));
 
                 m_displayWidth = views[0].recommendedImageRectWidth;
+                m_configManager->setDefault(config::SettingResolutionWidth, m_displayWidth);
                 m_displayHeight = views[0].recommendedImageRectHeight;
+
+                m_resolutionHeightRatio = (float)m_displayHeight / m_displayWidth;
+                m_maxDisplayWidth = std::min(views[0].maxImageRectWidth,
+                                             (uint32_t)(views[0].maxImageRectHeight / m_resolutionHeightRatio));
 
                 // Check for hand and eye tracking support.
                 XrSystemHandTrackingPropertiesEXT handTrackingSystemProperties{
@@ -359,19 +398,23 @@ namespace {
                     TLArg(eyeTrackingSystemProperties.supportsEyeGazeInteraction, "SupportsEyeGazeInteraction"));
                 Log("Using OpenXR system %s\n", m_systemName.c_str());
 
-                // Detect Pimax systems.
+                // Detect when the Pimax FOV hack is applicable.
                 m_supportFOVHack =
                     isDeveloper || (m_applicationName == "FS2020" && m_systemName.find("aapvr") != std::string::npos);
 
+                const auto isWMR = m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
+                m_supportMotionReprojectionLock = isWMR;
+
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
                 m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction || m_isOmniceptDetected ||
+                                       m_hasPimaxEyeTracker ||
                                        m_configManager->getValue(config::SettingEyeDebugWithController);
 
                 // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
                 // will (falsely) advertise hand tracking support. Check for the Ultraleap layer in this case.
                 if (m_supportHandTracking &&
-                    (!isDeveloper && (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck) &&
-                                      m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos))) {
+                    (!isDeveloper &&
+                     (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck) && isWMR))) {
                     bool hasUltraleapLayer = false;
                     for (const auto& layer : GetUpstreamLayers()) {
                         if (layer == "XR_APILAYER_ULTRALEAP_hand_tracking") {
@@ -387,8 +430,8 @@ namespace {
                 // Workaround: the WMR runtime supports emulating eye tracking for development through
                 // XR_EXT_eye_gaze_interaction, which will (falsely) advertise eye tracking support. Disable it.
                 if (m_supportEyeTracking &&
-                    (!isDeveloper && (!m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck) &&
-                                      m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos))) {
+                    (!isDeveloper &&
+                     (!m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck) && isWMR))) {
                     Log("Ignoring XR_EXT_eye_gaze_interaction for %s\n", m_runtimeName.c_str());
                     m_supportEyeTracking = false;
                 }
@@ -401,6 +444,14 @@ namespace {
                 }
                 if (!m_supportEyeTracking) {
                     m_eyeTracker.reset();
+                }
+
+                // Apply override to the target resolution.
+                if (m_configManager->getValue(config::SettingResolutionOverride)) {
+                    m_displayWidth = m_configManager->getValue(config::SettingResolutionWidth);
+                    m_displayHeight = (uint32_t)(m_displayWidth * m_resolutionHeightRatio);
+
+                    Log("Overriding OpenXR resolution: %ux%u\n", m_displayWidth, m_displayHeight);
                 }
 
                 // Remember the XrSystemId to use.
@@ -440,25 +491,29 @@ namespace {
                     break;
                 }
 
-                if (inputWidth != m_displayWidth || inputHeight != m_displayHeight) {
-                    // Override the recommended image size to account for scaling.
-                    for (uint32_t i = 0; i < *viewCountOutput; i++) {
-                        views[i].recommendedImageRectWidth = inputWidth;
-                        views[i].recommendedImageRectHeight = inputHeight;
+                // Override the recommended image size to account for scaling.
+                for (uint32_t i = 0; i < *viewCountOutput; i++) {
+                    views[i].recommendedImageRectWidth = inputWidth;
+                    views[i].recommendedImageRectHeight = inputHeight;
+                }
 
-                        if (i == 0) {
-                            Log("Upscaling from %ux%u to %ux%u (%u%%)\n",
-                                views[i].recommendedImageRectWidth,
-                                views[i].recommendedImageRectHeight,
-                                m_displayWidth,
-                                m_displayHeight,
-                                (unsigned int)((((float)m_displayWidth / views[i].recommendedImageRectWidth) + 0.001f) *
-                                               100));
-                        }
-                    }
+                if (inputWidth != m_displayWidth || inputHeight != m_displayHeight) {
+                    Log("Upscaling from %ux%u to %ux%u (%u%%)\n",
+                        inputWidth,
+                        inputHeight,
+                        m_displayWidth,
+                        m_displayHeight,
+                        (unsigned int)((((float)m_displayWidth / inputWidth) + 0.001f) * 100));
                 } else {
                     Log("Using OpenXR resolution (no upscaling): %ux%u\n", m_displayWidth, m_displayHeight);
                 }
+
+                TraceLoggingWrite(g_traceProvider,
+                                  "xrEnumerateViewConfigurationViews",
+                                  TLArg(inputWidth, "AppResolutionX"),
+                                  TLArg(inputHeight, "AppResolutionY"),
+                                  TLArg(m_displayWidth, "SystemResolutionX"),
+                                  TLArg(m_displayHeight, "SystemResolutionY"));
             }
 
             return result;
@@ -467,6 +522,12 @@ namespace {
         XrResult xrCreateSession(XrInstance instance,
                                  const XrSessionCreateInfo* createInfo,
                                  XrSession* session) override {
+            // Force motion reprojection if requested.
+            if (m_supportMotionReprojectionLock) {
+                utilities::ToggleWindowsMixedRealityReprojection(
+                    m_configManager->getValue(config::SettingMotionReprojection));
+            }
+
             const XrResult result = OpenXrApi::xrCreateSession(instance, createInfo, session);
             if (XR_SUCCEEDED(result) && isVrSystem(createInfo->systemId)) {
                 // Get the graphics device.
@@ -609,8 +670,6 @@ namespace {
                     {
                         const bool isPredictionDampeningSupported =
                             xrConvertWin32PerformanceCounterToTimeKHR != nullptr;
-                        const bool isMotionReprojectionRateSupported =
-                            m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
                         const auto displayRefreshRate =
                             utilities::RegGetDword(
                                 HKEY_LOCAL_MACHINE,
@@ -627,7 +686,9 @@ namespace {
                                                     m_keyModifiers,
                                                     m_supportHandTracking,
                                                     isPredictionDampeningSupported,
-                                                    isMotionReprojectionRateSupported,
+                                                    m_maxDisplayWidth,
+                                                    m_resolutionHeightRatio,
+                                                    m_supportMotionReprojectionLock,
                                                     displayRefreshRate,
                                                     m_variableRateShader ? m_variableRateShader->getMaxRate() : 0,
                                                     m_supportEyeTracking,
@@ -668,7 +729,7 @@ namespace {
             const XrResult result = OpenXrApi::xrDestroySession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 // We cleanup after ourselves as soon as possible to avoid leaving state registry entries.
-                utilities::UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate::Off);
+                utilities::ClearWindowsMixedRealityReprojection();
 
                 // Wait for any pending operation to complete.
                 if (m_graphicsDevice) {
@@ -730,6 +791,15 @@ namespace {
             const bool useSwapchain = createInfo->usageFlags & (XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT |
                                                                 XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
+            TraceLoggingWrite(g_traceProvider,
+                              "xrCreateSwapchain_AppSwapchain",
+                              TLArg(createInfo->width, "ResolutionX"),
+                              TLArg(createInfo->height, "ResolutionY"),
+                              TLArg(createInfo->arraySize, "ArraySize"),
+                              TLArg(createInfo->mipCount, "MipCount"),
+                              TLArg(createInfo->sampleCount, "SampleCount"),
+                              TLArg(createInfo->format, "Format"),
+                              TLArg(createInfo->usageFlags, "Usage"));
             Log("Creating swapchain with dimensions=%ux%u, arraySize=%u, mipCount=%u, sampleCount=%u, format=%d, "
                 "usage=0x%x\n",
                 createInfo->width,
@@ -790,18 +860,18 @@ namespace {
                     {
                         D3D11_TEXTURE2D_DESC desc;
                         d3dImages[0].texture->GetDesc(&desc);
-                        Log("Swapchain image descriptor:\n");
-                        Log("  w=%u h=%u arraySize=%u format=%u\n",
-                            desc.Width,
-                            desc.Height,
-                            desc.ArraySize,
-                            desc.Format);
-                        Log("  mipCount=%u sampleCount=%u\n", desc.MipLevels, desc.SampleDesc.Count);
-                        Log("  usage=0x%x bindFlags=0x%x cpuFlags=0x%x misc=0x%x\n",
-                            desc.Usage,
-                            desc.BindFlags,
-                            desc.CPUAccessFlags,
-                            desc.MiscFlags);
+                        TraceLoggingWrite(g_traceProvider,
+                                          "xrCreateSwapchain_RuntimeSwapchain",
+                                          TLArg(desc.Width, "ResolutionX"),
+                                          TLArg(desc.Height, "ResolutionY"),
+                                          TLArg(desc.ArraySize, "ArraySize"),
+                                          TLArg(desc.MipLevels, "MipCount"),
+                                          TLArg(desc.SampleDesc.Count, "SampleCount"),
+                                          TLArg((int)desc.Format, "Format"),
+                                          TLArg((int)desc.Usage, "Usage"),
+                                          TLArg(desc.BindFlags, "BindFlags"),
+                                          TLArg(desc.CPUAccessFlags, "CPUAccessFlags"),
+                                          TLArg(desc.MiscFlags, "MiscFlags"));
 
                         // Make sure to create the underlying texture typeless.
                         overrideFormat = (int64_t)desc.Format;
@@ -830,14 +900,15 @@ namespace {
                     // Dump the descriptor for the first texture returned by the runtime for debug purposes.
                     {
                         const auto& desc = d3dImages[0].texture->GetDesc();
-                        Log("Swapchain image descriptor:\n");
-                        Log("  w=%u h=%u arraySize=%u format=%u\n",
-                            desc.Width,
-                            desc.Height,
-                            desc.DepthOrArraySize,
-                            desc.Format);
-                        Log("  mipCount=%u sampleCount=%u\n", desc.MipLevels, desc.SampleDesc.Count);
-                        Log("  flags=0x%x\n", desc.Flags);
+                        TraceLoggingWrite(g_traceProvider,
+                                          "xrCreateSwapchain_RuntimeSwapchain",
+                                          TLArg(desc.Width, "ResolutionX"),
+                                          TLArg(desc.Height, "ResolutionY"),
+                                          TLArg(desc.DepthOrArraySize, "ArraySize"),
+                                          TLArg(desc.MipLevels, "MipCount"),
+                                          TLArg(desc.SampleDesc.Count, "SampleCount"),
+                                          TLArg((int)desc.Format, "Format"),
+                                          TLArg((int)desc.Flags, "Flags"));
 
                         // Make sure to create the underlying texture typeless.
                         overrideFormat = (int64_t)desc.Format;
@@ -1361,21 +1432,81 @@ namespace {
         XrResult xrGetActionStatePose(XrSession session,
                                       const XrActionStateGetInfo* getInfo,
                                       XrActionStatePose* state) override {
-            if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO) {
+            if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
+                state->type == XR_TYPE_ACTION_STATE_POSE) {
+                m_performanceCounters.handTrackingTimer->start();
                 const std::string fullPath = m_handTracker->getFullPath(getInfo->action, getInfo->subactionPath);
-                if (state->type == XR_TYPE_ACTION_STATE_POSE) {
-                    if (fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") {
-                        state->isActive = m_handTracker->isTrackedRecently(input::Hand::Left);
-                        return XR_SUCCESS;
-                    } else if (fullPath == "/user/hand/right/input/grip/pose" ||
-                               fullPath == "/user/hand/right/input/aim/pose") {
-                        state->isActive = m_handTracker->isTrackedRecently(input::Hand::Right);
-                        return XR_SUCCESS;
-                    }
+                bool supportedPath = false;
+                input::Hand hand = input::Hand::Left;
+                if (fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") {
+                    supportedPath = true;
+                    hand = input::Hand::Left;
+                } else if (fullPath == "/user/hand/right/input/grip/pose" ||
+                           fullPath == "/user/hand/right/input/aim/pose") {
+                    supportedPath = true;
+                    hand = input::Hand::Right;
+                }
+                if (supportedPath) {
+                    state->isActive = m_handTracker->isTrackedRecently(hand);
+                    m_performanceCounters.handTrackingTimer->stop();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                    return XR_SUCCESS;
                 }
             }
 
             return OpenXrApi::xrGetActionStatePose(session, getInfo, state);
+        }
+
+        XrResult xrApplyHapticFeedback(XrSession session,
+                                       const XrHapticActionInfo* hapticActionInfo,
+                                       const XrHapticBaseHeader* hapticFeedback) override {
+            if (m_handTracker && isVrSession(session) && hapticActionInfo->type == XR_TYPE_HAPTIC_ACTION_INFO &&
+                hapticFeedback->type == XR_TYPE_HAPTIC_VIBRATION) {
+                m_performanceCounters.handTrackingTimer->start();
+                const std::string fullPath =
+                    m_handTracker->getFullPath(hapticActionInfo->action, hapticActionInfo->subactionPath);
+                bool supportedPath = false;
+                input::Hand hand = input::Hand::Left;
+                if (fullPath == "/user/hand/left/output/haptic") {
+                    supportedPath = true;
+                    hand = input::Hand::Left;
+                } else if (fullPath == "/user/hand/right/output/haptic") {
+                    supportedPath = true;
+                    hand = input::Hand::Right;
+                }
+                if (supportedPath) {
+                    auto haptics = reinterpret_cast<const XrHapticVibration*>(hapticFeedback);
+                    m_handTracker->handleOutput(hand, haptics->frequency, haptics->duration);
+                    m_performanceCounters.handTrackingTimer->stop();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                }
+            }
+
+            return OpenXrApi::xrApplyHapticFeedback(session, hapticActionInfo, hapticFeedback);
+        }
+
+        XrResult xrStopHapticFeedback(XrSession session, const XrHapticActionInfo* hapticActionInfo) override {
+            if (m_handTracker && isVrSession(session) && hapticActionInfo->type == XR_TYPE_HAPTIC_ACTION_INFO) {
+                m_performanceCounters.handTrackingTimer->start();
+                const std::string fullPath =
+                    m_handTracker->getFullPath(hapticActionInfo->action, hapticActionInfo->subactionPath);
+                bool supportedPath = false;
+                input::Hand hand = input::Hand::Left;
+                if (fullPath == "/user/hand/left/output/haptic") {
+                    supportedPath = true;
+                    hand = input::Hand::Left;
+                } else if (fullPath == "/user/hand/right/output/haptic") {
+                    supportedPath = true;
+                    hand = input::Hand::Right;
+                }
+                if (supportedPath) {
+                    m_handTracker->handleOutput(hand, NAN, 0);
+                    m_performanceCounters.handTrackingTimer->stop();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                }
+            }
+
+            return OpenXrApi::xrStopHapticFeedback(session, hapticActionInfo);
         }
 
         XrResult xrWaitFrame(XrSession session,
@@ -1610,7 +1741,7 @@ namespace {
 
             // Forward the motion reprojection locking values to WMR.
             if (m_configManager->hasChanged(config::SettingMotionReprojectionRate)) {
-                utilities::UpdateWindowsMixedRealityReprojection(
+                utilities::UpdateWindowsMixedRealityReprojectionRate(
                     m_configManager->getEnumValue<config::MotionReprojectionRate>(
                         config::SettingMotionReprojectionRate));
             }
@@ -1963,10 +2094,14 @@ namespace {
         XrSession m_vrSession{XR_NULL_HANDLE};
         uint32_t m_displayWidth{0};
         uint32_t m_displayHeight{0};
+        float m_resolutionHeightRatio{1.f};
+        uint32_t m_maxDisplayWidth{0};
         bool m_supportHandTracking{false};
         bool m_supportEyeTracking{false};
         bool m_supportFOVHack{false};
+        bool m_supportMotionReprojectionLock{false};
         bool m_isOmniceptDetected{false};
+        bool m_hasPimaxEyeTracker{false};
 
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;

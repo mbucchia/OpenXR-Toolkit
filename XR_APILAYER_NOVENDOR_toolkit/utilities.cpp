@@ -86,7 +86,7 @@ namespace toolkit::config {
     DECLARE_ENUM_TO_STRING_VIEW(NoYesType, {"No", "Yes"})
     DECLARE_ENUM_TO_STRING_VIEW(OverlayType, {"Off", "FPS", "Advanced", "Developer"})
     DECLARE_ENUM_TO_STRING_VIEW(MenuFontSize, {"Small", "Medium", "Large"})
-    DECLARE_ENUM_TO_STRING_VIEW(MenuTimeout, {"Short", "Medium", "Long"})
+    DECLARE_ENUM_TO_STRING_VIEW(MenuTimeout, {"Short", "Medium", "Long", "None"})
     DECLARE_ENUM_TO_STRING_VIEW(ScalingType, {"Off", "NIS", "FSR"})
     DECLARE_ENUM_TO_STRING_VIEW(MipMapBias, {"Off", "Conservative", "All"})
     DECLARE_ENUM_TO_STRING_VIEW(HandTrackingEnabled, {"Off", "Both", "Left", "Right"})
@@ -172,7 +172,12 @@ namespace toolkit::utilities {
         return isPressed && (!wasPressed || isRepeat);
     }
 
-    void UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate rate) {
+    void ToggleWindowsMixedRealityReprojection(bool enable) {
+        utilities::RegSetDword(
+            HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MotionVectorEnabled", enable ? 2 /* Always on */ : 0);
+    }
+
+    void UpdateWindowsMixedRealityReprojectionRate(config::MotionReprojectionRate rate) {
         if (rate != config::MotionReprojectionRate::Off) {
             utilities::RegSetDword(
                 HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval", (DWORD)rate);
@@ -182,6 +187,12 @@ namespace toolkit::utilities {
             utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
             utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
         }
+    }
+
+    void ClearWindowsMixedRealityReprojection() {
+        utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MotionVectorEnabled");
+        utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
+        utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
     }
 
     // https://stackoverflow.com/questions/7808085/how-to-get-the-status-of-a-service-programmatically-running-stopped

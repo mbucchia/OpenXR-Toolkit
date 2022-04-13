@@ -161,7 +161,7 @@ namespace {
         bool m_isTab;
     };
 
-    enum class MenuTab { Performance = 0, Appearance, Inputs, Menu, Developer };
+    enum class MenuTab { Performance = 0, Appearance, Inputs, System, Menu, Developer };
 
     // The logic of our menus.
     class MenuHandler : public IMenuHandler {
@@ -173,6 +173,8 @@ namespace {
                     std::vector<int>& keyModifiers,
                     bool isHandTrackingSupported,
                     bool isPredictionDampeningSupported,
+                    uint32_t maxDisplayWidth,
+                    float resolutionHeightRatio,
                     bool isMotionReprojectionRateSupported,
                     uint8_t displayRefreshRate,
                     uint8_t variableRateShaderMaxRate,
@@ -181,6 +183,7 @@ namespace {
             : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
               m_displayHeight(displayHeight), m_keyModifiers(keyModifiers),
               m_isHandTrackingSupported(isHandTrackingSupported), m_isEyeTrackingSupported(isEyeTrackingSupported),
+              m_resolutionHeightRatio(resolutionHeightRatio),
               m_isMotionReprojectionRateSupported(isMotionReprojectionRateSupported),
               m_displayRefreshRate(displayRefreshRate), m_supportFOVHack(isPimaxFovHackSupported) {
             m_lastInput = std::chrono::steady_clock::now();
@@ -228,7 +231,8 @@ namespace {
             }
 
             // Prepare the tabs.
-            static const std::string_view tabs[] = {"Performance", "Appearance", "Inputs", "Menu", "Developer"};
+            static const std::string_view tabs[] = {
+                "Performance", "Appearance", "Inputs", "System", "Menu", "Developer"};
             m_menuEntries.push_back({MenuIndent::NoIndent,
                                      "",
                                      MenuEntryType::Tabs,
@@ -242,9 +246,10 @@ namespace {
             m_menuEntries.push_back({MenuIndent::NoIndent, "", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
             m_menuEntries.back().visible = true; /* Always visible. */
 
-            setupPerformanceTab(isMotionReprojectionRateSupported, displayRefreshRate, variableRateShaderMaxRate);
+            setupPerformanceTab(variableRateShaderMaxRate);
             setupAppearanceTab(isPimaxFovHackSupported);
             setupInputsTab(isPredictionDampeningSupported);
+            setupSystemTab(maxDisplayWidth);
             setupMenuTab();
             setupDeveloperTab();
 
@@ -393,7 +398,7 @@ namespace {
             };
             const float fontSize = fontSizes[m_configManager->getValue(SettingMenuFontSize)];
 
-            const double timeouts[to_integral(MenuTimeout::MaxValue)] = {3.0, 12.0, 60.0};
+            const double timeouts[to_integral(MenuTimeout::MaxValue)] = {3.0, 12.0, 60.0, INFINITY};
             const double timeout =
                 m_state == MenuState::Splash ? 10.0 : timeouts[m_configManager->getValue(SettingMenuTimeout)];
 
@@ -569,7 +574,7 @@ namespace {
                         break;
 
                     case MenuEntryType::ExitButton:
-                        if (duration > 1.0) {
+                        if (duration > 1.0 && duration <= 60.0) {
                             left += m_device->drawString(fmt::format("({}s)", (int)(std::ceil(timeout - duration))),
                                                          TextStyle::Normal,
                                                          fontSize,
@@ -768,10 +773,12 @@ namespace {
                             top += 1.05f * fontSize;
 
 #define GESTURE_STATE(label, name)                                                                                     \
-    m_device->drawString(                                                                                              \
-        fmt::format(label ": {:.2f}/{:.2f}", m_gesturesState.name##Value[0], m_gesturesState.name##Value[1]),          \
-        OVERLAY_COMMON);                                                                                               \
-    top += 1.05f * fontSize;
+    if (!isnan(m_gesturesState.name##Value[0]) || !isnan(m_gesturesState.name##Value[1])) {                            \
+        m_device->drawString(                                                                                          \
+            fmt::format(label ": {:.2f}/{:.2f}", m_gesturesState.name##Value[0], m_gesturesState.name##Value[1]),      \
+            OVERLAY_COMMON);                                                                                           \
+        top += 1.05f * fontSize;                                                                                       \
+    }
 
                             if (isHandTrackingEnabled()) {
                                 GESTURE_STATE("pinch", pinch);
@@ -783,6 +790,17 @@ namespace {
                                 GESTURE_STATE("palm", palmTap);
                                 GESTURE_STATE("tiptap", indexTipTap);
                                 GESTURE_STATE("cust1", custom1);
+
+                                m_device->drawString(fmt::format("hptf: {:.3f}/{:.3f}",
+                                                                 m_gesturesState.hapticsFrequency[0],
+                                                                 m_gesturesState.hapticsFrequency[1]),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
+                                m_device->drawString(fmt::format("hptd: {:.1f}/{:.1f}",
+                                                                 m_gesturesState.hapticsDurationUs[0] / 1000000.0f,
+                                                                 m_gesturesState.hapticsDurationUs[1] / 1000000.0f),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
 
                                 m_device->drawString(fmt::format("loss: {}/{}",
                                                                  m_gesturesState.numTrackingLosses[0] % 256,
@@ -802,8 +820,28 @@ namespace {
                                                      OVERLAY_COMMON);
                                 top += 1.05f * fontSize;
                             }
-
 #undef GESTURE_STATE
+
+                            if (isEyeTrackingEnabled()) {
+                                m_device->drawString(fmt::format("gaze: {:.3f},{:.3f},{:.3f}",
+                                                                 m_eyeGazeState.gazeRay.x,
+                                                                 m_eyeGazeState.gazeRay.y,
+                                                                 m_eyeGazeState.gazeRay.z),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
+
+                                m_device->drawString(fmt::format("eye.l: {:.3f},{:.3f}",
+                                                                 m_eyeGazeState.leftPoint.x,
+                                                                 m_eyeGazeState.leftPoint.y),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
+
+                                m_device->drawString(fmt::format("eye.r: {:.3f},{:.3f}",
+                                                                 m_eyeGazeState.rightPoint.x,
+                                                                 m_eyeGazeState.rightPoint.y),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
+                            }
                         }
                     }
                 }
@@ -834,9 +872,7 @@ namespace {
         }
 
       private:
-        void setupPerformanceTab(bool isMotionReprojectionRateSupported,
-                                 uint8_t displayRefreshRate,
-                                 uint8_t variableRateShaderMaxRate) {
+        void setupPerformanceTab(uint8_t variableRateShaderMaxRate) {
             MenuGroup performanceTab(
                 m_configManager,
                 m_menuGroups,
@@ -888,11 +924,10 @@ namespace {
             } /* visible condition */);
             m_menuEntries.push_back(
                 {MenuIndent::SubGroupIndent, "Size", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
-                     // We don't even use value, the utility function below will query it.
                      return fmt::format("{}% ({}x{})",
                                         value,
-                                        GetScaledInputSize(m_displayWidth, value, 2),
-                                        GetScaledInputSize(m_displayHeight, value, 2));
+                                        GetScaledInputSize(getDisplayWidth(), value, 2),
+                                        GetScaledInputSize(getDisplayHeight(), value, 2));
                  }});
             m_menuEntries.back().noCommitDelay = true;
             proportionalGroup.finalize();
@@ -903,20 +938,20 @@ namespace {
             } /* visible condition */);
             m_menuEntries.push_back(
                 {MenuIndent::SubGroupIndent, "Width", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
-                     return fmt::format("{}% ({} pixels)", value, GetScaledInputSize(m_displayWidth, value, 2));
+                     return fmt::format("{}% ({} pixels)", value, GetScaledInputSize(getDisplayWidth(), value, 2));
                  }});
             m_menuEntries.back().noCommitDelay = true;
 
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Height",
-                                     MenuEntryType::Slider,
-                                     SettingAnamorphic,
-                                     25,
-                                     400,
-                                     [&](int value) {
-                                         return fmt::format(
-                                             "{}% ({} pixels)", value, GetScaledInputSize(m_displayHeight, value, 2));
-                                     }});
+            m_menuEntries.push_back(
+                {MenuIndent::SubGroupIndent,
+                 "Height",
+                 MenuEntryType::Slider,
+                 SettingAnamorphic,
+                 25,
+                 400,
+                 [&](int value) {
+                     return fmt::format("{}% ({} pixels)", value, GetScaledInputSize(getDisplayHeight(), value, 2));
+                 }});
             m_menuEntries.back().noCommitDelay = true;
             anamorphicGroup.finalize();
 
@@ -939,21 +974,6 @@ namespace {
                 m_menuEntries.back().expert = true;
             }
             upscalingGroup.finalize();
-
-            // Motion Reprojection Settings.
-            if (isMotionReprojectionRateSupported) {
-                m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                         "Lock motion reprojection",
-                                         MenuEntryType::Slider,
-                                         SettingMotionReprojectionRate,
-                                         (int)MotionReprojectionRate::Off,
-                                         MenuEntry::LastVal<MotionReprojectionRate>(),
-                                         [displayRefreshRate](int value) {
-                                             return (MotionReprojectionRate)value == MotionReprojectionRate::Off
-                                                        ? "Unlocked"
-                                                        : fmt::format("{:.1f} FPS", (float)displayRefreshRate / value);
-                                         }});
-            }
 
             // Fixed Foveated Rendering (VRS) Settings.
             if (variableRateShaderMaxRate) {
@@ -1411,6 +1431,67 @@ namespace {
             inputsTab.finalize();
         }
 
+        void setupSystemTab(uint32_t maxDisplayWidth) {
+            MenuGroup systemTab(
+                m_configManager,
+                m_menuGroups,
+                m_menuEntries,
+                [&] { return m_currentTab == MenuTab::System; } /* visible condition */,
+                true /* isTab */);
+
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Override resolution",
+                                     MenuEntryType::Choice,
+                                     SettingResolutionOverride,
+                                     0,
+                                     MenuEntry::LastVal<NoYesType>(),
+                                     MenuEntry::FmtEnum<NoYesType>});
+            MenuGroup resolutionGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+                return m_configManager->peekValue(SettingResolutionOverride);
+            } /* visible condition */);
+            m_originalResolutionWidth = m_displayWidth;
+            m_menuEntries.push_back(
+                {MenuIndent::SubGroupIndent,
+                 "Display resolution (per eye)",
+                 MenuEntryType::Slider,
+                 SettingResolutionWidth,
+                 500,
+                 (int)maxDisplayWidth,
+                 [&](int value) { return fmt::format("{}x{}", value, (uint32_t)(value * m_resolutionHeightRatio)); }});
+            m_menuEntries.back().acceleration = 10;
+            resolutionGroup.finalize();
+
+            if (m_isMotionReprojectionRateSupported) {
+                m_originalMotionReprojectionEnabled = isMotionReprojectionEnabled();
+                m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                         "Motion reprojection",
+                                         MenuEntryType::Choice,
+                                         SettingMotionReprojection,
+                                         0,
+                                         MenuEntry::LastVal<NoYesType>(),
+                                         MenuEntry::FmtEnum<NoYesType>});
+                MenuGroup motionReprojectionGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+                    return isMotionReprojectionEnabled();
+                } /* visible condition */);
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                         "Lock motion reprojection",
+                                         MenuEntryType::Slider,
+                                         SettingMotionReprojectionRate,
+                                         (int)MotionReprojectionRate::Off,
+                                         MenuEntry::LastVal<MotionReprojectionRate>(),
+                                         [&](int value) {
+                                             return (MotionReprojectionRate)value == MotionReprojectionRate::Off
+                                                        ? "Unlocked"
+                                                        : fmt::format("{:.1f} FPS",
+                                                                      (float)m_displayRefreshRate / value);
+                                         }});
+                motionReprojectionGroup.finalize();
+            }
+
+            // Must be kept last.
+            systemTab.finalize();
+        }
+
         void setupMenuTab() {
             MenuGroup menuTab(
                 m_configManager,
@@ -1524,6 +1605,22 @@ namespace {
             return m_isEyeTrackingSupported && m_configManager->peekValue(SettingEyeTrackingEnabled);
         }
 
+        bool isMotionReprojectionEnabled() const {
+            return m_isMotionReprojectionRateSupported && m_configManager->peekValue(SettingMotionReprojection);
+        }
+
+        uint32_t getDisplayWidth() const {
+            return m_configManager->peekValue(SettingResolutionOverride)
+                       ? m_configManager->peekValue(SettingResolutionWidth)
+                       : m_displayWidth;
+        }
+
+        uint32_t getDisplayHeight() const {
+            return m_configManager->peekValue(SettingResolutionOverride)
+                       ? (uint32_t)(m_configManager->peekValue(SettingResolutionWidth) * m_resolutionHeightRatio)
+                       : m_displayHeight;
+        }
+
         int getCurrentScaling() const {
             return m_configManager->peekValue(SettingScaling);
         }
@@ -1543,9 +1640,17 @@ namespace {
                 return true;
             }
 
-            if (m_originalScalingType != ScalingType::None) {
-                return m_originalScalingValue != getCurrentScaling() ||
-                       m_originalAnamorphicValue != getCurrentAnamorphic();
+            if ((m_originalScalingType != ScalingType::None) && (m_originalScalingValue != getCurrentScaling() ||
+                                                                 m_originalAnamorphicValue != getCurrentAnamorphic())) {
+                return true;
+            }
+
+            if (m_originalResolutionWidth != m_configManager->peekValue(SettingResolutionWidth)) {
+                return true;
+            }
+
+            if (m_originalMotionReprojectionEnabled != isMotionReprojectionEnabled()) {
+                return true;
             }
 
             return false;
@@ -1557,6 +1662,7 @@ namespace {
         const uint32_t m_displayHeight;
         const bool m_isHandTrackingSupported;
         const bool m_isEyeTrackingSupported;
+        const float m_resolutionHeightRatio;
         const bool m_isMotionReprojectionRateSupported;
         const uint8_t m_displayRefreshRate;
         const bool m_supportFOVHack;
@@ -1602,6 +1708,8 @@ namespace {
 
         bool m_originalHandTrackingEnabled{false};
         bool m_originalEyeTrackingEnabled{false};
+        int m_originalResolutionWidth{0};
+        bool m_originalMotionReprojectionEnabled{false};
         bool m_needRestart{false};
 
         mutable MenuState m_state{MenuState::NotVisible};
@@ -1611,7 +1719,7 @@ namespace {
         mutable float m_menuHeaderHeight{0.0f};
         mutable bool m_resetTextLayout{true};
         mutable bool m_resetBackgroundLayout{true};
-    };
+    }; // namespace
 
     template <typename E>
     int MenuEntry::LastVal() {
@@ -1649,6 +1757,8 @@ namespace toolkit::menu {
                                                     std::vector<int>& keyModifiers,
                                                     bool isHandTrackingSupported,
                                                     bool isPredictionDampeningSupported,
+                                                    uint32_t maxDisplayWidth,
+                                                    float resolutionHeightRatio,
                                                     bool isMotionReprojectionRateSupported,
                                                     uint8_t displayRefreshRate,
                                                     uint8_t variableRateShaderMaxRate,
@@ -1661,6 +1771,8 @@ namespace toolkit::menu {
                                              keyModifiers,
                                              isHandTrackingSupported,
                                              isPredictionDampeningSupported,
+                                             maxDisplayWidth,
+                                             resolutionHeightRatio,
                                              isMotionReprojectionRateSupported,
                                              displayRefreshRate,
                                              variableRateShaderMaxRate,

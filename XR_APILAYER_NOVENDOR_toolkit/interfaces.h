@@ -126,6 +126,7 @@ namespace toolkit {
         const std::string SettingPredictionDampen = "prediction_dampen";
         const std::string SettingBypassMsftHandInteractionCheck = "allow_msft_hand_interaction";
         const std::string SettingBypassMsftEyeGazeInteractionCheck = "allow_msft_eye_gaze_interaction";
+        const std::string SettingMotionReprojection = "motion_reprojection";
         const std::string SettingMotionReprojectionRate = "motion_reprojection_rate";
         const std::string SettingVRS = "vrs";
         const std::string SettingVRSQuality = "vrs_quality";
@@ -162,12 +163,14 @@ namespace toolkit {
         const std::string SettingEyeProjectionDistance = "eye_projection";
         const std::string SettingEyeDebug = "eye_debug";
         const std::string SettingEyeDebugWithController = "eye_controller_debug";
+        const std::string SettingResolutionOverride = "override_resolution";
+        const std::string SettingResolutionWidth = "resolution_width";
 
         enum class OffOnType { Off = 0, On, MaxValue };
         enum class NoYesType { No = 0, Yes, MaxValue };
         enum class OverlayType { None = 0, FPS, Advanced, Developer, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
-        enum class MenuTimeout { Small = 0, Medium, Large, MaxValue };
+        enum class MenuTimeout { Small = 0, Medium, Large, None, MaxValue };
         enum class ScalingType { None = 0, NIS, FSR, MaxValue };
         enum class MipMapBias { Off = 0, Anisotropic, All, MaxValue };
         enum class HandTrackingEnabled { Off = 0, Both, Left, Right, MaxValue };
@@ -695,6 +698,8 @@ namespace toolkit {
             int64_t handposeAgeUs[2]{0, 0};
             size_t cacheSize[2]{0, 0};
             uint32_t numTrackingLosses[2]{0, 0};
+            float hapticsFrequency[2]{NAN, NAN};
+            int64_t hapticsDurationUs[2]{-2, -2};
         };
 
         struct IHandTracker {
@@ -728,6 +733,8 @@ namespace toolkit {
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateBoolean& state) const = 0;
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateFloat& state) const = 0;
             virtual bool isTrackedRecently(Hand hand) const = 0;
+
+            virtual void handleOutput(Hand hand, float frequency, XrDuration duration) = 0;
 
             virtual const GesturesState& getGesturesState() const = 0;
         };

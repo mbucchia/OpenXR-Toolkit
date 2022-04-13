@@ -39,24 +39,18 @@ namespace {
 
     using namespace xr::math;
 
-    class EyeTracker : public IEyeTracker {
+    class EyeTrackerBase : public IEyeTracker {
       public:
-        EyeTracker(OpenXrApi& openXR,
-                   std::shared_ptr<IConfigManager> configManager,
-                   std::unique_ptr<Client> omniceptClient)
-            : m_openXR(openXR), m_configManager(configManager), m_omniceptClient(std::move(omniceptClient)) {
-            if (m_omniceptClient) {
-                initializeOmniceptEyeTracking();
-            }
+        EyeTrackerBase(OpenXrApi& openXR, std::shared_ptr<IConfigManager> configManager)
+            : m_openXR(openXR), m_configManager(configManager) {
         }
 
-        ~EyeTracker() override {
+        ~EyeTrackerBase() override {
             endSession();
         }
 
         void beginSession(XrSession session) override {
             m_session = session;
-            m_debugWithController = m_configManager->getValue(SettingEyeDebugWithController);
 
             // Create a reference space.
             {
@@ -65,28 +59,9 @@ namespace {
                 referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
                 CHECK_XRCMD(m_openXR.xrCreateReferenceSpace(session, &referenceSpaceCreateInfo, &m_viewSpace));
             }
-
-            if (m_omniceptClient) {
-                m_omniceptClient->startClient();
-            } else {
-                initializeOpenXrEyeTracking();
-            }
         }
 
         void endSession() override {
-            if (m_omniceptClient) {
-                // TODO: This is occasionally causing a crash... Disabled for now.
-                // m_omniceptClient->pauseClient();
-            }
-
-            if (m_eyeSpace != XR_NULL_HANDLE) {
-                m_openXR.xrDestroySpace(m_eyeSpace);
-                m_eyeSpace = XR_NULL_HANDLE;
-            }
-            if (m_eyeGazeAction != XR_NULL_HANDLE) {
-                m_openXR.xrDestroyAction(m_eyeGazeAction);
-                m_eyeGazeAction = XR_NULL_HANDLE;
-            }
             if (m_eyeTrackerActionSet != XR_NULL_HANDLE) {
                 m_openXR.xrDestroyActionSet(m_eyeTrackerActionSet);
                 m_eyeTrackerActionSet = XR_NULL_HANDLE;
@@ -99,7 +74,7 @@ namespace {
             m_session = XR_NULL_HANDLE;
         }
 
-        void beginFrame(XrTime frameTime) {
+        void beginFrame(XrTime frameTime) override {
             m_frameTime = frameTime;
             m_valid = false;
         }
@@ -114,6 +89,8 @@ namespace {
         XrActionSet getActionSet() const override {
             return m_eyeTrackerActionSet;
         }
+
+        virtual bool getEyeGaze(XrVector3f& projectedPoint) const = 0;
 
         bool getProjectedGaze(XrVector2f gaze[ViewCount]) const {
             assert(m_session != XR_NULL_HANDLE);
@@ -142,11 +119,11 @@ namespace {
                 }
 
                 XrVector3f projectedPoint{};
-                const bool hasGaze =
-                    m_omniceptClient ? getOmniceptEyeGaze(projectedPoint) : getOpenXrEyeGaze(projectedPoint);
-                if (!hasGaze) {
+                if (!getEyeGaze(projectedPoint)) {
                     return false;
                 }
+
+                m_eyeGazeState.gazeRay = projectedPoint;
 
                 // Project the pose onto the screen.
 
@@ -177,6 +154,13 @@ namespace {
                     // Mark as valid if we have both eyes.
                     m_valid = (eye == ViewCount - 1);
                 }
+
+                if (m_valid) {
+                    m_eyeGazeState.leftPoint.x = m_gaze[0].x;
+                    m_eyeGazeState.leftPoint.y = m_gaze[0].y;
+                    m_eyeGazeState.rightPoint.x = m_gaze[1].x;
+                    m_eyeGazeState.rightPoint.y = m_gaze[1].y;
+                }
             }
 
             for (uint32_t eye = 0; eye < ViewCount; eye++) {
@@ -190,8 +174,36 @@ namespace {
             return m_eyeGazeState;
         }
 
-      private:
-        void initializeOpenXrEyeTracking() {
+      protected:
+        OpenXrApi& m_openXR;
+        const std::shared_ptr<IConfigManager> m_configManager;
+        float m_projectionDistance{2.f};
+
+        XrSession m_session{XR_NULL_HANDLE};
+        XrSpace m_viewSpace{XR_NULL_HANDLE};
+        XrTime m_frameTime{0};
+
+        XrActionSet m_eyeTrackerActionSet{XR_NULL_HANDLE};
+
+        mutable XrVector2f m_gaze[ViewCount];
+        mutable bool m_valid{false};
+        mutable EyeGazeState m_eyeGazeState{};
+    };
+
+    class OpenXrEyeTracker : public EyeTrackerBase {
+      public:
+        OpenXrEyeTracker(OpenXrApi& openXR, std::shared_ptr<IConfigManager> configManager)
+            : EyeTrackerBase(openXR, configManager) {
+        }
+
+        ~OpenXrEyeTracker() override {
+        }
+
+        void beginSession(XrSession session) override {
+            EyeTrackerBase::beginSession(session);
+
+            m_debugWithController = m_configManager->getValue(SettingEyeDebugWithController);
+
             // Create the resources for the eye tracker space.
             {
                 XrActionSetCreateInfo actionSetCreateInfo{XR_TYPE_ACTION_SET_CREATE_INFO, nullptr};
@@ -243,7 +255,20 @@ namespace {
             }
         }
 
-        bool getOpenXrEyeGaze(XrVector3f& projectedPoint) const {
+        void endSession() override {
+            if (m_eyeSpace != XR_NULL_HANDLE) {
+                m_openXR.xrDestroySpace(m_eyeSpace);
+                m_eyeSpace = XR_NULL_HANDLE;
+            }
+            if (m_eyeGazeAction != XR_NULL_HANDLE) {
+                m_openXR.xrDestroyAction(m_eyeGazeAction);
+                m_eyeGazeAction = XR_NULL_HANDLE;
+            }
+
+            EyeTrackerBase::endSession();
+        }
+
+        bool getEyeGaze(XrVector3f& projectedPoint) const override {
             XrSpaceLocation location{XR_TYPE_SPACE_LOCATION, nullptr};
 
             // Query the latest eye gaze pose.
@@ -291,7 +316,18 @@ namespace {
             return true;
         }
 
-        void initializeOmniceptEyeTracking() {
+      private:
+        bool m_debugWithController{false};
+        XrAction m_eyeGazeAction{XR_NULL_HANDLE};
+        XrSpace m_eyeSpace{XR_NULL_HANDLE};
+    };
+
+    class OmniceptEyeTracker : public EyeTrackerBase {
+      public:
+        OmniceptEyeTracker(OpenXrApi& openXR,
+                           std::shared_ptr<IConfigManager> configManager,
+                           std::unique_ptr<Client> omniceptClient)
+            : EyeTrackerBase(openXR, configManager), m_omniceptClient(std::move(omniceptClient)) {
             std::shared_ptr<Abi::SubscriptionList> subList = Abi::SubscriptionList::GetSubscriptionListToNone();
 
             Abi::Subscription eyeTrackingSub = Abi::Subscription::generateSubscriptionForDomainType<Abi::EyeTracking>();
@@ -300,7 +336,26 @@ namespace {
             m_omniceptClient->setSubscriptions(*subList);
         }
 
-        bool getOmniceptEyeGaze(XrVector3f& projectedPoint) const {
+        ~OmniceptEyeTracker() override {
+            endSession();
+        }
+
+        void beginSession(XrSession session) override {
+            EyeTrackerBase::beginSession(session);
+
+            m_omniceptClient->startClient();
+        }
+
+        void endSession() override {
+            if (m_omniceptClient) {
+                // TODO: This is occasionally causing a crash... Disabled for now.
+                // m_omniceptClient->pauseClient();
+            }
+
+            EyeTrackerBase::endSession();
+        }
+
+        bool getEyeGaze(XrVector3f& projectedPoint) const override {
             Client::LastValueCached<Abi::EyeTracking> lvc = m_omniceptClient->getLastData<Abi::EyeTracking>();
             if (!lvc.valid || lvc.data.combinedGazeConfidence < 0.5f) {
                 return false;
@@ -313,32 +368,129 @@ namespace {
             return true;
         }
 
-        OpenXrApi& m_openXR;
-        const std::shared_ptr<IConfigManager> m_configManager;
+      private:
         const std::unique_ptr<Client> m_omniceptClient;
-        bool m_debugWithController{false};
-        float m_projectionDistance{2.f};
+    };
 
-        XrSession m_session{XR_NULL_HANDLE};
-        XrSpace m_viewSpace{XR_NULL_HANDLE};
-        XrTime m_frameTime{0};
+    class PimaxEyeTracker : public EyeTrackerBase {
+      public:
+        PimaxEyeTracker(OpenXrApi& openXR, std::shared_ptr<IConfigManager> configManager)
+            : EyeTrackerBase(openXR, configManager) {
+            aSeeVR_register_callback(aSeeVRCallbackType::state, stateCallback, this);
+            aSeeVR_register_callback(aSeeVRCallbackType::eye_data, eyeDataCallback, this);
+            aSeeVR_register_callback(aSeeVRCallbackType::coefficient, getCoefficientCallback, this);
+        }
 
-        XrActionSet m_eyeTrackerActionSet{XR_NULL_HANDLE};
-        XrAction m_eyeGazeAction{XR_NULL_HANDLE};
-        XrSpace m_eyeSpace{XR_NULL_HANDLE};
+        ~PimaxEyeTracker() override {
+            endSession();
+        }
 
-        mutable XrVector2f m_gaze[ViewCount];
-        mutable bool m_valid{false};
-        mutable EyeGazeState m_eyeGazeState{};
+        void beginSession(XrSession session) override {
+            EyeTrackerBase::beginSession(session);
+
+            const auto status = aSeeVR_get_coefficient();
+            if (status != ASEEVR_RETURN_CODE::success) {
+                Log("aSeeVR_get_coefficient failed with: %d\n", status);
+            }
+        }
+
+        void endSession() override {
+            aSeeVR_stop();
+
+            EyeTrackerBase::endSession();
+        }
+
+        bool getEyeGaze(XrVector3f& projectedPoint) const override {
+            if (!m_isDeviceReady) {
+                return false;
+            }
+
+            // TODO: Use timestamp to implement a timeout.
+
+            // We assume the point is projected onto a screen at Z=-1
+            projectedPoint.x = m_recommendedGaze.x - 0.5f;
+            projectedPoint.y = m_recommendedGaze.y - 0.5f;
+            projectedPoint.z = -m_projectionDistance;
+
+            return true;
+        }
+
+      private:
+        void setCoefficients(const aSeeVRCoefficient& coefficients) {
+            m_coefficients = coefficients;
+            const auto status = aSeeVR_start(&m_coefficients);
+            if (status == ASEEVR_RETURN_CODE::success) {
+                m_isDeviceReady = true;
+            } else {
+                Log("aSeeVR_start failed with: %d\n", status);
+            }
+        }
+
+        void setEyeData(int64_t timestamp, float recommendedGazeX, float recommendedGazeY) {
+            m_recommendedGaze = {recommendedGazeX, recommendedGazeY};
+            m_lastTimestamp = timestamp;
+        }
+
+        aSeeVRCoefficient m_coefficients;
+        bool m_isDeviceReady{false};
+        XrVector2f m_recommendedGaze{0, 0};
+        int64_t m_lastTimestamp{0};
+
+        static void _7INVENSUN_CALL stateCallback(const aSeeVRState* state, void* context) {
+            switch (state->code) {
+            case aSeeVRStateCode::api_start:
+                Log("aSeeVR_start completed with: %d\n", state->error);
+                break;
+
+            case aSeeVRStateCode::api_stop:
+                Log("aSeeVR_stop completed with: %d\n", state->error);
+                break;
+
+            default:
+                break;
+            }
+        }
+
+        static void _7INVENSUN_CALL eyeDataCallback(const aSeeVREyeData* eyeData, void* context) {
+            if (!eye_data) {
+                return;
+            }
+
+            PimaxEyeTracker* tracker = reinterpret_cast<PimaxEyeTracker*>(context);
+
+            int64_t timestamp = 0;
+            aSeeVR_get_int64(eyeData, aSeeVREye::undefine_eye, aSeeVREyeDataItemType::timestamp, &timestamp);
+
+            aSeeVRPoint2D point2D = {0};
+            aSeeVR_get_point2d(eyeData, aSeeVREye::undefine_eye, aSeeVREyeDataItemType::gaze, &point2D);
+
+            tracker->setEyeData(timestamp, point2D.x, point2D.y);
+        }
+
+        static void _7INVENSUN_CALL getCoefficientCallback(const aSeeVRCoefficient* data, void* context) {
+            PimaxEyeTracker* tracker = reinterpret_cast<PimaxEyeTracker*>(context);
+            tracker->setCoefficients(*data);
+        }
     };
 
 } // namespace
 
 namespace toolkit::input {
     std::shared_ptr<IEyeTracker> CreateEyeTracker(toolkit::OpenXrApi& openXR,
-                                                  std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                                                  std::unique_ptr<Client> omniceptClient) {
-        return std::make_shared<EyeTracker>(openXR, configManager, std::move(omniceptClient));
+                                                  std::shared_ptr<toolkit::config::IConfigManager> configManager) {
+        return std::make_shared<OpenXrEyeTracker>(openXR, configManager);
+    }
+
+    std::shared_ptr<IEyeTracker>
+    CreateOmniceptEyeTracker(toolkit::OpenXrApi& openXR,
+                             std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                             std::unique_ptr<Client> omniceptClient) {
+        return std::make_shared<OmniceptEyeTracker>(openXR, configManager, std::move(omniceptClient));
+    }
+
+    std::shared_ptr<IEyeTracker> CreatePimaxEyeTracker(toolkit::OpenXrApi& openXR,
+                                                       std::shared_ptr<toolkit::config::IConfigManager> configManager) {
+        return std::make_shared<PimaxEyeTracker>(openXR, configManager);
     }
 
 } // namespace toolkit::input
