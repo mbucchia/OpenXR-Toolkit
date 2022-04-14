@@ -84,6 +84,24 @@ namespace {
     enum class MenuState { Splash, NotVisible, Visible };
     enum class MenuEntryType { Tabs, Slider, Choice, Separator, RestoreDefaultsButton, ExitButton };
 
+    class MenuHandler;
+
+    class MenuGroup {
+      public:
+        MenuGroup(MenuHandler* menu, std::function<bool()> isVisible, bool isTab = false);
+        MenuGroup& operator=(const MenuGroup&) = default;
+
+        void finalize();
+        void updateVisibility(bool showExpert) const;
+
+      private:
+        MenuHandler* m_menu;
+        std::function<bool()> m_isVisible;
+        size_t m_start;
+        size_t m_count;
+        bool m_isTab;
+    };
+
     struct MenuEntry {
         template <typename E>
         static int LastVal();
@@ -115,50 +133,7 @@ namespace {
 
         bool expert{false};
         bool visible{false};
-    };
-
-    class MenuGroup {
-      public:
-        MenuGroup(std::shared_ptr<IConfigManager> configManager,
-                  std::vector<MenuGroup>& menuGroups,
-                  std::vector<MenuEntry>& menuEntries,
-                  std::function<bool()> isVisible,
-                  bool isTab = false)
-            : m_configManager(configManager), m_menuGroups(&menuGroups), m_menuEntries(&menuEntries),
-              m_isVisible(isVisible), m_start(menuEntries.size()), m_end(menuEntries.size()), m_isTab(isTab) {
-        }
-
-        MenuGroup& operator=(const MenuGroup&) = default;
-
-        void finalize() {
-            m_end = m_menuEntries->size();
-
-            if (!m_isTab) {
-                m_menuGroups->push_back(*this);
-            } else {
-                // Tabs must always be evaluated first.
-                m_menuGroups->insert(m_menuGroups->begin(), *this);
-            }
-        }
-
-        void updateVisibility() const {
-            const bool showExpert = m_configManager->getValue(SettingMenuExpert);
-
-            for (size_t i = m_start; i < m_end; i++) {
-                (*m_menuEntries)[i].visible = (m_isTab || (*m_menuEntries)[i].visible) &&
-                                              (!(*m_menuEntries)[i].expert || showExpert) && m_isVisible();
-            }
-        };
-
-      private:
-        std::shared_ptr<IConfigManager> m_configManager;
-        std::vector<MenuGroup>* m_menuGroups;
-        std::vector<MenuEntry>* m_menuEntries;
-        std::function<bool()> m_isVisible;
-        size_t m_start;
-        size_t m_end;
-
-        bool m_isTab;
+        bool disable{false};
     };
 
     enum class MenuTab { Performance = 0, Appearance, Inputs, System, Menu, Developer };
@@ -290,7 +265,7 @@ namespace {
                         }
 
                     } while (m_menuEntries[m_selectedItem].type == MenuEntryType::Separator ||
-                             !m_menuEntries[m_selectedItem].visible);
+                             m_menuEntries[m_selectedItem].disable || !m_menuEntries[m_selectedItem].visible);
                 }
 
                 m_resetArmed = false;
@@ -363,8 +338,9 @@ namespace {
                 m_selectedItem = 0;
             }
 
+            const bool showExpert = m_configManager->getValue(SettingMenuExpert);
             for (const auto& group : m_menuGroups) {
-                group.updateVisibility();
+                group.updateVisibility(showExpert);
             }
         }
 
@@ -437,6 +413,7 @@ namespace {
 
                 // Apply menu fade.
                 const auto textColorNormal = MakeRGB24(ColorNormal) | alpha;
+                const auto textColorDisable = MakeRGB24(ColorNormal) | (alpha / 2);
                 const auto textColorHighlightText = MakeRGB24(ColorHighlightText) | alpha;
                 const auto textColorSelected = MakeRGB24(ColorSelected) | alpha;
                 const auto textColorHint = MakeRGB24(ColorHint) | alpha;
@@ -872,13 +849,11 @@ namespace {
         }
 
       private:
+        friend class MenuGroup;
+
         void setupPerformanceTab(uint8_t variableRateShaderMaxRate) {
             MenuGroup performanceTab(
-                m_configManager,
-                m_menuGroups,
-                m_menuEntries,
-                [&] { return m_currentTab == MenuTab::Performance; } /* visible condition */,
-                true /* isTab */);
+                this, [&] { return m_currentTab == MenuTab::Performance; }, true);
 
             // Performance Overlay Settings.
             m_menuEntries.push_back({MenuIndent::OptionIndent,
@@ -905,9 +880,7 @@ namespace {
             m_menuEntries.back().noCommitDelay = true;
 
             // Scaling sub-group.
-            MenuGroup upscalingGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
-                return getCurrentScalingType() != ScalingType::None;
-            } /* visible condition */);
+            MenuGroup upscalingGroup(this, [&] { return getCurrentScalingType() != ScalingType::None; });
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Anamorphic",
                                      MenuEntryType::Choice,
@@ -919,9 +892,8 @@ namespace {
             m_menuEntries.back().pValue = &m_useAnamorphic;
 
             // Proportional sub-group.
-            MenuGroup proportionalGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
-                return getCurrentScalingType() != ScalingType::None && !m_useAnamorphic;
-            } /* visible condition */);
+            MenuGroup proportionalGroup(
+                this, [&] { return !m_useAnamorphic && getCurrentScalingType() != ScalingType::None; });
             m_menuEntries.push_back(
                 {MenuIndent::SubGroupIndent, "Size", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
                      return fmt::format("{}% ({}x{})",
@@ -933,9 +905,8 @@ namespace {
             proportionalGroup.finalize();
 
             // Anamorphic sub-group.
-            MenuGroup anamorphicGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
-                return getCurrentScalingType() != ScalingType::None && m_useAnamorphic;
-            } /* visible condition */);
+            MenuGroup anamorphicGroup(this,
+                                      [&] { return m_useAnamorphic && getCurrentScalingType() != ScalingType::None; });
             m_menuEntries.push_back(
                 {MenuIndent::SubGroupIndent, "Width", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
                      return fmt::format("{}% ({} pixels)", value, GetScaledInputSize(getDisplayWidth(), value, 2));
@@ -986,7 +957,7 @@ namespace {
                                          MenuEntry::FmtEnum<VariableShadingRateType>});
 
                 // Common sub-group.
-                MenuGroup variableRateShaderCommonGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+                MenuGroup variableRateShaderCommonGroup(this, [&] {
                     return m_configManager->peekEnumValue<VariableShadingRateType>(SettingVRS) !=
                            VariableShadingRateType::None;
                 });
@@ -1000,9 +971,8 @@ namespace {
                                              MenuEntry::FmtEnum<OffOnType>});
                     m_originalEyeTrackingEnabled = isEyeTrackingEnabled();
                     // Eye tracking sub-group.
-                    MenuGroup variableRateShaderEyeTrackingGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
-                        return m_configManager->peekValue(SettingEyeTrackingEnabled);
-                    } /* visible condition */);
+                    MenuGroup variableRateShaderEyeTrackingGroup(
+                        this, [&] { return m_configManager->peekValue(SettingEyeTrackingEnabled); });
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Eye projection distance",
                                              MenuEntryType::Slider,
@@ -1016,10 +986,10 @@ namespace {
                 variableRateShaderCommonGroup.finalize();
 
                 // Preset sub-group.
-                MenuGroup variableRateShaderPresetGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+                MenuGroup variableRateShaderPresetGroup(this, [&] {
                     return m_configManager->peekEnumValue<VariableShadingRateType>(SettingVRS) ==
                            VariableShadingRateType::Preset;
-                } /* visible condition */);
+                });
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Mode",
                                          MenuEntryType::Slider,
@@ -1037,10 +1007,10 @@ namespace {
                 variableRateShaderPresetGroup.finalize();
 
                 // Custom sub-group.
-                MenuGroup variableRateShaderCustomGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+                MenuGroup variableRateShaderCustomGroup(this, [&] {
                     return m_configManager->peekEnumValue<VariableShadingRateType>(SettingVRS) ==
                            VariableShadingRateType::Custom;
-                } /* visible condition */);
+                });
                 {
                     const auto maxVRSLeftRightBias =
                         std::min(int(variableRateShaderMaxRate), to_integral(VariableShadingRateVal::R_4x4));
@@ -1130,13 +1100,9 @@ namespace {
 
         void setupAppearanceTab(bool isPimaxFovHackSupported) {
             MenuGroup appearanceTab(
-                m_configManager,
-                m_menuGroups,
-                m_menuEntries,
-                [&] { return m_currentTab == MenuTab::Appearance; } /* visible condition */,
-                true /* isTab */);
+                this, [&] { return m_currentTab == MenuTab::Appearance; }, true);
             m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                     "Sun Glasses / Presets",
+                                     "Presets",
                                      MenuEntryType::Choice,
                                      SettingPostSunGlasses,
                                      0,
@@ -1225,9 +1191,9 @@ namespace {
                                      MenuEntry::LastVal<SaturationModeType>(),
                                      MenuEntry::FmtEnum<SaturationModeType>});
 
-            MenuGroup saturationAllGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+            MenuGroup saturationAllGroup(this, [&] {
                 return !m_configManager->peekValue(SettingSaturationMode);
-            } /* visible condition */);
+            });
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Adjustment",
                                      MenuEntryType::Slider,
@@ -1238,9 +1204,9 @@ namespace {
             m_menuEntries.back().acceleration = 5;
             saturationAllGroup.finalize();
 
-            MenuGroup saturationChannelsGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
+            MenuGroup saturationChannelsGroup(this, [&] {
                 return m_configManager->peekValue(SettingSaturationMode);
-            } /* visible condition */);
+            });
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Red",
                                      MenuEntryType::Slider,
@@ -1280,9 +1246,9 @@ namespace {
                                      0,
                                      MenuEntry::LastVal<FovModeType>(),
                                      MenuEntry::FmtEnum<FovModeType>});
-            MenuGroup fovSimpleGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
-                return m_configManager->peekValue(SettingFOVType) == 0;
-            } /* visible condition */);
+            MenuGroup fovSimpleGroup(this, [&] {
+                return m_configManager->peekEnumValue<FovModeType>(SettingFOVType) == FovModeType::Simple;
+            });
             m_menuEntries.push_back(
                 {MenuIndent::SubGroupIndent, "Adjustment", MenuEntryType::Slider, SettingFOV, 50, 100, [&](int value) {
                      return fmt::format(
@@ -1292,9 +1258,9 @@ namespace {
                  }});
             fovSimpleGroup.finalize();
 
-            MenuGroup fovAdvancedGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
-                return m_configManager->peekValue(SettingFOVType) == 1;
-            } /* visible condition */);
+            MenuGroup fovAdvancedGroup(this, [&] {
+                return m_configManager->peekEnumValue<FovModeType>(SettingFOVType) == FovModeType::Advanced;
+            });
             m_menuEntries.push_back(
                 {MenuIndent::SubGroupIndent, "Up", MenuEntryType::Slider, SettingFOVUp, 50, 100, [&](int value) {
                      return fmt::format("{}% ({:.1f}\xB0/{:.1f}\xB0)",
@@ -1309,46 +1275,50 @@ namespace {
                                         DirectX::XMConvertToDegrees(m_stats.fov[0].angleDown),
                                         DirectX::XMConvertToDegrees(m_stats.fov[1].angleDown));
                  }});
-            m_menuEntries.push_back(
-                {MenuIndent::SubGroupIndent,
-                 "Left/Left",
-                 MenuEntryType::Slider,
-                 SettingFOVLeftLeft,
-                 50,
-                 100,
-                 [&](int value) {
-                     return fmt::format("{}% ({:.1f}\xB0)", value, DirectX::XMConvertToDegrees(m_stats.fov[0].angleLeft));
-                 }});
-            m_menuEntries.push_back(
-                {MenuIndent::SubGroupIndent,
-                 "Left/Right",
-                 MenuEntryType::Slider,
-                 SettingFOVLeftRight,
-                 50,
-                 100,
-                 [&](int value) {
-                     return fmt::format("{}% ({:.1f}\xB0)", value, DirectX::XMConvertToDegrees(m_stats.fov[0].angleRight));
-                 }});
-            m_menuEntries.push_back(
-                {MenuIndent::SubGroupIndent,
-                 "Right/Left",
-                 MenuEntryType::Slider,
-                 SettingFOVRightLeft,
-                 50,
-                 100,
-                 [&](int value) {
-                     return fmt::format("{}% ({:.1f}\xB0)", value, DirectX::XMConvertToDegrees(m_stats.fov[1].angleLeft));
-                 }});
-            m_menuEntries.push_back(
-                {MenuIndent::SubGroupIndent,
-                 "Right/Right",
-                 MenuEntryType::Slider,
-                 SettingFOVRightRight,
-                 50,
-                 100,
-                 [&](int value) {
-                     return fmt::format("{}% ({:.1f}\xB0)", value, DirectX::XMConvertToDegrees(m_stats.fov[1].angleRight));
-                 }});
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Left/Left",
+                                     MenuEntryType::Slider,
+                                     SettingFOVLeftLeft,
+                                     50,
+                                     100,
+                                     [&](int value) {
+                                         return fmt::format("{}% ({:.1f}\xB0)",
+                                                            value,
+                                                            DirectX::XMConvertToDegrees(m_stats.fov[0].angleLeft));
+                                     }});
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Left/Right",
+                                     MenuEntryType::Slider,
+                                     SettingFOVLeftRight,
+                                     50,
+                                     100,
+                                     [&](int value) {
+                                         return fmt::format("{}% ({:.1f}\xB0)",
+                                                            value,
+                                                            DirectX::XMConvertToDegrees(m_stats.fov[0].angleRight));
+                                     }});
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Right/Left",
+                                     MenuEntryType::Slider,
+                                     SettingFOVRightLeft,
+                                     50,
+                                     100,
+                                     [&](int value) {
+                                         return fmt::format("{}% ({:.1f}\xB0)",
+                                                            value,
+                                                            DirectX::XMConvertToDegrees(m_stats.fov[1].angleLeft));
+                                     }});
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Right/Right",
+                                     MenuEntryType::Slider,
+                                     SettingFOVRightRight,
+                                     50,
+                                     100,
+                                     [&](int value) {
+                                         return fmt::format("{}% ({:.1f}\xB0)",
+                                                            value,
+                                                            DirectX::XMConvertToDegrees(m_stats.fov[1].angleRight));
+                                     }});
             fovAdvancedGroup.finalize();
 
             if (isPimaxFovHackSupported) {
@@ -1367,11 +1337,7 @@ namespace {
 
         void setupInputsTab(bool isPredictionDampeningSupported) {
             MenuGroup inputsTab(
-                m_configManager,
-                m_menuGroups,
-                m_menuEntries,
-                [&] { return m_currentTab == MenuTab::Inputs; } /* visible condition */,
-                true /* isTab */);
+                this, [&] { return m_currentTab == MenuTab::Inputs; }, true);
 
             if (isPredictionDampeningSupported) {
                 m_menuEntries.push_back({MenuIndent::OptionIndent,
@@ -1401,9 +1367,7 @@ namespace {
                                          MenuEntry::FmtEnum<HandTrackingEnabled>});
                 m_originalHandTrackingEnabled = isHandTrackingEnabled();
 
-                MenuGroup handTrackingGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
-                    return isHandTrackingEnabled();
-                } /* visible condition */);
+                MenuGroup handTrackingGroup(this, [&] { return isHandTrackingEnabled(); });
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Hand skeleton",
                                          MenuEntryType::Slider,
@@ -1433,11 +1397,7 @@ namespace {
 
         void setupSystemTab(uint32_t maxDisplayWidth) {
             MenuGroup systemTab(
-                m_configManager,
-                m_menuGroups,
-                m_menuEntries,
-                [&] { return m_currentTab == MenuTab::System; } /* visible condition */,
-                true /* isTab */);
+                this, [&] { return m_currentTab == MenuTab::System; }, true);
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Override resolution",
@@ -1446,18 +1406,19 @@ namespace {
                                      0,
                                      MenuEntry::LastVal<NoYesType>(),
                                      MenuEntry::FmtEnum<NoYesType>});
-            MenuGroup resolutionGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
-                return m_configManager->peekValue(SettingResolutionOverride);
-            } /* visible condition */);
+            
+            MenuGroup resolutionGroup(this, [&] { return m_configManager->peekValue(SettingResolutionOverride); });
             m_originalResolutionWidth = m_displayWidth;
-            m_menuEntries.push_back(
-                {MenuIndent::SubGroupIndent,
-                 "Display resolution (per eye)",
-                 MenuEntryType::Slider,
-                 SettingResolutionWidth,
-                 500,
-                 (int)maxDisplayWidth,
-                 [&](int value) { return fmt::format("{}x{}", value, (uint32_t)(value * m_resolutionHeightRatio)); }});
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Display resolution (per eye)",
+                                     MenuEntryType::Slider,
+                                     SettingResolutionWidth,
+                                     500,
+                                     static_cast<int>(maxDisplayWidth),
+                                     [&](int value) {
+                                         return fmt::format(
+                                             "{}x{}", value, static_cast<int>(value * m_resolutionHeightRatio));
+                                     }});
             m_menuEntries.back().acceleration = 10;
             resolutionGroup.finalize();
 
@@ -1470,20 +1431,19 @@ namespace {
                                          0,
                                          MenuEntry::LastVal<NoYesType>(),
                                          MenuEntry::FmtEnum<NoYesType>});
-                MenuGroup motionReprojectionGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
-                    return isMotionReprojectionEnabled();
-                } /* visible condition */);
+
+                MenuGroup motionReprojectionGroup(this, [&] { return isMotionReprojectionEnabled(); });
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Lock motion reprojection",
                                          MenuEntryType::Slider,
                                          SettingMotionReprojectionRate,
-                                         (int)MotionReprojectionRate::Off,
+                                         to_integral(MotionReprojectionRate::Off),
                                          MenuEntry::LastVal<MotionReprojectionRate>(),
                                          [&](int value) {
-                                             return (MotionReprojectionRate)value == MotionReprojectionRate::Off
+                                             return value == to_integral(MotionReprojectionRate::Off)
                                                         ? "Unlocked"
                                                         : fmt::format("{:.1f} FPS",
-                                                                      (float)m_displayRefreshRate / value);
+                                                                      static_cast<float>(m_displayRefreshRate) / value);
                                          }});
                 motionReprojectionGroup.finalize();
             }
@@ -1494,11 +1454,7 @@ namespace {
 
         void setupMenuTab() {
             MenuGroup menuTab(
-                m_configManager,
-                m_menuGroups,
-                m_menuEntries,
-                [&] { return m_currentTab == MenuTab::Menu; } /* visible condition */,
-                true /* isTab */);
+                this, [&] { return m_currentTab == MenuTab::Menu; }, true);
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Show expert settings",
@@ -1545,11 +1501,7 @@ namespace {
             }
 
             MenuGroup menuTab(
-                m_configManager,
-                m_menuGroups,
-                m_menuEntries,
-                [&] { return m_currentTab == MenuTab::Developer; } /* visible condition */,
-                true /* isTab */);
+                this, [&] { return m_currentTab == MenuTab::Developer; }, true);
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Simulate canting",
@@ -1719,7 +1671,7 @@ namespace {
         mutable float m_menuHeaderHeight{0.0f};
         mutable bool m_resetTextLayout{true};
         mutable bool m_resetBackgroundLayout{true};
-    }; // namespace
+    };
 
     template <typename E>
     int MenuEntry::LastVal() {
@@ -1746,6 +1698,26 @@ namespace {
         auto idx = (std::clamp(value, -4, 4) + 4) * 4;
         return std::string(&"+4 L+3 L+2 L+1 Lnone+1 R+2 R+3 R+4 R"[idx], 4);
     }
+
+    MenuGroup::MenuGroup(MenuHandler* menu, std::function<bool()> isVisible, bool isTab)
+        : m_menu(menu), m_isVisible(isVisible), m_start(menu->m_menuEntries.size()), m_count(0), m_isTab(isTab) {
+    }
+
+    void MenuGroup::finalize() {
+        // Tabs must always be evaluated first.
+        m_count = m_menu->m_menuEntries.size() - m_start;
+        m_menu->m_menuGroups.insert(m_isTab ? m_menu->m_menuGroups.begin() : m_menu->m_menuGroups.end(), *this);
+    }
+
+    void MenuGroup::updateVisibility(bool showExpert) const {
+        int groupVisible = -1; // callback once only when needed
+        std::for_each_n(&m_menu->m_menuEntries[m_start], m_count, [&](auto& it) {
+            auto canShow = (m_isTab || it.visible) && (!it.expert || showExpert);
+            if (canShow && groupVisible < 0)
+                groupVisible = m_isVisible() ? 1 : 0;
+            it.visible = canShow && groupVisible;
+        });
+    };
 
 } // namespace
 
