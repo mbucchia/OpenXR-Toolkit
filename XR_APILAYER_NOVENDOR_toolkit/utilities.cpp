@@ -25,6 +25,7 @@
 
 #include "factories.h"
 #include "interfaces.h"
+#include "shader_utilities.h"
 #include "log.h"
 
 namespace {
@@ -156,11 +157,8 @@ namespace toolkit::utilities {
     uint32_t GetScaledInputSize(uint32_t outputSize, int scalePercent, uint32_t blockSize) {
         scalePercent = abs(scalePercent);
         auto size = scalePercent >= 100 ? (outputSize * 100u) / scalePercent : (outputSize * scalePercent) / 100u;
-
-        // align size to blockSize
         if (blockSize >= 2u)
-            size = ((size + blockSize - 1u) / blockSize) * blockSize;
-
+            size = roundUp(size, blockSize);
         return size;
     }
 
@@ -240,3 +238,104 @@ namespace toolkit::utilities {
     }
 
 } // namespace toolkit::utilities
+
+namespace toolkit::utilities::shader {
+
+    void CompileShader(const std::filesystem::path& shaderFile,
+                       const char* entryPoint,
+                       ID3DBlob** blob,
+                       const D3D_SHADER_MACRO* defines /*= nullptr*/,
+                       ID3DInclude* includes /* = nullptr*/,
+                       const char* target /* = "cs_5_0"*/) {
+        DWORD flags =
+            D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+        flags |= D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_DEBUG;
+#else
+        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+        if (!includes) {
+            includes = D3D_COMPILE_STANDARD_FILE_INCLUDE;
+        }
+
+        ComPtr<ID3DBlob> cdErrorBlob;
+        const HRESULT hr =
+            D3DCompileFromFile(shaderFile.c_str(), defines, includes, entryPoint, target, flags, 0, blob, &cdErrorBlob);
+
+        if (FAILED(hr)) {
+            if (cdErrorBlob) {
+                Log("%s", (char*)cdErrorBlob->GetBufferPointer());
+            }
+            CHECK_HRESULT(hr, "Failed to compile shader file");
+        }
+    }
+
+    void CompileShader(const void* data,
+                       size_t size,
+                       const char* entryPoint,
+                       ID3DBlob** blob,
+                       const D3D_SHADER_MACRO* defines /*= nullptr*/,
+                       ID3DInclude* includes /* = nullptr*/,
+                       const char* target /* = "cs_5_0"*/) {
+        DWORD flags =
+            D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+        flags |= D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_DEBUG;
+#else
+        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+        if (!includes) {
+            // TODO: pSourceName must be a file name to derive relative paths from.
+            includes = D3D_COMPILE_STANDARD_FILE_INCLUDE;
+        }
+
+        ComPtr<ID3DBlob> cdErrorBlob;
+        const HRESULT hr =
+            D3DCompile(data, size, nullptr, defines, includes, entryPoint, target, flags, 0, blob, &cdErrorBlob);
+
+        if (FAILED(hr)) {
+            if (cdErrorBlob) {
+                Log("%s", (char*)cdErrorBlob->GetBufferPointer());
+            }
+            CHECK_HRESULT(hr, "Failed to compile shader");
+        }
+    }
+
+    HRESULT IncludeHeader::Open(
+        D3D_INCLUDE_TYPE /*includeType*/, LPCSTR pFileName, LPCVOID /*pParentData*/, LPCVOID* ppData, UINT* pBytes) {
+        for (auto& it : m_includePaths) {
+            auto path = it / pFileName;
+            auto file = std::ifstream(path, std::ios_base::binary);
+            if (file.is_open()) {
+                assert(ppData && pBytes);
+                m_data.push_back({});
+                auto& buf = m_data.back();
+                buf.resize(static_cast<size_t>(std::filesystem::file_size(path)));
+                file.read(buf.data(), static_cast<std::streamsize>(buf.size()));
+                buf.erase(std::remove(buf.begin(), buf.end(), '\0'), buf.end());
+                *ppData = buf.data();
+                *pBytes = static_cast<UINT>(buf.size());
+                return S_OK;
+            }
+        }
+        throw std::runtime_error("Error opening shader file include header");
+    }
+
+    HRESULT IncludeHeader::Close(LPCVOID pData) {
+        return S_OK;
+    }
+
+    const D3D_SHADER_MACRO* Defines::get() const {
+        static const D3D_SHADER_MACRO kEmpty = {nullptr, nullptr};
+        if (!m_definesVector.empty()) {
+            m_defines = std::make_unique<D3D_SHADER_MACRO[]>(m_definesVector.size() + 1);
+            for (size_t i = 0; i < m_definesVector.size(); ++i)
+                m_defines[i] = {m_definesVector[i].first.c_str(), m_definesVector[i].second.c_str()};
+            m_defines[m_definesVector.size()] = kEmpty;
+            return m_defines.get();
+        }
+        m_defines = nullptr;
+        return &kEmpty;
+    }
+
+} // namespace toolkit::utilities::shader

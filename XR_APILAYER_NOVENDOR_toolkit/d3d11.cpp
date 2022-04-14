@@ -41,6 +41,11 @@ namespace {
 
     const std::wstring_view FontFamily = L"Segoe UI Symbol";
 
+    inline void SetDebugName(ID3D11DeviceChild* resource, std::string_view name) {
+        if (resource && !name.empty())
+            resource->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(name.size()), name.data());
+    }
+
     struct D3D11ContextState {
         ComPtr<ID3D11InputLayout> inputLayout;
         D3D11_PRIMITIVE_TOPOLOGY topology;
@@ -1003,9 +1008,7 @@ namespace {
                 CHECK_HRCMD(m_device->CreateTexture2D(&desc, nullptr, set(texture)));
             }
 
-            if (!debugName.empty()) {
-                texture->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
-            }
+            SetDebugName(get(texture), debugName);
 
             return std::make_shared<D3D11Texture>(shared_from_this(), info, desc, get(texture));
         }
@@ -1027,9 +1030,7 @@ namespace {
                 CHECK_HRCMD(m_device->CreateBuffer(&desc, nullptr, set(buffer)));
             }
 
-            if (!debugName.empty()) {
-                buffer->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
-            }
+            SetDebugName(get(buffer), debugName);
 
             return std::make_shared<D3D11Buffer>(shared_from_this(), desc, get(buffer));
         }
@@ -1057,8 +1058,8 @@ namespace {
             CHECK_HRCMD(m_device->CreateBuffer(&desc, &data, set(indexBuffer)));
 
             if (!debugName.empty()) {
-                vertexBuffer->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
-                indexBuffer->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
+                SetDebugName(get(vertexBuffer), debugName);
+                SetDebugName(get(indexBuffer), debugName);
             }
 
             return std::make_shared<D3D11SimpleMesh>(
@@ -1084,9 +1085,7 @@ namespace {
             CHECK_HRCMD(m_device->CreatePixelShader(
                 psBytes->GetBufferPointer(), psBytes->GetBufferSize(), nullptr, set(compiledShader)));
 
-            if (!debugName.empty()) {
-                compiledShader->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
-            }
+            SetDebugName(get(compiledShader), debugName);
 
             return std::make_shared<D3D11QuadShader>(shared_from_this(), get(compiledShader));
         }
@@ -1111,9 +1110,7 @@ namespace {
             CHECK_HRCMD(m_device->CreateComputeShader(
                 csBytes->GetBufferPointer(), csBytes->GetBufferSize(), nullptr, set(compiledShader)));
 
-            if (!debugName.empty()) {
-                compiledShader->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
-            }
+            SetDebugName(get(compiledShader), debugName);
 
             return std::make_shared<D3D11ComputeShader>(shared_from_this(), get(compiledShader), threadGroups);
         }
@@ -1587,64 +1584,26 @@ namespace {
                 CHECK_HRCMD(m_device->CreateRasterizerState(&desc, set(m_quadRasterizerMSAA)));
             }
             {
-                ComPtr<ID3DBlob> errors;
                 ComPtr<ID3DBlob> vsBytes;
-                HRESULT hr = D3DCompile(QuadVertexShader.data(),
-                                        QuadVertexShader.length(),
-                                        nullptr,
-                                        nullptr,
-                                        nullptr,
-                                        "vsMain",
-                                        "vs_5_0",
-                                        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
-                                        0,
-                                        set(vsBytes),
-                                        set(errors));
-                if (FAILED(hr)) {
-                    if (errors) {
-                        Log("%s", (char*)errors->GetBufferPointer());
-                    }
-                    CHECK_HRESULT(hr, "Failed to compile shader");
-                }
+                toolkit::utilities::shader::CompileShader(QuadVertexShader, "vsMain", set(vsBytes), "vs_5_0");
+
                 CHECK_HRCMD(m_device->CreateVertexShader(
                     vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, set(m_quadVertexShader)));
-                {
-                    const std::string_view debugName = "Quad PS";
-                    m_quadVertexShader->SetPrivateData(
-                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
-                }
+
+                SetDebugName(get(m_quadVertexShader), "Quad PS");
             }
         }
 
         // Initialize the calls needed for draw() and related calls.
         void initializeMeshResources() {
             {
-                ComPtr<ID3DBlob> errors;
                 ComPtr<ID3DBlob> vsBytes;
-                HRESULT hr = D3DCompile(MeshShaders.data(),
-                                        MeshShaders.length(),
-                                        nullptr,
-                                        nullptr,
-                                        nullptr,
-                                        "vsMain",
-                                        "vs_5_0",
-                                        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
-                                        0,
-                                        set(vsBytes),
-                                        set(errors));
-                if (FAILED(hr)) {
-                    if (errors) {
-                        Log("%s", (char*)errors->GetBufferPointer());
-                    }
-                    CHECK_HRESULT(hr, "Failed to compile shader");
-                }
+                toolkit::utilities::shader::CompileShader(MeshShaders, "vsMain", set(vsBytes), "vs_5_0");
+
                 CHECK_HRCMD(m_device->CreateVertexShader(
                     vsBytes->GetBufferPointer(), vsBytes->GetBufferSize(), nullptr, set(m_meshVertexShader)));
-                {
-                    const std::string_view debugName = "SimpleMesh VS";
-                    m_meshVertexShader->SetPrivateData(
-                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
-                }
+
+                SetDebugName(get(m_meshVertexShader), "SimpleMesh VS");
 
                 const D3D11_INPUT_ELEMENT_DESC vertexDesc[] = {
                     {"POSITION",
@@ -1691,11 +1650,8 @@ namespace {
                 }
                 CHECK_HRCMD(m_device->CreatePixelShader(
                     psBytes->GetBufferPointer(), psBytes->GetBufferSize(), nullptr, set(m_meshPixelShader)));
-                {
-                    const std::string_view debugName = "SimpleMesh PS";
-                    m_meshPixelShader->SetPrivateData(
-                        WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
-                }
+
+                SetDebugName(get(m_meshPixelShader), "SimpleMesh PS");
             }
             {
                 D3D11_DEPTH_STENCIL_DESC desc;
@@ -2226,17 +2182,14 @@ namespace toolkit::graphics {
                                                const XrSwapchainCreateInfo& info,
                                                ID3D11Texture2D* texture,
                                                std::string_view debugName) {
-        if (device->getApi() != Api::D3D11) {
-            throw std::runtime_error("Not a D3D11 device");
-        }
+        if (device->getApi() == Api::D3D11) {
+            SetDebugName(texture, debugName);
 
-        if (!debugName.empty()) {
-            texture->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
+            D3D11_TEXTURE2D_DESC desc;
+            texture->GetDesc(&desc);
+            return std::make_shared<D3D11Texture>(device, info, desc, texture);
         }
-
-        D3D11_TEXTURE2D_DESC desc;
-        texture->GetDesc(&desc);
-        return std::make_shared<D3D11Texture>(device, info, desc, texture);
+        throw std::runtime_error("Not a D3D11 device");
     }
 
 } // namespace toolkit::graphics
