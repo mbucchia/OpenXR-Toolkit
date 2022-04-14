@@ -89,6 +89,8 @@ namespace {
 
     enum class PoseType { Grip, Aim };
 
+    enum class Gesture { Pinch = 0, ThumbPress, IndexBend, FingerGun, Squeeze, Custom1, MaxValue };
+
     struct ActionSpace {
         Hand hand;
         PoseType poseType;
@@ -139,6 +141,15 @@ namespace {
 
         // The transformation to apply to the aim and grip poses.
         XrPosef transform[HandCount];
+
+        // The frequency to respond to haptics (NAN for any frequency).
+        float hapticsResponseFrequency;
+
+        // The gesture that triggers an action upon haptics.
+        Gesture hapticsResponseGesture;
+
+        // The target XrAction path to simulate upon haptics.
+        std::string hapticsAction;
 
         // The index of the 1st joint (see enum XrHandJointEXT) to use for 1st custom gesture.
         int custom1Joint1Index;
@@ -682,6 +693,24 @@ namespace {
             return m_trackedRecently[side];
         }
 
+        void handleOutput(Hand hand, float frequency, XrDuration duration) override {
+            const uint32_t side = hand == Hand::Left ? 0 : 1;
+            if (isnan(frequency)) {
+                m_gesturesState.hapticsFrequency[side] = NAN;
+                m_gesturesState.hapticsDurationUs[side] = -2;
+                return;
+            }
+
+            m_gesturesState.hapticsFrequency[side] = frequency;
+            m_gesturesState.hapticsDurationUs[side] = duration;
+
+            // Filter on frequency value.
+            if ((isnan(m_config.hapticsResponseFrequency) ||
+                 std::abs(m_config.hapticsResponseFrequency - frequency) < FLT_EPSILON)) {
+                m_evaluateHapticsGesture = true;
+            }
+        }
+
         const GesturesState& getGesturesState() const override {
             return m_gesturesState;
         }
@@ -767,30 +796,43 @@ namespace {
                     continue;
                 }
 
-#define ONE_HANDED_GESTURE(configName, joint1, joint2)                                                                 \
+                const Gesture hapticsGesture =
+                    !m_config.hapticsAction.empty() ? m_config.hapticsResponseGesture : Gesture::MaxValue;
+                bool hapticsGestureState = false;
+
+#define ONE_HANDED_GESTURE(configName, gesture, joint1, joint2)                                                        \
     do {                                                                                                               \
-        if (!m_config.configName##Action[side].empty()) {                                                              \
+        if (!m_config.configName##Action[side].empty() || hapticsGesture == gesture) {                                 \
             const auto value = computeJointActionValue(                                                                \
                 jointsPoses, (joint1), jointsPoses, (joint2), m_config.configName##Near, m_config.configName##Far);    \
             m_gesturesState.configName##Value[side] = value;                                                           \
-            recordActionValue(hand, m_config.configName##Action[side], ignore, value, now);                            \
+            if (!m_config.configName##Action[side].empty()) {                                                          \
+                recordActionValue(hand, m_config.configName##Action[side], ignore, value, now);                        \
+            }                                                                                                          \
+            if (hapticsGesture == gesture) {                                                                           \
+                hapticsGestureState = value >= m_config.clickThreshold;                                                \
+            }                                                                                                          \
         }                                                                                                              \
     } while (false);
 
                 // Handle gestures made up from one hand.
-                ONE_HANDED_GESTURE(pinch, XR_HAND_JOINT_THUMB_TIP_EXT, XR_HAND_JOINT_INDEX_TIP_EXT);
-                ONE_HANDED_GESTURE(thumbPress, XR_HAND_JOINT_INDEX_INTERMEDIATE_EXT, XR_HAND_JOINT_THUMB_TIP_EXT);
-                ONE_HANDED_GESTURE(indexBend, XR_HAND_JOINT_INDEX_PROXIMAL_EXT, XR_HAND_JOINT_INDEX_TIP_EXT);
-                ONE_HANDED_GESTURE(fingerGun, XR_HAND_JOINT_THUMB_TIP_EXT, XR_HAND_JOINT_MIDDLE_INTERMEDIATE_EXT);
+                ONE_HANDED_GESTURE(pinch, Gesture::Squeeze, XR_HAND_JOINT_THUMB_TIP_EXT, XR_HAND_JOINT_INDEX_TIP_EXT);
+                ONE_HANDED_GESTURE(
+                    thumbPress, Gesture::ThumbPress, XR_HAND_JOINT_INDEX_INTERMEDIATE_EXT, XR_HAND_JOINT_THUMB_TIP_EXT);
+                ONE_HANDED_GESTURE(
+                    indexBend, Gesture::IndexBend, XR_HAND_JOINT_INDEX_PROXIMAL_EXT, XR_HAND_JOINT_INDEX_TIP_EXT);
+                ONE_HANDED_GESTURE(
+                    fingerGun, Gesture::FingerGun, XR_HAND_JOINT_THUMB_TIP_EXT, XR_HAND_JOINT_MIDDLE_INTERMEDIATE_EXT);
 
                 if (m_config.custom1Joint1Index >= 0 && m_config.custom1Joint2Index >= 0) {
-                    ONE_HANDED_GESTURE(custom1, m_config.custom1Joint1Index, m_config.custom1Joint2Index);
+                    ONE_HANDED_GESTURE(
+                        custom1, Gesture::Custom1, m_config.custom1Joint1Index, m_config.custom1Joint2Index);
                 }
 
 #undef ONE_HANDED_GESTURE
 
                 // Squeeze requires to look at 3 fingers.
-                if (!m_config.squeezeAction[side].empty()) {
+                if (!m_config.squeezeAction[side].empty() || hapticsGesture == Gesture::Squeeze) {
                     float squeeze[3] = {computeJointActionValue(jointsPoses,
                                                                 XR_HAND_JOINT_MIDDLE_TIP_EXT,
                                                                 jointsPoses,
@@ -824,7 +866,17 @@ namespace {
                     // Ignore the lowest value, average the other ones.
                     const float value = (squeeze[1] + squeeze[2]) / 2.f;
                     m_gesturesState.squeezeValue[side] = value;
-                    recordActionValue(hand, m_config.squeezeAction[side], ignore, value, now);
+                    if (!m_config.squeezeAction[side].empty()) {
+                        recordActionValue(hand, m_config.squeezeAction[side], ignore, value, now);
+                    }
+                    if (hapticsGesture == Gesture::Squeeze) {
+                        hapticsGestureState = value >= m_config.clickThreshold;
+                    }
+                }
+
+                // Check for haptics trigger.
+                if (m_evaluateHapticsGesture && !m_config.hapticsAction.empty() && hapticsGestureState) {
+                    recordActionValue(hand, m_config.hapticsAction, ignore, 1.f, now);
                 }
 
 #define TWO_HANDED_GESTURE(configName, joint1, joint2)                                                                 \
@@ -853,6 +905,8 @@ namespace {
 
 #undef TWO_HANDED_GESTURE
             }
+
+            m_evaluateHapticsGesture = false;
         }
 
         // Compute the scaled action value based on the distance between 2 joints.
@@ -940,6 +994,7 @@ namespace {
         std::map<XrAction, Action> m_actions;
 
         bool m_trackedRecently[2]{false, false};
+        bool m_evaluateHapticsGesture{false};
 
         using CacheEntry = std::pair<XrTime, XrHandJointLocationEXT[XR_HAND_JOINT_COUNT_EXT]>;
         mutable std::map<XrSpace, std::deque<CacheEntry>[HandCount]> m_cachedHandJointsPoses;
@@ -962,6 +1017,9 @@ namespace {
         gripJointIndex = XR_HAND_JOINT_PALM_EXT;
         clickThreshold = 0.75f;
         transform[0] = transform[1] = Pose::Identity();
+        hapticsResponseFrequency = NAN;
+        hapticsResponseGesture = Gesture::FingerGun;
+        hapticsAction = "";
         pinchAction[0] = pinchAction[1] = "";
         pinchNear = 0.0f;
         pinchFar = 0.05f;
@@ -1025,6 +1083,12 @@ namespace {
                     custom1Joint2Index = std::stoi(value);
                 } else if (name == "click_threshold") {
                     clickThreshold = std::stof(value);
+                } else if (name == "haptics_frequency") {
+                    hapticsResponseFrequency = std::stof(value);
+                } else if (name == "haptics_gesture") {
+                    hapticsResponseGesture = (Gesture)std::stoi(value);
+                } else if (name == "haptics_action") {
+                    hapticsAction = value;
                 } else if (side >= 0 && subName == "enabled") {
                     const bool boolValue = value == "1" || value == "true";
                     if (side == 0) {
@@ -1142,6 +1206,12 @@ namespace {
             Log("Grip pose uses joint: %d\n", gripJointIndex);
             Log("Aim pose uses joint: %d\n", aimJointIndex);
             Log("Click threshold: %.3f\n", clickThreshold);
+        }
+        if (!hapticsAction.empty()) {
+            if (!isnan(hapticsResponseFrequency)) {
+                Log("Haptics filter on %.3f Hz vibration\n", hapticsResponseFrequency);
+            }
+            Log("Haptics translates to: %s (on gesture %u)\n", hapticsAction.c_str(), hapticsResponseGesture);
         }
         if (custom1Joint1Index >= 0 && custom1Joint2Index >= 0) {
             Log("Custom gesture uses joints: %d %d\n", custom1Joint1Index, custom1Joint2Index);

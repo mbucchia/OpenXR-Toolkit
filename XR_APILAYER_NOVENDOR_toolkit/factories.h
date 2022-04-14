@@ -44,7 +44,9 @@ namespace toolkit {
 
         bool UpdateKeyState(bool& keyState, const std::vector<int>& vkModifiers, int vkKey, bool isRepeat);
 
-        void UpdateWindowsMixedRealityReprojection(config::MotionReprojectionRate rate);
+        void ToggleWindowsMixedRealityReprojection(bool enable);
+        void UpdateWindowsMixedRealityReprojectionRate(config::MotionReprojectionRate rate);
+        void ClearWindowsMixedRealityReprojection();
 
         bool IsServiceRunning(const std::string& name);
 
@@ -124,9 +126,13 @@ namespace toolkit {
         CreateHandTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
 
         std::shared_ptr<input::IEyeTracker>
-        CreateEyeTracker(toolkit::OpenXrApi& openXR,
-                         std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                         std::unique_ptr<HP::Omnicept::Client> omniceptClient = nullptr);
+        CreateEyeTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
+        std::shared_ptr<input::IEyeTracker>
+        CreateOmniceptEyeTracker(toolkit::OpenXrApi& openXR,
+                                 std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                                 std::unique_ptr<HP::Omnicept::Client> omniceptClient);
+        std::shared_ptr<input::IEyeTracker> CreatePimaxEyeTracker(
+            toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
 
     } // namespace input
 
@@ -139,6 +145,8 @@ namespace toolkit {
                                                         std::vector<int>& keyModifiers,
                                                         bool isHandTrackingSupported,
                                                         bool isPredictionDampeningSupported,
+                                                        uint32_t maxDisplayWidth,
+                                                        float resolutionHeightRatio,
                                                         bool isMotionReprojectionRateSupported,
                                                         uint8_t displayRefreshRate,
                                                         uint8_t variableRateShaderMaxDownsamplePow2,
