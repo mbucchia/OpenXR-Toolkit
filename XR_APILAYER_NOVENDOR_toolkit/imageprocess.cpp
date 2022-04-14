@@ -132,7 +132,7 @@ namespace {
         }
 
         void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
-            m_device->setShader(!input->isArray() ? m_shader : m_shaderVPRT, SamplerType::NearestClamp);
+            m_device->setShader(!input->isArray() ? m_shader : m_shaderVPRT, SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_configBuffer);
             m_device->setShaderInput(0, input, slice);
             m_device->setShaderOutput(0, output, slice);
@@ -145,14 +145,15 @@ namespace {
             const auto shadersDir = dllHome / "shaders";
             const auto shaderFile = shadersDir / "postprocess.hlsl";
 
-            m_shader = m_device->createQuadShader(
-                shaderFile, "mainPostProcess", "Image Processor PS", nullptr /*,  shadersDir*/);
-
             utilities::shader::Defines defines;
-            defines.add("VPRT", true);
+            defines.add("POST_PROCESS_SAMPLE_LINEAR", true);
             // defines.add("POST_PROCESS_SRC_SRGB", true);
             // defines.add("POST_PROCESS_DST_SRGB", true);
 
+            m_shader = m_device->createQuadShader(
+                shaderFile, "mainPostProcess", "Image Processor PS", defines.get() /*,  shadersDir*/);
+
+            defines.add("VPRT", true);
             m_shaderVPRT = m_device->createQuadShader(
                 shaderFile, "mainPostProcess", "Image Processor VPRT PS", defines.get() /*,  shadersDir*/);
 
@@ -204,10 +205,10 @@ namespace {
                 {{{{0.025f, -0.05f, -0.05f, 0.0f}}}, {{{0.0f, -0.20f, 0.0f, 0.f}}}},
                 
                 // sunglasses dark: +2.5 contrast, -10 bright, -10 expo, -40 highlights, +5 shad
-                {{{{0.025f, -0.10f, -0.10f, 0.0f}}}, {{{0.0f, -0.40f, 0.0f, 0.05f}}}},
+                {{{{0.025f, -0.10f, -0.10f, 0.0f}}}, {{{0.0f, -0.40f, 0.05f, 0.0f}}}},
                 
-                // deep night: +2 contrast, -40 bright, +20 expo, +2 vib, +5 sat, -75 high, +5 shad
-                {{{{0.02f, -0.40f, 0.20f, 0.02f}}}, {{{0.05f, -0.75f, 0.05f, 0.05f}}}},
+                // deep night: +0.5 contrast, -40 bright, +20 expo, +2.5 sat, -75 high, +15 shad
+                {{{{0.005f, -0.40f, 0.20f, 0.0f}}}, {{{0.25f, -0.75f, 0.15f, 0.0f}}}},
             };
 
             ImageProcessorConfig config;
@@ -241,13 +242,13 @@ namespace {
         static std::array<DirectX::XMINT4, 2> GetUserParams(const IConfigManager* configManager) {
             using namespace DirectX;
             if (configManager) {
-                return {XMINT4(configManager->getValue(SettingPostContrast + "User"),
-                               configManager->getValue(SettingPostBrightness + "User"),
-                               configManager->getValue(SettingPostExposure + "User"),
-                               configManager->getValue(SettingPostVibrance + "User")),
-                        XMINT4(configManager->getValue(SettingPostSaturation + "User"),
-                               configManager->getValue(SettingPostHighlights + "User"),
-                               configManager->getValue(SettingPostShadows + "User"),
+                return {XMINT4(configManager->getValue(SettingPostContrast + "_u1"),
+                               configManager->getValue(SettingPostBrightness + "_u1"),
+                               configManager->getValue(SettingPostExposure + "_u1"),
+                               configManager->getValue(SettingPostVibrance + "_u1")),
+                        XMINT4(configManager->getValue(SettingPostSaturation + "_u1"),
+                               configManager->getValue(SettingPostHighlights + "_u1"),
+                               configManager->getValue(SettingPostShadows + "_u1"),
                                0)};
             }
             return {XMINT4(500, 500, 500, 1000), XMINT4(500, 1000, 0, 0)};

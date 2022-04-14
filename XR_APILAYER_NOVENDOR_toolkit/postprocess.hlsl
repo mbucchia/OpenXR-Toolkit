@@ -28,34 +28,19 @@ cbuffer config : register(b0) {
     float4 Scale;   // Contrast, Brightness, Exposure, Vibrance (-1..+1 params)
     float4 Amount;  // Saturation, Highlights, Shadows (0..1 params)
 };
-SamplerState samplerLinearClamp : register(s0);
+
+#ifdef POST_PROCESS_SAMPLE_LINEAR
+SamplerState sourceSampler : register(s0);
+#else
+SamplerState sourceSampler : register(s0);
+#endif
 
 #ifdef VPRT
 Texture2DArray sourceTexture : register(t0);
+#define SAMPLE_TEXTURE(texcoord) sourceTexture.Sample(sourceSampler, float3((texcoord), 0)).rgb
 #else
 Texture2D sourceTexture : register(t0);
-#endif
-
-#ifdef POST_PROCESS_SAMPLE_LINEAR
-#ifdef VPRT
-#define SAMPLE_TEXTURE(source, texcoord) source.Sample(samplerLinearClamp, float3((texcoord), 0)).rgb
-#else
-#define SAMPLE_TEXTURE(source, texcoord) source.Sample(samplerLinearClamp, (texcoord)).rgb
-#endif
-#else
-#ifdef VPRT
-float3 SAMPLE_TEXTURE(Texture2DArray source, float2 texcoord) {
-  float3 dims;
-  source.GetDimensions(dims.x, dims.y, dims.z);
-  return sourceTexture.Load(int4(texcoord * dims.xy + 0.5, 0, 0)).rgb;
-}
-#else
-float3 SAMPLE_TEXTURE(Texture2D source, float2 texcoord) {
-  float2 dims;
-  source.GetDimensions(dims.x, dims.y);
-  return sourceTexture.Load(int3(texcoord * dims.xy + 0.5, 0)).rgb;
-}
-#endif
+#define SAMPLE_TEXTURE(texcoord) sourceTexture.Sample(sourceSampler, (texcoord)).rgb
 #endif
 
 // http://www.martinreddy.net/gfx/faqs/colorconv.faq
@@ -176,8 +161,7 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
 #endif
 #if 1
 
-  float3 color = SAMPLE_TEXTURE(sourceTexture, texcoord);
-
+  float3 color = SAMPLE_TEXTURE(texcoord);
 
 #ifdef POST_PROCESS_SRC_SRGB
   color = srgb2linear(color);

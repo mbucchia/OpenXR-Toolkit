@@ -130,13 +130,13 @@ namespace {
             m_configManager->setDefault(config::SettingPostHighlights, 1000);
             m_configManager->setDefault(config::SettingPostShadows, 0);
 
-            m_configManager->setDefault(config::SettingPostContrast + "User", 500);
-            m_configManager->setDefault(config::SettingPostBrightness + "User", 500);
-            m_configManager->setDefault(config::SettingPostExposure + "User", 500);
-            m_configManager->setDefault(config::SettingPostSaturation + "User", 1000);
-            m_configManager->setDefault(config::SettingPostVibrance + "User", 500);
-            m_configManager->setDefault(config::SettingPostHighlights + "User", 1000);
-            m_configManager->setDefault(config::SettingPostShadows + "User", 0);
+            m_configManager->setDefault(config::SettingPostContrast + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostBrightness + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostExposure + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostSaturation + "_u1", 1000);
+            m_configManager->setDefault(config::SettingPostVibrance + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostHighlights + "_u1", 1000);
+            m_configManager->setDefault(config::SettingPostShadows + "_u1", 0);
 
             // Misc features.
             m_configManager->setDefault(config::SettingICD, 1000);
