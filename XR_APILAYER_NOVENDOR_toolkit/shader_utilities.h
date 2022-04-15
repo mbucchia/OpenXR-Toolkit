@@ -30,20 +30,20 @@ namespace toolkit::utilities::shader {
     using namespace toolkit::log;
     using namespace toolkit::log;
 
-    inline void CompileShader(const std::filesystem::path& shaderFile,
-                              const char* entryPoint,
-                              ID3DBlob** blob,
-                              const D3D_SHADER_MACRO* defines = nullptr,
-                              ID3DInclude* includes = nullptr,
-                              const char* target = "cs_5_0");
+    void CompileShader(const std::filesystem::path& shaderFile,
+                       const char* entryPoint,
+                       ID3DBlob** blob,
+                       const D3D_SHADER_MACRO* defines = nullptr,
+                       ID3DInclude* includes = nullptr,
+                       const char* target = "cs_5_0");
     
-    inline void CompileShader(const void* data,
-                              size_t size,
-                              const char* entryPoint,
-                              ID3DBlob** blob,
-                              const D3D_SHADER_MACRO* defines = nullptr,
-                              ID3DInclude* includes = nullptr,
-                              const char* target = "cs_5_0");
+    void CompileShader(const void* data,
+                       size_t size,
+                       const char* entryPoint,
+                       ID3DBlob** blob,
+                       const D3D_SHADER_MACRO* defines = nullptr,
+                       ID3DInclude* includes = nullptr,
+                       const char* target = "cs_5_0");
     
     inline void CompileShader(std::string_view code, const char* entryPoint, ID3DBlob** blob, const char* target) {
         CompileShader(code.data(), code.size(), entryPoint, blob, nullptr, nullptr, target);
