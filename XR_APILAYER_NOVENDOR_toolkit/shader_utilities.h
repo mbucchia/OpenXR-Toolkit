@@ -35,42 +35,16 @@ namespace toolkit::utilities::shader {
                               ID3DBlob** blob,
                               const D3D_SHADER_MACRO* defines = nullptr,
                               ID3DInclude* includes = nullptr,
-                              const char* target = "cs_5_0") {
-        ComPtr<ID3DBlob> cdErrorBlob;
-        if (!includes)
-            includes = D3D_COMPILE_STANDARD_FILE_INCLUDE;
-        const HRESULT hr =
-            D3DCompileFromFile(shaderFile.c_str(), defines, includes, entryPoint, target, 0, 0, blob, &cdErrorBlob);
-        if (FAILED(hr)) {
-            if (cdErrorBlob) {
-                Log("%s", (char*)cdErrorBlob->GetBufferPointer());
-            }
-            CHECK_HRESULT(hr, "Failed to compile shader file");
-        }
-    }
-
+                              const char* target = "cs_5_0");
+    
     inline void CompileShader(const void* data,
                               size_t size,
                               const char* entryPoint,
                               ID3DBlob** blob,
                               const D3D_SHADER_MACRO* defines = nullptr,
                               ID3DInclude* includes = nullptr,
-                              const char* target = "cs_5_0") {
-        ComPtr<ID3DBlob> cdErrorBlob;
-        if (!includes) {
-            // TODO: pSourceName must be a file name to derive relative paths from.
-            includes = D3D_COMPILE_STANDARD_FILE_INCLUDE;
-        }
-        const HRESULT hr =
-            D3DCompile(data, size, nullptr, defines, includes, entryPoint, target, 0, 0, blob, &cdErrorBlob);
-        if (FAILED(hr)) {
-            if (cdErrorBlob) {
-                Log("%s", (char*)cdErrorBlob->GetBufferPointer());
-            }
-            CHECK_HRESULT(hr, "Failed to compile shader");
-        }
-    }
-
+                              const char* target = "cs_5_0");
+    
     inline void CompileShader(std::string_view code, const char* entryPoint, ID3DBlob** blob, const char* target) {
         CompileShader(code.data(), code.size(), entryPoint, blob, nullptr, nullptr, target);
     }
@@ -80,29 +54,9 @@ namespace toolkit::utilities::shader {
         }
 
         HRESULT
-        Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes) {
-            for (auto& it : m_includePaths) {
-                auto path = it / pFileName;
-                auto file = std::ifstream(path, std::ios_base::binary);
-                if (file.is_open()) {
-                    assert(ppData && pBytes);
-                    m_data.push_back({});
-                    auto& buf = m_data.back();
-                    buf.resize(static_cast<size_t>(std::filesystem::file_size(path)));
-                    file.read(buf.data(), static_cast<std::streamsize>(buf.size()));
-                    buf.erase(std::remove(buf.begin(), buf.end(), '\0'), buf.end());
-                    *ppData = buf.data();
-                    *pBytes = static_cast<UINT>(buf.size());
-                    return S_OK;
-                }
-            }
-            throw std::runtime_error("Error opening shader file include header");
-        }
-
-        HRESULT Close(LPCVOID pData) {
-            return S_OK;
-        }
-
+        Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes);
+        HRESULT Close(LPCVOID pData);
+        
         std::vector<std::vector<char>> m_data;
         std::vector<std::filesystem::path> m_includePaths;
     };
