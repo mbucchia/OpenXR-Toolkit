@@ -188,8 +188,10 @@ namespace {
                 const auto hasPatternChanged = hasModeChanged || checkUpdateRings(mode);
                 const auto hasQualityChanged = hasModeChanged || checkUpdateRates(mode);
 
-                if (hasPatternChanged)
+                if (hasPatternChanged) {
                     updateRings(mode);
+                    updateGaze();
+                }
 
                 if (hasQualityChanged)
                     updateRates(mode);
@@ -518,10 +520,6 @@ namespace {
             m_gazeOffset[2].x = m_configManager->getValue(SettingVRSXOffset) * 0.01f;
             m_gazeOffset[2].y = m_configManager->getValue(SettingVRSYOffset) * 0.01f;
 
-            // updateFallbackRTV
-            m_gazeLocation[2].x = 0;
-            m_gazeLocation[2].y = m_gazeOffset[2].y;
-
             TraceLoggingWrite(
                 g_traceProvider, "VariableRateShading_Rings", TLArg(radius[0], "Ring1"), TLArg(radius[1], "Ring2"));
         }
@@ -536,6 +534,10 @@ namespace {
             // location = view center + view offset (L/R)
             m_gazeLocation[m_swapViews] = gaze[0] + m_gazeOffset[2];
             m_gazeLocation[!m_swapViews] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
+
+            // The generic mask only supports vertical offsets.
+            m_gazeLocation[2].x = 0;
+            m_gazeLocation[2].y = m_gazeOffset[2].y;
         }
 
         ShadingRateMask& getOrCreateMaskResources(uint32_t width, uint32_t height, size_t* index = nullptr) {
