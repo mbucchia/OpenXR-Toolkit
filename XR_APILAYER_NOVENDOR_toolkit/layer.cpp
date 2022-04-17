@@ -40,6 +40,7 @@ namespace {
     using namespace toolkit::log;
 
     using namespace xr::math;
+    using namespace toolkit::math;
 
     struct SwapchainImages {
         std::vector<std::shared_ptr<graphics::ITexture>> chain;
@@ -119,6 +120,23 @@ namespace {
             m_configManager->setDefault(config::SettingSaturationRed, 500);
             m_configManager->setDefault(config::SettingSaturationGreen, 500);
             m_configManager->setDefault(config::SettingSaturationBlue, 500);
+
+            m_configManager->setDefault(config::SettingPostSunGlasses, 0);
+            m_configManager->setDefault(config::SettingPostContrast, 500);
+            m_configManager->setDefault(config::SettingPostBrightness, 500);
+            m_configManager->setDefault(config::SettingPostExposure, 500);
+            m_configManager->setDefault(config::SettingPostSaturation, 1000);
+            m_configManager->setDefault(config::SettingPostVibrance, 500);
+            m_configManager->setDefault(config::SettingPostHighlights, 1000);
+            m_configManager->setDefault(config::SettingPostShadows, 0);
+
+            m_configManager->setDefault(config::SettingPostContrast + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostBrightness + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostExposure + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostSaturation + "_u1", 1000);
+            m_configManager->setDefault(config::SettingPostVibrance + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostHighlights + "_u1", 1000);
+            m_configManager->setDefault(config::SettingPostShadows + "_u1", 0);
 
             // Misc features.
             m_configManager->setDefault(config::SettingICD, 1000);
@@ -571,8 +589,7 @@ namespace {
                                                            (renderWidth * renderHeight));
                     Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
 
-                    m_postProcessor =
-                        graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
+                    m_postProcessor = graphics::CreateImageProcessor(m_configManager, m_graphicsDevice);
 
                     // We disable the frame analyzer when using OpenComposite, because the app does not see the OpenXR
                     // textures anyways.
@@ -1233,6 +1250,7 @@ namespace {
             if (XR_SUCCEEDED(result) && isVrSession(session) &&
                 viewLocateInfo->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
                 assert(*viewCountOutput == utilities::ViewCount);
+                using namespace DirectX;
 
                 m_posesForFrame[0] = views[0];
                 m_posesForFrame[1] = views[1];
@@ -1242,14 +1260,12 @@ namespace {
                 if (cantOverride != 0) {
                     const float angle = (float)(cantOverride * (M_PI / 180));
 
-                    StoreXrPose(
-                        &views[0].pose,
-                        DirectX::XMMatrixMultiply(LoadXrPose(views[0].pose),
-                                                  DirectX::XMMatrixRotationRollPitchYaw(0.f, -angle / 2.f, 0.f)));
-                    StoreXrPose(
-                        &views[1].pose,
-                        DirectX::XMMatrixMultiply(LoadXrPose(views[1].pose),
-                                                  DirectX::XMMatrixRotationRollPitchYaw(0.f, angle / 2.f, 0.f)));
+                    StoreXrPose(&views[0].pose,
+                                XMMatrixMultiply(LoadXrPose(views[0].pose),
+                                                 XMMatrixRotationRollPitchYaw(0.f, -angle / 2.f, 0.f)));
+                    StoreXrPose(&views[1].pose,
+                                XMMatrixMultiply(LoadXrPose(views[1].pose),
+                                                 XMMatrixRotationRollPitchYaw(0.f, angle / 2.f, 0.f)));
                 }
 
                 // Calibrate the projection center for each eye.
@@ -1263,9 +1279,9 @@ namespace {
                         session, &info, &state, viewCapacityInput, viewCountOutput, eyeInViewSpace));
 
                     if (Pose::IsPoseValid(state.viewStateFlags)) {
-                        DirectX::XMFLOAT4X4 leftView, rightView;
-                        DirectX::XMStoreFloat4x4(&leftView, LoadXrPose(eyeInViewSpace[0].pose));
-                        DirectX::XMStoreFloat4x4(&rightView, LoadXrPose(eyeInViewSpace[1].pose));
+                        XMFLOAT4X4 leftView, rightView;
+                        XMStoreFloat4x4(&leftView, LoadXrPose(eyeInViewSpace[0].pose));
+                        XMStoreFloat4x4(&rightView, LoadXrPose(eyeInViewSpace[1].pose));
 
                         // This code is based on vrperfkit by Frydrych Holger.
                         // https://github.com/fholger/vrperfkit/blob/master/src/openvr/openvr_manager.cpp
@@ -1308,49 +1324,41 @@ namespace {
                 const int icdOverride = m_configManager->getValue(config::SettingICD);
                 if (icdOverride != 1000) {
                     const float icd = (ipd * 1000) / std::max(icdOverride, 1);
+                    const auto center = views[0].pose.position + (vec * 0.5f);
+                    const auto offset = Normalize(vec) * (icd * 0.5f);
+                    views[0].pose.position = center - offset;
+                    views[1].pose.position = center + offset;
                     m_stats.icd = icd;
-                    const auto center = views[0].pose.position + vec / 2.0f;
-                    const auto unit = Normalize(vec);
 
-                    views[0].pose.position = center - unit * (icd / 2.0f);
-                    views[1].pose.position = center + unit * (icd / 2.0f);
                 } else {
                     m_stats.icd = ipd;
                 }
 
                 // Override the FOV if requested.
                 if (m_configManager->getValue(config::SettingFOVType) == 0) {
-                    const int fovOverride = m_configManager->getValue(config::SettingFOV);
+                    const auto fovOverride = m_configManager->getValue(config::SettingFOV);
                     if (fovOverride != 100) {
-                        const float multiplier = fovOverride / 100.0f;
-                        views[0].fov.angleUp *= multiplier;
-                        views[0].fov.angleDown *= multiplier;
-                        views[0].fov.angleLeft *= multiplier;
-                        views[0].fov.angleRight *= multiplier;
-                        views[1].fov.angleUp *= multiplier;
-                        views[1].fov.angleDown *= multiplier;
-                        views[1].fov.angleLeft *= multiplier;
-                        views[1].fov.angleRight *= multiplier;
+                        StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * XMVectorReplicate(fovOverride * 0.01f));
+                        StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * XMVectorReplicate(fovOverride * 0.01f));
                     }
                 } else {
-                    views[0].fov.angleUp *= m_configManager->getValue(config::SettingFOVUp) / 100.0f;
-                    views[0].fov.angleDown *= m_configManager->getValue(config::SettingFOVDown) / 100.0f;
-                    views[0].fov.angleLeft *= m_configManager->getValue(config::SettingFOVLeftLeft) / 100.0f;
-                    views[0].fov.angleRight *= m_configManager->getValue(config::SettingFOVLeftRight) / 100.0f;
-                    views[1].fov.angleUp *= m_configManager->getValue(config::SettingFOVUp) / 100.0f;
-                    views[1].fov.angleDown *= m_configManager->getValue(config::SettingFOVDown) / 100.0f;
-                    views[1].fov.angleLeft *= m_configManager->getValue(config::SettingFOVRightLeft) / 100.0f;
-                    views[1].fov.angleRight *= m_configManager->getValue(config::SettingFOVRightRight) / 100.0f;
+                    // XrFovF layout is: L,R,U,D
+                    const auto fov1 = XMINT4(m_configManager->getValue(config::SettingFOVLeftLeft),
+                                             m_configManager->getValue(config::SettingFOVLeftRight),
+                                             m_configManager->getValue(config::SettingFOVUp),
+                                             m_configManager->getValue(config::SettingFOVDown));
+
+                    const auto fov2 = XMINT4(m_configManager->getValue(config::SettingFOVRightLeft),
+                                             m_configManager->getValue(config::SettingFOVRightRight),
+                                             fov1.z,
+                                             fov1.w);
+
+                    StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * XMLoadSInt4(&fov1) * XMVectorReplicate(0.01f));
+                    StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * XMLoadSInt4(&fov2) * XMVectorReplicate(0.01f));
                 }
 
-                m_stats.fovL[0] = views[0].fov.angleUp;
-                m_stats.fovL[1] = views[0].fov.angleDown;
-                m_stats.fovL[2] = views[0].fov.angleLeft;
-                m_stats.fovL[3] = views[0].fov.angleRight;
-                m_stats.fovR[0] = views[1].fov.angleUp;
-                m_stats.fovR[1] = views[1].fov.angleDown;
-                m_stats.fovR[2] = views[1].fov.angleLeft;
-                m_stats.fovR[3] = views[1].fov.angleRight;
+                m_stats.fov[0] = views[0].fov;
+                m_stats.fov[1] = views[1].fov;
 
                 // When doing the Pimax FOV hack, we swap left and right eyes.
                 if (m_supportFOVHack && m_configManager->hasChanged(config::SettingPimaxFOVHack)) {

@@ -54,6 +54,19 @@ namespace toolkit {
 
     } // namespace
 
+    namespace math {
+
+        // Missing helpers in XrMath.h
+        inline DirectX::XMVECTOR XM_CALLCONV LoadXrFov(const XrFovf& fov) {
+            return DirectX::XMLoadFloat4(&xr::math::detail::implement_math_cast<DirectX::XMFLOAT4>(fov));
+        }
+
+        inline void XM_CALLCONV StoreXrFov(XrFovf* outVec, DirectX::FXMVECTOR inVec) {
+            DirectX::XMStoreFloat4(&xr::math::detail::implement_math_cast<DirectX::XMFLOAT4>(*outVec), inVec);
+        }
+
+    } // namespace math
+
     namespace utilities {
 
         // 2 views to process, one per eye.
@@ -63,8 +76,15 @@ namespace toolkit {
         // A CPU synchronous timer.
         struct ICpuTimer : public ITimer {};
 
-        XrVector2f NdcToScreen(XrVector2f);
-        XrVector2f ScreenToNdc(XrVector2f);
+        // [-1,+1] (+up) -> [0..1] (+dn)
+        inline constexpr XrVector2f NdcToScreen(XrVector2f v) {
+            return {(v.x + 1.f) * 0.5f, (v.y - 1.f) * -0.5f};
+        }
+
+        // [0..1] (+dn) -> [-1,+1] (+up)
+        inline constexpr XrVector2f ScreenToNdc(XrVector2f v) {
+            return {(v.x * 2.f) - 1.f, (v.y * -2.f) + 1.f};
+        }
 
     } // namespace utilities
 
@@ -129,6 +149,16 @@ namespace toolkit {
         const std::string SettingSaturationRed = "saturation_red";
         const std::string SettingSaturationGreen = "saturation_green";
         const std::string SettingSaturationBlue = "saturation_blue";
+
+        const std::string SettingPostSunGlasses = "post_sunglasses";
+        const std::string SettingPostBrightness = "post_brightness";
+        const std::string SettingPostContrast = "post_contrast";
+        const std::string SettingPostExposure = "post_exposure";
+        const std::string SettingPostVibrance = "post_vibrance";
+        const std::string SettingPostSaturation = "post_saturation";
+        const std::string SettingPostHighlights = "post_highlights";
+        const std::string SettingPostShadows = "post_shadows";
+
         const std::string SettingEyeTrackingEnabled = "eye_tracking";
         const std::string SettingEyeProjectionDistance = "eye_projection";
         const std::string SettingEyeDebug = "eye_debug";
@@ -153,6 +183,7 @@ namespace toolkit {
         enum class VariableShadingRateVal { R_x1, R_2x1, R_2x2, R_4x2, R_4x4, R_Cull, MaxValue };
         enum class SaturationModeType { Global, Selective, MaxValue };
         enum class FovModeType { Simple, Advanced, MaxValue };
+        enum class PostSunGlassesType { None = 0, User, Light, Dark, Night, MaxValue };
         enum class ScreenshotFileFormat { DDS = 0, PNG, JPG, BMP, MaxValue };
 
         template <typename ConfigEnumType>
@@ -182,17 +213,19 @@ namespace toolkit {
 
             template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
             void setEnumDefault(const std::string& name, T value) {
-                setDefault(name, (int)value);
+                setDefault(name, static_cast<int>(to_integral(value)));
             }
 
             template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
             T getEnumValue(const std::string& name) const {
-                return (T)getValue(name);
+                const auto value = getValue(name);
+                return static_cast<T>(std::clamp(value, std::underlying_type_t<T>(0), to_integral(T::MaxValue) - 1));
             }
 
             template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
             T peekEnumValue(const std::string& name) const {
-                return (T)peekValue(name);
+                const auto value = peekValue(name);
+                return static_cast<T>(std::clamp(value, std::underlying_type_t<T>(0), to_integral(T::MaxValue) - 1));
             }
         };
 
@@ -272,6 +305,8 @@ namespace toolkit {
 
         // A few handy texture formats.
         enum class TextureFormat { R32G32B32A32_FLOAT, R16G16B16A16_UNORM, R10G10B10A2_UNORM, R8G8B8A8_UNORM };
+
+        enum class SamplerType { NearestClamp, LinearClamp };
 
         // A list of supported GPU Architectures.
         enum class GpuArchitecture { Unknown, AMD, Intel, NVidia };
@@ -505,10 +540,10 @@ namespace toolkit {
             virtual std::shared_ptr<IGpuTimer> createTimer() = 0;
 
             // Must be invoked prior to setting the input/output.
-            virtual void setShader(std::shared_ptr<IQuadShader> shader) = 0;
+            virtual void setShader(std::shared_ptr<IQuadShader> shader, SamplerType sampler) = 0;
 
             // Must be invoked prior to setting the input/output.
-            virtual void setShader(std::shared_ptr<IComputeShader> shader) = 0;
+            virtual void setShader(std::shared_ptr<IComputeShader> shader, SamplerType sampler) = 0;
 
             virtual void setShaderInput(uint32_t slot, std::shared_ptr<ITexture> input, int32_t slice = -1) = 0;
             virtual void setShaderInput(uint32_t slot, std::shared_ptr<IShaderBuffer> input) = 0;
@@ -709,7 +744,7 @@ namespace toolkit {
             XrVector2f leftPoint{};
             XrVector2f rightPoint{};
         };
-
+        
         struct IEyeTracker {
             virtual ~IEyeTracker() = default;
 
@@ -733,7 +768,6 @@ namespace toolkit {
     namespace menu {
 
         struct MenuStatistics {
-            float fps{0.0f};
             uint64_t appCpuTimeUs{0};
             uint64_t appGpuTimeUs{0};
             uint64_t waitCpuTimeUs{0};
@@ -744,16 +778,16 @@ namespace toolkit {
             uint64_t overlayCpuTimeUs{0};
             uint64_t overlayGpuTimeUs{0};
             uint64_t handTrackingCpuTimeUs{0};
-
             uint64_t predictionTimeUs{0};
+
+            float fps{0.0f};
             float icd{0.0f};
-            float fovL[4]{0.0f, 0.0f, 0.0f, 0.0f};
-            float fovR[4]{0.0f, 0.0f, 0.0f, 0.0f};
+            XrFovf fov[2]{{0}};
+            uint32_t numBiasedSamplers{0};
+            uint32_t numRenderTargetsWithVRS{0};
 
             bool hasColorBuffer[utilities::ViewCount]{false, false};
             bool hasDepthBuffer[utilities::ViewCount]{false, false};
-            uint32_t numBiasedSamplers{0};
-            uint32_t numRenderTargetsWithVRS{0};
         };
 
         // A menu handler.

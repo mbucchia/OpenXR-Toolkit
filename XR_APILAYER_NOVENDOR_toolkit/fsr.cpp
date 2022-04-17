@@ -76,14 +76,14 @@ namespace {
             }
 
             if (!m_isSharpenOnly) {
-                m_device->setShader(m_shaderEASU);
+                m_device->setShader(m_shaderEASU, SamplerType::LinearClamp);
                 m_device->setShaderInput(0, m_configBuffer);
                 m_device->setShaderInput(0, input, slice);
                 m_device->setShaderOutput(0, m_intermediary);
                 m_device->dispatchShader();
             }
 
-            m_device->setShader(m_shaderRCAS);
+            m_device->setShader(m_shaderRCAS, SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_configBuffer);
             m_device->setShaderInput(0, m_isSharpenOnly ? input : m_intermediary);
             m_device->setShaderOutput(0, output, slice);

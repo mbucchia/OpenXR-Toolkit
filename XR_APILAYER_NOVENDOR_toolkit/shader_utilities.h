@@ -28,7 +28,6 @@
 namespace toolkit::utilities::shader {
 
     using namespace toolkit::log;
-    using namespace toolkit::log;
 
     void CompileShader(const std::filesystem::path& shaderFile,
                        const char* entryPoint,
@@ -36,7 +35,7 @@ namespace toolkit::utilities::shader {
                        const D3D_SHADER_MACRO* defines = nullptr,
                        ID3DInclude* includes = nullptr,
                        const char* target = "cs_5_0");
-    
+
     void CompileShader(const void* data,
                        size_t size,
                        const char* entryPoint,
@@ -54,9 +53,9 @@ namespace toolkit::utilities::shader {
         }
 
         HRESULT
-        Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes);
+        Open(D3D_INCLUDE_TYPE includeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes);
         HRESULT Close(LPCVOID pData);
-        
+
         std::vector<std::vector<char>> m_data;
         std::vector<std::filesystem::path> m_includePaths;
     };

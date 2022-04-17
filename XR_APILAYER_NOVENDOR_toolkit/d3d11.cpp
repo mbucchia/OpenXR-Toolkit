@@ -163,7 +163,7 @@ namespace {
 
             m_isValid = true;
 
-            TraceLoggingWriteStop(local , "D3D11ContextState_Save");
+            TraceLoggingWriteStop(local, "D3D11ContextState_Save");
         }
 
         void restore(ID3D11DeviceContext* context) const {
@@ -1119,7 +1119,7 @@ namespace {
             return std::make_shared<D3D11GpuTimer>(shared_from_this());
         }
 
-        void setShader(std::shared_ptr<IQuadShader> shader) override {
+        void setShader(std::shared_ptr<IQuadShader> shader, SamplerType sampler) override {
             m_currentQuadShader.reset();
             m_currentComputeShader.reset();
             m_currentShaderHighestSRV = m_currentShaderHighestUAV = m_currentShaderHighestRTV = 0;
@@ -1135,7 +1135,7 @@ namespace {
                 m_context->VSSetShader(get(m_quadVertexShader), nullptr, 0);
 
                 // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
-                ID3D11SamplerState* const samplers[] = {get(m_linearClampSamplerPS)};
+                ID3D11SamplerState* const samplers[] = {get(m_samplers[to_integral(sampler)])};
                 m_context->PSSetSamplers(0, ARRAYSIZE(samplers), samplers);
                 m_context->PSSetShader(shader11, nullptr, 0);
 
@@ -1143,14 +1143,14 @@ namespace {
             }
         }
 
-        void setShader(std::shared_ptr<IComputeShader> shader) override {
+        void setShader(std::shared_ptr<IComputeShader> shader, SamplerType sampler) override {
             m_currentQuadShader.reset();
             m_currentComputeShader.reset();
             m_currentShaderHighestSRV = m_currentShaderHighestUAV = m_currentShaderHighestRTV = 0;
 
             if (auto shader11 = shader->getAs<D3D11>()) {
                 // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
-                ID3D11SamplerState* const samplers[] = {get(m_linearClampSamplerCS)};
+                ID3D11SamplerState* const samplers[] = {get(m_samplers[to_integral(sampler)])};
                 m_context->CSSetSamplers(0, ARRAYSIZE(samplers), samplers);
                 m_context->CSSetShader(shader11, nullptr, 0);
 
@@ -1397,13 +1397,13 @@ namespace {
                          bool measure,
                          int alignment) override {
             // fast path, use the stack for most of our strings
+            auto src = reinterpret_cast<const uint8_t*>(string.data());
             if (string.size() < size_t(64)) {
-                wchar_t buffer[64];
-                std::copy_n(string.begin(), string.size(), buffer)[0] = '\0';
-                return drawString(
-                    std::wstring_view(buffer, string.size()), style, size, x, y, color, measure, alignment);
+                wchar_t buf[64];
+                std::copy_n(src, string.size(), buf)[0] = '\0';
+                return drawString(std::wstring_view(buf, string.size()), style, size, x, y, color, measure, alignment);
             }
-            return drawString(std::wstring(string.begin(), string.end()), style, size, x, y, color, measure, alignment);
+            return drawString(std::wstring(src, src + string.size()), style, size, x, y, color, measure, alignment);
         }
 
         float measureString(std::wstring_view string, TextStyle style, float size) const override {
@@ -1420,12 +1420,13 @@ namespace {
 
         float measureString(std::string_view string, TextStyle style, float size) const override {
             // fast path, use the stack for most of our strings
+            auto src = reinterpret_cast<const uint8_t*>(string.data());
             if (string.size() < size_t(64)) {
-                wchar_t buffer[64];
-                std::copy_n(string.begin(), string.size(), buffer)[0] = '\0';
-                return measureString(std::wstring_view(buffer, string.size()), style, size);
+                wchar_t buf[64];
+                std::copy_n(src, string.size(), buf)[0] = '\0';
+                return measureString(std::wstring_view(buf, string.size()), style, size);
             }
-            return measureString(std::wstring(string.begin(), string.end()), style, size);
+            return measureString(std::wstring(src, src + string.size()), style, size);
         }
 
         void beginText() override {
@@ -1558,20 +1559,16 @@ namespace {
                 desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
                 desc.MaxAnisotropy = 1;
                 desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-                CHECK_HRCMD(m_device->CreateSamplerState(&desc, set(m_linearClampSamplerPS)));
-            }
-            {
-                D3D11_SAMPLER_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
+                desc.BorderColor[3] = 1.0f;
+                CHECK_HRCMD(
+                    m_device->CreateSamplerState(&desc, set(m_samplers[to_integral(SamplerType::NearestClamp)])));
+
                 desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-                desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-                desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-                desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-                desc.MaxAnisotropy = 1;
                 desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
                 desc.MinLOD = D3D11_MIP_LOD_BIAS_MIN;
                 desc.MaxLOD = D3D11_MIP_LOD_BIAS_MAX;
-                CHECK_HRCMD(m_device->CreateSamplerState(&desc, set(m_linearClampSamplerCS)));
+                CHECK_HRCMD(
+                    m_device->CreateSamplerState(&desc, set(m_samplers[to_integral(SamplerType::LinearClamp)])));
             }
             {
                 D3D11_RASTERIZER_DESC desc;
@@ -1859,8 +1856,7 @@ namespace {
         GpuArchitecture m_gpuArchitecture;
         uint32_t m_lateInitCountdown{0};
 
-        ComPtr<ID3D11SamplerState> m_linearClampSamplerPS;
-        ComPtr<ID3D11SamplerState> m_linearClampSamplerCS;
+        ComPtr<ID3D11SamplerState> m_samplers[2];
         ComPtr<ID3D11RasterizerState> m_quadRasterizer;
         ComPtr<ID3D11RasterizerState> m_quadRasterizerMSAA;
         ComPtr<ID3D11VertexShader> m_quadVertexShader;
