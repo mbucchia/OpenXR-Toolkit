@@ -335,7 +335,7 @@ namespace {
 
                     renderTarget->saveToFile(
                         (localAppData / "screenshots" /
-                         fmt::format("vrs_{}_{}_{}_pre.png",
+                         fmt::format("vrs_{}_{}_{}_pre.dds",
                                      m_captureID,
                                      m_captureFileIndex,
                                      info.arraySize == 2   ? "dual"
@@ -350,7 +350,7 @@ namespace {
 
                     m_currentRenderTarget->saveToFile(
                         (localAppData / "screenshots" /
-                         fmt::format("vrs_{}_{}_{}_post.png",
+                         fmt::format("vrs_{}_{}_{}_post.dds",
                                      m_captureID,
                                      m_captureFileIndex++,
                                      info.arraySize == 2 ? "dual"
@@ -568,8 +568,7 @@ namespace {
                 }
             }
 
-            TraceLoggingWrite(
-                g_traceProvider, "VariableRateShading_Mask", TLArg(width), TLArg(height));
+            TraceLoggingWrite(g_traceProvider, "VariableRateShading_Mask", TLArg(width), TLArg(height));
 
             ShadingRateMask newMask;
             newMask.widthInTiles = texW;
@@ -774,9 +773,9 @@ namespace {
                               TLArg(info.format, "Format"));
 
             // Check for proportionality with the size of our render target.
-            // Also check that the texture is not under ~50% (45% for margin) of the render scale. We expect that no one
-            // should use in-app render scale that is so small.
-            if (info.width < (m_renderWidth * 0.45f))
+            // Also check that the texture is not under 50% of the render scale. We expect that no one should use in-app
+            // render scale that is so small.
+            if (info.width < (m_renderWidth * 0.51f))
                 return false;
 
             const float aspectRatio = (float)info.width / info.height;
