@@ -207,6 +207,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_5F11F8285B6F46D497AA313669FF7536"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_623188B4A9B04D07939BCF83D18C2C59"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -346,6 +352,12 @@
         "Entry"
         {
         "MsmKey" = "8:_CEE4B44871CE49838B50742548FFFBFF"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_D05D62E44A1C4ADAB0A40A5DAC3CFD84"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1068,6 +1080,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5F11F8285B6F46D497AA313669FF7536"
+            {
+            "SourcePath" = "8:..\\scripts\\OXRTK_WMR.wprp"
+            "TargetName" = "8:OXRTK_WMR.wprp"
+            "Tag" = "8:"
+            "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_623188B4A9B04D07939BCF83D18C2C59"
             {
             "SourcePath" = "8:banner.bmp"
@@ -1418,6 +1450,26 @@
             {
             "SourcePath" = "8:..\\companion\\openxr_loader.dll"
             "TargetName" = "8:openxr_loader.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D05D62E44A1C4ADAB0A40A5DAC3CFD84"
+            {
+            "SourcePath" = "8:..\\scripts\\OXRTK.wprp"
+            "TargetName" = "8:OXRTK.wprp"
             "Tag" = "8:"
             "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
             "Condition" = "8:"
