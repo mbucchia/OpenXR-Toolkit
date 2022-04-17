@@ -574,7 +574,9 @@ namespace {
                     m_postProcessor =
                         graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, "postprocess.hlsl");
 
-                    if (!m_configManager->getValue("disable_frame_analyzer")) {
+                    // We disable the frame analyzer when using OpenComposite, because the app does not see the OpenXR
+                    // textures anyways.
+                    if (!m_configManager->getValue("disable_frame_analyzer") || m_isOpenComposite) {
                         m_frameAnalyzer = graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice);
                     }
 
@@ -1779,6 +1781,12 @@ namespace {
                     static_assert(utilities::ViewCount == 2);
                     const bool useVPRT = proj->views[0].subImage.swapchain == proj->views[1].subImage.swapchain;
                     // TODO: We need to use subImage.imageArrayIndex instead of assuming 0/left and 1/right.
+
+                    if (useVPRT) {
+                        // Assume that we've properly distinguished left/right eyes.
+                        m_stats.hasColorBuffer[(int)utilities::Eye::Left] =
+                            m_stats.hasColorBuffer[(int)utilities::Eye::Right] = true;
+                    }
 
                     assert(proj->viewCount == utilities::ViewCount);
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
