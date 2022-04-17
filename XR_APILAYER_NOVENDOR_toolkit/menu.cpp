@@ -166,24 +166,14 @@ namespace {
       public:
         MenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                     std::shared_ptr<IDevice> device,
-                    uint32_t displayWidth,
-                    uint32_t displayHeight,
-                    std::vector<int>& keyModifiers,
-                    bool isHandTrackingSupported,
-                    bool isPredictionDampeningSupported,
-                    uint32_t maxDisplayWidth,
-                    float resolutionHeightRatio,
-                    bool isMotionReprojectionRateSupported,
-                    uint8_t displayRefreshRate,
-                    uint8_t variableRateShaderMaxRate,
-                    bool isEyeTrackingSupported,
-                    bool isPimaxFovHackSupported)
-            : m_configManager(configManager), m_device(device), m_displayWidth(displayWidth),
-              m_displayHeight(displayHeight), m_keyModifiers(keyModifiers),
-              m_isHandTrackingSupported(isHandTrackingSupported), m_isEyeTrackingSupported(isEyeTrackingSupported),
-              m_resolutionHeightRatio(resolutionHeightRatio),
-              m_isMotionReprojectionRateSupported(isMotionReprojectionRateSupported),
-              m_displayRefreshRate(displayRefreshRate), m_supportFOVHack(isPimaxFovHackSupported) {
+                    const MenuInfo& menuInfo)
+            : m_configManager(configManager), m_device(device), m_displayWidth(menuInfo.displayWidth),
+              m_displayHeight(menuInfo.displayHeight), m_keyModifiers(menuInfo.keyModifiers),
+              m_isHandTrackingSupported(menuInfo.isHandTrackingSupported),
+              m_isEyeTrackingSupported(menuInfo.isEyeTrackingSupported),
+              m_resolutionHeightRatio(menuInfo.resolutionHeightRatio),
+              m_isMotionReprojectionRateSupported(menuInfo.isMotionReprojectionRateSupported),
+              m_displayRefreshRate(menuInfo.displayRefreshRate), m_supportFOVHack(menuInfo.isPimaxFovHackSupported) {
             m_lastInput = std::chrono::steady_clock::now();
 
             // We display the hint for menu hotkeys for the first few runs.
@@ -244,12 +234,12 @@ namespace {
             m_menuEntries.push_back({MenuIndent::NoIndent, "", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
             m_menuEntries.back().visible = true; /* Always visible. */
 
-            setupPerformanceTab(variableRateShaderMaxRate);
-            setupAppearanceTab(isPimaxFovHackSupported);
-            setupInputsTab(isPredictionDampeningSupported);
-            setupSystemTab(maxDisplayWidth);
-            setupMenuTab();
-            setupDeveloperTab();
+            setupPerformanceTab(menuInfo);
+            setupAppearanceTab(menuInfo);
+            setupInputsTab(menuInfo);
+            setupSystemTab(menuInfo);
+            setupMenuTab(menuInfo);
+            setupDeveloperTab(menuInfo);
 
             m_menuEntries.push_back(
                 {MenuIndent::NoIndent, "Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
@@ -870,7 +860,7 @@ namespace {
         }
 
       private:
-        void setupPerformanceTab(uint8_t variableRateShaderMaxRate) {
+        void setupPerformanceTab(const MenuInfo& menuInfo) {
             MenuGroup performanceTab(
                 m_configManager,
                 m_menuGroups,
@@ -974,7 +964,7 @@ namespace {
             upscalingGroup.finalize();
 
             // Fixed Foveated Rendering (VRS) Settings.
-            if (variableRateShaderMaxRate) {
+            if (menuInfo.variableRateShaderMaxRate) {
                 m_menuEntries.push_back({MenuIndent::OptionIndent,
                                          !m_isEyeTrackingSupported ? "Fixed foveated rendering" : "Foveated rendering",
                                          MenuEntryType::Choice,
@@ -1001,14 +991,16 @@ namespace {
                     MenuGroup variableRateShaderEyeTrackingGroup(m_configManager, m_menuGroups, m_menuEntries, [&] {
                         return m_configManager->peekValue(SettingEyeTrackingEnabled);
                     } /* visible condition */);
-                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                             "Eye projection distance",
-                                             MenuEntryType::Slider,
-                                             SettingEyeProjectionDistance,
-                                             10,
-                                             10000,
-                                             [](int value) { return fmt::format("{:.2f}m", value / 100.f); }});
-                    m_menuEntries.back().acceleration = 5;
+                    if (menuInfo.isEyeTrackingProjectionDistanceSupported) {
+                        m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                                 "Eye projection distance",
+                                                 MenuEntryType::Slider,
+                                                 SettingEyeProjectionDistance,
+                                                 10,
+                                                 10000,
+                                                 [](int value) { return fmt::format("{:.2f}m", value / 100.f); }});
+                        m_menuEntries.back().acceleration = 5;
+                    }
                     variableRateShaderEyeTrackingGroup.finalize();
                 }
                 variableRateShaderCommonGroup.finalize();
@@ -1041,14 +1033,14 @@ namespace {
                 } /* visible condition */);
                 {
                     const auto maxVRSLeftRightBias =
-                        std::min(int(variableRateShaderMaxRate), to_integral(VariableShadingRateVal::R_4x4));
+                        std::min(int(menuInfo.variableRateShaderMaxRate), to_integral(VariableShadingRateVal::R_4x4));
 
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Inner resolution",
                                              MenuEntryType::Slider,
                                              SettingVRSInner,
                                              0,
-                                             variableRateShaderMaxRate,
+                                             menuInfo.variableRateShaderMaxRate,
                                              MenuEntry::FmtEnum<VariableShadingRateVal>});
                     m_menuEntries.back().expert = true;
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
@@ -1063,7 +1055,7 @@ namespace {
                                              MenuEntryType::Slider,
                                              SettingVRSMiddle,
                                              1, // Exclude 1x to discourage people from using poor settings!
-                                             variableRateShaderMaxRate,
+                                             menuInfo.variableRateShaderMaxRate,
                                              MenuEntry::FmtEnum<VariableShadingRateVal>});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Outer ring size",
@@ -1077,7 +1069,7 @@ namespace {
                                              MenuEntryType::Slider,
                                              SettingVRSOuter,
                                              1, // Exclude 1x to discourage people from using poor settings!
-                                             variableRateShaderMaxRate,
+                                             menuInfo.variableRateShaderMaxRate,
                                              MenuEntry::FmtEnum<VariableShadingRateVal>});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Prefer resolution",
@@ -1126,7 +1118,7 @@ namespace {
             performanceTab.finalize();
         }
 
-        void setupAppearanceTab(bool isPimaxFovHackSupported) {
+        void setupAppearanceTab(const MenuInfo& menuInfo) {
             MenuGroup appearanceTab(
                 m_configManager,
                 m_menuGroups,
@@ -1279,7 +1271,7 @@ namespace {
                  [&](int value) { return fmt::format("{}% ({:.1f} deg)", value, m_stats.fovR[3] * 180.0f / M_PI); }});
             fovAdvancedGroup.finalize();
 
-            if (isPimaxFovHackSupported) {
+            if (menuInfo.isPimaxFovHackSupported) {
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Pimax WFOV Hack",
                                          MenuEntryType::Choice,
@@ -1293,7 +1285,7 @@ namespace {
             appearanceTab.finalize();
         }
 
-        void setupInputsTab(bool isPredictionDampeningSupported) {
+        void setupInputsTab(const MenuInfo& menuInfo) {
             MenuGroup inputsTab(
                 m_configManager,
                 m_menuGroups,
@@ -1301,7 +1293,7 @@ namespace {
                 [&] { return m_currentTab == MenuTab::Inputs; } /* visible condition */,
                 true /* isTab */);
 
-            if (isPredictionDampeningSupported) {
+            if (menuInfo.isPredictionDampeningSupported) {
                 m_menuEntries.push_back({MenuIndent::OptionIndent,
                                          "Shaking reduction",
                                          MenuEntryType::Slider,
@@ -1359,7 +1351,7 @@ namespace {
             inputsTab.finalize();
         }
 
-        void setupSystemTab(uint32_t maxDisplayWidth) {
+        void setupSystemTab(const MenuInfo& menuInfo) {
             MenuGroup systemTab(
                 m_configManager,
                 m_menuGroups,
@@ -1384,7 +1376,7 @@ namespace {
                  MenuEntryType::Slider,
                  SettingResolutionWidth,
                  500,
-                 (int)maxDisplayWidth,
+                 (int)menuInfo.maxDisplayWidth,
                  [&](int value) { return fmt::format("{}x{}", value, (uint32_t)(value * m_resolutionHeightRatio)); }});
             m_menuEntries.back().acceleration = 10;
             resolutionGroup.finalize();
@@ -1420,7 +1412,7 @@ namespace {
             systemTab.finalize();
         }
 
-        void setupMenuTab() {
+        void setupMenuTab(const MenuInfo& menuInfo) {
             MenuGroup menuTab(
                 m_configManager,
                 m_menuGroups,
@@ -1467,7 +1459,7 @@ namespace {
             menuTab.finalize();
         }
 
-        void setupDeveloperTab() {
+        void setupDeveloperTab(const MenuInfo& menuInfo) {
             if (!m_configManager->getValue(SettingDeveloper)) {
                 return;
             }
@@ -1674,32 +1666,8 @@ namespace {
 namespace toolkit::menu {
     std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                                     std::shared_ptr<toolkit::graphics::IDevice> device,
-                                                    uint32_t displayWidth,
-                                                    uint32_t displayHeight,
-                                                    std::vector<int>& keyModifiers,
-                                                    bool isHandTrackingSupported,
-                                                    bool isPredictionDampeningSupported,
-                                                    uint32_t maxDisplayWidth,
-                                                    float resolutionHeightRatio,
-                                                    bool isMotionReprojectionRateSupported,
-                                                    uint8_t displayRefreshRate,
-                                                    uint8_t variableRateShaderMaxRate,
-                                                    bool isEyeTrackingSupported,
-                                                    bool isPimaxFovHackSupported) {
-        return std::make_shared<MenuHandler>(configManager,
-                                             device,
-                                             displayWidth,
-                                             displayHeight,
-                                             keyModifiers,
-                                             isHandTrackingSupported,
-                                             isPredictionDampeningSupported,
-                                             maxDisplayWidth,
-                                             resolutionHeightRatio,
-                                             isMotionReprojectionRateSupported,
-                                             displayRefreshRate,
-                                             variableRateShaderMaxRate,
-                                             isEyeTrackingSupported,
-                                             isPimaxFovHackSupported);
+                                                    const MenuInfo& menuInfo) {
+        return std::make_shared<MenuHandler>(configManager, device, menuInfo);
     }
 
 } // namespace toolkit::menu

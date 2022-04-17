@@ -723,6 +723,8 @@ namespace toolkit {
             virtual XrActionSet getActionSet() const = 0;
             virtual bool getProjectedGaze(XrVector2f gaze[utilities::ViewCount]) const = 0;
 
+            virtual bool isProjectionDistanceSupported() const = 0;
+
             virtual const EyeGazeState& getEyeGazeState() const = 0;
         };
 
