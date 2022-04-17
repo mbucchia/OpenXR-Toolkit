@@ -840,7 +840,7 @@ namespace {
 
       private:
         friend class MenuGroup;
-        
+
         void setupPerformanceTab(const MenuInfo& menuInfo) {
             MenuGroup performanceTab(
                 this, [&] { return m_currentTab == MenuTab::Performance; }, true);

@@ -42,6 +42,11 @@ namespace {
     constexpr size_t MaxGpuTimers = 32;
     constexpr size_t MaxModelBuffers = 128;
 
+    inline void SetDebugName(ID3D12Object* resource, std::string_view name) {
+        if (resource && !name.empty())
+            resource->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(name.size()), name.data());
+    }
+
     auto descriptorCompare = [](const D3D12_CPU_DESCRIPTOR_HANDLE& left, const D3D12_CPU_DESCRIPTOR_HANDLE& right) {
         return left.ptr < right.ptr;
     };
@@ -219,10 +224,7 @@ namespace {
                 m_psoDesc.pRootSignature = get(m_rootSignature);
                 CHECK_HRCMD(device->CreateGraphicsPipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
 
-                if (!m_debugName.empty()) {
-                    m_pipelineState->SetPrivateData(
-                        WKPDID_D3DDebugObjectName, (UINT)m_debugName.size(), m_debugName.data());
-                }
+                SetDebugName(get(m_pipelineState), m_debugName);
 
                 m_shaderData.rootSignature = get(m_rootSignature);
                 m_shaderData.pipelineState = get(m_pipelineState);
@@ -288,10 +290,7 @@ namespace {
                 m_psoDesc.pRootSignature = get(m_rootSignature);
                 CHECK_HRCMD(device->CreateComputePipelineState(&m_psoDesc, IID_PPV_ARGS(set(m_pipelineState))));
 
-                if (!m_debugName.empty()) {
-                    m_pipelineState->SetPrivateData(
-                        WKPDID_D3DDebugObjectName, (UINT)m_debugName.size(), m_debugName.data());
-                }
+                SetDebugName(get(m_pipelineState), m_debugName);
 
                 m_shaderData.rootSignature = get(m_rootSignature);
                 m_shaderData.pipelineState = get(m_pipelineState);
@@ -1165,10 +1164,7 @@ namespace {
                 }
                 flushContext(true);
             }
-
-            if (!debugName.empty()) {
-                texture->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
-            }
+            SetDebugName(get(texture), debugName);
 
             return std::make_shared<D3D12Texture>(
                 shared_from_this(), info, desc, get(texture), m_rtvHeap, m_dsvHeap, m_rvHeap);
@@ -1201,10 +1197,7 @@ namespace {
                                                               nullptr,
                                                               IID_PPV_ARGS(set(uploadBuffer))));
             }
-
-            if (!debugName.empty()) {
-                buffer->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
-            }
+            SetDebugName(get(buffer), debugName);
 
             auto result = std::make_shared<D3D12Buffer>(
                 shared_from_this(), desc, get(buffer), m_rvHeap, !immutable ? get(uploadBuffer) : nullptr);
@@ -2276,18 +2269,19 @@ namespace toolkit::graphics {
                                                const XrSwapchainCreateInfo& info,
                                                ID3D12Resource* texture,
                                                std::string_view debugName) {
-        if (device->getApi() != Api::D3D12) {
-            throw std::runtime_error("Not a D3D12 device");
-        }
-        auto d3d12Device = dynamic_cast<D3D12Device*>(device.get());
+        if (device->getApi() == Api::D3D12) {
+            SetDebugName(texture, debugName);
 
-        if (!debugName.empty()) {
-            texture->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.data());
+            auto d3d12Device = dynamic_cast<D3D12Device*>(device.get());
+            return std::make_shared<D3D12Texture>(device,
+                                                  info,
+                                                  texture->GetDesc(),
+                                                  texture,
+                                                  d3d12Device->m_rtvHeap,
+                                                  d3d12Device->m_dsvHeap,
+                                                  d3d12Device->m_rvHeap);
         }
-
-        const D3D12_RESOURCE_DESC desc = texture->GetDesc();
-        return std::make_shared<D3D12Texture>(
-            device, info, desc, texture, d3d12Device->m_rtvHeap, d3d12Device->m_dsvHeap, d3d12Device->m_rvHeap);
+        throw std::runtime_error("Not a D3D12 device");
     }
 
 } // namespace toolkit::graphics

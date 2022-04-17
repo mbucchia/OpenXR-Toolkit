@@ -43,6 +43,10 @@ namespace toolkit::utilities::shader {
                        const D3D_SHADER_MACRO* defines = nullptr,
                        ID3DInclude* includes = nullptr,
                        const char* target = "cs_5_0");
+    
+    inline void CompileShader(std::string_view code, const char* entryPoint, ID3DBlob** blob, const char* target) {
+        CompileShader(code.data(), code.size(), entryPoint, blob, nullptr, nullptr, target);
+    }
 
     struct IncludeHeader : ID3DInclude {
         IncludeHeader(std::vector<std::filesystem::path> includePaths) : m_includePaths(std::move(includePaths)) {
@@ -92,17 +96,11 @@ namespace toolkit::utilities::shader {
             if (it != m_definesVector.end())
                 it->second = toStr(val);
         }
-        D3D_SHADER_MACRO* get() {
-            m_defines = std::make_unique<D3D_SHADER_MACRO[]>(m_definesVector.size() + 1);
-            for (size_t i = 0; i < m_definesVector.size(); ++i)
-                m_defines[i] = {m_definesVector[i].first.c_str(), m_definesVector[i].second.c_str()};
-            m_defines[m_definesVector.size()] = {nullptr, nullptr};
-            return m_defines.get();
-        }
+        const D3D_SHADER_MACRO* get() const;
 
       private:
         std::vector<std::pair<std::string, std::string>> m_definesVector;
-        std::unique_ptr<D3D_SHADER_MACRO[]> m_defines;
+        mutable std::unique_ptr<D3D_SHADER_MACRO[]> m_defines;
     };
 
 } // namespace toolkit::utilities::shader

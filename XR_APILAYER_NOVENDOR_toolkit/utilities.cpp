@@ -316,4 +316,17 @@ namespace toolkit::utilities::shader {
         return S_OK;
     }
 
+    const D3D_SHADER_MACRO* Defines::get() const {
+        static const D3D_SHADER_MACRO kEmpty = {nullptr, nullptr};
+        if (!m_definesVector.empty()) {
+            m_defines = std::make_unique<D3D_SHADER_MACRO[]>(m_definesVector.size() + 1);
+            for (size_t i = 0; i < m_definesVector.size(); ++i)
+                m_defines[i] = {m_definesVector[i].first.c_str(), m_definesVector[i].second.c_str()};
+            m_defines[m_definesVector.size()] = kEmpty;
+            return m_defines.get();
+        }
+        m_defines = nullptr;
+        return &kEmpty;
+    }
+
 } // namespace toolkit::utilities::shader
