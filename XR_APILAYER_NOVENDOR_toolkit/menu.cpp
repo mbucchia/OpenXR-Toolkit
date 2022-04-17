@@ -952,6 +952,11 @@ namespace {
                            VariableShadingRateType::None;
                 });
                 if (m_isEyeTrackingSupported) {
+                    // Eye tracking sub-group.
+                    MenuGroup variableRateShaderEyeTrackingGroup(this, [&] {
+                        // We only show eye tracking availability if we are able to distinguish left/right eyes.
+                        return m_stats.hasColorBuffer[0] && m_stats.hasColorBuffer[1];
+                    });
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Eye tracking",
                                              MenuEntryType::Choice,
@@ -960,8 +965,10 @@ namespace {
                                              MenuEntry::LastVal<OffOnType>(),
                                              MenuEntry::FmtEnum<OffOnType>});
                     m_originalEyeTrackingEnabled = isEyeTrackingEnabled();
-                    // Eye tracking sub-group.
-                    MenuGroup variableRateShaderEyeTrackingGroup(
+                    variableRateShaderEyeTrackingGroup.finalize();
+
+                    // Eye tracking settings sub-group.
+                    MenuGroup variableRateShaderEyeTrackingSettingsGroup(
                         this, [&] { return m_configManager->peekValue(SettingEyeTrackingEnabled); });
                     if (menuInfo.isEyeTrackingProjectionDistanceSupported) {
                         m_menuEntries.push_back({MenuIndent::SubGroupIndent,
@@ -973,7 +980,7 @@ namespace {
                                                  [](int value) { return fmt::format("{:.2f}m", value / 100.f); }});
                         m_menuEntries.back().acceleration = 5;
                     }
-                    variableRateShaderEyeTrackingGroup.finalize();
+                    variableRateShaderEyeTrackingSettingsGroup.finalize();
                 }
                 variableRateShaderCommonGroup.finalize();
 
