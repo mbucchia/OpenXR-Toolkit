@@ -1413,7 +1413,7 @@ namespace {
                                      MenuEntryType::Slider,
                                      SettingResolutionWidth,
                                      500,
-                                     static_cast<int>(maxDisplayWidth),
+                                     static_cast<int>(menuInfo.maxDisplayWidth),
                                      [&](int value) {
                                          return fmt::format(
                                              "{}x{}", value, static_cast<int>(value * m_resolutionHeightRatio));
