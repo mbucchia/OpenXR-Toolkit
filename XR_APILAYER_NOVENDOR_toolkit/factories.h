@@ -138,21 +138,25 @@ namespace toolkit {
 
     namespace menu {
 
+        struct MenuInfo {
+            uint32_t displayWidth;
+            uint32_t displayHeight;
+            std::vector<int> keyModifiers;
+            bool isHandTrackingSupported;
+            bool isPredictionDampeningSupported;
+            uint32_t maxDisplayWidth;
+            float resolutionHeightRatio;
+            bool isMotionReprojectionRateSupported;
+            uint8_t displayRefreshRate;
+            uint8_t variableRateShaderMaxRate;
+            bool isEyeTrackingSupported;
+            bool isEyeTrackingProjectionDistanceSupported;
+            bool isPimaxFovHackSupported;
+        };
+
         std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                                         std::shared_ptr<toolkit::graphics::IDevice> device,
-                                                        uint32_t displayWidth,
-                                                        uint32_t displayHeight,
-                                                        std::vector<int>& keyModifiers,
-                                                        bool isHandTrackingSupported,
-                                                        bool isPredictionDampeningSupported,
-                                                        uint32_t maxDisplayWidth,
-                                                        float resolutionHeightRatio,
-                                                        bool isMotionReprojectionRateSupported,
-                                                        uint8_t displayRefreshRate,
-                                                        uint8_t variableRateShaderMaxDownsamplePow2,
-                                                        bool isEyeTrackingSupported,
-                                                        bool isPimaxFovHackSupported);
-
+                                                        const MenuInfo& menuInfo);
     } // namespace menu
 
 } // namespace toolkit

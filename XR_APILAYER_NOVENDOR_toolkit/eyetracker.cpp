@@ -307,13 +307,17 @@ namespace {
             const auto gazeProjectedPoint =
                 m_debugWithController
                     ? LoadXrVector3(location.pose.position)
-                    : DirectX::XMVector3Transform(DirectX::XMVectorSet(0, 0, m_projectionDistance, 1), gaze);
+                    : DirectX::XMVector3Transform(DirectX::XMVectorSet(0, 0, 2, 1) /* 2m forward */, gaze);
 
             projectedPoint.x = gazeProjectedPoint.m128_f32[0];
             projectedPoint.y = gazeProjectedPoint.m128_f32[1];
             projectedPoint.z = gazeProjectedPoint.m128_f32[2];
 
             return true;
+        }
+
+        bool isProjectionDistanceSupported() const {
+            return false;
         }
 
       private:
@@ -368,6 +372,10 @@ namespace {
             return true;
         }
 
+        bool isProjectionDistanceSupported() const {
+            return false;
+        }
+
       private:
         const std::unique_ptr<Client> m_omniceptClient;
     };
@@ -412,6 +420,10 @@ namespace {
             projectedPoint.y = m_recommendedGaze.y - 0.5f;
             projectedPoint.z = -m_projectionDistance;
 
+            return true;
+        }
+
+        bool isProjectionDistanceSupported() const {
             return true;
         }
 

@@ -668,9 +668,16 @@ namespace {
                     m_performanceCounters.lastWindowStart = std::chrono::steady_clock::now();
 
                     {
-                        const bool isPredictionDampeningSupported =
-                            xrConvertWin32PerformanceCounterToTimeKHR != nullptr;
-                        const auto displayRefreshRate =
+                        menu::MenuInfo menuInfo;
+                        menuInfo.displayWidth = m_displayWidth;
+                        menuInfo.displayHeight = m_displayHeight;
+                        menuInfo.keyModifiers = m_keyModifiers;
+                        menuInfo.isHandTrackingSupported = m_supportHandTracking;
+                        menuInfo.isPredictionDampeningSupported = xrConvertWin32PerformanceCounterToTimeKHR != nullptr;
+                        menuInfo.maxDisplayWidth = m_maxDisplayWidth;
+                        menuInfo.resolutionHeightRatio = m_resolutionHeightRatio;
+                        menuInfo.isMotionReprojectionRateSupported = m_supportMotionReprojectionLock;
+                        menuInfo.displayRefreshRate =
                             utilities::RegGetDword(
                                 HKEY_LOCAL_MACHINE,
                                 L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Holographic\\DisplayThrottling",
@@ -678,21 +685,14 @@ namespace {
                                     .value_or(0)
                                 ? 60u
                                 : 90u;
-                        m_menuHandler =
-                            menu::CreateMenuHandler(m_configManager,
-                                                    m_graphicsDevice,
-                                                    m_displayWidth,
-                                                    m_displayHeight,
-                                                    m_keyModifiers,
-                                                    m_supportHandTracking,
-                                                    isPredictionDampeningSupported,
-                                                    m_maxDisplayWidth,
-                                                    m_resolutionHeightRatio,
-                                                    m_supportMotionReprojectionLock,
-                                                    displayRefreshRate,
-                                                    m_variableRateShader ? m_variableRateShader->getMaxRate() : 0,
-                                                    m_supportEyeTracking,
-                                                    m_supportFOVHack);
+                        menuInfo.variableRateShaderMaxRate =
+                            m_variableRateShader ? m_variableRateShader->getMaxRate() : 0;
+                        menuInfo.isEyeTrackingSupported = m_supportEyeTracking;
+                        menuInfo.isEyeTrackingProjectionDistanceSupported =
+                            m_eyeTracker ? m_eyeTracker->isProjectionDistanceSupported() : false;
+                        menuInfo.isPimaxFovHackSupported = m_supportFOVHack;
+
+                        m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice, menuInfo);
                     }
 
                     // Create a reference space to calculate projection views.
