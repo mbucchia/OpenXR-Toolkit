@@ -142,6 +142,18 @@ namespace {
 
         ~VariableRateShader() override {
             disable();
+
+            // TODO: Leak NVAPI resources for now, since there is an occasional crash.
+            for (size_t i = 0; i < m_NvShadingRateResources.views.size(); i++) {
+                LeakNVAPIResource(i);
+            }
+        }
+
+        void LeakNVAPIResource(size_t index) {
+            for (auto& view : m_NvShadingRateResources.views[index]) {
+                view.Detach();
+            }
+            m_NvShadingRateResources.viewsVPRT[index].Detach();
         }
 
         void beginFrame(XrTime frameTime) override {
@@ -161,6 +173,8 @@ namespace {
                     it = m_shadingRateMask.erase(it);
 
                     if (m_NvShadingRateResources.views.size()) {
+                        // TODO: Leak NVAPI resources for now, since there is an occasional crash.
+                        LeakNVAPIResource(index);
                         m_NvShadingRateResources.views.erase(m_NvShadingRateResources.views.begin() + index);
                         m_NvShadingRateResources.viewsVPRT.erase(m_NvShadingRateResources.viewsVPRT.begin() + index);
                     }
