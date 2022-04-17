@@ -1597,7 +1597,8 @@ namespace {
                 return true;
             }
 
-            if (m_originalResolutionWidth != m_configManager->peekValue(SettingResolutionWidth)) {
+            if (m_configManager->peekValue(SettingResolutionOverride) &&
+                m_originalResolutionWidth != m_configManager->peekValue(SettingResolutionWidth)) {
                 return true;
             }
 
