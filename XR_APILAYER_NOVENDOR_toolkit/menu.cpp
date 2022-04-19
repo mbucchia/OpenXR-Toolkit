@@ -110,6 +110,7 @@ namespace {
         static std::string FmtEnum(int value);
         template <size_t N>
         static std::string FmtDecimal(int value);
+        static std::string FmtPostVal(int value);
         static std::string FmtPercent(int value);
         static std::string FmtVrsRate(int value);
 
@@ -1100,22 +1101,25 @@ namespace {
         void setupAppearanceTab(const MenuInfo& menuInfo) {
             MenuGroup appearanceTab(
                 this, [&] { return m_currentTab == MenuTab::Appearance; }, true);
+
             m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                     "Presets",
+                                     "Post Processing",
+                                     MenuEntryType::Choice,
+                                     SettingPostProcess,
+                                     0,
+                                     MenuEntry::LastVal<PostProcessType>(),
+                                     MenuEntry::FmtEnum<PostProcessType>});
+            MenuGroup postProcessGroup(this, [&] {
+                return m_configManager->peekEnumValue<PostProcessType>(SettingPostProcess) != PostProcessType::Off;
+            });
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Sun Glasses",
                                      MenuEntryType::Choice,
                                      SettingPostSunGlasses,
                                      0,
                                      MenuEntry::LastVal<PostSunGlassesType>(),
                                      MenuEntry::FmtEnum<PostSunGlassesType>});
-            m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                     "Brightness",
-                                     MenuEntryType::Slider,
-                                     SettingPostBrightness,
-                                     0,
-                                     1000,
-                                     MenuEntry::FmtDecimal<1>});
-            m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back({MenuIndent::OptionIndent,
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Contrast",
                                      MenuEntryType::Slider,
                                      SettingPostContrast,
@@ -1123,7 +1127,15 @@ namespace {
                                      1000,
                                      MenuEntry::FmtDecimal<1>});
             m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back({MenuIndent::OptionIndent,
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Brightness",
+                                     MenuEntryType::Slider,
+                                     SettingPostBrightness,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Exposure",
                                      MenuEntryType::Slider,
                                      SettingPostExposure,
@@ -1131,7 +1143,7 @@ namespace {
                                      1000,
                                      MenuEntry::FmtDecimal<1>});
             m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back({MenuIndent::OptionIndent,
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Saturation",
                                      MenuEntryType::Slider,
                                      SettingPostSaturation,
@@ -1139,7 +1151,7 @@ namespace {
                                      1000,
                                      MenuEntry::FmtDecimal<1>});
             m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back({MenuIndent::OptionIndent,
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Vibrance",
                                      MenuEntryType::Slider,
                                      SettingPostVibrance,
@@ -1147,7 +1159,7 @@ namespace {
                                      1000,
                                      MenuEntry::FmtDecimal<1>});
             m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back({MenuIndent::OptionIndent,
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Highlights",
                                      MenuEntryType::Slider,
                                      SettingPostHighlights,
@@ -1155,7 +1167,7 @@ namespace {
                                      1000,
                                      MenuEntry::FmtDecimal<1>});
             m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back({MenuIndent::OptionIndent,
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Shadows",
                                      MenuEntryType::Slider,
                                      SettingPostShadows,
@@ -1163,6 +1175,33 @@ namespace {
                                      1000,
                                      MenuEntry::FmtDecimal<1>});
             m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Red",
+                                     MenuEntryType::Slider,
+                                     SettingPostVibranceR,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.back().expert = true;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Green",
+                                     MenuEntryType::Slider,
+                                     SettingPostVibranceG,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.back().expert = true;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Blue",
+                                     MenuEntryType::Slider,
+                                     SettingPostVibranceB,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.back().expert = true;
 
 #if 0
             m_menuEntries.push_back({MenuIndent::OptionIndent,
@@ -1232,6 +1271,8 @@ namespace {
             m_menuEntries.back().acceleration = 5;
             saturationChannelsGroup.finalize();
 #endif
+            postProcessGroup.finalize();
+
             m_menuEntries.push_back(
                 {MenuIndent::OptionIndent, "World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
                      return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.f, m_stats.icd * 1000);
@@ -1405,7 +1446,7 @@ namespace {
                                      0,
                                      MenuEntry::LastVal<NoYesType>(),
                                      MenuEntry::FmtEnum<NoYesType>});
-            
+
             MenuGroup resolutionGroup(this, [&] { return m_configManager->peekValue(SettingResolutionOverride); });
             m_originalResolutionWidth = m_displayWidth;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
@@ -1692,6 +1733,16 @@ namespace {
         const uint32_t pow10 = N == 0 ? 1u : N == 1 ? 10u : N == 2 ? 100u : 1000u; // crude but working
         auto prec = value % pow10;
         return fmt::format("{:.{}f}", static_cast<float>(value) / pow10, prec ? N : 0);
+    }
+
+    std::string MenuEntry::FmtPostVal(int value) {
+        if (value == 0)
+            return "min";
+        if (value == 1000)
+            return "max";
+        if (value == 500)
+            return "neutral";
+        return FmtDecimal<1>(value);
     }
 
     std::string MenuEntry::FmtVrsRate(int value) {
