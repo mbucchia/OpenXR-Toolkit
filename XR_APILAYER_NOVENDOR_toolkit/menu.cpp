@@ -712,9 +712,9 @@ namespace {
 
                         if (overlayType == OverlayType::Developer) {
                             TIMING_STAT("lay CPU", endFrameCpuTimeUs);
-                            TIMING_STAT("pre GPU", preProcessorGpuTimeUs);
-                            TIMING_STAT("scl GPU", upscalerGpuTimeUs);
-                            TIMING_STAT("pst GPU", postProcessorGpuTimeUs);
+                            TIMING_STAT("pre GPU", processorGpuTimeUs[0]);
+                            TIMING_STAT("scl GPU", processorGpuTimeUs[1]);
+                            TIMING_STAT("pst GPU", processorGpuTimeUs[2]);
                             TIMING_STAT("ovl CPU", overlayCpuTimeUs);
                             TIMING_STAT("ovl GPU", overlayGpuTimeUs);
                             if (m_isHandTrackingSupported) {
