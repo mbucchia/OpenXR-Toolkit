@@ -168,7 +168,7 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
               
   color = AdjustContrast(color, Params1.x);
   color = AdjustBrightness(color, Params1.y);
-  color = AdjustExposureToneMap(color, Params1.z);
+  color = AdjustExposure(color, Params1.z);
   color = AdjustSaturation(color, Params1.w);
   color = AdjustChannels(color, Params2.rgb);
   color = AdjustVibrance(color, Params2.w);
