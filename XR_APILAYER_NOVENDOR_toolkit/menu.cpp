@@ -82,7 +82,7 @@ namespace {
     enum class MenuIndent { NoIndent = 0, OptionIndent = 0, SubGroupIndent = 20 };
 
     enum class MenuState { Splash, NotVisible, Visible };
-    enum class MenuEntryType { Tabs, Slider, Choice, Separator, RestoreDefaultsButton, ExitButton };
+    enum class MenuEntryType { Tabs, Slider, Choice, Separator, RestoreDefaults, ReloadShaders, ExitButton };
 
     class MenuHandler;
 
@@ -270,13 +270,21 @@ namespace {
                 case MenuEntryType::Separator:
                     break;
 
-                case MenuEntryType::RestoreDefaultsButton:
+                case MenuEntryType::RestoreDefaults:
                     if (m_resetArmed) {
+                        m_resetArmed = false;
                         m_configManager->resetToDefaults();
-
                         m_needRestart = checkNeedRestartCondition();
                         m_resetTextLayout = m_resetBackgroundLayout = true;
+                    } else {
+                        m_resetArmed = true;
+                    }
+                    break;
+
+                case MenuEntryType::ReloadShaders:
+                    if (m_resetArmed) {
                         m_resetArmed = false;
+                        m_configManager->setValue(config::SettingReloadShaders, 1, false);
                     } else {
                         m_resetArmed = true;
                     }
@@ -456,7 +464,8 @@ namespace {
                 // Display each menu entry.
                 for (unsigned int i = 0; i < m_menuEntries.size(); i++) {
                     const auto& menuEntry = m_menuEntries[i];
-                    const auto& title = (menuEntry.type == MenuEntryType::RestoreDefaultsButton && m_resetArmed)
+                    const auto& title = m_resetArmed && (menuEntry.type == MenuEntryType::RestoreDefaults ||
+                                                         menuEntry.type == MenuEntryType::ReloadShaders)
                                             ? "Confirm?"
                                             : menuEntry.title;
 
@@ -538,7 +547,8 @@ namespace {
                         top += fontSize / 3;
                         break;
 
-                    case MenuEntryType::RestoreDefaultsButton:
+                    case MenuEntryType::RestoreDefaults:
+                    case MenuEntryType::ReloadShaders:
                         break;
 
                     case MenuEntryType::ExitButton:
@@ -1526,10 +1536,8 @@ namespace {
                                      [](int value) { return fmt::format("{} pixels", value); }});
             m_menuEntries.back().acceleration = 10;
 
-            m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                     "Restore defaults",
-                                     MenuEntryType::RestoreDefaultsButton,
-                                     BUTTON_OR_SEPARATOR});
+            m_menuEntries.push_back(
+                {MenuIndent::OptionIndent, "Restore defaults", MenuEntryType::RestoreDefaults, BUTTON_OR_SEPARATOR});
 
             // Must be kept last.
             menuTab.finalize();
@@ -1564,6 +1572,9 @@ namespace {
                                      0,
                                      MenuEntry::LastVal<OffOnType>(),
                                      MenuEntry::FmtEnum<OffOnType>});
+
+            m_menuEntries.push_back(
+                {MenuIndent::OptionIndent, "Reload Shaders", MenuEntryType::ReloadShaders, BUTTON_OR_SEPARATOR});
 
             // Must be kept last.
             menuTab.finalize();
