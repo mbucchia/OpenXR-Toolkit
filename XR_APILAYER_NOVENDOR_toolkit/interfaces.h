@@ -91,6 +91,7 @@ namespace toolkit {
     namespace config {
 
         const std::string SettingDeveloper = "developer";
+        const std::string SettingReloadShaders = "reload_shaders";
         const std::string SettingScreenshotEnabled = "enable_screenshot";
         const std::string SettingScreenshotFileFormat = "screenshot_fileformat";
         const std::string SettingScreenshotKey = "key_screenshot";
@@ -631,6 +632,7 @@ namespace toolkit {
         struct IImageProcessor {
             virtual ~IImageProcessor() = default;
 
+            virtual void reload() = 0;
             virtual void update() = 0;
             virtual void process(std::shared_ptr<ITexture> input,
                                  std::shared_ptr<ITexture> output,
@@ -772,9 +774,7 @@ namespace toolkit {
             uint64_t appGpuTimeUs{0};
             uint64_t waitCpuTimeUs{0};
             uint64_t endFrameCpuTimeUs{0};
-            uint64_t preProcessorGpuTimeUs{0};
-            uint64_t upscalerGpuTimeUs{0};
-            uint64_t postProcessorGpuTimeUs{0};
+            uint64_t processorGpuTimeUs[3]{0};
             uint64_t overlayCpuTimeUs{0};
             uint64_t overlayGpuTimeUs{0};
             uint64_t handTrackingCpuTimeUs{0};
