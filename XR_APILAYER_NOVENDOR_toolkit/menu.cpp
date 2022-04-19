@@ -318,10 +318,10 @@ namespace {
 
                     // When switching tab, changing the font size, switching expert menu or displaying the restart
                     // banner, force re-alignment/re-size.
-                    if (((menuEntry.configName == SettingMenuFontSize || menuEntry.type == MenuEntryType::Tabs ||
-                          menuEntry.configName == SettingMenuExpert) &&
-                         previousValue != peekEntryValue(menuEntry)) ||
-                        wasRestartNeeded != m_needRestart) {
+                    if (wasRestartNeeded != m_needRestart ||
+                        ((menuEntry.type == MenuEntryType::Tabs || menuEntry.configName == SettingMenuFontSize ||
+                          menuEntry.configName == SettingMenuExpert || menuEntry.configName == SettingPostProcess) &&
+                         previousValue != peekEntryValue(menuEntry))) {
                         m_resetTextLayout = m_resetBackgroundLayout = true;
                     }
 
