@@ -32,22 +32,21 @@
 
 namespace {
 
+    using namespace toolkit;
+    using namespace toolkit::log;
+    using namespace xr::math;
+    using namespace toolkit::math;
+
     // The xrWaitFrame() loop might cause to have 2 frames in-flight, so we want to delay the GPU timer re-use by those
     // 2 frames.
     constexpr uint32_t GpuTimerLatency = 2;
 
-    using namespace toolkit;
-    using namespace toolkit::log;
-
-    using namespace xr::math;
-    using namespace toolkit::math;
+    // Up to 3 image processing stages are supported.
+    enum ImgProc { Pre, Scale, Post, MaxValue };
 
     struct SwapchainImages {
         std::vector<std::shared_ptr<graphics::ITexture>> chain;
-
-        std::shared_ptr<graphics::IGpuTimer> upscalerGpuTimer[utilities::ViewCount];
-        std::shared_ptr<graphics::IGpuTimer> preProcessorGpuTimer[utilities::ViewCount];
-        std::shared_ptr<graphics::IGpuTimer> postProcessorGpuTimer[utilities::ViewCount];
+        std::shared_ptr<graphics::IGpuTimer> gpuTimers[ImgProc::MaxValue][utilities::ViewCount];
     };
 
     struct SwapchainState {
@@ -559,12 +558,12 @@ namespace {
 
                     switch (m_upscaleMode) {
                     case config::ScalingType::FSR:
-                        m_upscaler = graphics::CreateFSRUpscaler(
+                        m_imageProcessors[ImgProc::Scale] = graphics::CreateFSRUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
                         break;
 
                     case config::ScalingType::NIS:
-                        m_upscaler = graphics::CreateNISUpscaler(
+                        m_imageProcessors[ImgProc::Scale] = graphics::CreateNISUpscaler(
                             m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
                         break;
 
@@ -589,7 +588,8 @@ namespace {
                                                            (renderWidth * renderHeight));
                     Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
 
-                    m_postProcessor = graphics::CreateImageProcessor(m_configManager, m_graphicsDevice);
+                    m_imageProcessors[ImgProc::Post] =
+                        graphics::CreateImageProcessor(m_configManager, m_graphicsDevice);
 
                     // We disable the frame analyzer when using OpenComposite, because the app does not see the OpenXR
                     // textures anyways.
@@ -746,9 +746,9 @@ namespace {
                 if (m_handTracker) {
                     m_handTracker->endSession();
                 }
-                m_upscaler.reset();
-                m_preProcessor.reset();
-                m_postProcessor.reset();
+
+                m_imageProcessors.fill(nullptr);
+
                 m_frameAnalyzer.reset();
                 if (m_eyeTracker) {
                     m_eyeTracker->endSession();
@@ -818,12 +818,12 @@ namespace {
                 // XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT).
 
                 if (createInfo->usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT) {
-                    if (m_preProcessor) {
+                    if (m_imageProcessors[ImgProc::Pre]) {
                         // This is redundant (given the useSwapchain conditions) but we do this for correctness.
                         chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
                     }
 
-                    if (m_upscaler) {
+                    if (m_imageProcessors[ImgProc::Scale]) {
                         // When upscaling, be sure to request the full resolution with the runtime.
                         chainCreateInfo.width = m_displayWidth;
                         chainCreateInfo.height = m_displayHeight;
@@ -832,7 +832,7 @@ namespace {
                         chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
                     }
 
-                    if (m_postProcessor) {
+                    if (m_imageProcessors[ImgProc::Post]) {
                         // We no longer need the runtime swapchain to have this flag since we will use an intermediate
                         // texture.
                         chainCreateInfo.usageFlags &= ~XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
@@ -943,11 +943,11 @@ namespace {
                     // Create other entries in the chain based on the processing to do (scaling,
                     // post-processing...).
 
-                    if (m_preProcessor) {
+                    if (m_imageProcessors[ImgProc::Pre]) {
                         // Create an intermediate texture with the same resolution as the input.
                         XrSwapchainCreateInfo inputCreateInfo = *createInfo;
                         inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                        if (m_upscaler) {
+                        if (m_imageProcessors[ImgProc::Scale]) {
                             // The upscaler requires to use as a shader input.
                             inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
                         }
@@ -958,13 +958,13 @@ namespace {
                         // We place the texture at the very front (app texture).
                         images.chain.insert(images.chain.begin(), inputTexture);
 
-                        images.preProcessorGpuTimer[0] = m_graphicsDevice->createTimer();
+                        images.gpuTimers[ImgProc::Pre][0] = m_graphicsDevice->createTimer();
                         if (createInfo->arraySize > 1) {
-                            images.preProcessorGpuTimer[1] = m_graphicsDevice->createTimer();
+                            images.gpuTimers[ImgProc::Pre][1] = m_graphicsDevice->createTimer();
                         }
                     }
 
-                    if (m_upscaler) {
+                    if (m_imageProcessors[ImgProc::Scale]) {
                         // Create an app texture with the lower resolution.
                         XrSwapchainCreateInfo inputCreateInfo = *createInfo;
                         inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
@@ -975,17 +975,17 @@ namespace {
                         // texture) or after the pre-processor.
                         images.chain.insert(images.chain.end() - 1, inputTexture);
 
-                        images.upscalerGpuTimer[0] = m_graphicsDevice->createTimer();
+                        images.gpuTimers[ImgProc::Scale][0] = m_graphicsDevice->createTimer();
                         if (createInfo->arraySize > 1) {
-                            images.upscalerGpuTimer[1] = m_graphicsDevice->createTimer();
+                            images.gpuTimers[ImgProc::Scale][1] = m_graphicsDevice->createTimer();
                         }
                     }
 
-                    if (m_postProcessor) {
+                    if (m_imageProcessors[ImgProc::Post]) {
                         // Create an intermediate texture with the same resolution as the output.
                         XrSwapchainCreateInfo intermediateCreateInfo = chainCreateInfo;
                         intermediateCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                        if (m_upscaler) {
+                        if (m_imageProcessors[ImgProc::Scale]) {
                             // The upscaler requires to use as an unordered access view.
                             intermediateCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
 
@@ -1007,9 +1007,9 @@ namespace {
                         // We place the texture just before the runtime texture.
                         images.chain.insert(images.chain.end() - 1, intermediateTexture);
 
-                        images.postProcessorGpuTimer[0] = m_graphicsDevice->createTimer();
+                        images.gpuTimers[ImgProc::Post][0] = m_graphicsDevice->createTimer();
                         if (createInfo->arraySize > 1) {
-                            images.postProcessorGpuTimer[1] = m_graphicsDevice->createTimer();
+                            images.gpuTimers[ImgProc::Post][1] = m_graphicsDevice->createTimer();
                         }
                     }
                 }
@@ -1595,24 +1595,28 @@ namespace {
                 m_performanceCounters.numFrames = 0;
                 m_performanceCounters.lastWindowStart = now;
 
+                // TODO: no need to compute these if no menu handler
+                // or if menu isn't displaying any stats.
+
                 // Push the last averaged statistics.
-                m_stats.fps = static_cast<float>(numFrames);
                 m_stats.appCpuTimeUs /= numFrames;
                 m_stats.appGpuTimeUs /= numFrames;
                 m_stats.waitCpuTimeUs /= numFrames;
+                m_stats.endFrameCpuTimeUs /= numFrames;
+                m_stats.processorGpuTimeUs[0] /= numFrames;
+                m_stats.processorGpuTimeUs[1] /= numFrames;
+                m_stats.processorGpuTimeUs[2] /= numFrames;
+                m_stats.overlayCpuTimeUs /= numFrames;
+                m_stats.overlayGpuTimeUs /= numFrames;
+                m_stats.handTrackingCpuTimeUs /= numFrames;
+                m_stats.predictionTimeUs /= numFrames;
+                m_stats.fps = static_cast<float>(numFrames);
+
                 // When CPU-bound, do not bother giving a (false) GPU time for D3D12
                 if (m_graphicsDevice->getApi() == graphics::Api::D3D12 &&
                     m_stats.appCpuTimeUs + 500 > m_stats.appGpuTimeUs) {
                     m_stats.appGpuTimeUs = 0;
                 }
-                m_stats.endFrameCpuTimeUs /= numFrames;
-                m_stats.upscalerGpuTimeUs /= numFrames;
-                m_stats.preProcessorGpuTimeUs /= numFrames;
-                m_stats.postProcessorGpuTimeUs /= numFrames;
-                m_stats.overlayCpuTimeUs /= numFrames;
-                m_stats.overlayGpuTimeUs /= numFrames;
-                m_stats.handTrackingCpuTimeUs /= numFrames;
-                m_stats.predictionTimeUs /= numFrames;
 
                 if (m_menuHandler) {
                     m_menuHandler->updateStatistics(m_stats);
@@ -1639,22 +1643,14 @@ namespace {
             // Make sure config gets written if needed.
             m_configManager->tick();
 
-            // Refresh the configuration.
-            if (m_preProcessor) {
-                m_preProcessor->update();
+            // Forward the motion reprojection locking values to WMR.
+            if (m_configManager->hasChanged(config::SettingMotionReprojectionRate)) {
+                utilities::UpdateWindowsMixedRealityReprojectionRate(
+                    m_configManager->getEnumValue<config::MotionReprojectionRate>(
+                        config::SettingMotionReprojectionRate));
             }
-            if (m_upscaler) {
-                m_upscaler->update();
-            }
-            if (m_postProcessor) {
-                m_postProcessor->update();
-            }
-            if (m_eyeTracker) {
-                m_eyeTracker->update();
-            }
-            if (m_variableRateShader) {
-                m_variableRateShader->update();
-            }
+
+            // Adjust mip map biasing.
             if (m_configManager->hasChanged(config::SettingMipMapBias) ||
                 m_configManager->hasChanged(config::SettingScalingType)) {
                 const auto biasing = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType) !=
@@ -1662,6 +1658,32 @@ namespace {
                                          ? m_configManager->getEnumValue<config::MipMapBias>(config::SettingMipMapBias)
                                          : config::MipMapBias::Off;
                 m_graphicsDevice->setMipMapBias(biasing, m_mipMapBiasForUpscaling);
+            }
+
+            // Check to reload shaders.
+            bool reloadShaders = false;
+            if (m_configManager->hasChanged(config::SettingReloadShaders)) {
+                if (m_configManager->getValue(config::SettingReloadShaders)) {
+                    m_configManager->setValue(config::SettingReloadShaders, 0, true);
+                    reloadShaders = true;
+                }
+            }
+
+            // Refresh the configuration.
+            for (auto& processor : m_imageProcessors) {
+                if (processor) {
+                    if (reloadShaders)
+                        processor->reload();
+                    processor->update();
+                }
+            }
+           
+            if (m_eyeTracker) {
+                m_eyeTracker->update();
+            }
+            
+            if (m_variableRateShader) {
+                m_variableRateShader->update();
             }
         }
 
@@ -1739,13 +1761,6 @@ namespace {
             // Handle inputs.
             if (m_menuHandler) {
                 m_menuHandler->handleInput();
-            }
-
-            // Forward the motion reprojection locking values to WMR.
-            if (m_configManager->hasChanged(config::SettingMotionReprojectionRate)) {
-                utilities::UpdateWindowsMixedRealityReprojectionRate(
-                    m_configManager->getEnumValue<config::MotionReprojectionRate>(
-                        config::SettingMotionReprojectionRate));
             }
 
             // Prepare the Shaders for rendering.
@@ -1863,54 +1878,19 @@ namespace {
                         // - Stop the timer;
                         // - Advanced to the right source and/or destination image;
 
-                        // Perform pre-processing.
-                        if (m_preProcessor) {
-                            nextImage++;
+                        for (size_t i = 0; i < std::size(m_imageProcessors); i++) {
+                            if (m_imageProcessors[i]) {
+                                auto timer = swapchainImages.gpuTimers[i][gpuTimerIndex].get();
+                                m_stats.processorGpuTimeUs[i] += timer->query();
 
-                            m_stats.preProcessorGpuTimeUs +=
-                                swapchainImages.preProcessorGpuTimer[gpuTimerIndex]->query();
-                            swapchainImages.preProcessorGpuTimer[gpuTimerIndex]->start();
-
-                            m_preProcessor->process(
-                                swapchainImages.chain[lastImage], swapchainImages.chain[nextImage], useVPRT ? eye : -1);
-                            swapchainImages.preProcessorGpuTimer[gpuTimerIndex]->stop();
-
-                            lastImage++;
-                        }
-
-                        // Perform upscaling (if requested).
-                        if (m_upscaler) {
-                            nextImage++;
-
-                            // We allow to bypass scaling when the menu option is turned off. This is only for quick
-                            // comparison/testing, since we're still holding to all the underlying resources.
-                            if (m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType) !=
-                                config::ScalingType::None) {
-                                m_stats.upscalerGpuTimeUs += swapchainImages.upscalerGpuTimer[gpuTimerIndex]->query();
-                                swapchainImages.upscalerGpuTimer[gpuTimerIndex]->start();
-
-                                m_upscaler->process(swapchainImages.chain[lastImage],
-                                                    swapchainImages.chain[nextImage],
-                                                    useVPRT ? eye : -1);
-                                swapchainImages.upscalerGpuTimer[gpuTimerIndex]->stop();
-
+                                nextImage++;
+                                timer->start();
+                                m_imageProcessors[i]->process(swapchainImages.chain[lastImage],
+                                                              swapchainImages.chain[nextImage],
+                                                              useVPRT ? eye : -1);
+                                timer->stop();
                                 lastImage++;
                             }
-                        }
-
-                        // Perform post-processing.
-                        if (m_postProcessor) {
-                            nextImage++;
-
-                            m_stats.postProcessorGpuTimeUs +=
-                                swapchainImages.postProcessorGpuTimer[gpuTimerIndex]->query();
-                            swapchainImages.postProcessorGpuTimer[gpuTimerIndex]->start();
-
-                            m_postProcessor->process(
-                                swapchainImages.chain[lastImage], swapchainImages.chain[nextImage], useVPRT ? eye : -1);
-                            swapchainImages.postProcessorGpuTimer[gpuTimerIndex]->stop();
-
-                            lastImage++;
                         }
 
                         // Make sure the chain was completed.
@@ -2126,17 +2106,15 @@ namespace {
         std::shared_ptr<graphics::IDevice> m_graphicsDevice;
         std::map<XrSwapchain, SwapchainState> m_swapchains;
 
-        std::shared_ptr<graphics::IImageProcessor> m_preProcessor;
-        std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
-        std::shared_ptr<graphics::IImageProcessor> m_upscaler;
         config::ScalingType m_upscaleMode{config::ScalingType::None};
         float m_mipMapBiasForUpscaling{0.f};
 
         std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;
         std::shared_ptr<input::IEyeTracker> m_eyeTracker;
-        std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;
-
         std::shared_ptr<input::IHandTracker> m_handTracker;
+
+        std::array<std::shared_ptr<graphics::IImageProcessor>, ImgProc::MaxValue> m_imageProcessors;
+        std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;
 
         std::vector<int> m_keyModifiers;
         int m_keyScreenshot;

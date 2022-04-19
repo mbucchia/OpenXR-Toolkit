@@ -125,6 +125,11 @@ namespace {
             }
         }
 #endif
+
+        void reload() override {
+            createRenderResources();
+        }
+
         void update() override {
             if (checkUpdateConfig()) {
                 updateConfig();

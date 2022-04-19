@@ -58,6 +58,10 @@ namespace {
             initializeScaler();
         }
 
+        void reload() override {
+            initializeScaler();
+        }
+
         void update() override {
             if (m_configManager->hasChanged(SettingSharpness)) {
                 updateScaler(m_configManager->getValue(SettingSharpness) / 100.f);
