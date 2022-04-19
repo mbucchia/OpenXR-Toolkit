@@ -111,6 +111,7 @@ namespace toolkit {
         const std::string SettingScaling = "scaling";
         const std::string SettingAnamorphic = "anamorphic";
         const std::string SettingSharpness = "sharpness";
+        const std::string SettingMipMapBias = "mipmap_bias";
         const std::string SettingICD = "world_scale";
         const std::string SettingFOVType = "fov_type";
         const std::string SettingFOV = "fov";
@@ -142,21 +143,25 @@ namespace toolkit {
         const std::string SettingVRSYOffset = "vrs_y_offset";
         const std::string SettingVRSPreferHorizontal = "vrs_prefer_horizontal";
         const std::string SettingVRSLeftRightBias = "vrs_lr_bias";
-        const std::string SettingMipMapBias = "mipmap_bias";
-        const std::string SettingBrightness = "brightness";
-        const std::string SettingContrast = "contrast2";
-        const std::string SettingSaturationMode = "saturation_mode";
-        const std::string SettingSaturation = "saturation";
-        const std::string SettingSaturationRed = "saturation_red";
-        const std::string SettingSaturationGreen = "saturation_green";
-        const std::string SettingSaturationBlue = "saturation_blue";
+        
+        //const std::string SettingBrightness = "brightness";
+        //const std::string SettingContrast = "contrast2";
+        //const std::string SettingSaturationMode = "saturation_mode";
+        //const std::string SettingSaturation = "saturation";
+        //const std::string SettingSaturationRed = "saturation_red";
+        //const std::string SettingSaturationGreen = "saturation_green";
+        //const std::string SettingSaturationBlue = "saturation_blue";
 
+        const std::string SettingPostProcess = "post_process";
         const std::string SettingPostSunGlasses = "post_sunglasses";
-        const std::string SettingPostBrightness = "post_brightness";
         const std::string SettingPostContrast = "post_contrast";
+        const std::string SettingPostBrightness = "post_brightness";
         const std::string SettingPostExposure = "post_exposure";
-        const std::string SettingPostVibrance = "post_vibrance";
         const std::string SettingPostSaturation = "post_saturation";
+        const std::string SettingPostVibrance = "post_vibrance";
+        const std::string SettingPostVibranceR = "post_vibrance_r";
+        const std::string SettingPostVibranceG = "post_vibrance_g";
+        const std::string SettingPostVibranceB = "post_vibrance_b";
         const std::string SettingPostHighlights = "post_highlights";
         const std::string SettingPostShadows = "post_shadows";
 
@@ -182,10 +187,12 @@ namespace toolkit {
         enum class VariableShadingRatePattern { Wide = 0, Balanced, Narrow, MaxValue };
         enum class VariableShadingRateDir { Vertical, Horizontal, MaxValue };
         enum class VariableShadingRateVal { R_x1, R_2x1, R_2x2, R_4x2, R_4x4, R_Cull, MaxValue };
-        enum class SaturationModeType { Global, Selective, MaxValue };
+        enum class PostProcessType { Off = 0, On, MaxValue };
+        enum class PostSunGlassesType { None = 0, Light, Dark, Night, MaxValue };
         enum class FovModeType { Simple, Advanced, MaxValue };
-        enum class PostSunGlassesType { None = 0, User, Light, Dark, Night, MaxValue };
         enum class ScreenshotFileFormat { DDS = 0, PNG, JPG, BMP, MaxValue };
+
+        // enum class SaturationModeType { Global, Selective, MaxValue };
 
         template <typename ConfigEnumType>
         extern std::string_view to_string_view(ConfigEnumType);

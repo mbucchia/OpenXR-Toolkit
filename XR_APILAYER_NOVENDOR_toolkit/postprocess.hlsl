@@ -24,25 +24,26 @@
 // clang-format off
 
 cbuffer config : register(b0) {
-    //float4x4 BrightnessContrastSaturationMatrix;
-    float4 Scale;   // Contrast, Brightness, Exposure, Vibrance (-1..+1 params)
-    float4 Amount;  // Saturation, Highlights, Shadows (0..1 params)
+    float4 Params1;  // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
+    float4 Params2;  // VibranceR, VibranceG, VibranceB, Vibrance (-1..+1 params)
+    float4 Params3;  // Highlights, Shadows (0..1 params)
 };
 
-#ifdef POST_PROCESS_SAMPLE_LINEAR
 SamplerState sourceSampler : register(s0);
-#else
-SamplerState sourceSampler : register(s0);
-#endif
 
 #ifdef VPRT
 Texture2DArray sourceTexture : register(t0);
-#define SAMPLE_TEXTURE(texcoord) sourceTexture.Sample(sourceSampler, float3((texcoord), 0)).rgb
+#define SAMPLE_TEXTURE(texcoord) sourceTexture.Sample(sourceSampler, float3((texcoord), 0))
 #else
 Texture2D sourceTexture : register(t0);
-#define SAMPLE_TEXTURE(texcoord) sourceTexture.Sample(sourceSampler, (texcoord)).rgb
+#define SAMPLE_TEXTURE(texcoord) sourceTexture.Sample(sourceSampler, (texcoord))
 #endif
 
+#ifndef FLT_EPSILON
+#define FLT_EPSILON     1.192092896e-07
+#endif
+
+#if 0
 // http://www.martinreddy.net/gfx/faqs/colorconv.faq
 
 float3 sRGB_to_YUV(float3 col) {
@@ -81,31 +82,6 @@ float3 BT601_to_RGB(float3 yuv) {
          yuv.b * float3(1.403,-0.714, 0.0  );
 }
 
-#ifndef FLT_EPSILON
-#define FLT_EPSILON     1.192092896e-07
-#endif
-
-#ifdef POST_PROCESS_SRC_SRGB
-float3 srgb2linear(float3 c ) {
-  //return pow(c, 2.2);
-  return saturate(c*c);
-}
-#endif
-
-#ifdef POST_PROCESS_DST_SRGB
-float3 linear2srgb(float3 c) {
-  //return pow(c, 1.0/2.2);
-  return sqrt(c);
-}
-#endif
-
-float SafePow(float value, float power) {
-  return pow(max(abs(value), FLT_EPSILON), power);
-}
-float3 SafePow(float3 value, float3 power) {
-  return pow(max(abs(value), FLT_EPSILON), power);
-}
-#if 0
 float Smoothstep(float x, float p) {
     x = saturate(x);
     float x_ = x < 0.5 ? x * 2.0 : x * -2.0 + 2.0;
@@ -114,9 +90,28 @@ float Smoothstep(float x, float p) {
 }
 #endif
 
-// -1..+1 (better: +- 0.1)
+float3 srgb2linear(float3 c ) {
+  //return pow(c, 2.2);
+  return saturate(c*c); // fast aproximation
+}
+float3 linear2srgb(float3 c) {
+  //return pow(c, 1.0/2.2);
+  return sqrt(c); // fast aproximation
+}
+
+float SafePow(float value, float power) {
+  return pow(max(abs(value), FLT_EPSILON), power);
+}
+float3 SafePow(float3 value, float3 power) {
+  return pow(max(abs(value), FLT_EPSILON), power);
+}
+
+// -1..+1
 float3 AdjustContrast(float3 color, float scale) {
-  return saturate(((color - 0.5) * (1.0 + scale)) + 0.5);
+  float luminance = dot(saturate(color), float3(0.2125, 0.7154, 0.0721));
+  float contrast = luminance * luminance * (3.0 - 2.0 * luminance); // smoothstep
+  contrast = lerp(luminance, contrast, scale);
+  return color + contrast - luminance;
 }
 
 // -1..+1 (better: +- 0.8)
@@ -124,23 +119,35 @@ float3 AdjustBrightness(float3 color, float scale) {
   return SafePow(color, (1.0 - scale));
 }
 
-// -1..+1 (better: +-4)
+// -1..+1 (better: +-4 F-stops)
 float3 AdjustExposure(float3 color, float scale) {
   return color * pow(2.0, scale);
 }
 
-// -1..+1 (better: +-3)
-float3 AdjustVibrance(float3 color, float scale) {
-  float average = (color.r + color.g + color.b) / 3.0;
-  float highest = max(color.r, max(color.g, color.b));
-  float amount = (average - highest) * scale;
-  return lerp(color, highest, amount);
+// -1..+1 (better: +-4 F-stops)
+float3 AdjustExposureToneMap(float3 color, float scale) {
+  color = -(color / min(color - 1.0, -0.1)); // color /= exp(0);
+  color*= exp(scale); // inverse + forward Reinhard tone mapping
+  return color / (1.0 + color);
 }
 
-// 0..1
-float3 AdjustSaturation(float3 color, float amount) {
+// -1..+1
+float3 AdjustVibrance(float3 color, float scale) {
   float luminance = dot(saturate(color), float3(0.2125,0.7154,0.0721));
-  return lerp(luminance, color, amount);
+  float color_max = max(color.r, max(color.g, color.b));
+  float color_min = min(color.r, min(color.g, color.b));
+  float color_sat = color_max - color_min;
+  return lerp(luminance, color, (1.0 + (scale * (1.0 - (sign(scale) * color_sat)))));
+}
+
+// -1..+1
+float3 AdjustSaturation(float3 color, float amount) {
+  float grey = dot(color, 0.333);
+  return grey + (color - grey) * (amount + 1.0);
+}
+
+float3 AdjustChannels(float3 color, float3 amount) {
+  return color + amount;
 }
 
 // 0..1 (https://www.desmos.com/calculator/wmiuegrnli)
@@ -153,33 +160,30 @@ float3 AdjustHighlightsShadows(float3 color, float highlights, float shadows) {
 
 // For now, our shader only does a copy, effectively allowing Direct3D to convert between color formats.
 float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
-#if 0
-    float4 inputColor = SAMPLE_TEXTURE(sourceTexture, texcoord);
-    float4 outputColor = mul(BrightnessContrastSaturationMatrix, inputColor);
-    outputColor.a = inputColor.a;
-    return outputColor;
-#endif
-#if 1
-
-  float3 color = SAMPLE_TEXTURE(texcoord);
+  float3 color = SAMPLE_TEXTURE(texcoord).rgb;
 
 #ifdef POST_PROCESS_SRC_SRGB
   color = srgb2linear(color);
  #endif
-
-  color = AdjustBrightness(color, Scale.y);
-  color = AdjustContrast(color, Scale.x);
-  color = AdjustExposure(color, Scale.z);
-  color = AdjustSaturation(color, Amount.x);
-  color = AdjustVibrance(color, Scale.w);
-  color = AdjustHighlightsShadows(color, Amount.y, Amount.z);
+              
+  color = AdjustContrast(color, Params1.x);
+  color = AdjustBrightness(color, Params1.y);
+  color = AdjustExposureToneMap(color, Params1.z);
+  color = AdjustSaturation(color, Params1.w);
+  color = AdjustChannels(color, Params2.rgb);
+  color = AdjustVibrance(color, Params2.w);
+  color = AdjustHighlightsShadows(color, Params3.x, Params3.y);
 
 #ifdef POST_PROCESS_DST_SRGB
   color = linear2srgb(color);
 #endif
 
   return float4(saturate(color), 1.0);
-#endif
+}
+
+float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
+  float3 color = SAMPLE_TEXTURE(texcoord).rgb;
+  return float4(saturate(color), 1.0);
 }
 
 // clang-format on

@@ -113,18 +113,22 @@ namespace {
             m_configManager->setDefault(config::SettingVRSLeftRightBias, 0);
 
             // Appearance.
-            m_configManager->setDefault(config::SettingBrightness, 500);
-            m_configManager->setDefault(config::SettingContrast, 5000);
-            m_configManager->setDefault(config::SettingSaturation, 500);
-            m_configManager->setDefault(config::SettingSaturationRed, 500);
-            m_configManager->setDefault(config::SettingSaturationGreen, 500);
-            m_configManager->setDefault(config::SettingSaturationBlue, 500);
+            // m_configManager->setDefault(config::SettingBrightness, 500);
+            // m_configManager->setDefault(config::SettingContrast, 5000);
+            // m_configManager->setDefault(config::SettingSaturation, 500);
+            // m_configManager->setDefault(config::SettingSaturationRed, 500);
+            // m_configManager->setDefault(config::SettingSaturationGreen, 500);
+            // m_configManager->setDefault(config::SettingSaturationBlue, 500);
 
+            m_configManager->setDefault(config::SettingPostProcess, 0);
             m_configManager->setDefault(config::SettingPostSunGlasses, 0);
             m_configManager->setDefault(config::SettingPostContrast, 500);
             m_configManager->setDefault(config::SettingPostBrightness, 500);
             m_configManager->setDefault(config::SettingPostExposure, 500);
-            m_configManager->setDefault(config::SettingPostSaturation, 1000);
+            m_configManager->setDefault(config::SettingPostSaturation, 500);
+            m_configManager->setDefault(config::SettingPostVibranceR, 500);
+            m_configManager->setDefault(config::SettingPostVibranceG, 500);
+            m_configManager->setDefault(config::SettingPostVibranceB, 500);
             m_configManager->setDefault(config::SettingPostVibrance, 500);
             m_configManager->setDefault(config::SettingPostHighlights, 1000);
             m_configManager->setDefault(config::SettingPostShadows, 0);
@@ -132,7 +136,10 @@ namespace {
             m_configManager->setDefault(config::SettingPostContrast + "_u1", 500);
             m_configManager->setDefault(config::SettingPostBrightness + "_u1", 500);
             m_configManager->setDefault(config::SettingPostExposure + "_u1", 500);
-            m_configManager->setDefault(config::SettingPostSaturation + "_u1", 1000);
+            m_configManager->setDefault(config::SettingPostSaturation + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostVibranceR + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostVibranceG + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostVibranceB + "_u1", 500);
             m_configManager->setDefault(config::SettingPostVibrance + "_u1", 500);
             m_configManager->setDefault(config::SettingPostHighlights + "_u1", 1000);
             m_configManager->setDefault(config::SettingPostShadows + "_u1", 0);
@@ -175,14 +182,14 @@ namespace {
                 m_configManager->deleteValue("icd");
             }
 
-            // Workaround: the first versions of the toolkit used a different representation for the contrast.
-            // Migrate the value upon first run.
-            m_configManager->setDefault("contrast", 0);
-            if (m_configManager->getValue("contrast") != 0) {
-                const int migratedValue = m_configManager->getValue("contrast") * 10;
-                m_configManager->setValue(config::SettingContrast, migratedValue, true);
-                m_configManager->deleteValue("contrast");
-            }
+            //// Workaround: the first versions of the toolkit used a different representation for the contrast.
+            //// Migrate the value upon first run.
+            // m_configManager->setDefault("contrast", 0);
+            // if (m_configManager->getValue("contrast") != 0) {
+            //    const int migratedValue = m_configManager->getValue("contrast") * 10;
+            //    m_configManager->setValue(config::SettingContrast, migratedValue, true);
+            //    m_configManager->deleteValue("contrast");
+            //}
 
             // Commit any update above. This is needed for apps that create an instance, destroy it right away
             // without submitting a frame, then create a new one.

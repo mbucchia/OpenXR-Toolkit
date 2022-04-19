@@ -46,10 +46,8 @@ namespace {
 
         uint64_t query(bool reset) const override {
             const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(m_duration);
-
             if (reset)
                 m_duration = clock::duration::zero();
-
             return duration.count();
         }
 
@@ -77,7 +75,7 @@ namespace toolkit::config {
 #define DECLARE_ENUM_TO_STRING_VIEW(E, ...)                                                                            \
     template <>                                                                                                        \
     std::string_view to_string_view(E e) {                                                                             \
-        constexpr std::string_view labels[] = ##__VA_ARGS__;                                                               \
+        constexpr std::string_view labels[] = ##__VA_ARGS__;                                                           \
         static_assert(std::size(labels) == static_cast<std::underlying_type_t<E>>(E::MaxValue));                       \
         return labels[static_cast<std::underlying_type_t<E>>(e)];                                                      \
     }
@@ -97,10 +95,12 @@ namespace toolkit::config {
     DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRatePattern, {"Wide", "Balanced", "Narrow"})
     DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRateDir, {"Vertical", "Horizontal"})
     DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRateVal, {"1x", "1/2", "1/4", "1/8", "1/16", "Cull"})
-    DECLARE_ENUM_TO_STRING_VIEW(SaturationModeType, {"Global", "Selective"})
+    DECLARE_ENUM_TO_STRING_VIEW(PostProcessType, {"Off", "On"})
+    DECLARE_ENUM_TO_STRING_VIEW(PostSunGlassesType, {"Off", "Light", "Dark", "Deep Night"})
     DECLARE_ENUM_TO_STRING_VIEW(FovModeType, {"Simple", "Advanced"})
-    DECLARE_ENUM_TO_STRING_VIEW(PostSunGlassesType, {"Off", "User", "Light", "Dark", "Night"})
     DECLARE_ENUM_TO_STRING_VIEW(ScreenshotFileFormat, {"DDS", "PNG", "JPG", "BMP"})
+
+    // DECLARE_ENUM_TO_STRING_VIEW(SaturationModeType, {"Global", "Selective"})
 
 #undef DECLARE_ENUM_TO_STRING_VIEW
 
