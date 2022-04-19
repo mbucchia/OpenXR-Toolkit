@@ -213,33 +213,36 @@ namespace {
             };
 
             // standard presets
-            static constexpr XMVECTORI32 kBias[to_integral(PostSunGlassesType::MaxValue)][3] = {
+            static constexpr XMINT4 kBias[to_integral(PostSunGlassesType::MaxValue)][3] = {
                 // none
-                {{{{0, 0, 0, 0}}}, {{{0, 0, 0, 0}}}, {{{0, 0, 0, 0}}}},
+                {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
 
                 // sunglasses light: +2.5 contrast, -5 bright, -5 expo, -20 highlights
-                {{{{25, -50, -50, 0}}}, {{{0, 0, 0, 0}}}, {{{-20, 0, 0, 0}}}},
+                {{25, -50, -50, 0}, {0, 0, 0, 0}, {-20, 0, 0, 0}},
 
                 // sunglasses dark: +2.5 contrast, -10 bright, -10 expo, -40 highlights, +5 shad
-                {{{{25, -100, -100, 0}}}, {{{0, 0, 0, 0}}}, {{{-400, 50, 0, 0}}}},
+                {{25, -100, -100, 0}, {0, 0, 0, 0}, {-400, 50, 0, 0}},
 
                 // deep night: +0.5 contrast, -40 bright, +20 expo, +2.5 vib, -75 high, +15 shad
-                {{{{5, -400, 200, 0}}}, {{{0, 0, 0, 25}}}, {{{-750, 150, 0, 0}}}},
+                {{5, -400, 200, 0}, {0, 0, 0, 25}, {-750, 150, 0, 0}},
             };
 
             const auto userParams = GetUserParams(m_configManager.get(), 0);
             const auto bias = to_integral(m_configManager->getEnumValue<PostSunGlassesType>(SettingPostSunGlasses));
 
             // [0..1000] -> [-1..+1]
-            const auto params1 = XMVectorSaturate((XMLoadSInt4(&userParams[0]) + kBias[bias][0]) * 0.001f);
+            const auto params1 =
+                XMVectorSaturate((XMLoadSInt4(&userParams[0]) + XMLoadSInt4(&kBias[bias][0])) * 0.001f);
             StoreXrVector4(&m_config.Params1, (params1 * 2.0 - XMVectorSplatOne()) * kGain[0][0]);
 
             // [0..1000] -> [-1..+1]
-            const auto params2 = XMVectorSaturate((XMLoadSInt4(&userParams[1]) + kBias[bias][1]) * 0.001f);
+            const auto params2 =
+                XMVectorSaturate((XMLoadSInt4(&userParams[1]) + XMLoadSInt4(&kBias[bias][1])) * 0.001f);
             StoreXrVector4(&m_config.Params2, (params2 * 2.0 - XMVectorSplatOne()) * kGain[0][1]);
 
             // [0..1000] -> [0..1]
-            const auto params3 = XMVectorSaturate((XMLoadSInt4(&userParams[2]) + kBias[bias][2]) * 0.001f);
+            const auto params3 =
+                XMVectorSaturate((XMLoadSInt4(&userParams[2]) + XMLoadSInt4(&kBias[bias][2])) * 0.001f);
             StoreXrVector4(&m_config.Params3, params3 * kGain[0][2]);
 
             m_cbParams->uploadData(&m_config, sizeof(m_config));
