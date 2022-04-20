@@ -181,6 +181,7 @@ namespace toolkit {
         enum class MipMapBias { Off = 0, Anisotropic, All, MaxValue };
         enum class HandTrackingEnabled { Off = 0, Both, Left, Right, MaxValue };
         enum class HandTrackingVisibility { Hidden = 0, Bright, Medium, Dark, Darker, MaxValue };
+        enum class MotionReprojection { Default = 0, Off, On, MaxValue };
         enum class MotionReprojectionRate { Off = 1, R_45Hz, R_30Hz, R_22Hz, MaxValue };
         enum class VariableShadingRateType { None = 0, Preset, Custom, MaxValue };
         enum class VariableShadingRateQuality { Performance = 0, Quality, MaxValue };

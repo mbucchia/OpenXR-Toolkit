@@ -1414,8 +1414,8 @@ namespace {
                                          MenuEntryType::Choice,
                                          SettingMotionReprojection,
                                          0,
-                                         MenuEntry::LastVal<NoYesType>(),
-                                         MenuEntry::FmtEnum<NoYesType>});
+                                         MenuEntry::LastVal<MotionReprojection>(),
+                                         MenuEntry::FmtEnum<MotionReprojection>});
 
                 MenuGroup motionReprojectionGroup(this, [&] { return isMotionReprojectionEnabled(); });
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
@@ -1544,7 +1544,8 @@ namespace {
         }
 
         bool isMotionReprojectionEnabled() const {
-            return m_isMotionReprojectionRateSupported && m_configManager->peekValue(SettingMotionReprojection);
+            return m_isMotionReprojectionRateSupported && m_configManager->peekEnumValue<MotionReprojection>(
+                                                              SettingMotionReprojection) == MotionReprojection::On;
         }
 
         uint32_t getDisplayWidth() const {

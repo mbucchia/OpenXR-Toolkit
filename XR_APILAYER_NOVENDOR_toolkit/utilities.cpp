@@ -89,7 +89,7 @@ namespace toolkit::config {
     DECLARE_ENUM_TO_STRING_VIEW(MipMapBias, {"Off", "Conservative", "All"})
     DECLARE_ENUM_TO_STRING_VIEW(HandTrackingEnabled, {"Off", "Both", "Left", "Right"})
     DECLARE_ENUM_TO_STRING_VIEW(HandTrackingVisibility, {"Hidden", "Bright", "Medium", "Dark", "Darker"})
-    DECLARE_ENUM_TO_STRING_VIEW(MotionReprojectionRate, {"", "Off", "R_45Hz", "R_30Hz", "R_22Hz"})
+    DECLARE_ENUM_TO_STRING_VIEW(MotionReprojection, {"Default", "Off", "On"})
     DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRateType, {"Off", "Preset", "Custom"})
     DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRateQuality, {"Performance", "Quality"})
     DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRatePattern, {"Wide", "Balanced", "Narrow"})
@@ -172,13 +172,19 @@ namespace toolkit::utilities {
         return isPressed && (!wasPressed || isRepeat);
     }
 
-    void ToggleWindowsMixedRealityReprojection(bool enable) {
-        utilities::RegSetDword(
-            HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MotionVectorEnabled", enable ? 2 /* Always on */ : 0);
+    void ToggleWindowsMixedRealityReprojection(MotionReprojection enable) {
+        if (enable != MotionReprojection::Default) {
+            utilities::RegSetDword(HKEY_CURRENT_USER,
+                                   L"SOFTWARE\\Microsoft\\OpenXR",
+                                   L"MotionVectorEnabled",
+                                   enable == MotionReprojection::On ? 2 /* Always on */ : 0);
+        } else {
+            utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MotionVectorEnabled");
+        }
     }
 
-    void UpdateWindowsMixedRealityReprojectionRate(config::MotionReprojectionRate rate) {
-        if (rate != config::MotionReprojectionRate::Off) {
+    void UpdateWindowsMixedRealityReprojectionRate(MotionReprojectionRate rate) {
+        if (rate != MotionReprojectionRate::Off) {
             utilities::RegSetDword(
                 HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval", (DWORD)rate);
             utilities::RegSetDword(
