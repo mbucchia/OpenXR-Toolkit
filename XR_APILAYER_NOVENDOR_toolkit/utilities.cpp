@@ -96,7 +96,7 @@ namespace toolkit::config {
     DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRateDir, {"Vertical", "Horizontal"})
     DECLARE_ENUM_TO_STRING_VIEW(VariableShadingRateVal, {"1x", "1/2", "1/4", "1/8", "1/16", "Cull"})
     DECLARE_ENUM_TO_STRING_VIEW(PostProcessType, {"Off", "On"})
-    DECLARE_ENUM_TO_STRING_VIEW(PostSunGlassesType, {"Off", "Light", "Dark", "Deep Night"})
+    DECLARE_ENUM_TO_STRING_VIEW(PostSunGlassesType, {"Off", "Light", "Dark", "TruNite"})
     DECLARE_ENUM_TO_STRING_VIEW(FovModeType, {"Simple", "Advanced"})
     DECLARE_ENUM_TO_STRING_VIEW(ScreenshotFileFormat, {"DDS", "PNG", "JPG", "BMP"})
 

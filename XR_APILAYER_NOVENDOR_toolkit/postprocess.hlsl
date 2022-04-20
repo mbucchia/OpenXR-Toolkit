@@ -111,7 +111,7 @@ float3 AdjustContrast(float3 color, float scale) {
   float luminance = dot(saturate(color), float3(0.2125, 0.7154, 0.0721));
   float contrast = luminance * luminance * (3.0 - 2.0 * luminance); // smoothstep
   contrast = lerp(luminance, contrast, scale);
-  return color + contrast - luminance;
+  return max(color + contrast - luminance, 0.0);
 }
 
 // -1..+1 (better: +- 0.8)
@@ -119,7 +119,7 @@ float3 AdjustBrightness(float3 color, float scale) {
   return SafePow(color, (1.0 - scale));
 }
 
-// -1..+1 (better: +-4 F-stops)
+// -1..+1 (better: +-3 F-stops)
 float3 AdjustExposure(float3 color, float scale) {
   return color * pow(2.0, scale);
 }
@@ -131,30 +131,31 @@ float3 AdjustExposureToneMap(float3 color, float scale) {
   return color / (1.0 + color);
 }
 
-// -1..+1
+// 0..+1
 float3 AdjustVibrance(float3 color, float scale) {
-  float luminance = dot(saturate(color), float3(0.2125,0.7154,0.0721));
-  float color_max = max(color.r, max(color.g, color.b));
-  float color_min = min(color.r, min(color.g, color.b));
-  float color_sat = color_max - color_min;
-  return lerp(luminance, color, (1.0 + (scale * (1.0 - (sign(scale) * color_sat)))));
+  float average = (color.r + color.g + color.b) / 3.0;
+  float highest = max(color.r, max(color.g, color.b));
+  float amount = (average - highest) * scale;
+  return lerp(color, highest, amount);
 }
 
 // -1..+1
 float3 AdjustSaturation(float3 color, float amount) {
-  float grey = dot(color, 0.333);
-  return grey + (color - grey) * (amount + 1.0);
+  float luminance = dot(saturate(color), float3(0.2125, 0.7154, 0.0721));
+  return luminance + (color - luminance) * (amount + 1.0);
 }
 
-float3 AdjustChannels(float3 color, float3 amount) {
-  return color + amount;
+// -1..+1
+float3 AdjustGains(float3 color, float3 gains) {
+  return saturate(color * (gains + 1));
 }
 
 // 0..1 (https://www.desmos.com/calculator/wmiuegrnli)
-float3 AdjustHighlightsShadows(float3 color, float highlights, float shadows) {
+float3 AdjustHighlightsShadows(float3 color, float2 amount) {
+  float2 inv_hs = rcp(amount + 1.0);
   float luma = dot(saturate(color), float3(0.3,0.3,0.3));
-  float h = 1.0 - SafePow((1.0 - luma), 1.0/(2.0-highlights));
-  float s = SafePow(luma, 1.0/(1.0+shadows));
+  float h = 1.0 - SafePow((1.0 - luma), inv_hs.x); // highlights
+  float s = SafePow(luma, inv_hs.y); // shadows
   return (color/luma) * (h + s - luma);
 }
 
@@ -165,14 +166,26 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
 #ifdef POST_PROCESS_SRC_SRGB
   color = srgb2linear(color);
  #endif
-              
-  color = AdjustContrast(color, Params1.x);
-  color = AdjustBrightness(color, Params1.y);
-  color = AdjustExposure(color, Params1.z);
-  color = AdjustSaturation(color, Params1.w);
-  color = AdjustChannels(color, Params2.rgb);
-  color = AdjustVibrance(color, Params2.w);
-  color = AdjustHighlightsShadows(color, Params3.x, Params3.y);
+  
+  // adjust color input gains.
+  if (any(Params2.rgb)) {
+    color = AdjustGains(color, Params2.rgb);
+  }
+  // adjust lighting and saturation.
+  if (any(Params1)) {
+    color = AdjustContrast(color, Params1.x);
+    color = AdjustBrightness(color, Params1.y);
+    color = AdjustExposure(color, Params1.z);
+    color = AdjustSaturation(color, Params1.w);
+  }
+  // boost colors
+  if (any(Params3.z)) {
+    color = AdjustVibrance(color, Params3.z);
+  }
+  // expand/crush luma for output.
+  if (any(Params3.xy)) {
+    color = AdjustHighlightsShadows(color, Params3.xy);
+  }
 
 #ifdef POST_PROCESS_DST_SRGB
   color = linear2srgb(color);
