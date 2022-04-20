@@ -159,9 +159,9 @@ namespace toolkit {
         const std::string SettingPostExposure = "post_exposure";
         const std::string SettingPostSaturation = "post_saturation";
         const std::string SettingPostVibrance = "post_vibrance";
-        const std::string SettingPostVibranceR = "post_vibrance_r";
-        const std::string SettingPostVibranceG = "post_vibrance_g";
-        const std::string SettingPostVibranceB = "post_vibrance_b";
+        const std::string SettingPostColorGainR = "post_gain_r";
+        const std::string SettingPostColorGainG = "post_gain_g";
+        const std::string SettingPostColorGainB = "post_gain_b";
         const std::string SettingPostHighlights = "post_highlights";
         const std::string SettingPostShadows = "post_shadows";
 

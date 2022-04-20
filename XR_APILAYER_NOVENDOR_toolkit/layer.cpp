@@ -113,37 +113,32 @@ namespace {
             m_configManager->setDefault(config::SettingVRSLeftRightBias, 0);
 
             // Appearance.
-            // m_configManager->setDefault(config::SettingBrightness, 500);
-            // m_configManager->setDefault(config::SettingContrast, 5000);
-            // m_configManager->setDefault(config::SettingSaturation, 500);
-            // m_configManager->setDefault(config::SettingSaturationRed, 500);
-            // m_configManager->setDefault(config::SettingSaturationGreen, 500);
-            // m_configManager->setDefault(config::SettingSaturationBlue, 500);
-
             m_configManager->setDefault(config::SettingPostProcess, 0);
             m_configManager->setDefault(config::SettingPostSunGlasses, 0);
             m_configManager->setDefault(config::SettingPostContrast, 500);
             m_configManager->setDefault(config::SettingPostBrightness, 500);
             m_configManager->setDefault(config::SettingPostExposure, 500);
             m_configManager->setDefault(config::SettingPostSaturation, 500);
-            m_configManager->setDefault(config::SettingPostVibranceR, 500);
-            m_configManager->setDefault(config::SettingPostVibranceG, 500);
-            m_configManager->setDefault(config::SettingPostVibranceB, 500);
-            m_configManager->setDefault(config::SettingPostVibrance, 500);
+            m_configManager->setDefault(config::SettingPostColorGainR, 500);
+            m_configManager->setDefault(config::SettingPostColorGainG, 500);
+            m_configManager->setDefault(config::SettingPostColorGainB, 500);
+            m_configManager->setDefault(config::SettingPostVibrance, 0);
             m_configManager->setDefault(config::SettingPostHighlights, 1000);
             m_configManager->setDefault(config::SettingPostShadows, 0);
 
+            // TODO: Appearance (User)
+#if 0
             m_configManager->setDefault(config::SettingPostContrast + "_u1", 500);
             m_configManager->setDefault(config::SettingPostBrightness + "_u1", 500);
             m_configManager->setDefault(config::SettingPostExposure + "_u1", 500);
             m_configManager->setDefault(config::SettingPostSaturation + "_u1", 500);
-            m_configManager->setDefault(config::SettingPostVibranceR + "_u1", 500);
-            m_configManager->setDefault(config::SettingPostVibranceG + "_u1", 500);
-            m_configManager->setDefault(config::SettingPostVibranceB + "_u1", 500);
-            m_configManager->setDefault(config::SettingPostVibrance + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostColorGainR + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostColorGainG + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostColorGainB + "_u1", 500);
+            m_configManager->setDefault(config::SettingPostVibrance + "_u1", 0);
             m_configManager->setDefault(config::SettingPostHighlights + "_u1", 1000);
             m_configManager->setDefault(config::SettingPostShadows + "_u1", 0);
-
+#endif
             // Misc features.
             m_configManager->setDefault(config::SettingICD, 1000);
             m_configManager->setDefault(config::SettingFOVType, 0); // Simple
@@ -1684,11 +1679,11 @@ namespace {
                     processor->update();
                 }
             }
-           
+
             if (m_eyeTracker) {
                 m_eyeTracker->update();
             }
-            
+
             if (m_variableRateShader) {
                 m_variableRateShader->update();
             }
