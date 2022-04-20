@@ -1192,7 +1192,7 @@ namespace {
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Red",
                                      MenuEntryType::Slider,
-                                     SettingPostVibranceR,
+                                     SettingPostColorGainR,
                                      0,
                                      1000,
                                      MenuEntry::FmtDecimal<1>});
@@ -1201,7 +1201,7 @@ namespace {
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Green",
                                      MenuEntryType::Slider,
-                                     SettingPostVibranceG,
+                                     SettingPostColorGainG,
                                      0,
                                      1000,
                                      MenuEntry::FmtDecimal<1>});
@@ -1210,7 +1210,7 @@ namespace {
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Blue",
                                      MenuEntryType::Slider,
-                                     SettingPostVibranceB,
+                                     SettingPostColorGainB,
                                      0,
                                      1000,
                                      MenuEntry::FmtDecimal<1>});

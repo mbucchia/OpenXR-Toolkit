@@ -50,82 +50,6 @@ namespace {
             createRenderResources();
         }
 
-#if 0
-        void update() override {
-            const bool hasSaturationModeChanged = m_configManager->hasChanged(SettingSaturationMode);
-            const bool saturationPerChannel = m_configManager->getValue(SettingSaturationMode);
-
-            if (m_configManager->hasChanged(SettingBrightness) || m_configManager->hasChanged(SettingContrast) ||
-                hasSaturationModeChanged || (!saturationPerChannel && m_configManager->hasChanged(SettingSaturation)) ||
-                (saturationPerChannel && (m_configManager->hasChanged(SettingSaturationRed) ||
-                                          m_configManager->hasChanged(SettingSaturationGreen) ||
-                                          m_configManager->hasChanged(SettingSaturationBlue)))) {
-                const int saturationGlobal = m_configManager->getValue(SettingSaturation);
-                const int saturationRedValue =
-                    saturationPerChannel ? m_configManager->getValue(SettingSaturationRed) : saturationGlobal;
-                const int saturationGreenValue =
-                    saturationPerChannel ? m_configManager->getValue(SettingSaturationGreen) : saturationGlobal;
-                const int saturationBlueValue =
-                    saturationPerChannel ? m_configManager->getValue(SettingSaturationBlue) : saturationGlobal;
-
-                // 0 -> -1, 500 -> 0, 1000 -> 1
-                const float brightness = 1.f + 2.f * (m_configManager->getValue(SettingBrightness) - 500) / 1000.f;
-                const float saturationRed = 1.f + 2.f * (saturationRedValue - 500) / 1000.f;
-                const float saturationGreen = 1.f + 2.f * (saturationGreenValue - 500) / 1000.f;
-                const float saturationBlue = 1.f + 2.f * (saturationBlueValue - 500) / 1000.f;
-                // Contrast is also inverted.
-                const float contrast = 2.f * -(m_configManager->getValue(SettingContrast) - 5000) / 10000.f;
-
-                // This code is based on the article from Paul Haeberli.
-                // http://www.graficaobscura.com/matrix/
-                DirectX::XMMATRIX brightnessMatrix;
-                {
-                    // clang-format off
-                    brightnessMatrix = DirectX::XMMatrixSet(brightness, 0.f, 0.f, 0.f,
-                                                            0.f, brightness, 0.f, 0.f,
-                                                            0.f, 0.f, brightness, 0.f,
-                                                            0.f, 0.f, 0.f, 1.f);
-                    // clang-format on
-                }
-                DirectX::XMMATRIX contrastMatrix;
-                {
-                    // clang-format off
-                    contrastMatrix = DirectX::XMMatrixSet(1.f, 0.f, 0.f, 0.f,
-                                                          0.f, 1.f, 0.f, 0.f,
-                                                          0.f, 0.f, 1.f, 0.f,
-                                                          contrast, contrast, contrast, 1.f);
-                    // clang-format on
-                }
-                DirectX::XMMATRIX saturationMatrix;
-                {
-                    float red[] = {saturationRed + 0.3086f * (1.f - saturationRed),
-                                   0.3086f * (1.f - saturationRed),
-                                   0.3086f * (1.f - saturationRed)};
-                    float green[] = {0.6094f * (1.f - saturationGreen),
-                                     saturationGreen + 0.6094f * (1.f - saturationGreen),
-                                     0.6094f * (1.f - saturationGreen)};
-                    float blue[] = {0.0820f * (1.f - saturationBlue),
-                                    0.0820f * (1.f - saturationBlue),
-                                    saturationBlue + 0.0820f * (1.f - saturationBlue)};
-
-                    // clang-format off
-                    saturationMatrix = DirectX::XMMatrixSet(red[0], red[1], red[2], 0.f,
-                                                            green[0], green[1], green[2], 0.f,
-                                                            blue[0], blue[1], blue[2], 0.f,
-                                                            0.f, 0.f, 0.f, 1.f);
-                    // clang-format on
-                }
-
-                ImageProcessorConfig staging;
-                DirectX::XMStoreFloat4x4(
-                    &staging.BrightnessContrastSaturationMatrix,
-                    DirectX::XMMatrixMultiply(brightnessMatrix,
-                                              DirectX::XMMatrixMultiply(contrastMatrix, saturationMatrix)));
-                m_configBuffer->uploadData(&staging, sizeof(staging));
-            }
-        }
-#endif
-
         void reload() override {
             createRenderResources();
         }
@@ -188,11 +112,11 @@ namespace {
                        m_configManager->hasChanged(SettingPostExposure) ||
                        m_configManager->hasChanged(SettingPostSaturation) ||
                        m_configManager->hasChanged(SettingPostVibrance) ||
-                       m_configManager->hasChanged(SettingPostVibranceR) ||
-                       m_configManager->hasChanged(SettingPostVibranceG) ||
-                       m_configManager->hasChanged(SettingPostVibranceB) ||
                        m_configManager->hasChanged(SettingPostHighlights) ||
-                       m_configManager->hasChanged(SettingPostShadows);
+                       m_configManager->hasChanged(SettingPostShadows) ||
+                       m_configManager->hasChanged(SettingPostColorGainR) ||
+                       m_configManager->hasChanged(SettingPostColorGainG) ||
+                       m_configManager->hasChanged(SettingPostColorGainB);
             }
             return false;
         }
@@ -259,10 +183,10 @@ namespace {
                                configManager->getValue(SettingPostExposure + suffix),
                                configManager->getValue(SettingPostSaturation + suffix)),
 
-                        XMINT4(configManager->getValue(SettingPostVibranceR + suffix),
-                               configManager->getValue(SettingPostVibranceG + suffix),
-                               configManager->getValue(SettingPostVibranceB + suffix),
                                configManager->getValue(SettingPostVibrance + suffix)),
+                        XMINT4(configManager->getValue(SettingPostColorGainR + suffix),
+                               configManager->getValue(SettingPostColorGainG + suffix),
+                               configManager->getValue(SettingPostColorGainB + suffix),
 
                         XMINT4(configManager->getValue(SettingPostHighlights + suffix),
                                configManager->getValue(SettingPostShadows + suffix),
