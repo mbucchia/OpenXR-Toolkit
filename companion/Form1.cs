@@ -84,6 +84,23 @@ namespace companion
                 SelectKey(previousKey, (int)key.GetValue("key_up", 0));
                 SelectKey(rightKey, (int)key.GetValue("key_right", KeyInterop.VirtualKeyFromKey(Key.F3)));
                 SelectKey(screenshotKey, (int)key.GetValue("key_screenshot", KeyInterop.VirtualKeyFromKey(Key.F12)));
+                key.Close();
+
+                // Bypass apps.
+                key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RegPrefix);
+                foreach (var subKey in key.GetSubKeyNames())
+                {
+                    var app = key.OpenSubKey(subKey);
+                    var modulePath = (string)app.GetValue("module", null);
+                    var displayName = subKey;
+                    if (modulePath != null)
+                    {
+                        displayName += " (" + Path.GetFileName(modulePath) + ")";
+                    }
+
+                    appList.Items.Add(displayName);
+                    appList.SetItemChecked(appList.Items.Count - 1, (int)app.GetValue("bypass", 0) == 0);
+                }
             }
             catch (Exception)
             {
@@ -356,6 +373,7 @@ namespace companion
                     try
                     {
                         wmrKey = Microsoft.Win32.Registry.CurrentUser.CreateSubKey("SOFTWARE\\Microsoft\\OpenXR");
+                        wmrKey.DeleteValue("MotionVectorEnabled");
                         wmrKey.DeleteValue("MinimumFrameInterval");
                         wmrKey.DeleteValue("MaximumFrameInterval");
                     }
@@ -678,6 +696,33 @@ namespace companion
                 {
                 }
             }
+        }
+
+        private void appList_ItemCheck(object sender, ItemCheckEventArgs e)
+        {
+            if (loading)
+            {
+                return;
+            }
+            var app = appList.Items[e.Index].ToString().Split('(')[0].Trim();
+            Microsoft.Win32.RegistryKey key = null;
+            try
+            {
+                key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RegPrefix + "\\" + app);
+                key.SetValue("bypass", e.NewValue == CheckState.Checked ? 0 : 1, Microsoft.Win32.RegistryValueKind.DWord);
+            }
+            catch (Exception)
+            {
+                MessageBox.Show(this, "Failed to write to registry.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (key != null)
+                {
+                    key.Close();
+                }
+            }
+
         }
     }
 }
