@@ -66,6 +66,8 @@ namespace companion
             this.screenshotFormat = new System.Windows.Forms.ComboBox();
             this.traceButton = new System.Windows.Forms.Button();
             this.label13 = new System.Windows.Forms.Label();
+            this.appList = new System.Windows.Forms.CheckedListBox();
+            this.label14 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -82,11 +84,11 @@ namespace companion
             // reportIssuesLink
             // 
             this.reportIssuesLink.AutoSize = true;
-            this.reportIssuesLink.Location = new System.Drawing.Point(7, 673);
+            this.reportIssuesLink.Location = new System.Drawing.Point(7, 792);
             this.reportIssuesLink.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.reportIssuesLink.Name = "reportIssuesLink";
             this.reportIssuesLink.Size = new System.Drawing.Size(71, 13);
-            this.reportIssuesLink.TabIndex = 29;
+            this.reportIssuesLink.TabIndex = 31;
             this.reportIssuesLink.TabStop = true;
             this.reportIssuesLink.Text = "Report issues";
             this.reportIssuesLink.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.reportIssuesLink_LinkClicked);
@@ -105,11 +107,11 @@ namespace companion
             // checkUpdatesLink
             // 
             this.checkUpdatesLink.AutoSize = true;
-            this.checkUpdatesLink.Location = new System.Drawing.Point(274, 673);
+            this.checkUpdatesLink.Location = new System.Drawing.Point(274, 792);
             this.checkUpdatesLink.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.checkUpdatesLink.Name = "checkUpdatesLink";
             this.checkUpdatesLink.Size = new System.Drawing.Size(131, 13);
-            this.checkUpdatesLink.TabIndex = 31;
+            this.checkUpdatesLink.TabIndex = 33;
             this.checkUpdatesLink.TabStop = true;
             this.checkUpdatesLink.Text = "Check for a newer version";
             this.checkUpdatesLink.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.checkUpdatesLink_LinkClicked);
@@ -192,22 +194,22 @@ namespace companion
             // 
             // openLog
             // 
-            this.openLog.Location = new System.Drawing.Point(18, 588);
+            this.openLog.Location = new System.Drawing.Point(18, 707);
             this.openLog.Margin = new System.Windows.Forms.Padding(2);
             this.openLog.Name = "openLog";
             this.openLog.Size = new System.Drawing.Size(150, 31);
-            this.openLog.TabIndex = 26;
+            this.openLog.TabIndex = 28;
             this.openLog.Text = "Open log file";
             this.openLog.UseVisualStyleBackColor = true;
             this.openLog.Click += new System.EventHandler(this.openLog_Click);
             // 
             // openScreenshots
             // 
-            this.openScreenshots.Location = new System.Drawing.Point(187, 588);
+            this.openScreenshots.Location = new System.Drawing.Point(187, 707);
             this.openScreenshots.Margin = new System.Windows.Forms.Padding(2);
             this.openScreenshots.Name = "openScreenshots";
             this.openScreenshots.Size = new System.Drawing.Size(150, 31);
-            this.openScreenshots.TabIndex = 27;
+            this.openScreenshots.TabIndex = 29;
             this.openScreenshots.Text = "Open screenshots folder";
             this.openScreenshots.UseVisualStyleBackColor = true;
             this.openScreenshots.Click += new System.EventHandler(this.openScreenshots_Click);
@@ -385,11 +387,11 @@ namespace companion
             // licences
             // 
             this.licences.AutoSize = true;
-            this.licences.Location = new System.Drawing.Point(311, 651);
+            this.licences.Location = new System.Drawing.Point(311, 770);
             this.licences.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.licences.Name = "licences";
             this.licences.Size = new System.Drawing.Size(94, 13);
-            this.licences.TabIndex = 30;
+            this.licences.TabIndex = 32;
             this.licences.TabStop = true;
             this.licences.Text = "3rd Party Licenses";
             this.licences.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.licences_LinkClicked);
@@ -411,10 +413,10 @@ namespace companion
             // 
             // traceButton
             // 
-            this.traceButton.Location = new System.Drawing.Point(18, 624);
+            this.traceButton.Location = new System.Drawing.Point(18, 743);
             this.traceButton.Name = "traceButton";
             this.traceButton.Size = new System.Drawing.Size(150, 31);
-            this.traceButton.TabIndex = 37;
+            this.traceButton.TabIndex = 30;
             this.traceButton.Text = "Capture trace";
             this.traceButton.UseVisualStyleBackColor = true;
             this.traceButton.Click += new System.EventHandler(this.traceButton_Click);
@@ -429,11 +431,31 @@ namespace companion
             this.label13.Text = "You do not need to keep this window open";
             this.label13.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
+            // appList
+            // 
+            this.appList.FormattingEnabled = true;
+            this.appList.Location = new System.Drawing.Point(18, 594);
+            this.appList.Name = "appList";
+            this.appList.Size = new System.Drawing.Size(370, 94);
+            this.appList.TabIndex = 27;
+            this.appList.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.appList_ItemCheck);
+            // 
+            // label14
+            // 
+            this.label14.AutoSize = true;
+            this.label14.Location = new System.Drawing.Point(25, 575);
+            this.label14.Name = "label14";
+            this.label14.Size = new System.Drawing.Size(267, 13);
+            this.label14.TabIndex = 26;
+            this.label14.Text = "Enable OpenXR Toolkit selectively for each application";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(411, 691);
+            this.ClientSize = new System.Drawing.Size(411, 807);
+            this.Controls.Add(this.label14);
+            this.Controls.Add(this.appList);
             this.Controls.Add(this.label13);
             this.Controls.Add(this.traceButton);
             this.Controls.Add(this.screenshotFormat);
@@ -515,6 +537,8 @@ namespace companion
         private System.Windows.Forms.ComboBox screenshotFormat;
         private System.Windows.Forms.Button traceButton;
         private System.Windows.Forms.Label label13;
+        private System.Windows.Forms.CheckedListBox appList;
+        private System.Windows.Forms.Label label14;
     }
 }
 
