@@ -113,11 +113,12 @@ namespace {
         static std::string FmtPostVal(int value);
         static std::string FmtPercent(int value);
         static std::string FmtVrsRate(int value);
+        static std::string FmtNone(int);
 
         MenuIndent indent;
         std::string title;
         MenuEntryType type;
-#define BUTTON_OR_SEPARATOR "", 0, 0, [](int value) { return ""; }
+#define BUTTON_OR_SEPARATOR "", 0, 0, MenuEntry::FmtNone
         std::string configName;
         int minValue;
         int maxValue;
@@ -407,6 +408,7 @@ namespace {
                                      leftAlign - width / 2,
                                      topAlign + 1.05f * fontSize,
                                      textColorOverlay);
+
             } else if (m_state == MenuState::Visible) {
                 // The actual menu.
 
@@ -494,9 +496,9 @@ namespace {
                         }
                     }
 
+                    // Display the current value.
                     const int value = peekEntryValue(menuEntry);
 
-                    // Display the current value.
                     switch (menuEntry.type) {
                     case MenuEntryType::Slider:
                         // clang-format off
@@ -519,13 +521,12 @@ namespace {
                     case MenuEntryType::Tabs:
                     case MenuEntryType::Choice:
                         for (int j = menuEntry.minValue; j <= menuEntry.maxValue; j++) {
-                            const std::string label = menuEntry.valueToString(j);
-
                             const auto style =
                                 menuEntry.type == MenuEntryType::Tabs ? TextStyle::Bold : TextStyle::Normal;
                             const auto valueColor = value == j ? textColorHighlightText : entryColor;
                             const auto backgroundColor = i == m_selectedItem ? ColorSelected : ColorNormal;
 
+                            const std::string label = menuEntry.valueToString(j);
                             const auto width = m_device->measureString(label, style, fontSize);
 
                             if (j == value) {
@@ -542,9 +543,11 @@ namespace {
                         break;
 
                     case MenuEntryType::Separator:
-                        // Counteract the auto-down and add our own spacing.
-                        top -= 1.5f * fontSize;
-                        top += fontSize / 3;
+                        if (menuEntry.title.empty()) {
+                            // Counteract the auto-down and add our own spacing.
+                            top -= 1.5f * fontSize;
+                            top += fontSize / 3;
+                        }
                         break;
 
                     case MenuEntryType::RestoreDefaults:
@@ -642,7 +645,8 @@ namespace {
                     }
                 }
                 m_menuBackgroundHeight = (top + fontSize * 0.2f) - topAlign;
-            }
+
+            } // if (m_state == MenuState::Visible)
 
             auto overlayType = m_configManager->getEnumValue<OverlayType>(SettingOverlayType);
             if (m_state != MenuState::Splash && overlayType != OverlayType::None) {
@@ -1759,6 +1763,10 @@ namespace {
     std::string MenuEntry::FmtVrsRate(int value) {
         auto idx = (std::clamp(value, -4, 4) + 4) * 4;
         return std::string(&"+4 L+3 L+2 L+1 Lnone+1 R+2 R+3 R+4 R"[idx], 4);
+    }
+
+    std::string MenuEntry::FmtNone(int) {
+        return "";
     }
 
     MenuGroup::MenuGroup(MenuHandler* menu, std::function<bool()> isVisible, bool isTab)
