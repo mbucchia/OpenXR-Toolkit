@@ -44,7 +44,7 @@ namespace toolkit {
 
         bool UpdateKeyState(bool& keyState, const std::vector<int>& vkModifiers, int vkKey, bool isRepeat);
 
-        void ToggleWindowsMixedRealityReprojection(bool enable);
+        void ToggleWindowsMixedRealityReprojection(config::MotionReprojection enable);
         void UpdateWindowsMixedRealityReprojectionRate(config::MotionReprojectionRate rate);
         void ClearWindowsMixedRealityReprojection();
 

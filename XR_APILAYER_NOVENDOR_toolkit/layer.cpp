@@ -152,7 +152,7 @@ namespace {
             m_configManager->setDefault(config::SettingPimaxFOVHack, 0);
             m_configManager->setDefault(config::SettingPredictionDampen, 100);
             m_configManager->setDefault(config::SettingResolutionOverride, 0);
-            m_configManager->setDefault(config::SettingMotionReprojection, 0);
+            m_configManager->setEnumDefault(config::SettingMotionReprojection, config::MotionReprojection::Default);
             m_configManager->setEnumDefault(config::SettingMotionReprojectionRate, config::MotionReprojectionRate::Off);
             m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
 
@@ -517,7 +517,7 @@ namespace {
             // Force motion reprojection if requested.
             if (m_supportMotionReprojectionLock) {
                 utilities::ToggleWindowsMixedRealityReprojection(
-                    m_configManager->getValue(config::SettingMotionReprojection));
+                    m_configManager->getEnumValue<config::MotionReprojection>(config::SettingMotionReprojection));
             }
 
             const XrResult result = OpenXrApi::xrCreateSession(instance, createInfo, session);
