@@ -123,7 +123,7 @@ namespace {
             m_configManager->setDefault(config::SettingPostColorGainG, 500);
             m_configManager->setDefault(config::SettingPostColorGainB, 500);
             m_configManager->setDefault(config::SettingPostVibrance, 0);
-            m_configManager->setDefault(config::SettingPostHighlights, 1000);
+            m_configManager->setDefault(config::SettingPostHighlights, 0);
             m_configManager->setDefault(config::SettingPostShadows, 0);
 
             // TODO: Appearance (User)
@@ -136,7 +136,7 @@ namespace {
             m_configManager->setDefault(config::SettingPostColorGainG + "_u1", 500);
             m_configManager->setDefault(config::SettingPostColorGainB + "_u1", 500);
             m_configManager->setDefault(config::SettingPostVibrance + "_u1", 0);
-            m_configManager->setDefault(config::SettingPostHighlights + "_u1", 1000);
+            m_configManager->setDefault(config::SettingPostHighlights + "_u1", 0);
             m_configManager->setDefault(config::SettingPostShadows + "_u1", 0);
 #endif
             // Misc features.

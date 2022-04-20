@@ -132,8 +132,7 @@ namespace {
             // - limit RGB gains
             // - limit shadows range
             static constexpr XMVECTORF32 kGain[1][3] = {
-                {{{{1.0f, 0.8f, 4.0f, 1.0f}}}, {{{0.2f, 0.2f, 0.2f, 1.f}}}, {{{1.0f, 0.5f, 0.0f, 0.0f}}}},
-
+                {{{{1.f, .8f, 3.f, 1.f}}}, {{{1.f, 1.f, 1.f, 1.f}}}, {{{1.f, .5f, 1.f, 1.f}}}},
             };
 
             // standard presets
@@ -142,13 +141,13 @@ namespace {
                 {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
 
                 // sunglasses light: +2.5 contrast, -5 bright, -5 expo, -20 highlights
-                {{25, -50, -50, 0}, {0, 0, 0, 0}, {-20, 0, 0, 0}},
+                {{25, -50, -50, 0}, {0, 0, 0, 0}, {20, 0, 0, 0}},
 
                 // sunglasses dark: +2.5 contrast, -10 bright, -10 expo, -40 highlights, +5 shad
-                {{25, -100, -100, 0}, {0, 0, 0, 0}, {-400, 50, 0, 0}},
+                {{25, -100, -100, 0}, {0, 0, 0, 0}, {400, 50, 0, 0}},
 
-                // deep night: +0.5 contrast, -40 bright, +20 expo, +2.5 vib, -75 high, +15 shad
-                {{5, -400, 200, 0}, {0, 0, 0, 25}, {-750, 150, 0, 0}},
+                // deep night: +0.5 contrast, -40 bright, +20 expo, -15 sat, +2.5 vib, -75 high, +15 shad
+                {{5, -400, 200, -150}, {0, 0, 0, 0}, {750, 150, 25, 0}},
             };
 
             const auto userParams = GetUserParams(m_configManager.get(), 0);
@@ -183,17 +182,17 @@ namespace {
                                configManager->getValue(SettingPostExposure + suffix),
                                configManager->getValue(SettingPostSaturation + suffix)),
 
-                               configManager->getValue(SettingPostVibrance + suffix)),
                         XMINT4(configManager->getValue(SettingPostColorGainR + suffix),
                                configManager->getValue(SettingPostColorGainG + suffix),
                                configManager->getValue(SettingPostColorGainB + suffix),
+                               0),
 
                         XMINT4(configManager->getValue(SettingPostHighlights + suffix),
                                configManager->getValue(SettingPostShadows + suffix),
-                               0,
+                               configManager->getValue(SettingPostVibrance + suffix),
                                0)};
             }
-            return {XMINT4(500, 500, 500, 500), XMINT4(500, 500, 500, 500), XMINT4(1000, 0, 0, 0)};
+            return {XMINT4(500, 500, 500, 500), XMINT4(500, 500, 500, 0), XMINT4(0, 0, 0, 0)};
         }
 
         const std::shared_ptr<IConfigManager> m_configManager;
