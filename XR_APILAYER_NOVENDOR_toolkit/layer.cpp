@@ -177,15 +177,6 @@ namespace {
                 m_configManager->deleteValue("icd");
             }
 
-            //// Workaround: the first versions of the toolkit used a different representation for the contrast.
-            //// Migrate the value upon first run.
-            // m_configManager->setDefault("contrast", 0);
-            // if (m_configManager->getValue("contrast") != 0) {
-            //    const int migratedValue = m_configManager->getValue("contrast") * 10;
-            //    m_configManager->setValue(config::SettingContrast, migratedValue, true);
-            //    m_configManager->deleteValue("contrast");
-            //}
-
             // Commit any update above. This is needed for apps that create an instance, destroy it right away
             // without submitting a frame, then create a new one.
             m_configManager->tick();
