@@ -25,8 +25,8 @@
 
 cbuffer config : register(b0) {
     float4 Params1;  // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
-    float4 Params2;  // VibranceR, VibranceG, VibranceB, Vibrance (-1..+1 params)
-    float4 Params3;  // Highlights, Shadows (0..1 params)
+    float4 Params2;  // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
+    float4 Params3;  // Highlights, Shadows, Vibrance (0..1 params)
 };
 
 SamplerState sourceSampler : register(s0);

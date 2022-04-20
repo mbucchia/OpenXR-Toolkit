@@ -38,8 +38,8 @@ namespace {
 
     struct alignas(16) ImageProcessorConfig {
         XrVector4f Params1; // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
-        XrVector4f Params2; // VibranceR, VibranceG, VibranceB, Vibrance (-1..+1 params)
-        XrVector4f Params3; // Highlights, Shadows (0..1 params)
+        XrVector4f Params2; // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
+        XrVector4f Params3; // Highlights, Shadows, Vibrance (0..1 params)
     };
 
     class ImageProcessor : public IImageProcessor {
