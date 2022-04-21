@@ -125,7 +125,7 @@ In order to navigate the menu, select options and change values:
 See [Features](features) for more details.
 
 **Performance** tab:
-- **Overlay**: Enables the FPS display or advanced timings display in the top-right corner of the view. _Please note that the overlay may reduce performance_. A fourth option - "_Developer_" - is available in experimental mode and may be used for troubleshooting with the developer.
+- **Overlay**: Enables the FPS display or advanced timings display in the top-right corner of the view. _Please note that the overlay may reduce performance_. A fourth option - "_Developer_" - is available in experimental mode and may be used for troubleshooting with the developers.
 - **Upscaling**: Enables the use of an upscaler such as NIS or FSR to perform rendering at a lower resolution, and upscale and/or sharpen the image. Requires to restart the VR session.
   - **Anamorphic**: When _Disabled_, the _Size_ scales both the width and the height propotionally. When _Enabled_, both sizes can be adjusted independently.
   - **Size**: The upscaling factor (ie: the percentage of magnification of the rendering resolution). The resolution displayed next to the percentage is the effective resolution that the application sees. Requires to restart the VR session.
@@ -152,16 +152,26 @@ See [Features](features) for more details.
   - **Left/Right Bias** (_Expert_ _setting_): Lower the resolution of all the regions at once, either for the left or the right eye only at a time.
 
 **Appearance** tab:
-- **Post-processing**: TODO
-- **Sun Glasses**: TODO
-- **Contrast**: Adjust the contrast of the image.
-- **Brightness**: Adjust the brightness of the image.
-- **Exposure**: TODO
-- **Saturation**: TODO
-- **Vibrance**: TODO
-- **Highlights**: TODO
-- **Shadows**: TODO
-- **Red**, **Green**, **Blue** (_Expert_ _setting_): TODO
+- **Post-processing**: Allows adjusting the image displaying in the headset. When _Enabled_, the following additional controls are available.
+
+  **Sun Glasses Presets**
+  
+  These are finely tuned quick-access presets, applying on top of the individual post-processing settings, effectively augmenting but not replacing them:
+  - **Light** and **Dark**: Two levels of sun glasses, adjusted to reduce exposure and low light details while preserving perceived contrast.
+  - **TruNite**: Wear these glasses exclusively when flying at night and feel the lights popping up in a sea of darkness surrounding you.
+
+  **Individual Controls**
+  
+  These are adjusting individual enhancements settings and they allow fine tuning the image displaying in the headset:
+  - **Contrast**: Adjusts the difference between bright and dark pixels _(Neutral: 50%)_.
+  - **Brightness**: Adjusts those pixels that are not already extremely bright (preserves the highlights) and adjusts midtones, aka gamma _(Neutral: 50%)_.
+  - **Exposure**: Adjusts the brightness or darkness of the entire image _(Neutral: 50%)_.
+  - **Saturation**: Adjusts the colorfullness of the entire image. It affects all colors and pixels in the image equally, regardless of how saturated they already are _(Neutral: 50%)_.
+  - **Vibrance**: Adjusts the intensity of the more muted colors while leaving the saturated colors untouched _(Neutral: 0%)_.
+  - **Highlights**: Adjusts the highlight details in darkening the brightest pixels _(Neutral: 0%)_.
+  - **Shadows**: Adjusts the detail that appears in shadows in brightening the darkest pixels _(Neutral: 0%)_.
+  - **Red**, **Green**, **Blue** (_Expert_ _setting_): Adjusts the gamma of the Red, Green and Blue channels individually _(Neutral: 50%)_.
+  
 - **World scale**: The Inter-Camera Distance override, which can be used to alter the world scale.
 
 **Inputs** tab:
@@ -171,7 +181,7 @@ See [Features](features) for more details.
   - **Controller timeout**: The amount of time after losing track of the hands before simulator shutdown of the simulated VR controller.
 
 **System** tab:
-- **Override resolution**: Enable overriding the OpenXR target resolution (same as what the "custom render scale" in OpenXR does).
+- **Override resolution**: Enable overriding the OpenXR target resolution (same as what the "custom render scale" in OpenXR Tools for WMR does).
   - **Display resolution (per-eye)**: The resolution to use for each eye.
 - **Motion reprojection** (only with Windows Mixed Reality): Enable overriding the Motion Reprojection mode. _Default_ means to use the system settings (from the _OpenXR Tools for Windows Mixed Reality_).
   - **Lock motion reprojection** (only with Windows Mixed Reality, when _Motion Reprojection_ if forced to _On_): Disable automatic motion reprojection adjustment, and lock the frame rate to the desired fraction of the refresh rate.
