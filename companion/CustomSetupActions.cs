@@ -31,6 +31,12 @@ namespace SetupCustomActions
             var entriesValues = new Dictionary<string, object>();
             foreach (var value in existingValues)
             {
+                // Leave the layers that we want to be upstream of us.
+                if (value.EndsWith("\\XR_APILAYER_NOVENDOR_vulkan_d3d12_interop.json"))
+                {
+                    continue;
+                }
+
                 entriesValues.Add(value, key.GetValue(value));
                 key.DeleteValue(value);
             }
@@ -49,6 +55,12 @@ namespace SetupCustomActions
 
                 // Do not re-create our own key. We did it before this loop.
                 if (value.EndsWith("\\" + jsonName))
+                {
+                    continue;
+                }
+
+                // Skip keys that we did not delete.
+                if (!entriesValues.ContainsKey(value))
                 {
                     continue;
                 }
