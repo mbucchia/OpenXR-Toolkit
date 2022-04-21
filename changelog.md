@@ -15,8 +15,9 @@ nav_order: 6
 ## Changes in v1.1 (Apr 2022 / v1.1.0 -)
 
 - Add support for Foveated Rendering with eye tracking (sometimes called ETFR or DFR) on Varjo devices, HP G2 Omnicept, and Pimax devices with extension modules.
-- Add support for adjusting exposure, vibrance, highlights, and shadows.
-- Add sun glasses and deep night modes.
+- Add support for adjusting exposure, vibrance, highlights, and shadows (post-processing)
+- Add quick access presets (post-processing): _Sun Glasses_ _(light/dark)_ and _TruNite_ _(night flying)_
+- Add support to disable image post-processing entirely.
 - Improve the sharpening of AMD FidelityFX Super Resolution (FSR).
 - Add CPU-bound indicator and CPU headroom measurements in the overlay.
 - Add support for left/right eye biasing with Fixed Foveated Rendering (allow for lower resolution in one eye).
