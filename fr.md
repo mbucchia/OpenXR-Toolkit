@@ -13,9 +13,9 @@ nav_order: 1
 
 ---
 
-## What is Fixed Foveated Rendering (FFR)?
+## What is Foveated Rendering (FR)?
 
-Foveated Rendering is rendering technique that reduces the workload of the GPU by reducing the resolution of the image at the periphery of your vision.
+Foveated Rendering (or FR) is rendering technique that reduces the workload of the GPU by reducing the resolution of the image at the periphery of your vision.
 
 ![FFR digram](site/ffr-intro.png)<br>
 *The image is divided into 3 regions, with the resolution decreasing the further we get from the center region.*
@@ -30,9 +30,9 @@ Fixed Foveated Rendering (or FFR) is a type of Foveated Rendering technique whic
 
 In the comparison above, you can see the noticeable difference in quality near the bottom left corner. However, when looking through the lenses of the headset, the difference is barely noticeable.
 
-### Fixed Foveated Rendering in the OpenXR Toolkit
+### Foveated Rendering in the OpenXR Toolkit
 
-The option to enable FFR will appear in the menu if and only if your graphics card and graphics driver can support it. The following are supported:
+The option to enable FR will appear in the menu if and only if your graphics card and graphics driver can support it. The following are supported:
 
 + NVIDIA GeForce GTX 1600 series and RTX series, both DX11 and DX12.
 + AMD RX 6000 series, with DX12 only.
@@ -61,10 +61,10 @@ Note that the rings are not of circular shape, and instead they are of elliptica
 
 #### Custom mode
 
-In _Custom_ mode, every aspect of the FFR feature can be tweaked.
+In _Custom_ mode, every aspect of the FR feature can be tweaked.
 
 ![FFR settings](site/ffr-settings.png)<br>
-*An exhaustive list of all settings for FFR.*
+*An exhaustive list of all settings for FR.*
 
 The resolution of the middle and outer regions (_Middle resolution_ and _Outer resolution_)  can be set to any of 1/2x, 1/4x, 1/8x and 1/16x. When the application is using DirectX 11, an additional option, _Cull_ is available to completely disable rendering for a region.
 
@@ -79,6 +79,28 @@ The _Horizontal offset_ and _Vertical offset_ settings allow you to move the cen
 The _Horizontal scale_ value lets you control the scale of the horizontal radius (also known as the semi-major axis) based on the vertical radius (also known as the semi-minor axis). A value of 100% means that the rings are circles. A value larger than 100% will result in flattened, oval-shaped rings.
 
 Finally, the _Left/Right_ _Bias_ value lets you lower the resolution of all the regions at once, either for the left or the right eye only at a time. Each setting value changes the regions resolutions one notch down (for example +1 changes 1/2 to 1/4 and +2 changes 1/2 to 1/8). This setting can adjust the bias up to _+4_ on either eye. Select _none_ to remove any bias.
+
+### Using with Eye Tracking
+
+The option to enable Eye Tracking (ET) will appear in the menu if and only if your headset and headset driver can support it. The following are supported:
+
+- Varjo devices.
+- HP G2 Omnicept.
+- Pimax devices with Droolon eye tracking module.
+
+#### Considerations for HP G2 Omnicept
+
+In order to use the eye tracker on your Omnicept device, you must first install the [HP Omnicept Runtime](https://developers.hp.com/omnicept/downloads/hp-omnicept-runtime).
+
+Once installed, please run the HP Omnicept eye calibration application.
+
+#### Considerations for Pimax+Droolon
+
+In order to use the Droolon eye tracking module on your Pimax device, you must first install the [aSeeVR SDK](https://drive.google.com/file/d/1ELDtOnMa-MkgchmWFf7w5an-iPOFtQL8/view?usp=sharing&_ga=2.110383681.599346747.1650530138-1983392096.1642581798).
+
+Once installed, please run the aSeeVR runtime. In the system tray bar, right-click on the runtime, and make sure to enable _deviced_ -> _Pimax_.
+
+When using Foveated Rendering in the OpenXR Toolkit, adjust the _Eye projection distance_ from the _Foveated rendering_ menu until you reach comfortable sensitivity.
 
 ### Improving the quality of Fixed Foveated Rendering
 
@@ -99,7 +121,7 @@ This issue can also be resolved by using the 1/2x and 1/8x resolutions exclusive
 
 Another way to reduce or conceal some of the visual artifacts is to use the sharpening features of the NIS or FSR upscalers (see [Upscaling](upscaling)).
 
-Lowering the rendering resolution before the FFR processing happens (ie: the render scale setting within the application) has also shown to create visible artifacts. For this reason, it is also preferred to use the upscaling feature of the OpenXR Toolkit rather than any in-app upscaling.
+Lowering the rendering resolution before the FR processing happens (ie: the render scale setting within the application) has also shown to create visible artifacts. For this reason, it is also preferred to use the upscaling feature of the OpenXR Toolkit rather than any in-app upscaling.
 
 ### Balancing performance and finding the limit of the gain
 
@@ -110,7 +132,7 @@ Configuring a narrower inner and middle regions may improve performance further,
 
 In the example above, we show how the Narrow pattern creates a large region at low resolution near the edges of the screen. This region is noticeable even with the distortion created by the lense inside the headset.
 
-It is important to understand that the [Variable Rate Shading (VRS)](glossary.html#vrs) technology employed for FFR is only effective at reducing or eliminating certain bottlenecks of the graphics pipeline.
+It is important to understand that the [Variable Rate Shading (VRS)](glossary#vrs) technology employed for FFR is only effective at reducing or eliminating certain bottlenecks of the graphics pipeline.
 
 ![FFR limit](site/ffr-ps-limited.jpg)<br>
 *FFR set to the lowest resolution for the whole screen.*

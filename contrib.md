@@ -18,6 +18,7 @@ Our beta testers:
 - Altsak
 - AmiableGalaxy9
 - CptStevil
+- FearlessFrog
 - Malkavien
 - Micah Frisby
 - Nirgal76
@@ -28,6 +29,7 @@ Special thanks to (including additional beta testers):
 - Roman Bershadsky ([Roman Design](https://flightsimulation.romandesign.ca/))
 - [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskytours)
 - Bryce Hutchings
+- Remi Arnaud
 - HyperJet2018
 - BufordTX
 - [2020FS'ers](https://www.youtube.com/channel/UCwCZlJ5_EOSzS9_gNvyWFTw)

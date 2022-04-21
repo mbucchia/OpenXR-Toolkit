@@ -28,20 +28,25 @@ This software may be used with any brand of VR headset as long as the target app
 
 The following OpenXR ToolKit features have additional restrictions:
 
-+ Fixed foveated rendering is only supported with the following GPUs:
++ Fixed Foveated Rendering and Foveated Rendering are only supported with the following GPUs:
   + NVIDIA GeForce GTX 1600 series and RTX series, both DX11 and DX12.
-  + AMD RX 6000 series, with DX12 only.
+  + AMD RX 6000 series, with DX12 applications only.
+
++ Foveated Rendering with eye tracking is only supported with the following headsets:
+  + Varjo-brand devices.
+  + HP G2 Omnicept.
+  + Pimax-brand devices with Droolon eye tracking module. 
 
 ## Limitations
 
 + This software was only extensively tested with Microsoft Flight Simulator 2020.
-+ It is also expected this software should work with most Steam games if they are using OpenXR (instead of Steam's OpenVR)
+  + It is also expected this software should work with most Steam games if they are using OpenXR (instead of Steam's OpenVR).
+  + It can be used with certain games through [OpenComposite-ACC](oc-acc).
 + If using with an HTC Vive Pro 2 or Cosmos, please select SteamVR as your OpenXR runtime.
-+ Fixed Foveated Rendering in Microsoft Flight Simulator only works when TAA is enabled with a render scale of 100%.
++ Fixed Foveated Rendering in Microsoft Flight Simulator only works when TAA is enabled with a render scale of at least 51%.
 + Fixed Foveated Rendering in Microsoft Flight Simulator is incorrectly applied in the main menu, resulting in blurry menu windows.
-+ Fixed Foveated Rendering does not work with War Thunder at this time, and it causes some lighting issues.
 + The menu does not display correctly on Pimax headsets.
-+ Reshade is not supported.
++ The OpenXR Toolkit is incompatble with ReShade.
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
 For future plans, see the [Roadmap](roadmap).
@@ -120,21 +125,22 @@ In order to navigate the menu, select options and change values:
 See [Features](features) for more details.
 
 **Performance** tab:
-- **Overlay**: Enables the FPS display in the top-right corner of the view. _Please note that the overlay may reduce performance_. A third option - "_Detailed_" - is available in experimental mode and may be used for advanced performance monitoring.
+- **Overlay**: Enables the FPS display or advanced timings display in the top-right corner of the view. _Please note that the overlay may reduce performance_. A fourth option - "_Developer_" - is available in experimental mode and may be used for troubleshooting with the developer.
 - **Upscaling**: Enables the use of an upscaler such as NIS or FSR to perform rendering at a lower resolution, and upscale and/or sharpen the image. Requires to restart the VR session.
   - **Anamorphic**: When _Disabled_, the _Size_ scales both the width and the height propotionally. When _Enabled_, both sizes can be adjusted independently.
   - **Size**: The upscaling factor (ie: the percentage of magnification of the rendering resolution). The resolution displayed next to the percentage is the effective resolution that the application sees. Requires to restart the VR session.
   - **Width/Height**: This displays the actual in-game render width and height, that is the actual number of pixels the game is rendering per eye.
   - **Sharpness**: The sharpness factor. Has a different scale/effect between NIS and FSR.
-  - **Mip-map bias** (Expert setting): This settings changes how the game is rendering some of the textures in order to reveal a little bit more details when used with FSR/NIS upscalers.
-- **Lock motion reprojection** (only with Windows Mixed Reality): Disable automatic motion reprojection adjustment, and lock the frame rate to the desired fraction of the refresh rate.
-- **Fixed foveated rendering**: These settings adjust the [VRS](glossary.html#vrs) parameters in order to balance out peripheral visual details with rendering performance.
-  
-  [_Preset_ _mode_ ](ffr.html#preset-mode)
+  - **Mip-map bias** (_Expert_ setting): This settings changes how the game is rendering some of the textures in order to reveal a little bit more details when used with FSR/NIS upscalers.
+- **(Fixed) Foveated rendering** (on supported GPUs only): These settings adjust the [VRS](glossary#vrs) parameters in order to balance out peripheral visual details with rendering performance.
+  - **Eye tracking** (on supported headsets only): Enable the use of eye tracking to control the position of the center of the foveated region.
+  - **Eye projection distance** (only with Pimax headsets): Calibrate the sensitivy of eye gaze movements.
+
+  [_Preset_ _mode_ ](fr#preset-mode)
   - **Mode**: Whether to prefer performance over quality.
   - **Pattern**: The size of the foveated regions.
   
-  [_Custom_ _mode_](ffr.html#custom-mode)
+  [_Custom_ _mode_](fr#custom-mode)
   - **Inner resolution** (_Expert_ _setting_): The resolution inside the inner ring of foveation. Should be left at full resolution (1x).
   - **Inner ring size**: The size of the inner ring of foveation, in percent of the height of the image.
   - **Middle resolution**: The resolution inside the middle ring of foveation.
@@ -146,12 +152,16 @@ See [Features](features) for more details.
   - **Left/Right Bias** (_Expert_ _setting_): Lower the resolution of all the regions at once, either for the left or the right eye only at a time.
 
 **Appearance** tab:
-- **Brightness**: Adjust the brightness of the image.
+- **Post-processing**: TODO
+- **Sun Glasses**: TODO
 - **Contrast**: Adjust the contrast of the image.
-- **Saturation**: Adjust the saturation of the image.
-  - **Ajustment** (with _Global_ mode): Adjust all colors at once.
-  - **Red**, **Green**, **Blue** (with _Selective_ mode): Adjust each primary color individually.
-- **Field of view**: Adjust the pixel density per degree. A smaller field of view is covering a smaller region of the view but with the same amount of pixels, effectively increasing the perceived resolution.
+- **Brightness**: Adjust the brightness of the image.
+- **Exposure**: TODO
+- **Saturation**: TODO
+- **Vibrance**: TODO
+- **Highlights**: TODO
+- **Shadows**: TODO
+- **Red**, **Green**, **Blue** (_Expert_ _setting_): TODO
 - **World scale**: The Inter-Camera Distance override, which can be used to alter the world scale.
 
 **Inputs** tab:
@@ -159,6 +169,21 @@ See [Features](features) for more details.
 - **Controller emulation** (only when hand tracking is supported by the system): Enable the use of hand tracking in place of the VR controller. Requires a compatible device, such a Leap Motion controller or an Oculus Quest 2 headset. Either or both hands can be enabled at a time. Requires to restart the VR session when toggling on or off. 
   - **Hands skeleton**: Whether the hands are displayed and what color tone to use.
   - **Controller timeout**: The amount of time after losing track of the hands before simulator shutdown of the simulated VR controller.
+
+**System** tab:
+- **Override resolution**: Enable overriding the OpenXR target resolution (same as what the "custom render scale" in OpenXR does).
+  - **Display resolution (per-eye)**: The resolution to use for each eye.
+- **Motion reprojection** (only with Windows Mixed Reality): Enable overriding the Motion Reprojection mode. _Default_ means to use the system settings (from the _OpenXR Tools for Windows Mixed Reality_).
+  - **Lock motion reprojection** (only with Windows Mixed Reality, when _Motion Reprojection_ if forced to _On_): Disable automatic motion reprojection adjustment, and lock the frame rate to the desired fraction of the refresh rate.
+- **Field of view**: Adjust the pixel density per degree. A smaller field of view is covering a smaller region of the view but with the same amount of pixels, effectively increasing the perceived resolution.
+  - **Adjustement** (in _Simple_ mode): Override all 4 angles (up/down/left/right) equally.
+  - **Up** (in _Advanced_ mode): Override the "up" angle for both eyes.
+  - **Down** (in _Advanced_ mode): Override the "down" angle for both eyes.
+  - **Left/Left** (in _Advanced_ mode): Override the "left" angle for the left eye.
+  - **Left/Right** (in _Advanced_ mode): Override the "right" angle for the left eye.
+  - **Right/Left** (in _Advanced_ mode): Override the "left" angle for the right eye.
+  - **Right/Right** (in _Advanced_ mode): Override the "right" angle for the right eye.
+- **Pimax WFOV Hack** (Flight Simulator 2020 only, with Pimax headsets): Enable the Wide FOV hack to reduce game "over-culling".
 
 **Menu** tab:
 - **Show expert settings**: Show all settings. *This can be pretty overwhelming for certain features*.
