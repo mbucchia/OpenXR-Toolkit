@@ -1116,8 +1116,9 @@ namespace {
 
             ComPtr<ID3D12Resource> texture;
             const auto& heapType = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+            // Use the shared flag to allow cross-API interop (eg: Vulkan).
             CHECK_HRCMD(m_device->CreateCommittedResource(
-                &heapType, D3D12_HEAP_FLAG_NONE, &desc, initialState, nullptr, IID_PPV_ARGS(set(texture))));
+                &heapType, D3D12_HEAP_FLAG_SHARED, &desc, initialState, nullptr, IID_PPV_ARGS(set(texture))));
 
             if (initialData) {
                 // Create an upload buffer.
