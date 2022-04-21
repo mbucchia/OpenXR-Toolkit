@@ -16,6 +16,8 @@ nav_order: 4
 
 This has been reported due to certain keyboards requiring special key presses to use the Function keys (such as Fn+F1 for example). This can also be due to 3rd party software intercepting the Function keys.
 
+Use the [Keyboard tester](https://www.keyboardtester.com/tester.html) to check if your key combinations work.
+
 Please use the _OpenXR Toolkit Companion app_ to try different hotkeys, selecting keys other than the Function keys.
 
 ## Reset all the settings
@@ -25,6 +27,10 @@ While an application is running, you may at any point reset all the settings to 
 ## Disable ReShade
 
 If you had previously installed ReShade or any similar mod for your application, please disable or delete it in order to use the OpenXR Toolkit.
+
+## Missing Visual C++ system component:
+
+If the OpenXR Toolkit makes your application refuse to start, try installing the [Visual C++ Redistributables](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 
 ## Start in Safe mode
 
@@ -70,6 +76,13 @@ To confirm that the Ultraleap OpenXR layer is active and loaded in the correct o
 
 The `XR_APILAYER_ULTRALEAP_hand_tracking` layer **must** appear after the `XR_APILAYER_NOVENDOR_toolkit` layer. If this is not the case, you may re-install either one of the layers to correct the order.
 
+## Disabling the OpenXR Toolkit with incompatible applications
+
+You might reach a point where you determine that an application is not compatible with the OpenXR Toolkit. You may use the  _OpenXR Toolkit Companion app_ (found on the desktop or Start menu) to disable the OpenXR Toolkit just for that application.
+
+![Disable per application](site/per-app-disable.png)<br>
+*Per-application control*
+
 ## Asking for help
 
 Some issues may be known by the community. Please read the Support channels on our [Discord server](https://discord.gg/WXFshwMnke) and ask questions there if you do not find the answer already.
@@ -98,4 +111,4 @@ Thank you for taking the time to report issue and help us improve the software!
 
 Use the _Detailed_ overlay (see [Overlay](overlay)) to inspect your application CPU and GPU times (respectively **app CPU** and **app GPU**). 
 
-When the value of **app GPU** is greater than the value of **app CPU**, you are limited by your GPU, and you may use features such as [Upscaling](upscaling) of [Fixed Foveated Rendering](ffr) to relieve your GPU. If you are not GPU limited, then these features will not help to gain performnce. Instead, you may alter other settings of your application, such as details settings, and increase them until you become GPU limited, and can enable the performance-enhancing features previously mentioned.
+When the value of **app GPU** is greater than the value of **app CPU**, you are limited by your GPU, and you may use features such as [Upscaling](upscaling) of [Foveated Rendering](fr) to relieve your GPU. If you are not GPU limited, then these features will not help to gain performnce. Instead, you may alter other settings of your application, such as details settings, and increase them until you become GPU limited, and can enable the performance-enhancing features previously mentioned.

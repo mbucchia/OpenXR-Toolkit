@@ -12,9 +12,26 @@ nav_order: 6
 
 ---
 
-## Changes in Beta #3 (Mar 2022 / v1.0.1 - )
+## Changes in v1.1 (Apr 2022 / v1.1.0 -)
 
-- Add support for Fixed Foveated Rendering (FFR) (experimental, with selected GPUs only).
+- Add support for Foveated Rendering with eye tracking (sometimes called ETFR or DFR) on Varjo devices, HP G2 Omnicept, and Pimax devices with extension modules.
+- Add support for adjusting exposure, vibrance, highlights, and shadows.
+- Add sun glasses and deep night modes.
+- Improve the sharpening of AMD FidelityFX Super Resolution (FSR).
+- Add CPU-bound indicator and CPU headroom measurements in the overlay.
+- Add support for left/right eye biasing with Fixed Foveated Rendering (allow for lower resolution in one eye).
+- Properly handle Fixed Foveated Rendering with lower in-game render scale (no lower than 51%).
+- Add trigger-on-haptics to the hand tracking support (simulate a button press upon game haptics + programmed gesture).
+- Add an option to override the OpenXR target resolution for each application.
+- Add an option to enable/disable Motion Reprojection for each application (Windows Mixed Reality only).
+- Add an option to disable the toolkit for each application (from the Companion app).
+- Add an option to disable timeout in the menu.
+- Add detailed traces capture from the Companion app (for troubleshooting).
+- Save screenshot for both eyes.
+
+## Changes in Beta #3 (Mar 2022 / v1.0.1 - 1.0.5)
+
+- Add support for Fixed Foveated Rendering (FFR) (with selected GPUs only).
 - Add support for anamorphic upscaling (independent upscaling of horizontal and vertical resolution).
 - Add support for adjusting brightness, contrast and color saturation.
 - Add an option to lock the motion reprojection rate (Windows Mixed Reality only).

@@ -16,18 +16,18 @@ nav_order: 5
 | Prediction dampening                 | [Stable](){: .btn .btn-green }          | Released        |
 | Anamorphic upscaling                 | [Stable](){: .btn .btn-green }          | Released        |
 | Lock WMR Motion Reprojection rate    | [Stable](){: .btn .btn-green }          | Released        |
-| Fixed foveated rendering             | [Experimental](){: .btn .btn-purple }   | Released        |
-| Brightness/contrast/saturation       | [Experimental](){: .btn .btn-purple }   | Released        |
+| Fixed foveated rendering             | [Stable](){: .btn .btn-green }          | Released        |
+| Brightness/contrast/saturation       | [Stable](){: .btn .btn-green }          | Released        |
 | Texture LOD biasing                  | [Stable](){: .btn .btn-green }          | Released        |
 | Field of view override               | [Experimental](){: .btn .btn-purple}    | Released        |
 | Pimax culling workaround             | [Experimental](){: .btn .btn-purple}    | Released        |
-| Foveated rendering (w/ eye tracking) | [Implementation](){: .btn .btn-blue }   | Apr 2022        |
-| Hand tracking haptics cues           | [Implementation](){: .btn .btn-blue }   |                 |
-| Post-processing enhancements         | [Implementation](){: .btn .btn-blue }   |                 |
+| Foveated rendering (w/ eye tracking) | [Experimental](){: .btn .btn-purple}    | Released        |
+| Hand tracking haptics cues           | [Experimental](){: .btn .btn-purple }   | Released        |
+| Exposure/vibrance/highlights/shadows | [Experimental](){: .btn .btn-purple }   | Released        |
+| Per-application disable setting      | [Stable](){: .btn .btn-green }          | Released        |
+| Per-application resolution override  | [Stable](){: .btn .btn-green }          | Released        |
 | Improved desktop companion app       | [Implementation](){: .btn .btn-blue }   |                 |
-| Exposure control                     | [Investigation](){: .btn .btn-blue }    |                 |
 | Field of view override v2 / zoom     | [Investigation](){: .btn .btn-blue }    |                 |
-| Per-application disable setting      | [Not started](){: .btn .btn-outline }   |                 |
 | DLSS                                 | [Blocked](){: .btn .btn-primary }       |                 |
 | "Neck Saver"                         | [Not started](){: .btn .btn-outline }   |                 |
 | Motion compensation                  | [Not started](){: .btn .btn-outline }   |                 |
