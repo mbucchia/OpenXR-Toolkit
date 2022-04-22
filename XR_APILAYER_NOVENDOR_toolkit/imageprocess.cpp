@@ -46,7 +46,7 @@ namespace {
       public:
         ImageProcessor(std::shared_ptr<IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice)
             : m_configManager(configManager), m_device(graphicsDevice),
-              m_userParams(GetUserParams(configManager.get(), 1)) {
+              m_userParams(GetParams(configManager.get(), 1)) {
             createRenderResources();
         }
 
@@ -126,52 +126,32 @@ namespace {
             using namespace xr::math;
             using namespace utilities;
 
-            // standard gains:
-            // - reduce contrast and brighness ranges
-            // - increase exposure and vibrance effect
-            // - limit RGB gains
-            // - limit shadows range
-            static constexpr XMVECTORF32 kGain[1][3] = {
-                {{{{1.f, .8f, 3.f, 1.f}}}, {{{1.f, 1.f, 1.f, 1.f}}}, {{{1.f, .5f, 1.f, 1.f}}}},
+            // Transform normalized user settings to shader values:
+            // - reduce brighness range  (scale: 0.8)
+            // - increase exposure range (scale: 3.0)
+            // - limit shadows range     (scale: 0.5)
+            // - inverse highlight range (scale:-1.0)
+
+            static constexpr XMVECTORF32 kGainBias[3][2] = {
+                {{{{+2.0f, 1.6f, 6.0f, 2.0f}}}, {{{+1.0f, 0.8f, 3.0f, 1.0f}}}}, // ((v * 2) - 1)  -> [-1..+1]
+                {{{{+2.0f, 2.0f, 2.0f, 2.0f}}}, {{{+1.0f, 1.0f, 1.0f, 1.0f}}}}, // ((v * 2) - 1)  -> [-1..+1]
+                {{{{-1.0f, 0.5f, 1.0f, 1.0f}}}, {{{-1.0f, 0.0f, 0.0f, 0.0f}}}}, // ((v * 1) - 0)  -> [ 0..+1]
             };
 
-            // standard presets
-            static constexpr XMINT4 kBias[to_integral(PostSunGlassesType::MaxValue)][3] = {
-                // none
-                {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
+            const auto sunglasses = m_configManager->getEnumValue<PostSunGlassesType>(SettingPostSunGlasses);
+            const auto preset = GetPreset(static_cast<size_t>(to_integral(sunglasses)));
+            const auto params = GetParams(m_configManager.get(), 0);
 
-                // sunglasses light: +2.5 contrast, -5 bright, -5 expo, -20 highlights
-                {{25, -50, -50, 0}, {0, 0, 0, 0}, {20, 0, 0, 0}},
-
-                // sunglasses dark: +2.5 contrast, -10 bright, -10 expo, -40 highlights, +5 shad
-                {{25, -100, -100, 0}, {0, 0, 0, 0}, {400, 50, 0, 0}},
-
-                // deep night: +0.5 contrast, -40 bright, +20 expo, -15 sat, +2.5 vib, -75 high, +15 shad
-                {{5, -400, 200, -150}, {0, 0, 0, 0}, {750, 150, 25, 0}},
-            };
-
-            const auto userParams = GetUserParams(m_configManager.get(), 0);
-            const auto bias = to_integral(m_configManager->getEnumValue<PostSunGlassesType>(SettingPostSunGlasses));
-
-            // [0..1000] -> [-1..+1]
-            const auto params1 =
-                XMVectorSaturate((XMLoadSInt4(&userParams[0]) + XMLoadSInt4(&kBias[bias][0])) * 0.001f);
-            StoreXrVector4(&m_config.Params1, (params1 * 2.0 - XMVectorSplatOne()) * kGain[0][0]);
-
-            // [0..1000] -> [-1..+1]
-            const auto params2 =
-                XMVectorSaturate((XMLoadSInt4(&userParams[1]) + XMLoadSInt4(&kBias[bias][1])) * 0.001f);
-            StoreXrVector4(&m_config.Params2, (params2 * 2.0 - XMVectorSplatOne()) * kGain[0][1]);
-
-            // [0..1000] -> [0..1]
-            const auto params3 =
-                XMVectorSaturate((XMLoadSInt4(&userParams[2]) + XMLoadSInt4(&kBias[bias][2])) * 0.001f);
-            StoreXrVector4(&m_config.Params3, params3 * kGain[0][2]);
+            // [0..1000] -> [0..1] * Gain - Bias
+            for (size_t i = 0; i < 3; i++) {
+                const auto param = XMVectorSaturate((XMLoadSInt4(&params[i]) + XMLoadSInt4(&preset[i])) * 0.001f);
+                StoreXrVector4(&m_config.Params1 + i, (param * kGainBias[i][0]) - kGainBias[i][1]);
+            }
 
             m_cbParams->uploadData(&m_config, sizeof(m_config));
         }
 
-        static std::array<DirectX::XMINT4, 3> GetUserParams(const IConfigManager* configManager, size_t index) {
+        static std::array<DirectX::XMINT4, 3> GetParams(const IConfigManager* configManager, size_t index) {
             using namespace DirectX;
             if (configManager) {
                 static const char* lut[] = {"", "_u1", "_u2", "_u3", "_u4"}; // placeholder up to 4
@@ -193,6 +173,27 @@ namespace {
                                0)};
             }
             return {XMINT4(500, 500, 500, 500), XMINT4(500, 500, 500, 0), XMINT4(0, 0, 0, 0)};
+        }
+
+        static std::array<DirectX::XMINT4, 3> GetPreset(size_t index) {
+            using namespace DirectX;
+
+            // standard presets
+            static constexpr std::array<XMINT4, 3> lut[to_integral(PostSunGlassesType::MaxValue)] = {
+                // none
+                {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
+
+                // sunglasses light: +2.5 contrast, -5 bright, -5 expo, -20 highlights
+                {{{25, -50, -50, 0}, {0, 0, 0, 0}, {20, 0, 0, 0}}},
+
+                // sunglasses dark: +2.5 contrast, -10 bright, -10 expo, -40 highlights, +5 shad
+                {{{25, -100, -100, 0}, {0, 0, 0, 0}, {400, 50, 0, 0}}},
+
+                // deep night: +0.5 contrast, -40 bright, +20 expo, -15 sat, +2.5 vib, -75 high, +15 shad
+                {{{5, -400, 200, -150}, {0, 0, 0, 0}, {750, 150, 25, 0}}},
+            };
+
+            return lut[index < std::size(lut) ? index : 0];
         }
 
         const std::shared_ptr<IConfigManager> m_configManager;
