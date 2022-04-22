@@ -281,6 +281,14 @@ Another parameter, the "click threshold ", allows to modify the sensitivity of t
 ![Mapping tool Bindings tab](site/mappingtool-gestures.png)
 *The Gestures tab of the configuration tool*
 
-The configutation tool lets you customize the near and far distance for each gesture, along with the click threshold.
+The configuration tool lets you customize the near and far distance for each gesture, along with the click threshold.
 
 The [Detailed overlay](overlay) can be used to view the current output value for each gesture, and should be used to tune the near and far distances and the click threshold.
+
+### Trigger-on-haptics (_Haptics_ tab)
+
+It is possible to program a chosen gesture to simulate an action (like pressing the trigger) upon haptics commands sent by the application. The haptics can be filtered by the frequency of the request vibration (for example, some applications will use different frequencies for different events). 
+
+This can be useful to simplify interactions, for example the finger gun gesture can be used to simulate trigger input upon haptics, and for applications that send haptics commands when the (simulated) VR controller approaches a (virtual) button, this can be used to simulate pressing the button without the need to initiate a gesture when near the button.
+
+The [Detailed overlay](overlay) can be used to display when haptics commands are sent, and can be used to determine which frequency to filter on.
