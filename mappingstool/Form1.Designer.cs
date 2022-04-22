@@ -245,6 +245,17 @@ namespace mappingtool
             this.thumbPressNearText = new System.Windows.Forms.TextBox();
             this.pinchNear = new System.Windows.Forms.TrackBar();
             this.thumbPressNear = new System.Windows.Forms.TrackBar();
+            this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.groupBox7 = new System.Windows.Forms.GroupBox();
+            this.hapticsFrequencyFilter = new System.Windows.Forms.CheckBox();
+            this.label73 = new System.Windows.Forms.Label();
+            this.label72 = new System.Windows.Forms.Label();
+            this.hapticsFrequencyText = new System.Windows.Forms.TextBox();
+            this.hapticsFrequency = new System.Windows.Forms.TrackBar();
+            this.hapticsGesture = new System.Windows.Forms.ComboBox();
+            this.label44 = new System.Windows.Forms.Label();
+            this.hapticsAction = new System.Windows.Forms.ComboBox();
+            this.label43 = new System.Windows.Forms.Label();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.loadMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.saveMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -309,6 +320,9 @@ namespace mappingtool
             ((System.ComponentModel.ISupportInitialize)(this.thumbPressFar)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pinchNear)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.thumbPressNear)).BeginInit();
+            this.tabPage4.SuspendLayout();
+            this.groupBox7.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.hapticsFrequency)).BeginInit();
             this.menuStrip1.SuspendLayout();
             this.statusStrip1.SuspendLayout();
             this.SuspendLayout();
@@ -318,6 +332,7 @@ namespace mappingtool
             this.tabControl1.Controls.Add(this.tabPage1);
             this.tabControl1.Controls.Add(this.tabPage2);
             this.tabControl1.Controls.Add(this.tabPage3);
+            this.tabControl1.Controls.Add(this.tabPage4);
             this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControl1.Location = new System.Drawing.Point(0, 24);
             this.tabControl1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
@@ -1133,7 +1148,7 @@ namespace mappingtool
             this.tabPage2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            this.tabPage2.Size = new System.Drawing.Size(1014, 669);
+            this.tabPage2.Size = new System.Drawing.Size(1017, 671);
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "Bindings";
             this.tabPage2.UseVisualStyleBackColor = true;
@@ -1898,7 +1913,7 @@ namespace mappingtool
             this.tabPage3.Location = new System.Drawing.Point(4, 22);
             this.tabPage3.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.tabPage3.Name = "tabPage3";
-            this.tabPage3.Size = new System.Drawing.Size(1014, 671);
+            this.tabPage3.Size = new System.Drawing.Size(1017, 671);
             this.tabPage3.TabIndex = 2;
             this.tabPage3.Text = "Gestures";
             this.tabPage3.UseVisualStyleBackColor = true;
@@ -2790,6 +2805,150 @@ namespace mappingtool
             this.thumbPressNear.TickFrequency = 5;
             this.thumbPressNear.Scroll += new System.EventHandler(this.thumbPressNear_Scroll);
             // 
+            // tabPage4
+            // 
+            this.tabPage4.Controls.Add(this.groupBox7);
+            this.tabPage4.Location = new System.Drawing.Point(4, 22);
+            this.tabPage4.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.tabPage4.Name = "tabPage4";
+            this.tabPage4.Size = new System.Drawing.Size(1017, 669);
+            this.tabPage4.TabIndex = 3;
+            this.tabPage4.Text = "Haptics";
+            this.tabPage4.UseVisualStyleBackColor = true;
+            // 
+            // groupBox7
+            // 
+            this.groupBox7.Controls.Add(this.hapticsFrequencyFilter);
+            this.groupBox7.Controls.Add(this.label73);
+            this.groupBox7.Controls.Add(this.label72);
+            this.groupBox7.Controls.Add(this.hapticsFrequencyText);
+            this.groupBox7.Controls.Add(this.hapticsFrequency);
+            this.groupBox7.Controls.Add(this.hapticsGesture);
+            this.groupBox7.Controls.Add(this.label44);
+            this.groupBox7.Controls.Add(this.hapticsAction);
+            this.groupBox7.Controls.Add(this.label43);
+            this.groupBox7.Location = new System.Drawing.Point(3, 3);
+            this.groupBox7.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox7.Name = "groupBox7";
+            this.groupBox7.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox7.Size = new System.Drawing.Size(1011, 161);
+            this.groupBox7.TabIndex = 0;
+            this.groupBox7.TabStop = false;
+            this.groupBox7.Text = "Trigger";
+            // 
+            // hapticsFrequencyFilter
+            // 
+            this.hapticsFrequencyFilter.AutoSize = true;
+            this.hapticsFrequencyFilter.Location = new System.Drawing.Point(93, 84);
+            this.hapticsFrequencyFilter.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.hapticsFrequencyFilter.Name = "hapticsFrequencyFilter";
+            this.hapticsFrequencyFilter.Size = new System.Drawing.Size(65, 17);
+            this.hapticsFrequencyFilter.TabIndex = 7;
+            this.hapticsFrequencyFilter.Text = "Enabled";
+            this.hapticsFrequencyFilter.UseVisualStyleBackColor = true;
+            this.hapticsFrequencyFilter.CheckedChanged += new System.EventHandler(this.hapticsFrequencyFilter_CheckedChanged);
+            // 
+            // label73
+            // 
+            this.label73.Location = new System.Drawing.Point(9, 80);
+            this.label73.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label73.Name = "label73";
+            this.label73.Size = new System.Drawing.Size(67, 26);
+            this.label73.TabIndex = 6;
+            this.label73.Text = "Filter by frequency:";
+            // 
+            // label72
+            // 
+            this.label72.AutoSize = true;
+            this.label72.Location = new System.Drawing.Point(484, 114);
+            this.label72.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label72.Name = "label72";
+            this.label72.Size = new System.Drawing.Size(20, 13);
+            this.label72.TabIndex = 10;
+            this.label72.Text = "Hz";
+            // 
+            // hapticsFrequencyText
+            // 
+            this.hapticsFrequencyText.Enabled = false;
+            this.hapticsFrequencyText.Location = new System.Drawing.Point(426, 110);
+            this.hapticsFrequencyText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.hapticsFrequencyText.Name = "hapticsFrequencyText";
+            this.hapticsFrequencyText.Size = new System.Drawing.Size(55, 20);
+            this.hapticsFrequencyText.TabIndex = 9;
+            // 
+            // hapticsFrequency
+            // 
+            this.hapticsFrequency.BackColor = System.Drawing.SystemColors.Window;
+            this.hapticsFrequency.LargeChange = 1000;
+            this.hapticsFrequency.Location = new System.Drawing.Point(93, 109);
+            this.hapticsFrequency.Maximum = 999999;
+            this.hapticsFrequency.Minimum = 1;
+            this.hapticsFrequency.Name = "hapticsFrequency";
+            this.hapticsFrequency.Size = new System.Drawing.Size(324, 45);
+            this.hapticsFrequency.TabIndex = 8;
+            this.hapticsFrequency.TickFrequency = 100000;
+            this.hapticsFrequency.Value = 1;
+            this.hapticsFrequency.Scroll += new System.EventHandler(this.hapticsFrequency_Scroll);
+            // 
+            // hapticsGesture
+            // 
+            this.hapticsGesture.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.hapticsGesture.FormattingEnabled = true;
+            this.hapticsGesture.Items.AddRange(new object[] {
+            "Pinch",
+            "Thumb press",
+            "Index bend",
+            "Finger gun",
+            "Squeeze",
+            "Custom 1"});
+            this.hapticsGesture.Location = new System.Drawing.Point(93, 27);
+            this.hapticsGesture.Name = "hapticsGesture";
+            this.hapticsGesture.Size = new System.Drawing.Size(325, 21);
+            this.hapticsGesture.TabIndex = 3;
+            this.hapticsGesture.SelectedIndexChanged += new System.EventHandler(this.hapticsGesture_SelectedIndexChanged);
+            // 
+            // label44
+            // 
+            this.label44.AutoSize = true;
+            this.label44.Location = new System.Drawing.Point(7, 30);
+            this.label44.Name = "label44";
+            this.label44.Size = new System.Drawing.Size(81, 13);
+            this.label44.TabIndex = 2;
+            this.label44.Text = "Trigger gesture:";
+            // 
+            // hapticsAction
+            // 
+            this.hapticsAction.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.hapticsAction.FormattingEnabled = true;
+            this.hapticsAction.Items.AddRange(new object[] {
+            "",
+            "/input/menu/click",
+            "/input/trigger/value",
+            "/input/squeeze/value (HP/Oculus only)",
+            "/input/squeeze/click",
+            "/input/a/click (HP/Oculus, left hand only)",
+            "/input/b/click (HP/Oculus, left hand only)",
+            "/input/x/click (HP/Oculus, right hand only)",
+            "/input/y/click (HP/Oculus, right hand only)",
+            "/input/thumbstick/click",
+            "/input/system/click (Windows button)",
+            "/input/trackpad/click (WMR 1st gen only)",
+            "/input/select/click (simple_controller only)"});
+            this.hapticsAction.Location = new System.Drawing.Point(93, 51);
+            this.hapticsAction.Name = "hapticsAction";
+            this.hapticsAction.Size = new System.Drawing.Size(325, 21);
+            this.hapticsAction.TabIndex = 5;
+            this.hapticsAction.SelectedIndexChanged += new System.EventHandler(this.hapticsAction_SelectedIndexChanged);
+            // 
+            // label43
+            // 
+            this.label43.AutoSize = true;
+            this.label43.Location = new System.Drawing.Point(7, 55);
+            this.label43.Name = "label43";
+            this.label43.Size = new System.Drawing.Size(50, 13);
+            this.label43.TabIndex = 4;
+            this.label43.Text = "Simulate:";
+            // 
             // menuStrip1
             // 
             this.menuStrip1.ImageScalingSize = new System.Drawing.Size(24, 24);
@@ -2946,6 +3105,10 @@ namespace mappingtool
             ((System.ComponentModel.ISupportInitialize)(this.thumbPressFar)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pinchNear)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.thumbPressNear)).EndInit();
+            this.tabPage4.ResumeLayout(false);
+            this.groupBox7.ResumeLayout(false);
+            this.groupBox7.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.hapticsFrequency)).EndInit();
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.statusStrip1.ResumeLayout(false);
@@ -3159,6 +3322,17 @@ namespace mappingtool
         private System.Windows.Forms.TrackBar fingerGunNear;
         private System.Windows.Forms.ComboBox rightIndexTipTapAction;
         private System.Windows.Forms.Label label27;
+        private System.Windows.Forms.TabPage tabPage4;
+        private System.Windows.Forms.GroupBox groupBox7;
+        private System.Windows.Forms.ComboBox hapticsGesture;
+        private System.Windows.Forms.Label label44;
+        private System.Windows.Forms.ComboBox hapticsAction;
+        private System.Windows.Forms.Label label43;
+        private System.Windows.Forms.Label label73;
+        private System.Windows.Forms.Label label72;
+        private System.Windows.Forms.TextBox hapticsFrequencyText;
+        private System.Windows.Forms.TrackBar hapticsFrequency;
+        private System.Windows.Forms.CheckBox hapticsFrequencyFilter;
     }
 }
 
