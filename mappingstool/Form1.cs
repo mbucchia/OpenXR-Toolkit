@@ -141,6 +141,13 @@ namespace mappingtool
             custom1Far.Value = 100;
             custom1Far_Scroll(null, null);
 
+            hapticsGesture.SelectedIndex = 3; // Finger gun
+            hapticsAction.SelectedIndex = 0;
+            hapticsFrequencyFilter.Checked = false;
+            hapticsFrequencyFilter_CheckedChanged(null, null);
+            hapticsFrequency.Value = 500;
+            hapticsFrequency_Scroll(null, null);
+
             m_initializing = false;
         }
 
@@ -634,6 +641,33 @@ namespace mappingtool
         }
         #endregion
 
+        #region Haptics tab.
+
+        private void hapticsGesture_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            SendUpdate("haptics_gesture", hapticsGesture.SelectedIndex.ToString());
+        }
+
+        private void hapticsAction_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            UpdateAction("haptics_action", hapticsAction.Text);
+        }
+
+        private void hapticsFrequencyFilter_CheckedChanged(object sender, EventArgs e)
+        {
+            SendUpdate("haptics_frequency", (hapticsFrequencyFilter.Checked ? hapticsFrequency.Value / 1000.0f : Double.NaN).ToString());
+            hapticsFrequency.Enabled = hapticsFrequencyFilter.Checked;
+        }
+
+        private void hapticsFrequency_Scroll(object sender, EventArgs e)
+        {
+            hapticsFrequencyText.Text = (hapticsFrequency.Value / 1000.0f).ToString();
+            if (hapticsFrequency.Enabled)
+            {
+                SendUpdate("haptics_frequency", (hapticsFrequency.Value / 1000.0f).ToString());
+            }
+        }
+        #endregion
 
         private bool m_initializing = true;
         private StreamWriter saveToFile = null;
@@ -714,6 +748,12 @@ namespace mappingtool
             custom1Joint2_SelectedIndexChanged(null, null);
             custom1Near_Scroll(null, null);
             custom1Far_Scroll(null, null);
+
+            hapticsGesture_SelectedIndexChanged(null, null);
+            hapticsAction_SelectedIndexChanged(null, null);
+            hapticsFrequencyFilter_CheckedChanged(null, null);
+            // Not needed due to the logic in hapticsFrequencyFilter_CheckedChanged().
+            // hapticsFrequency_Scroll(null, null);
         }
 
         private void ParseVec(TrackBar X, TrackBar Y, TrackBar Z, string action)
@@ -955,6 +995,24 @@ namespace mappingtool
                                 break;
                             case "custom1.far":
                                 custom1Far.Value = (int)Math.Round(Double.Parse(value) * 1000);
+                                break;
+                            case "haptics_gesture":
+                                hapticsGesture.SelectedIndex = Int32.Parse(value);
+                                break;
+                            case "haptics_action":
+                                SelectActionByName(hapticsAction, value);
+                                break;
+                            case "haptics_frequency":
+                                var frequency = Double.Parse(value);
+                                if (!Double.IsNaN(frequency))
+                                {
+                                    hapticsFrequencyFilter.Checked = true;
+                                    hapticsFrequency.Value = (int)Math.Round(Double.Parse(value) * 1000);
+                                }
+                                else
+                                {
+                                    hapticsFrequencyFilter.Checked = false;
+                                }
                                 break;
                         }
 
