@@ -168,8 +168,8 @@ See [Features](features) for more details.
   - **Exposure**: Adjusts the brightness or darkness of the entire image _(Neutral: 50)_.
   - **Saturation**: Adjusts the colorfullness of the entire image. It affects all colors and pixels in the image equally, regardless of how saturated they already are _(Neutral: 50)_.
   - **Vibrance**: Adjusts the intensity of the more muted colors while leaving the saturated colors untouched _(Neutral: 0)_.
-  - **Highlights**: Adjusts the highlight details in darkening the brightest pixels _(Neutral: 100)_.
-  - **Shadows**: Adjusts the detail that appears in shadows in brightening the darkest pixels _(Neutral: 0)_.
+  - **Highlights**: Adjusts the highlight details in reducing the intensity of the brightest pixels _(Neutral: 100)_.
+  - **Shadows**: Adjusts the details that appear in shadows in brightening the darkest pixels _(Neutral: 0)_.
   - **Red**, **Green**, **Blue** (_Expert_ _setting_): Adjusts the gamma of the Red, Green and Blue channels individually _(Neutral: 50)_.
   
 - **World scale**: The Inter-Camera Distance override, which can be used to alter the world scale.
