@@ -1290,6 +1290,7 @@ namespace {
                             m_projCenters[eye].x =
                                 (fov.angleRight + fov.angleLeft - 2 * canted) / (fov.angleLeft - fov.angleRight);
                             m_projCenters[eye].y = -(fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown);
+                            m_eyeGaze[eye] = m_projCenters[eye];
                         }
 
                         Log("Projection calibration: %.5f, %.5f | %.5f, %.5f\n",
@@ -1946,9 +1947,12 @@ namespace {
                 }
 
                 // Render the hands or eye gaze helper.
-                if (m_handTracker || (m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug))) {
-                    XrVector2f eyeGaze[utilities::ViewCount];
-                    auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(eyeGaze);
+                const bool drawHands = m_handTracker && m_configManager->peekEnumValue<config::HandTrackingVisibility>(
+                                                            config::SettingHandVisibilityAndSkinTone) !=
+                                                            config::HandTrackingVisibility::Hidden;
+                const bool drawEyeGaze = m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug);
+                if (drawHands || drawEyeGaze) {
+                    auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze);
 
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                         m_graphicsDevice->setRenderTargets(1,
@@ -1959,14 +1963,14 @@ namespace {
 
                         m_graphicsDevice->setViewProjection(viewsForOverlay[eye]);
 
-                        if (m_handTracker) {
+                        if (drawHands) {
                             m_handTracker->render(
                                 viewsForOverlay[eye].Pose, spaceForOverlay, getTimeNow(), textureForOverlay[eye]);
                         }
 
-                        if (m_eyeTracker) {
+                        if (drawEyeGaze) {
                             XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
-                            auto pos = utilities::NdcToScreen(eyeGaze[eye]);
+                            auto pos = utilities::NdcToScreen(m_eyeGaze[eye]);
                             pos.x *= m_displayWidth;
                             pos.y *= m_displayHeight;
                             m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
@@ -2092,6 +2096,7 @@ namespace {
         XrSpace m_viewSpace{XR_NULL_HANDLE};
         bool m_needCalibrateEyeProjections{true};
         XrVector2f m_projCenters[utilities::ViewCount];
+        XrVector2f m_eyeGaze[utilities::ViewCount];
         XrView m_posesForFrame[utilities::ViewCount];
 
         std::shared_ptr<config::IConfigManager> m_configManager;
