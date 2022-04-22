@@ -287,18 +287,18 @@ namespace {
                 XrSystemGetInfo getInfo{XR_TYPE_SYSTEM_GET_INFO};
                 getInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
                 XrSystemId systemId;
-                CHECK_XRCMD(OpenXrApi::xrGetSystem(GetXrInstance(), &getInfo, &systemId));
-
-                XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES};
-                CHECK_XRCMD(OpenXrApi::xrGetSystemProperties(GetXrInstance(), systemId, &systemProperties));
-                if (std::string(systemProperties.systemName).find("aapvr") != std::string::npos) {
-                    aSeeVRInitParam param;
-                    param.ports[0] = 5777;
-                    Log("--> aSeeVR_connect_server\n");
-                    m_hasPimaxEyeTracker = aSeeVR_connect_server(&param) == ASEEVR_RETURN_CODE::success;
-                    Log("<-- aSeeVR_connect_server\n");
-                    if (m_hasPimaxEyeTracker) {
-                        Log("Detected Pimax Droolon support\n");
+                if (XR_SUCCEEDED(OpenXrApi::xrGetSystem(GetXrInstance(), &getInfo, &systemId))) {
+                    XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES};
+                    CHECK_XRCMD(OpenXrApi::xrGetSystemProperties(GetXrInstance(), systemId, &systemProperties));
+                    if (std::string(systemProperties.systemName).find("aapvr") != std::string::npos) {
+                        aSeeVRInitParam param;
+                        param.ports[0] = 5777;
+                        Log("--> aSeeVR_connect_server\n");
+                        m_hasPimaxEyeTracker = aSeeVR_connect_server(&param) == ASEEVR_RETURN_CODE::success;
+                        Log("<-- aSeeVR_connect_server\n");
+                        if (m_hasPimaxEyeTracker) {
+                            Log("Detected Pimax Droolon support\n");
+                        }
                     }
                 }
             }
