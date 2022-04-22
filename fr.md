@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Fixed Foveated Rendering
+title: Foveated Rendering
 parent: Features
 nav_order: 1
 ---
