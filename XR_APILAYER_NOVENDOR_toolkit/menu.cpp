@@ -1189,33 +1189,6 @@ namespace {
                                      1000,
                                      MenuEntry::FmtDecimal<1>});
             m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Red",
-                                     MenuEntryType::Slider,
-                                     SettingPostColorGainR,
-                                     0,
-                                     1000,
-                                     MenuEntry::FmtDecimal<1>});
-            m_menuEntries.back().acceleration = 5;
-            m_menuEntries.back().expert = true;
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Green",
-                                     MenuEntryType::Slider,
-                                     SettingPostColorGainG,
-                                     0,
-                                     1000,
-                                     MenuEntry::FmtDecimal<1>});
-            m_menuEntries.back().acceleration = 5;
-            m_menuEntries.back().expert = true;
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Blue",
-                                     MenuEntryType::Slider,
-                                     SettingPostColorGainB,
-                                     0,
-                                     1000,
-                                     MenuEntry::FmtDecimal<1>});
-            m_menuEntries.back().acceleration = 5;
-            m_menuEntries.back().expert = true;
             postProcessGroup.finalize();
 
             m_menuEntries.push_back(
@@ -1339,6 +1312,33 @@ namespace {
                                                                       static_cast<float>(m_displayRefreshRate) / value);
                                          }});
                 motionReprojectionGroup.finalize();
+
+            m_menuEntries.push_back(
+                {MenuIndent::NoIndent, "Color Gains:", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Red",
+                                     MenuEntryType::Slider,
+                                     SettingPostColorGainR,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Green",
+                                     MenuEntryType::Slider,
+                                     SettingPostColorGainG,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Blue",
+                                     MenuEntryType::Slider,
+                                     SettingPostColorGainB,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().acceleration = 5;
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                          "Field of view",
