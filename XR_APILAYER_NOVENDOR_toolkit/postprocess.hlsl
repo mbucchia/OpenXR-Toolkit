@@ -196,6 +196,23 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
 
 float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
   float3 color = SAMPLE_TEXTURE(texcoord).rgb;
+
+#ifdef PASS_THROUGH_USE_GAINS
+#ifdef POST_PROCESS_SRC_SRGB
+  color = srgb2linear(color);
+ #endif
+
+  // adjust color input gains.
+  if (any(Params2.rgb)) {
+    color = AdjustGains(color, Params2.rgb);
+  }
+
+#ifdef POST_PROCESS_DST_SRGB
+  color = linear2srgb(color);
+#endif
+
+#endif
+
   return float4(saturate(color), 1.0);
 }
 

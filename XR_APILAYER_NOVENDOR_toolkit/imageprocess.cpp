@@ -70,8 +70,8 @@ namespace {
         }
 
         void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
-            const auto shader = m_mode != PostProcessType::Off ? 1 + input->isArray() : 0;
-            m_device->setShader(m_shaders[shader], SamplerType::LinearClamp);
+            const auto usePostProcess = m_mode != PostProcessType::Off;
+            m_device->setShader(m_shaders[input->isArray()][usePostProcess], SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_cbParams);
             m_device->setShaderInput(0, input, slice);
             m_device->setShaderOutput(0, output, slice);
@@ -87,14 +87,16 @@ namespace {
             // defines.add("POST_PROCESS_SRC_SRGB", true);
             // defines.add("POST_PROCESS_DST_SRGB", true);
 
-            m_shaders[0] = m_device->createQuadShader(
-                shaderFile, "mainPassThrough", "Postprocess PS (none)", defines.get() /*,  shadersDir*/);
-
-            m_shaders[1] = m_device->createQuadShader(
+            defines.add("PASS_THROUGH_USE_GAINS", true);
+            m_shaders[0][0] = m_device->createQuadShader(
+                shaderFile, "mainPassThrough", "Passthrough PS", defines.get() /*,  shadersDir*/);
+            m_shaders[0][1] = m_device->createQuadShader(
                 shaderFile, "mainPostProcess", "Postprocess PS", defines.get() /*,  shadersDir*/);
 
             defines.add("VPRT", true);
-            m_shaders[2] = m_device->createQuadShader(
+            m_shaders[1][0] = m_device->createQuadShader(
+                shaderFile, "mainPassThrough", "Passthrough PS (VPRT)", defines.get() /*,  shadersDir*/);
+            m_shaders[1][1] = m_device->createQuadShader(
                 shaderFile, "mainPostProcess", "Postprocess PS (VPRT)", defines.get() /*,  shadersDir*/);
 
             // TODO: For now, we're going to require that all image processing shaders share the same configuration
@@ -200,7 +202,7 @@ namespace {
         const std::shared_ptr<IDevice> m_device;
         const std::array<DirectX::XMINT4, 3> m_userParams;
 
-        std::shared_ptr<IQuadShader> m_shaders[3]; // off, on, vprt
+        std::shared_ptr<IQuadShader> m_shaders[2][2]; // off, on, vprt
         std::shared_ptr<IShaderBuffer> m_cbParams;
 
         PostProcessType m_mode{PostProcessType::Off};
