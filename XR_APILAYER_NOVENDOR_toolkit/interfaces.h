@@ -65,6 +65,18 @@ namespace toolkit {
             DirectX::XMStoreFloat4(&xr::math::detail::implement_math_cast<DirectX::XMFLOAT4>(*outVec), inVec);
         }
 
+        inline DirectX::XMVECTOR XM_CALLCONV ConvertToDegrees(const XrFovf& fov) {
+            using namespace DirectX;
+            constexpr XMVECTORF32 kRadToDeg = {{{180 / XM_PI, 180 / XM_PI, 180 / XM_PI, 180 / XM_PI}}};
+            return LoadXrFov(fov) * kRadToDeg;
+        }
+
+        inline DirectX::XMVECTOR XM_CALLCONV ConvertToRadians(const XrFovf& fov) {
+            using namespace DirectX;
+            constexpr XMVECTORF32 kDegToRad = {{{XM_PI / 180, XM_PI / 180, XM_PI / 180, XM_PI / 180}}};
+            return LoadXrFov(fov) * kDegToRad;
+        }
+
     } // namespace math
 
     namespace utilities {
