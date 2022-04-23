@@ -1351,8 +1351,8 @@ namespace {
                     StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * XMLoadSInt4(&fov2) * XMVectorReplicate(0.01f));
                 }
 
-                m_stats.fov[0] = views[0].fov;
-                m_stats.fov[1] = views[1].fov;
+                StoreXrFov(&m_stats.fov[0], ConvertToDegrees(views[0].fov));
+                StoreXrFov(&m_stats.fov[1], ConvertToDegrees(views[1].fov));
 
                 // When doing the Pimax FOV hack, we swap left and right eyes.
                 if (m_supportFOVHack && m_configManager->hasChanged(config::SettingPimaxFOVHack)) {
