@@ -170,7 +170,6 @@ See [Features](features) for more details.
   - **Vibrance**: Adjusts the intensity of the more muted colors while leaving the saturated colors untouched _(Neutral: 0)_.
   - **Highlights**: Adjusts the highlight details in reducing the intensity of the brightest pixels _(Neutral: 100)_.
   - **Shadows**: Adjusts the details that appear in shadows in brightening the darkest pixels _(Neutral: 0)_.
-  - **Red**, **Green**, **Blue** (_Expert_ _setting_): Adjusts the gamma of the Red, Green and Blue channels individually _(Neutral: 50)_.
   
 - **World scale**: The Inter-Camera Distance override, which can be used to alter the world scale.
 
@@ -185,6 +184,7 @@ See [Features](features) for more details.
   - **Display resolution (per-eye)**: The resolution to use for each eye.
 - **Motion reprojection** (only with Windows Mixed Reality): Enable overriding the Motion Reprojection mode. _Default_ means to use the system settings (from the _OpenXR Tools for Windows Mixed Reality_).
   - **Lock motion reprojection** (only with Windows Mixed Reality, when _Motion Reprojection_ if forced to _On_): Disable automatic motion reprojection adjustment, and lock the frame rate to the desired fraction of the refresh rate.
+- **Color Gains**: Adjusts the Red, Green and Blue channels gains individually _(Neutral: 50)_.
 - **Field of view**: Adjust the pixel density per degree. A smaller field of view is covering a smaller region of the view but with the same amount of pixels, effectively increasing the perceived resolution.
   - **Adjustement** (in _Simple_ mode): Override all 4 angles (up/down/left/right) equally.
   - **Up** (in _Advanced_ mode): Override the "up" angle for both eyes.
