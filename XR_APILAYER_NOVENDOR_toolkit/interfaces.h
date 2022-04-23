@@ -143,15 +143,6 @@ namespace toolkit {
         const std::string SettingVRSYOffset = "vrs_y_offset";
         const std::string SettingVRSPreferHorizontal = "vrs_prefer_horizontal";
         const std::string SettingVRSLeftRightBias = "vrs_lr_bias";
-        
-        //const std::string SettingBrightness = "brightness";
-        //const std::string SettingContrast = "contrast2";
-        //const std::string SettingSaturationMode = "saturation_mode";
-        //const std::string SettingSaturation = "saturation";
-        //const std::string SettingSaturationRed = "saturation_red";
-        //const std::string SettingSaturationGreen = "saturation_green";
-        //const std::string SettingSaturationBlue = "saturation_blue";
-
         const std::string SettingPostProcess = "post_process";
         const std::string SettingPostSunGlasses = "post_sunglasses";
         const std::string SettingPostContrast = "post_contrast";
@@ -164,7 +155,6 @@ namespace toolkit {
         const std::string SettingPostColorGainB = "post_gain_b";
         const std::string SettingPostHighlights = "post_highlights";
         const std::string SettingPostShadows = "post_shadows";
-
         const std::string SettingEyeTrackingEnabled = "eye_tracking";
         const std::string SettingEyeProjectionDistance = "eye_projection";
         const std::string SettingEyeDebug = "eye_debug";
@@ -192,8 +182,6 @@ namespace toolkit {
         enum class PostSunGlassesType { None = 0, Light, Dark, Night, MaxValue };
         enum class FovModeType { Simple, Advanced, MaxValue };
         enum class ScreenshotFileFormat { DDS = 0, PNG, JPG, BMP, MaxValue };
-
-        // enum class SaturationModeType { Global, Selective, MaxValue };
 
         template <typename ConfigEnumType>
         extern std::string_view to_string_view(ConfigEnumType);
@@ -754,7 +742,7 @@ namespace toolkit {
             XrVector2f leftPoint{};
             XrVector2f rightPoint{};
         };
-        
+
         struct IEyeTracker {
             virtual ~IEyeTracker() = default;
 

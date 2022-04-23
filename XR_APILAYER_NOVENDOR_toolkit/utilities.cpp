@@ -100,8 +100,6 @@ namespace toolkit::config {
     DECLARE_ENUM_TO_STRING_VIEW(FovModeType, {"Simple", "Advanced"})
     DECLARE_ENUM_TO_STRING_VIEW(ScreenshotFileFormat, {"DDS", "PNG", "JPG", "BMP"})
 
-    // DECLARE_ENUM_TO_STRING_VIEW(SaturationModeType, {"Global", "Selective"})
-
 #undef DECLARE_ENUM_TO_STRING_VIEW
 
 } // namespace toolkit::config
