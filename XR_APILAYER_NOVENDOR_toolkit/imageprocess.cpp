@@ -185,14 +185,17 @@ namespace {
                 // none
                 {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
 
-                // sunglasses light: +2.5 contrast, -5 bright, -5 expo, -20 highlights
-                {{{25, -50, -50, 0}, {0, 0, 0, 0}, {20, 0, 0, 0}}},
+                // sunglasses light: +2.5 contrast, -5 bright, -5 expo, -20 high
+                {{{25, -50, -50, 0}, {0, 0, 0, 0}, {-20, 0, 0, 0}}},
 
-                // sunglasses dark: +2.5 contrast, -10 bright, -10 expo, -40 highlights, +5 shad
-                {{{25, -100, -100, 0}, {0, 0, 0, 0}, {400, 50, 0, 0}}},
+                // sunglasses dark: +2.5 contrast, -10 bright, -10 expo, -40 high, +5 shad
+                {{{25, -100, -100, 0}, {0, 0, 0, 0}, {-400, 50, 0, 0}}},
+                
+                //// deep night (beta1): +0.5 contrast, -40 bright, +20 expo, -15 sat, -75 high, +15 shad, +5 vib
+                //{{{5, -400, 200, -150}, {0, 0, 0, 0}, {-750, 150, 50, 0}}},
 
-                // deep night: +0.5 contrast, -40 bright, +20 expo, -15 sat, +2.5 vib, -75 high, +15 shad
-                {{{5, -400, 200, -150}, {0, 0, 0, 0}, {750, 150, 25, 0}}},
+                // deep night (beta2): +5 contrast, -30 bright, +25 expo, +5 sat, -100 high, +10 shad
+                {{{50, -300, 250, +50}, {0, 0, 0, 0}, {-1000, 100, 0, 0}}},
             };
 
             return lut[index < std::size(lut) ? index : 0];
