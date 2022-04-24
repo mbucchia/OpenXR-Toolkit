@@ -174,7 +174,7 @@ namespace {
                                configManager->getValue(SettingPostVibrance + suffix),
                                0)};
             }
-            return {XMINT4(500, 500, 500, 500), XMINT4(500, 500, 500, 0), XMINT4(0, 0, 0, 0)};
+            return {XMINT4(500, 500, 500, 500), XMINT4(500, 500, 500, 0), XMINT4(1000, 0, 0, 0)};
         }
 
         static std::array<DirectX::XMINT4, 3> GetPreset(size_t index) {
