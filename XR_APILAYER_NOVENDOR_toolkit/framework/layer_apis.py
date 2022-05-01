@@ -3,6 +3,8 @@ override_functions = [
     "xrGetSystem",
     "xrEnumerateViewConfigurationViews",
     "xrCreateSession",
+    "xrBeginSession",
+    "xrEndSession",
     "xrDestroySession",
     "xrCreateSwapchain",
     "xrDestroySwapchain",

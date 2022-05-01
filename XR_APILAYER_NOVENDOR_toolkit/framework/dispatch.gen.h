@@ -231,6 +231,22 @@ namespace LAYER_NAMESPACE
 		PFN_xrReleaseSwapchainImage m_xrReleaseSwapchainImage{ nullptr };
 
 	public:
+		virtual XrResult xrBeginSession(XrSession session, const XrSessionBeginInfo* beginInfo)
+		{
+			return m_xrBeginSession(session, beginInfo);
+		}
+	private:
+		PFN_xrBeginSession m_xrBeginSession{ nullptr };
+
+	public:
+		virtual XrResult xrEndSession(XrSession session)
+		{
+			return m_xrEndSession(session);
+		}
+	private:
+		PFN_xrEndSession m_xrEndSession{ nullptr };
+
+	public:
 		virtual XrResult xrWaitFrame(XrSession session, const XrFrameWaitInfo* frameWaitInfo, XrFrameState* frameState)
 		{
 			return m_xrWaitFrame(session, frameWaitInfo, frameState);

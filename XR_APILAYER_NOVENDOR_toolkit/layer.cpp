@@ -346,6 +346,8 @@ namespace {
             // We cleanup after ourselves (again) to avoid leaving state registry entries.
             utilities::ClearWindowsMixedRealityReprojection();
 
+            m_configManager->setActiveSession("");
+
             graphics::UnhookForD3D11DebugLayer();
         }
 
@@ -805,11 +807,31 @@ namespace {
             return result;
         }
 
+        XrResult xrBeginSession(XrSession session, const XrSessionBeginInfo* beginInfo) override {
+            const XrResult result = OpenXrApi::xrBeginSession(session, beginInfo);
+            if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                m_configManager->setActiveSession(m_applicationName);
+            }
+
+            return result;
+        }
+
+        XrResult xrEndSession(XrSession session) override {
+            const XrResult result = OpenXrApi::xrEndSession(session);
+            if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                m_configManager->setActiveSession("");
+            }
+
+            return result;
+        }
+
         XrResult xrDestroySession(XrSession session) override {
             const XrResult result = OpenXrApi::xrDestroySession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 // We cleanup after ourselves as soon as possible to avoid leaving state registry entries.
                 utilities::ClearWindowsMixedRealityReprojection();
+
+                m_configManager->setActiveSession("");
 
                 // Wait for any pending operation to complete.
                 if (m_graphicsDevice) {
