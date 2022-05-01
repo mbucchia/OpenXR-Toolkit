@@ -1960,16 +1960,9 @@ namespace {
                     auto& swapchainState = swapchainIt->second;
                     auto& swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
 
-                    uint32_t nextImage = 0;
-                    uint32_t lastImage = 0;
-
-                    for (size_t i = 0; i < std::size(m_imageProcessors); i++) {
-                        if (m_imageProcessors[i]) {
-                            nextImage++;
-                            swapchainImages.chain[lastImage]->copyTo(swapchainImages.chain[nextImage]);
-                            lastImage++;
-                        }
-                    }
+                    size_t swapChainSize = std::size(swapchainImages.chain);
+                    if (swapChainSize > 1)
+                        swapchainImages.chain[0]->copyTo(swapchainImages.chain[swapChainSize - 1]);
 
                     correctedLayers.push_back(chainFrameEndInfo.layers[i]);
                 } else {
