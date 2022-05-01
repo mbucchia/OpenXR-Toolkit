@@ -1778,6 +1778,10 @@ namespace {
             m_copyTextureEvent = event;
         }
 
+        void copyTexture(std::shared_ptr<ITexture> destination, std::shared_ptr<ITexture> source) override {
+            m_context->CopyResource(destination->getAs<D3D12>(), source->getAs<D3D12>());
+        }
+
         uint32_t getBufferAlignmentConstraint() const override {
             return D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
         }

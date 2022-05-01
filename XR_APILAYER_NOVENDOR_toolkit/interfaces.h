@@ -616,6 +616,8 @@ namespace toolkit {
                                                         int /* destinationSlice */)>;
             virtual void registerCopyTextureEvent(CopyTextureEvent event) = 0;
 
+            virtual void copyTexture(std::shared_ptr<ITexture> destination, std::shared_ptr<ITexture> source) = 0;
+
             virtual void shutdown() = 0;
 
             virtual uint32_t getBufferAlignmentConstraint() const = 0;

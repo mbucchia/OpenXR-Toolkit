@@ -1470,6 +1470,10 @@ namespace {
             m_copyTextureEvent = event;
         }
 
+        void copyTexture(std::shared_ptr<ITexture> destination, std::shared_ptr<ITexture> source) override {
+            m_context->CopyResource(destination->getAs<D3D11>(), source->getAs<D3D11>());
+        }
+
         uint32_t getBufferAlignmentConstraint() const override {
             return 16;
         }

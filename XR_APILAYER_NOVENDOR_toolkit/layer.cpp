@@ -1923,6 +1923,30 @@ namespace {
                     correctedProjectionLayer->views = correctedProjectionViews;
                     correctedLayers.push_back(
                         reinterpret_cast<const XrCompositionLayerBaseHeader*>(correctedProjectionLayer));
+                } else if (chainFrameEndInfo.layers[i]->type == XR_TYPE_COMPOSITION_LAYER_QUAD) {
+                    const XrCompositionLayerQuad* quad = reinterpret_cast<const XrCompositionLayerQuad*>(chainFrameEndInfo.layers[i]);
+
+                    auto swapchainIt = m_swapchains.find(quad->subImage.swapchain);
+                    if (swapchainIt == m_swapchains.end()) {
+                        throw std::runtime_error("Swapchain is not registered");
+                    }
+
+                    auto& swapchainState = swapchainIt->second;
+                    auto& swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
+
+                    uint32_t nextImage = 0;
+                    uint32_t lastImage = 0;
+
+                    for (size_t i = 0; i < std::size(m_imageProcessors); i++) {
+                        if (m_imageProcessors[i]) {
+                            nextImage++;
+                            m_graphicsDevice->copyTexture(swapchainImages.chain[nextImage],
+                                                          swapchainImages.chain[lastImage]);
+                            lastImage++;
+                        }
+                    }
+
+                    correctedLayers.push_back(chainFrameEndInfo.layers[i]);
                 } else {
                     correctedLayers.push_back(chainFrameEndInfo.layers[i]);
                 }
