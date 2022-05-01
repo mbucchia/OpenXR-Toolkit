@@ -618,6 +618,8 @@ namespace toolkit {
 
             virtual void shutdown() = 0;
 
+            virtual bool isEventsSupported() const = 0;
+
             virtual uint32_t getBufferAlignmentConstraint() const = 0;
             virtual uint32_t getTextureAlignmentConstraint() const = 0;
 

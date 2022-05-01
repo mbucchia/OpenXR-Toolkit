@@ -95,7 +95,11 @@ namespace {
             m_configManager->setDefault(config::SettingScaling, 100);
             m_configManager->setDefault(config::SettingAnamorphic, -100);
             m_configManager->setDefault(config::SettingSharpness, 20);
-            m_configManager->setEnumDefault(config::SettingMipMapBias, config::MipMapBias::Anisotropic);
+            // We default mip-map biasing to Off with OpenComposite since it's causing issues with certain apps. Users
+            // have the (Expert) option to turn it back on.
+            m_configManager->setEnumDefault(config::SettingMipMapBias,
+                                            !m_isOpenComposite ? config::MipMapBias::Anisotropic
+                                                               : config::MipMapBias::Off);
 
             // Foveated rendering.
             m_configManager->setEnumDefault(config::SettingVRS, config::VariableShadingRateType::None);
@@ -164,7 +168,13 @@ namespace {
                                         0
 #endif
             );
-            m_configManager->setDefault("disable_frame_analyzer", 0);
+            // We disable the API interceptor with certain games where it seems to cause issues. As a result, foveated
+            // rendering will not be offered.
+            m_configManager->setDefault("disable_interceptor",
+                                        !(m_applicationName == "OpenComposite_AC2-Win64-Shipping") ? 0 : 1);
+            // We disable the frame analyzer when using OpenComposite, because the app does not see the OpenXR
+            // textures anyways.
+            m_configManager->setDefault("disable_frame_analyzer", !m_isOpenComposite ? 0 : 1);
             m_configManager->setDefault("canting", 0);
             m_configManager->setDefault("vrs_capture", 0);
 
@@ -576,80 +586,81 @@ namespace {
                     if (m_upscaleMode != config::ScalingType::None) {
                         std::tie(renderWidth, renderHeight) =
                             config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
-                    }
 
-                    // Per FSR SDK documentation.
-                    m_mipMapBiasForUpscaling = -std::log2f(static_cast<float>(m_displayWidth * m_displayHeight) /
-                                                           (renderWidth * renderHeight));
-                    Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
+                        // Per FSR SDK documentation.
+                        m_mipMapBiasForUpscaling = -std::log2f(static_cast<float>(m_displayWidth * m_displayHeight) /
+                                                               (renderWidth * renderHeight));
+                        Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
+                    }
 
                     m_imageProcessors[ImgProc::Post] =
                         graphics::CreateImageProcessor(m_configManager, m_graphicsDevice);
 
-                    // We disable the frame analyzer when using OpenComposite, because the app does not see the OpenXR
-                    // textures anyways.
-                    if (!m_configManager->getValue("disable_frame_analyzer") || m_isOpenComposite) {
-                        m_frameAnalyzer = graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice);
-                    }
+                    if (m_graphicsDevice->isEventsSupported()) {
+                        if (!m_configManager->getValue("disable_frame_analyzer")) {
+                            m_frameAnalyzer = graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice);
+                        }
 
-                    m_variableRateShader = graphics::CreateVariableRateShader(m_configManager,
-                                                                              m_graphicsDevice,
-                                                                              m_eyeTracker,
-                                                                              renderWidth,
-                                                                              renderHeight,
-                                                                              m_displayWidth,
-                                                                              m_displayHeight,
-                                                                              m_supportFOVHack);
+                        m_variableRateShader = graphics::CreateVariableRateShader(m_configManager,
+                                                                                  m_graphicsDevice,
+                                                                                  m_eyeTracker,
+                                                                                  renderWidth,
+                                                                                  renderHeight,
+                                                                                  m_displayWidth,
+                                                                                  m_displayHeight,
+                                                                                  m_supportFOVHack);
 
-                    // Register intercepted events.
-                    m_graphicsDevice->registerSetRenderTargetEvent(
-                        [&](std::shared_ptr<graphics::IContext> context,
-                            std::shared_ptr<graphics::ITexture> renderTarget) {
+                        // Register intercepted events.
+                        m_graphicsDevice->registerSetRenderTargetEvent(
+                            [&](std::shared_ptr<graphics::IContext> context,
+                                std::shared_ptr<graphics::ITexture> renderTarget) {
+                                if (!m_isInFrame) {
+                                    return;
+                                }
+
+                                if (m_frameAnalyzer) {
+                                    m_frameAnalyzer->onSetRenderTarget(context, renderTarget);
+                                    const auto& eyeHint = m_frameAnalyzer->getEyeHint();
+                                    if (eyeHint.has_value()) {
+                                        m_stats.hasColorBuffer[(int)eyeHint.value()] = true;
+                                    }
+                                }
+                                if (m_variableRateShader) {
+                                    if (m_variableRateShader->onSetRenderTarget(
+                                            context,
+                                            renderTarget,
+                                            m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt)) {
+                                        m_stats.numRenderTargetsWithVRS++;
+                                    }
+                                }
+                            });
+                        m_graphicsDevice->registerUnsetRenderTargetEvent(
+                            [&](std::shared_ptr<graphics::IContext> context) {
+                                if (!m_isInFrame) {
+                                    return;
+                                }
+
+                                if (m_frameAnalyzer) {
+                                    m_frameAnalyzer->onUnsetRenderTarget(context);
+                                }
+                                if (m_variableRateShader) {
+                                    m_variableRateShader->onUnsetRenderTarget(context);
+                                }
+                            });
+                        m_graphicsDevice->registerCopyTextureEvent([&](std::shared_ptr<graphics::IContext> context,
+                                                                       std::shared_ptr<graphics::ITexture> source,
+                                                                       std::shared_ptr<graphics::ITexture> destination,
+                                                                       int sourceSlice,
+                                                                       int destinationSlice) {
                             if (!m_isInFrame) {
                                 return;
                             }
 
                             if (m_frameAnalyzer) {
-                                m_frameAnalyzer->onSetRenderTarget(context, renderTarget);
-                                const auto& eyeHint = m_frameAnalyzer->getEyeHint();
-                                if (eyeHint.has_value()) {
-                                    m_stats.hasColorBuffer[(int)eyeHint.value()] = true;
-                                }
-                            }
-                            if (m_variableRateShader) {
-                                if (m_variableRateShader->onSetRenderTarget(
-                                        context,
-                                        renderTarget,
-                                        m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt)) {
-                                    m_stats.numRenderTargetsWithVRS++;
-                                }
+                                m_frameAnalyzer->onCopyTexture(source, destination, sourceSlice, destinationSlice);
                             }
                         });
-                    m_graphicsDevice->registerUnsetRenderTargetEvent([&](std::shared_ptr<graphics::IContext> context) {
-                        if (!m_isInFrame) {
-                            return;
-                        }
-
-                        if (m_frameAnalyzer) {
-                            m_frameAnalyzer->onUnsetRenderTarget(context);
-                        }
-                        if (m_variableRateShader) {
-                            m_variableRateShader->onUnsetRenderTarget(context);
-                        }
-                    });
-                    m_graphicsDevice->registerCopyTextureEvent([&](std::shared_ptr<graphics::IContext> context,
-                                                                   std::shared_ptr<graphics::ITexture> source,
-                                                                   std::shared_ptr<graphics::ITexture> destination,
-                                                                   int sourceSlice,
-                                                                   int destinationSlice) {
-                        if (!m_isInFrame) {
-                            return;
-                        }
-
-                        if (m_frameAnalyzer) {
-                            m_frameAnalyzer->onCopyTexture(source, destination, sourceSlice, destinationSlice);
-                        }
-                    });
+                    }
 
                     m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.waitCpuTimer = utilities::CreateCpuTimer();
