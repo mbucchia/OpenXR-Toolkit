@@ -1738,10 +1738,21 @@ namespace {
             m_configManager->tick();
 
             // Forward the motion reprojection locking values to WMR.
-            if (m_configManager->hasChanged(config::SettingMotionReprojectionRate)) {
-                utilities::UpdateWindowsMixedRealityReprojectionRate(
-                    m_configManager->getEnumValue<config::MotionReprojectionRate>(
-                        config::SettingMotionReprojectionRate));
+            if (m_supportMotionReprojectionLock &&
+                (m_configManager->hasChanged(config::SettingMotionReprojection) ||
+                 m_configManager->hasChanged(config::SettingMotionReprojectionRate))) {
+                const auto motionReprojection =
+                    m_configManager->getEnumValue<config::MotionReprojection>(config::SettingMotionReprojection);
+                const auto rate = m_configManager->getEnumValue<config::MotionReprojectionRate>(
+                    config::SettingMotionReprojectionRate);
+
+                // If motion reprojection is not controlled by us, then make sure the reprojection rate is left to
+                // default.
+                if (motionReprojection != config::MotionReprojection::On) {
+                    utilities::UpdateWindowsMixedRealityReprojectionRate(config::MotionReprojectionRate::Off);
+                } else {
+                    utilities::UpdateWindowsMixedRealityReprojectionRate(rate);
+                }
             }
 
             // Adjust mip map biasing.
