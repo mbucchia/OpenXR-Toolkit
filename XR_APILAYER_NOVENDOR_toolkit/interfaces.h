@@ -106,6 +106,7 @@ namespace toolkit {
         const std::string SettingReloadShaders = "reload_shaders";
         const std::string SettingScreenshotEnabled = "enable_screenshot";
         const std::string SettingScreenshotFileFormat = "screenshot_fileformat";
+        const std::string SettingScreenshotEye = "screenshot_eye";
         const std::string SettingScreenshotKey = "key_screenshot";
         const std::string SettingKeyCtrlModifier = "ctrl_modifier";
         const std::string SettingKeyAltModifier = "alt_modifier";

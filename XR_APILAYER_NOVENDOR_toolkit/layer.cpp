@@ -161,6 +161,7 @@ namespace {
             m_configManager->setEnumDefault(config::SettingMotionReprojection, config::MotionReprojection::Default);
             m_configManager->setEnumDefault(config::SettingMotionReprojectionRate, config::MotionReprojectionRate::Off);
             m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
+            m_configManager->setDefault(config::SettingScreenshotEye, 0); // Both
 
             // Misc debug.
             m_configManager->setDefault("debug_layer",
@@ -2026,8 +2027,13 @@ namespace {
             if (textureForOverlay[0] && requestScreenshot) {
                 // TODO: this is capturing frame N-3
                 // review the command queues/lists and context flush
-                takeScreenshot(textureForOverlay[0], "L");
-                takeScreenshot(textureForOverlay[1], "R");
+                if (m_configManager->getValue(config::SettingScreenshotEye) != 2 /* Right only */) {
+                    takeScreenshot(textureForOverlay[0], "L");
+                }
+                if (textureForOverlay[1] &&
+                    m_configManager->getValue(config::SettingScreenshotEye) != 1 /* Left only */) {
+                    takeScreenshot(textureForOverlay[1], "R");
+                }
 
                 if (m_variableRateShader && m_configManager->getValue("vrs_capture")) {
                     m_variableRateShader->startCapture();
