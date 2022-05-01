@@ -372,7 +372,6 @@ namespace {
             const float leftAlign = leftAnchor + eyeOffset;
             const float centerAlign = leftAnchor + m_menuBackgroundWidth / 2 + eyeOffset;
             const float rightAlign = leftAnchor + m_menuBackgroundWidth + eyeOffset;
-            const float overlayAlign = (2 * renderTargetInfo.width / 3.0f) + eyeOffset;
             const float topAlign = m_projCenter[0].y * renderTargetInfo.height - m_menuBackgroundHeight / 2;
 
             const float fontSizes[to_integral(MenuFontSize::MaxValue)] = {
@@ -661,16 +660,39 @@ namespace {
                 const auto textColorOverlayNoFade = MakeRGB24(ColorOverlay) | 0xff000000;
                 const auto textColorRedNoFade = MakeRGB24(ColorWarning) | 0xff000000;
 
-                float top = m_state != MenuState::Visible ? (renderTargetInfo.height / 3.f)
-                                                          : topAlign - BorderVerticalSpacing - 1.1f * fontSize;
+                const auto screenOffset = NdcToScreen({m_configManager->getValue(SettingOverlayXOffset) / 100.f,
+                                                       m_configManager->getValue(SettingOverlayYOffset) / 100.f});
 
-#define OVERLAY_COMMON TextStyle::Normal, fontSize, overlayAlign - 300, top, textColorOverlayNoFade, true, FW1_LEFT
+                const float overlayAlign = screenOffset.x * renderTargetInfo.width + eyeOffset;
+                float top = screenOffset.y * renderTargetInfo.height;
 
                 // FPS display.
-                m_device->drawString(fmt::format("FPS: {}", m_stats.fps), OVERLAY_COMMON);
+                m_device->drawString(fmt::format("FPS: {}", m_stats.fps),
+                                     TextStyle::Normal,
+                                     fontSize,
+                                     (m_state != MenuState::Visible ? overlayAlign : rightAlign) - 300,
+                                     m_state != MenuState::Visible ? top
+                                                                   : topAlign - BorderVerticalSpacing - 1.1f * fontSize,
+                                     textColorOverlayNoFade,
+                                     true,
+                                     FW1_LEFT);
                 top += 1.05f * fontSize;
 
-                if (m_state != MenuState::Visible) {
+                if (m_state == MenuState::Visible) {
+                    if (m_currentTab == MenuTab::Menu) {
+                        // Display a reference to help aligning the overlay.
+                        m_device->drawString("(overlay position)",
+                                             TextStyle::Normal,
+                                             fontSizes[0], // Small
+                                             overlayAlign - 300,
+                                             top,
+                                             textColorOverlayNoFade,
+                                             true,
+                                             FW1_LEFT);
+                    }
+                } else {
+#define OVERLAY_COMMON TextStyle::Normal, fontSize, overlayAlign - 300, top, textColorOverlayNoFade, true, FW1_LEFT
+
                     MotionReprojectionRate targetDivider;
                     if (m_isMotionReprojectionRateSupported &&
                         (targetDivider = m_configManager->peekEnumValue<MotionReprojectionRate>(
@@ -1460,6 +1482,22 @@ namespace {
                                      3000,
                                      [](int value) { return fmt::format("{} pixels", value); }});
             m_menuEntries.back().acceleration = 10;
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Overlay horizontal offset",
+                                     MenuEntryType::Slider,
+                                     SettingOverlayXOffset,
+                                     -100,
+                                     100,
+                                     MenuEntry::FmtPercent});
+            m_menuEntries.back().expert = true;
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Overlay vertical offset",
+                                     MenuEntryType::Slider,
+                                     SettingOverlayYOffset,
+                                     -100,
+                                     100,
+                                     MenuEntry::FmtPercent});
+            m_menuEntries.back().expert = true;
 
             m_menuEntries.push_back(
                 {MenuIndent::OptionIndent, "Restore defaults", MenuEntryType::RestoreDefaults, BUTTON_OR_SEPARATOR});
