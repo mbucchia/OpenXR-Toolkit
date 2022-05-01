@@ -78,6 +78,12 @@ namespace {
             m_configManager->setEnumDefault(config::SettingMenuTimeout, config::MenuTimeout::Medium);
             m_configManager->setDefault(config::SettingMenuExpert, m_configManager->getValue(config::SettingDeveloper));
             m_configManager->setEnumDefault(config::SettingOverlayType, config::OverlayType::None);
+            // Legacy setting is 1/3rd from top and 2/3rd from left.
+            {
+                const auto ndcOffset = utilities::ScreenToNdc({2 / 3.f, 1 / 3.f});
+                m_configManager->setDefault(config::SettingOverlayXOffset, (int)(ndcOffset.x * 100.f));
+                m_configManager->setDefault(config::SettingOverlayYOffset, (int)(ndcOffset.y * 100.f));
+            }
 
             // Hand tracking feature.
             m_configManager->setEnumDefault(config::SettingHandTrackingEnabled, config::HandTrackingEnabled::Off);

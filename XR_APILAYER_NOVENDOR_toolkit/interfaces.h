@@ -117,6 +117,8 @@ namespace toolkit {
         const std::string SettingMenuEyeVisibility = "menu_eye";
         const std::string SettingMenuEyeOffset = "menu_eye_offset";
         const std::string SettingOverlayType = "overlay";
+        const std::string SettingOverlayXOffset = "overlay_x_offset";
+        const std::string SettingOverlayYOffset = "overlay_y_offset";
         const std::string SettingMenuFontSize = "font_size";
         const std::string SettingMenuTimeout = "menu_timeout";
         const std::string SettingMenuExpert = "expert_menu";
