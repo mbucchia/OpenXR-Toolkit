@@ -435,6 +435,7 @@ namespace toolkit {
             virtual std::shared_ptr<IDepthStencilView> getDepthStencilView(int32_t slice = -1) const = 0;
 
             virtual void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) = 0;
+            virtual void copyTo(std::shared_ptr<ITexture> destination) const = 0;
             virtual void saveToFile(const std::filesystem::path& path) const = 0;
 
             virtual void* getNativePtr() const = 0;

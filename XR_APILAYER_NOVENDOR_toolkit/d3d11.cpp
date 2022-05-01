@@ -513,6 +513,10 @@ namespace {
                 0);
         }
 
+        void copyTo(std::shared_ptr<ITexture> destination) const override {
+            m_device->getContextAs<D3D11>()->CopyResource(destination->getAs<D3D11>(), m_texture.Get());
+        }
+
         void saveToFile(const std::filesystem::path& path) const override {
             const auto& fileFormat = path.extension() == ".png"   ? GUID_ContainerFormatPng
                                      : path.extension() == ".bmp" ? GUID_ContainerFormatBmp
