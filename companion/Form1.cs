@@ -75,6 +75,7 @@ namespace companion
                 screenshotCheckbox.Checked = (int)key.GetValue("enable_screenshot", 0) == 1 ? true : false;
                 screenshotFormat.SelectedIndex = (int)key.GetValue("screenshot_fileformat", 1);
                 screenshotFormat.Enabled = screenshotCheckbox.Enabled && screenshotCheckbox.Checked;
+                screenshotEye.SelectedIndex = (int)key.GetValue("screenshot_eye", 0);
                 menuVisibility.SelectedIndex = (int)key.GetValue("menu_eye", 0);
                 ctrlModifierCheckbox.Checked = (int)key.GetValue("ctrl_modifier", 1) == 1 ? true : false;
                 altModifierCheckbox.Checked = (int)key.GetValue("alt_modifier", 0) == 1 ? true : false;
@@ -283,7 +284,7 @@ namespace companion
                         disableCheckbox.Checked = false;
                         loading = wasLoading;
                     }
-                    safemodeCheckbox.Enabled = screenshotCheckbox.Enabled = screenshotFormat.Enabled =
+                    safemodeCheckbox.Enabled = screenshotCheckbox.Enabled = screenshotFormat.Enabled = screenshotEye.Enabled =
                         menuVisibility.Enabled = leftKey.Enabled = nextKey.Enabled = previousKey.Enabled = rightKey.Enabled = screenshotKey.Enabled =
                         ctrlModifierCheckbox.Enabled = altModifierCheckbox.Enabled = !disableCheckbox.Checked;
                     screenshotFormat.Enabled = screenshotCheckbox.Enabled && screenshotCheckbox.Checked;
@@ -577,6 +578,15 @@ namespace companion
                 return;
             }
             WriteSetting("screenshot_fileformat", screenshotFormat.SelectedIndex);
+        }
+
+        private void screenshotEye_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (loading)
+            {
+                return;
+            }
+            WriteSetting("screenshot_eye", screenshotEye.SelectedIndex);
         }
 
         private void traceButton_Click(object sender, EventArgs e)
