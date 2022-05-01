@@ -401,6 +401,8 @@ namespace {
                 m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction || m_isOmniceptDetected ||
                                        m_hasPimaxEyeTracker ||
                                        m_configManager->getValue(config::SettingEyeDebugWithController);
+                const bool isEyeTrackingThruRuntime =
+                    m_supportEyeTracking && !(m_isOmniceptDetected || m_hasPimaxEyeTracker);
 
                 // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
                 // will (falsely) advertise hand tracking support. Check for the Ultraleap layer in this case.
@@ -421,7 +423,7 @@ namespace {
 
                 // Workaround: the WMR runtime supports emulating eye tracking for development through
                 // XR_EXT_eye_gaze_interaction, which will (falsely) advertise eye tracking support. Disable it.
-                if (m_supportEyeTracking &&
+                if (isEyeTrackingThruRuntime &&
                     (!isDeveloper &&
                      (!m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck) && isWMR))) {
                     Log("Ignoring XR_EXT_eye_gaze_interaction for %s\n", m_runtimeName.c_str());
