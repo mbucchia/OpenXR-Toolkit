@@ -62,6 +62,8 @@ namespace {
         OpenXrLayer() = default;
 
         void setOptionsDefaults() {
+            m_configManager->setDefault(config::SettingDeveloper, 0);
+
             // Input & menu options.
             m_configManager->setDefault(config::SettingKeyCtrlModifier, 1);
             m_configManager->setDefault(config::SettingKeyAltModifier, 0);
@@ -74,7 +76,7 @@ namespace {
             m_configManager->setDefault(config::SettingMenuEyeOffset, 0);
             m_configManager->setEnumDefault(config::SettingMenuFontSize, config::MenuFontSize::Medium);
             m_configManager->setEnumDefault(config::SettingMenuTimeout, config::MenuTimeout::Medium);
-            m_configManager->setDefault(config::SettingMenuExpert, 0);
+            m_configManager->setDefault(config::SettingMenuExpert, m_configManager->getValue(config::SettingDeveloper));
             m_configManager->setEnumDefault(config::SettingOverlayType, config::OverlayType::None);
 
             // Hand tracking feature.

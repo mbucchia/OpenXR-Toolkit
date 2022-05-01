@@ -342,6 +342,14 @@ namespace {
             for (const auto& group : m_menuGroups) {
                 group.updateVisibility(showExpert);
             }
+
+            for (auto& entry : m_menuEntries) {
+                // Special case: the Overlay choice has more entries in Expert mode.
+                if (entry.configName == SettingOverlayType) {
+                    entry.maxValue = MenuEntry::LastVal<OverlayType>() - !showExpert;
+                }
+                // ... add more special cases here.
+            }
         }
 
         void render(Eye eye, std::shared_ptr<ITexture> renderTarget) const override {
@@ -866,7 +874,7 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingOverlayType,
                                      0,
-                                     MenuEntry::LastVal<OverlayType>() - !m_configManager->isExperimentalMode(),
+                                     MenuEntry::LastVal<OverlayType>(),
                                      MenuEntry::FmtEnum<OverlayType>});
 
             // Upscaling Settings.
