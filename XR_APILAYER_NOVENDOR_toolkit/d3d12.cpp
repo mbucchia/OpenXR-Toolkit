@@ -821,7 +821,8 @@ namespace {
         D3D12Device(ID3D12Device* device,
                     ID3D12CommandQueue* queue,
                     std::shared_ptr<config::IConfigManager> configManager)
-            : m_device(device), m_queue(queue), m_gpuArchitecture(GpuArchitecture::Unknown) {
+            : m_device(device), m_queue(queue), m_gpuArchitecture(GpuArchitecture::Unknown),
+              m_allowInterceptor(!configManager->getValue("disable_interceptor")) {
             {
                 // store a reference to the command queue for easier retrieval
                 m_device->SetPrivateDataInterface(IID_ID3D12CommandQueue, get(m_queue));
@@ -1778,6 +1779,10 @@ namespace {
             m_copyTextureEvent = event;
         }
 
+        bool isEventsSupported() const override {
+            return m_allowInterceptor;
+        }
+
         uint32_t getBufferAlignmentConstraint() const override {
             return D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
         }
@@ -1796,6 +1801,10 @@ namespace {
 
       private:
         void initializeInterceptor() {
+            if (!m_allowInterceptor) {
+                return;
+            }
+
             g_instance = this;
 
             // Hook to the Direct3D device and command list  to intercept preparation for the rendering.
@@ -2066,10 +2075,11 @@ namespace {
 
 #undef INVOKE_EVENT
 
-        ComPtr<ID3D12Device> m_device;
+        const ComPtr<ID3D12Device> m_device;
         ComPtr<ID3D12CommandQueue> m_queue;
         std::string m_deviceName;
         GpuArchitecture m_gpuArchitecture;
+        const bool m_allowInterceptor;
 
         ComPtr<ID3D12CommandAllocator> m_commandAllocator[NumInflightContexts];
         ComPtr<ID3D12GraphicsCommandList> m_commandList[NumInflightContexts];

@@ -814,6 +814,7 @@ namespace {
                     bool textOnly = false,
                     bool enableOculusQuirk = false)
             : m_device(device), m_gpuArchitecture(GpuArchitecture::Unknown),
+              m_allowInterceptor(!configManager->getValue("disable_interceptor")),
               m_lateInitCountdown(enableOculusQuirk ? 10 : 0) {
             m_device->GetImmediateContext(set(m_context));
             {
@@ -1470,6 +1471,10 @@ namespace {
             m_copyTextureEvent = event;
         }
 
+        bool isEventsSupported() const override {
+            return m_allowInterceptor;
+        }
+
         uint32_t getBufferAlignmentConstraint() const override {
             return 16;
         }
@@ -1488,6 +1493,10 @@ namespace {
 
       private:
         void initializeInterceptor() {
+            if (!m_allowInterceptor) {
+                return;
+            }
+
             g_instance = this;
 
             // Hook to the Direct3D device context to intercept preparation for the rendering.
@@ -1854,6 +1863,7 @@ namespace {
         D3D11ContextState m_state;
         std::string m_deviceName;
         GpuArchitecture m_gpuArchitecture;
+        const bool m_allowInterceptor;
         uint32_t m_lateInitCountdown{0};
 
         ComPtr<ID3D11SamplerState> m_samplers[2];
