@@ -49,13 +49,9 @@ namespace {
     class ConfigManager : public IConfigManager {
       public:
         ConfigManager(const std::string& appName) : m_appName(appName) {
-            // Check for safe mode and experimental mode.
+            // Check for safe mode.
             m_safeMode = RegGetDword(HKEY_LOCAL_MACHINE, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"safe_mode")
                              .value_or(0);
-            m_experimentalMode = RegGetDword(HKEY_LOCAL_MACHINE,
-                                             std::wstring(RegPrefix.begin(), RegPrefix.end()),
-                                             L"enable_experimental")
-                                     .value_or(0);
 
             std::string baseKey = RegPrefix + "\\" + appName;
             m_baseKey = std::wstring(baseKey.begin(), baseKey.end());
@@ -170,10 +166,6 @@ namespace {
             return m_safeMode;
         }
 
-        bool isExperimentalMode() const override {
-            return m_experimentalMode;
-        }
-
         void hardReset() override {
             RegDeleteKey(HKEY_CURRENT_USER, m_baseKey);
             for (auto& value : m_values) {
@@ -214,7 +206,6 @@ namespace {
         const std::string m_appName;
         std::wstring m_baseKey;
         bool m_safeMode;
-        bool m_experimentalMode;
 
         mutable std::map<std::string, ConfigValue> m_values;
     };
