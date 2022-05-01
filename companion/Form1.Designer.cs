@@ -66,6 +66,7 @@ namespace companion
             this.label13 = new System.Windows.Forms.Label();
             this.appList = new System.Windows.Forms.CheckedListBox();
             this.label14 = new System.Windows.Forms.Label();
+            this.screenshotEye = new System.Windows.Forms.ComboBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -433,11 +434,26 @@ namespace companion
             this.label14.TabIndex = 26;
             this.label14.Text = "Enable OpenXR Toolkit selectively for each application";
             // 
+            // screenshotEye
+            // 
+            this.screenshotEye.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.screenshotEye.FormattingEnabled = true;
+            this.screenshotEye.Items.AddRange(new object[] {
+            "Both eyes",
+            "Left eye only",
+            "Right eye only"});
+            this.screenshotEye.Location = new System.Drawing.Point(351, 418);
+            this.screenshotEye.Name = "screenshotEye";
+            this.screenshotEye.Size = new System.Drawing.Size(176, 28);
+            this.screenshotEye.TabIndex = 9;
+            this.screenshotEye.SelectedIndexChanged += new System.EventHandler(this.screenshotEye_SelectedIndexChanged);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(616, 1098);
+            this.Controls.Add(this.screenshotEye);
             this.Controls.Add(this.label14);
             this.Controls.Add(this.appList);
             this.Controls.Add(this.label13);
@@ -520,6 +536,7 @@ namespace companion
         private System.Windows.Forms.Label label13;
         private System.Windows.Forms.CheckedListBox appList;
         private System.Windows.Forms.Label label14;
+        private System.Windows.Forms.ComboBox screenshotEye;
     }
 }
 
