@@ -325,6 +325,50 @@ namespace LAYER_NAMESPACE
 		return result;
 	}
 
+	XrResult xrBeginSession(XrSession session, const XrSessionBeginInfo* beginInfo)
+	{
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrBeginSession");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrBeginSession(session, beginInfo);
+		}
+		catch (std::exception& exc)
+		{
+			TraceLoggingWriteTagged(local, "xrBeginSession_Error", TLArg(exc.what(), "Error"));
+			Log("xrBeginSession: %s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		TraceLoggingWriteStop(local, "xrBeginSession", TLArg((int)result, "Result"));
+
+		return result;
+	}
+
+	XrResult xrEndSession(XrSession session)
+	{
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrEndSession");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrEndSession(session);
+		}
+		catch (std::exception& exc)
+		{
+			TraceLoggingWriteTagged(local, "xrEndSession_Error", TLArg(exc.what(), "Error"));
+			Log("xrEndSession: %s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		TraceLoggingWriteStop(local, "xrEndSession", TLArg((int)result, "Result"));
+
+		return result;
+	}
+
 	XrResult xrWaitFrame(XrSession session, const XrFrameWaitInfo* frameWaitInfo, XrFrameState* frameState)
 	{
 		TraceLocalActivity(local);
@@ -734,6 +778,16 @@ namespace LAYER_NAMESPACE
 			{
 				m_xrReleaseSwapchainImage = reinterpret_cast<PFN_xrReleaseSwapchainImage>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrReleaseSwapchainImage);
+			}
+			else if (apiName == "xrBeginSession")
+			{
+				m_xrBeginSession = reinterpret_cast<PFN_xrBeginSession>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrBeginSession);
+			}
+			else if (apiName == "xrEndSession")
+			{
+				m_xrEndSession = reinterpret_cast<PFN_xrEndSession>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrEndSession);
 			}
 			else if (apiName == "xrWaitFrame")
 			{
