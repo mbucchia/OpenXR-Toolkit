@@ -105,6 +105,10 @@ namespace {
             }
         }
 
+        void setActiveSession(const std::string& appName) override {
+            RegSetString(HKEY_CURRENT_USER, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"running", appName);
+        }
+
         void setDefault(const std::string& name, int value) override {
             auto it = m_values.find(name);
 
@@ -222,7 +226,8 @@ namespace {
             entry.value = value.value_or(entry.defaultValue);
             entry.changedSinceLastQuery = true;
 
-            TraceLoggingWrite(g_traceProvider, "Config_ReadValue", TLArg(name.c_str(), "Name"), TLArg(entry.value, "Value"));            
+            TraceLoggingWrite(
+                g_traceProvider, "Config_ReadValue", TLArg(name.c_str(), "Name"), TLArg(entry.value, "Value"));
         }
 
         void refreshValue(const std::string& name, ConfigValue& entry) const {
@@ -241,7 +246,8 @@ namespace {
         }
 
         void writeValue(const std::string& name, ConfigValue& entry) const {
-            TraceLoggingWrite(g_traceProvider, "Config_WriteValue", TLArg(name.c_str(), "Name"), TLArg(entry.value, "Value"));
+            TraceLoggingWrite(
+                g_traceProvider, "Config_WriteValue", TLArg(name.c_str(), "Name"), TLArg(entry.value, "Value"));
             RegSetDword(HKEY_CURRENT_USER, m_baseKey, std::wstring(name.begin(), name.end()), entry.value);
         }
 

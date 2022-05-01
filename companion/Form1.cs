@@ -46,7 +46,7 @@ namespace companion
         public static extern IntPtr getVersionString();
 
         // Must match config.cpp.
-        private const string RegPrefix = "SOFTWARE\\OpenXR_Toolkit";
+        public const string RegPrefix = "SOFTWARE\\OpenXR_Toolkit";
 
         private List<Tuple<string, int>> VirtualKeys;
 
@@ -64,12 +64,14 @@ namespace companion
             InitializeKeyList(screenshotKey);
 
             InitXr();
+            timer1_Tick(null, null);
 
             SuspendLayout();
             Microsoft.Win32.RegistryKey key = null;
             try
             {
                 key = Microsoft.Win32.Registry.LocalMachine.CreateSubKey(RegPrefix);
+
                 // Must match the defaults in the layer!
                 safemodeCheckbox.Checked = (int)key.GetValue("safe_mode", 0) == 1 ? true : false;
                 screenshotCheckbox.Checked = (int)key.GetValue("enable_screenshot", 0) == 1 ? true : false;
@@ -208,9 +210,27 @@ namespace companion
             }
         }
 
+        private void SetActiveString()
+        {
+            if (versionString != null)
+            {
+                layerActive.Text = versionString + " is active";
+            }
+            else
+            {
+                layerActive.Text = "OpenXR Toolkit layer is active";
+            }
+
+            if (appString != "")
+            {
+                layerActive.Text += " (" + appString + ")";
+            }
+        }
+
+        string versionString = null;
+
         private unsafe void InitXr()
         {
-            string versionString = null;
             try
             {
                 IntPtr pStr = getVersionString();
@@ -271,14 +291,7 @@ namespace companion
                     }
                     else
                     {
-                        if (versionString != null)
-                        {
-                            layerActive.Text = versionString + " is active";
-                        }
-                        else
-                        {
-                            layerActive.Text = "OpenXR Toolkit layer is active";
-                        }
+                        SetActiveString();
                         layerActive.ForeColor = Color.Green;
                         loading = true;
                         disableCheckbox.Checked = false;
@@ -723,6 +736,29 @@ namespace companion
                 }
             }
 
+        }
+
+        string appString = null;
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            Microsoft.Win32.RegistryKey key = null;
+            try
+            {
+                key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RegPrefix);
+                appString = (string)key.GetValue("running", "");
+                SetActiveString();
+            }
+            catch (Exception)
+            {
+            }
+            finally
+            {
+                if (key != null)
+                {
+                    key.Close();
+                }
+            }
         }
     }
 }

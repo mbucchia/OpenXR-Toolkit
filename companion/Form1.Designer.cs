@@ -67,6 +67,7 @@ namespace companion
             this.appList = new System.Windows.Forms.CheckedListBox();
             this.label14 = new System.Windows.Forms.Label();
             this.screenshotEye = new System.Windows.Forms.ComboBox();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -448,6 +449,12 @@ namespace companion
             this.screenshotEye.TabIndex = 9;
             this.screenshotEye.SelectedIndexChanged += new System.EventHandler(this.screenshotEye_SelectedIndexChanged);
             // 
+            // timer1
+            // 
+            this.timer1.Enabled = true;
+            this.timer1.Interval = 5000;
+            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
@@ -537,6 +544,7 @@ namespace companion
         private System.Windows.Forms.CheckedListBox appList;
         private System.Windows.Forms.Label label14;
         private System.Windows.Forms.ComboBox screenshotEye;
+        private System.Windows.Forms.Timer timer1;
     }
 }
 

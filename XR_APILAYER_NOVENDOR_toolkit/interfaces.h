@@ -209,6 +209,8 @@ namespace toolkit {
             // database.
             virtual void tick() = 0;
 
+            virtual void setActiveSession(const std::string& appName) = 0;
+
             virtual void setDefault(const std::string& name, int value) = 0;
 
             virtual int getValue(const std::string& name) const = 0;
