@@ -72,7 +72,6 @@ namespace companion
                 key = Microsoft.Win32.Registry.LocalMachine.CreateSubKey(RegPrefix);
                 // Must match the defaults in the layer!
                 safemodeCheckbox.Checked = (int)key.GetValue("safe_mode", 0) == 1 ? true : false;
-                experimentalCheckbox.Checked = (int)key.GetValue("enable_experimental", 0) == 1 ? true : false;
                 screenshotCheckbox.Checked = (int)key.GetValue("enable_screenshot", 0) == 1 ? true : false;
                 screenshotFormat.SelectedIndex = (int)key.GetValue("screenshot_fileformat", 1);
                 screenshotFormat.Enabled = screenshotCheckbox.Enabled && screenshotCheckbox.Checked;
@@ -284,7 +283,7 @@ namespace companion
                         disableCheckbox.Checked = false;
                         loading = wasLoading;
                     }
-                    safemodeCheckbox.Enabled = experimentalCheckbox.Enabled = screenshotCheckbox.Enabled = screenshotFormat.Enabled =
+                    safemodeCheckbox.Enabled = screenshotCheckbox.Enabled = screenshotFormat.Enabled =
                         menuVisibility.Enabled = leftKey.Enabled = nextKey.Enabled = previousKey.Enabled = rightKey.Enabled = screenshotKey.Enabled =
                         ctrlModifierCheckbox.Enabled = altModifierCheckbox.Enabled = !disableCheckbox.Checked;
                     screenshotFormat.Enabled = screenshotCheckbox.Enabled && screenshotCheckbox.Checked;
@@ -413,15 +412,6 @@ namespace companion
             }
 
             WriteSetting("safe_mode", safemodeCheckbox.Checked ? 1 : 0);
-        }
-
-        private void experimentalCheckbox_CheckedChanged(object sender, EventArgs e)
-        {
-            if (loading)
-            {
-                return;
-            }
-            WriteSetting("enable_experimental", experimentalCheckbox.Checked ? 1 : 0);
         }
 
         private void sceenshotCheckbox_CheckedChanged(object sender, EventArgs e)
