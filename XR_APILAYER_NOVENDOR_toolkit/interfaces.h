@@ -115,11 +115,11 @@ namespace toolkit {
         const std::string SettingMenuKeyLeft = "key_left";
         const std::string SettingMenuKeyRight = "key_right";
         const std::string SettingMenuEyeVisibility = "menu_eye";
-        const std::string SettingMenuEyeOffset = "menu_eye_offset";
+        const std::string SettingMenuDistance = "menu_distance";
         const std::string SettingOverlayType = "overlay";
         const std::string SettingOverlayXOffset = "overlay_x_offset";
         const std::string SettingOverlayYOffset = "overlay_y_offset";
-        const std::string SettingMenuFontSize = "font_size";
+        const std::string SettingMenuFontSize = "font_size2";
         const std::string SettingMenuTimeout = "menu_timeout";
         const std::string SettingMenuExpert = "expert_menu";
         const std::string SettingScalingType = "scaling_type";
@@ -808,12 +808,12 @@ namespace toolkit {
             virtual ~IMenuHandler() = default;
 
             virtual void handleInput() = 0;
-            virtual void render(utilities::Eye eye, std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
+            virtual void render(std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
             virtual void updateStatistics(const MenuStatistics& stats) = 0;
             virtual void updateGesturesState(const input::GesturesState& state) = 0;
             virtual void updateEyeGazeState(const input::EyeGazeState& state) = 0;
 
-            virtual void setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
+            virtual bool isVisible() const = 0;
         };
 
     } // namespace menu

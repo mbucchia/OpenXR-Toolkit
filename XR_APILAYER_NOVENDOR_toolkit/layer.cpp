@@ -73,8 +73,8 @@ namespace {
             m_configManager->setDefault(config::SettingMenuKeyUp, 0);
             m_configManager->setDefault(config::SettingScreenshotKey, VK_F12);
             m_configManager->setDefault(config::SettingMenuEyeVisibility, 0); // Both
-            m_configManager->setDefault(config::SettingMenuEyeOffset, 0);
-            m_configManager->setEnumDefault(config::SettingMenuFontSize, config::MenuFontSize::Medium);
+            m_configManager->setDefault(config::SettingMenuDistance, 100);    // 1m
+            m_configManager->setDefault(config::SettingMenuFontSize, 44);     // pt
             m_configManager->setEnumDefault(config::SettingMenuTimeout, config::MenuTimeout::Medium);
             m_configManager->setDefault(config::SettingMenuExpert, m_configManager->getValue(config::SettingDeveloper));
             m_configManager->setEnumDefault(config::SettingOverlayType, config::OverlayType::None);
@@ -685,6 +685,65 @@ namespace {
                     m_performanceCounters.lastWindowStart = std::chrono::steady_clock::now();
 
                     {
+                        uint32_t formatCount = 0;
+                        CHECK_XRCMD(xrEnumerateSwapchainFormats(*session, 0, &formatCount, nullptr));
+                        std::vector<int64_t> formats(formatCount);
+                        CHECK_XRCMD(xrEnumerateSwapchainFormats(*session, formatCount, &formatCount, formats.data()));
+
+                        XrSwapchainCreateInfo swapchainInfo{XR_TYPE_SWAPCHAIN_CREATE_INFO};
+                        swapchainInfo.width = swapchainInfo.height =
+                            2000; // Let's hope the menu doesn't get bigger than that.
+                        swapchainInfo.arraySize = 1;
+                        swapchainInfo.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+                        swapchainInfo.format = formats[0];
+                        swapchainInfo.sampleCount = 1;
+                        swapchainInfo.faceCount = 1;
+                        swapchainInfo.mipCount = 1;
+                        CHECK_XRCMD(OpenXrApi::xrCreateSwapchain(*session, &swapchainInfo, &m_menuSwapchain));
+
+                        uint32_t imageCount;
+                        CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(m_menuSwapchain, 0, &imageCount, nullptr));
+
+                        SwapchainState swapchainState;
+                        int64_t overrideFormat = 0;
+                        if (m_graphicsDevice->getApi() == graphics::Api::D3D11) {
+                            std::vector<XrSwapchainImageD3D11KHR> d3dImages(imageCount,
+                                                                            {XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
+                            CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(
+                                m_menuSwapchain,
+                                imageCount,
+                                &imageCount,
+                                reinterpret_cast<XrSwapchainImageBaseHeader*>(d3dImages.data())));
+
+                            for (uint32_t i = 0; i < imageCount; i++) {
+                                m_menuSwapchainImages.push_back(
+                                    graphics::WrapD3D11Texture(m_graphicsDevice,
+                                                               swapchainInfo,
+                                                               d3dImages[i].texture,
+                                                               fmt::format("Menu swapchain {} TEX2D", i)));
+                            }
+                        } else if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
+                            std::vector<XrSwapchainImageD3D12KHR> d3dImages(imageCount,
+                                                                            {XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR});
+                            CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(
+                                m_menuSwapchain,
+                                imageCount,
+                                &imageCount,
+                                reinterpret_cast<XrSwapchainImageBaseHeader*>(d3dImages.data())));
+
+                            for (uint32_t i = 0; i < imageCount; i++) {
+                                m_menuSwapchainImages.push_back(
+                                    graphics::WrapD3D12Texture(m_graphicsDevice,
+                                                               swapchainInfo,
+                                                               d3dImages[i].texture,
+                                                               fmt::format("Menu swapchain {} TEX2D", i)));
+                            }
+                        } else {
+                            throw std::runtime_error("Unsupported graphics runtime");
+                        }
+                    }
+
+                    {
                         menu::MenuInfo menuInfo;
                         menuInfo.displayWidth = m_displayWidth;
                         menuInfo.displayHeight = m_displayHeight;
@@ -778,6 +837,11 @@ namespace {
                 m_performanceCounters.endFrameCpuTimer.reset();
                 m_performanceCounters.overlayCpuTimer.reset();
                 m_swapchains.clear();
+                m_menuSwapchainImages.clear();
+                if (m_menuSwapchain != XR_NULL_HANDLE) {
+                    xrDestroySwapchain(m_menuSwapchain);
+                    m_menuSwapchain = XR_NULL_HANDLE;
+                }
                 m_menuHandler.reset();
                 if (m_graphicsDevice) {
                     m_graphicsDevice->shutdown();
@@ -1322,10 +1386,6 @@ namespace {
                             m_projCenters[1].x,
                             m_projCenters[1].y);
 
-                        if (m_menuHandler) {
-                            m_menuHandler->setViewProjectionCenters(m_projCenters[0], m_projCenters[1]);
-                        }
-
                         if (m_variableRateShader) {
                             m_variableRateShader->setViewProjectionCenters(m_projCenters[0], m_projCenters[1]);
                         }
@@ -1801,6 +1861,7 @@ namespace {
 
             std::vector<XrCompositionLayerProjection> layerProjectionAllocator;
             std::vector<std::array<XrCompositionLayerProjectionView, 2>> layerProjectionViewsAllocator;
+            XrCompositionLayerQuad layerQuadForMenu{XR_TYPE_COMPOSITION_LAYER_QUAD};
 
             // We must reserve the underlying storage to keep our pointers stable.
             layerProjectionAllocator.reserve(chainFrameEndInfo.layerCount);
@@ -1971,16 +2032,18 @@ namespace {
                 }
             }
 
-            chainFrameEndInfo.layers = correctedLayers.data();
-
             // We intentionally exclude the overlay from this timer, as it has its own separate timer.
             m_performanceCounters.endFrameCpuTimer->stop();
 
             // Render our overlays.
-            if (textureForOverlay[0]) {
-                const bool useVPRT = textureForOverlay[1] == textureForOverlay[0];
+            {
+                const bool drawHands = m_handTracker && m_configManager->peekEnumValue<config::HandTrackingVisibility>(
+                                                            config::SettingHandVisibilityAndSkinTone) !=
+                                                            config::HandTrackingVisibility::Hidden;
+                const bool drawEyeGaze = m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug);
+                const bool drawOverlays = m_menuHandler || drawHands || drawEyeGaze;
 
-                if (m_menuHandler || m_handTracker) {
+                if (drawOverlays) {
                     m_stats.overlayCpuTimeUs += m_performanceCounters.overlayCpuTimer->query();
                     m_stats.overlayGpuTimeUs +=
                         m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
@@ -1989,34 +2052,34 @@ namespace {
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
                 }
 
-                // Render the hands or eye gaze helper.
-                const bool drawHands = m_handTracker && m_configManager->peekEnumValue<config::HandTrackingVisibility>(
-                                                            config::SettingHandVisibilityAndSkinTone) !=
-                                                            config::HandTrackingVisibility::Hidden;
-                const bool drawEyeGaze = m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug);
-                if (drawHands || drawEyeGaze) {
-                    auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze);
+                if (textureForOverlay[0]) {
+                    const bool useVPRT = textureForOverlay[1] == textureForOverlay[0];
 
-                    for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                        m_graphicsDevice->setRenderTargets(1,
-                                                           &textureForOverlay[eye],
-                                                           useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr,
-                                                           depthForOverlay[eye],
-                                                           useVPRT ? eye : -1);
+                    // Render the hands or eye gaze helper.
+                    if (drawHands || drawEyeGaze) {
+                        auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze);
 
-                        m_graphicsDevice->setViewProjection(viewsForOverlay[eye]);
+                        for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
+                            m_graphicsDevice->setRenderTargets(1,
+                                                               &textureForOverlay[eye],
+                                                               useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr,
+                                                               depthForOverlay[eye],
+                                                               useVPRT ? eye : -1);
 
-                        if (drawHands) {
-                            m_handTracker->render(
-                                viewsForOverlay[eye].Pose, spaceForOverlay, getTimeNow(), textureForOverlay[eye]);
-                        }
+                            m_graphicsDevice->setViewProjection(viewsForOverlay[eye]);
 
-                        if (drawEyeGaze) {
-                            XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
-                            auto pos = utilities::NdcToScreen(m_eyeGaze[eye]);
-                            pos.x *= m_displayWidth;
-                            pos.y *= m_displayHeight;
-                            m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
+                            if (drawHands) {
+                                m_handTracker->render(
+                                    viewsForOverlay[eye].Pose, spaceForOverlay, getTimeNow(), textureForOverlay[eye]);
+                            }
+
+                            if (drawEyeGaze) {
+                                XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
+                                auto pos = utilities::NdcToScreen(m_eyeGaze[eye]);
+                                pos.x *= m_displayWidth;
+                                pos.y *= m_displayHeight;
+                                m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
+                            }
                         }
                     }
                 }
@@ -2025,21 +2088,58 @@ namespace {
                 // Ideally, we would not have to split this from the branch above, however with D3D12 we are forced
                 // to flush the context, and we'd rather do it only once.
                 // We omit the depth buffer for menu (2D) content.
-                if (m_menuHandler) {
+                if (m_menuHandler && m_menuHandler->isVisible()) {
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                         m_graphicsDevice->flushContext();
                     }
-                    for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                        m_graphicsDevice->setRenderTargets(
-                            1, &textureForOverlay[eye], useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr);
-                        m_graphicsDevice->beginText();
-                        m_menuHandler->render((utilities::Eye)eye, textureForOverlay[eye]);
-                        m_graphicsDevice->flushText();
+
+                    uint32_t menuImageIndex;
+                    {
+                        XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+                        CHECK_XRCMD(OpenXrApi::xrAcquireSwapchainImage(m_menuSwapchain, &acquireInfo, &menuImageIndex));
+
+                        XrSwapchainImageWaitInfo waitInfo{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
+                        waitInfo.timeout = 100000000000; // 100ms
+                        CHECK_XRCMD(OpenXrApi::xrWaitSwapchainImage(m_menuSwapchain, &waitInfo));
                     }
+
+                    const auto& textureInfo = m_menuSwapchainImages[menuImageIndex]->getInfo();
+
+                    m_graphicsDevice->setRenderTargets(1, &m_menuSwapchainImages[menuImageIndex]);
+                    m_graphicsDevice->clearColor(
+                        0, 0, (float)textureInfo.height, (float)textureInfo.width, XrColor4f{0, 0, 0, 0});
+                    m_graphicsDevice->beginText();
+                    m_menuHandler->render(m_menuSwapchainImages[menuImageIndex]);
+                    m_graphicsDevice->flushText();
+
+                    m_graphicsDevice->unsetRenderTargets();
+
+                    {
+                        XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+                        CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(m_menuSwapchain, &releaseInfo));
+                    }
+
+                    // Add the quad layer to the frame.
+                    layerQuadForMenu.space = m_viewSpace;
+                    StoreXrPose(&layerQuadForMenu.pose,
+                                DirectX::XMMatrixMultiply(
+                                    DirectX::XMMatrixTranslation(
+                                        0, 0, -m_configManager->getValue(config::SettingMenuDistance) / 100.f),
+                                    LoadXrPose(Pose::Identity())));
+                    layerQuadForMenu.size.width = layerQuadForMenu.size.height = 1; // 1m x 1m
+                    static const XrEyeVisibility visibility[] = {
+                        XR_EYE_VISIBILITY_BOTH, XR_EYE_VISIBILITY_LEFT, XR_EYE_VISIBILITY_RIGHT};
+                    layerQuadForMenu.eyeVisibility = visibility[std::min(
+                        m_configManager->getValue(config::SettingMenuEyeVisibility), (int)std::size(visibility))];
+                    layerQuadForMenu.subImage.swapchain = m_menuSwapchain;
+                    layerQuadForMenu.subImage.imageRect.extent.width = textureInfo.width;
+                    layerQuadForMenu.subImage.imageRect.extent.height = textureInfo.height;
+                    layerQuadForMenu.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+
+                    correctedLayers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&layerQuadForMenu));
                 }
 
-                if (m_menuHandler || m_handTracker ||
-                    (m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug))) {
+                if (drawOverlays) {
                     m_performanceCounters.overlayCpuTimer->stop();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
                 }
@@ -2078,6 +2178,9 @@ namespace {
                     CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(swapchain.first, &releaseInfo));
                 }
             }
+
+            chainFrameEndInfo.layers = correctedLayers.data();
+            chainFrameEndInfo.layerCount = (uint32_t)correctedLayers.size();
 
             {
                 const auto result = OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
@@ -2164,6 +2267,8 @@ namespace {
 
         std::vector<int> m_keyModifiers;
         int m_keyScreenshot;
+        XrSwapchain m_menuSwapchain{XR_NULL_HANDLE};
+        std::vector<std::shared_ptr<graphics::ITexture>> m_menuSwapchainImages;
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
         bool m_requestScreenShotKeyState{false};
 
