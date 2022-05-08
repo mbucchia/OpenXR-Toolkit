@@ -720,23 +720,23 @@ namespace {
                         referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
                         CHECK_XRCMD(xrCreateReferenceSpace(*session, &referenceSpaceCreateInfo, &m_viewSpace));
                     }
+
+                    if (m_handTracker) {
+                        m_handTracker->beginSession(*session, m_graphicsDevice);
+                    }
+                    if (m_eyeTracker) {
+                        m_eyeTracker->beginSession(*session);
+                    }
+
+                    // Make sure we perform calibration again. We pass these values to the menu and FFR, so in the case
+                    // of multi-session applications, we must push those values again.
+                    m_needCalibrateEyeProjections = true;
+
+                    // Remember the XrSession to use.
+                    m_vrSession = *session;
                 } else {
                     Log("Unsupported graphics runtime.\n");
                 }
-
-                if (m_handTracker) {
-                    m_handTracker->beginSession(*session, m_graphicsDevice);
-                }
-                if (m_eyeTracker) {
-                    m_eyeTracker->beginSession(*session);
-                }
-
-                // Make sure we perform calibration again. We pass these values to the menu and FFR, so in the case of
-                // multi-session applications, we must push those values again.
-                m_needCalibrateEyeProjections = true;
-
-                // Remember the XrSession to use.
-                m_vrSession = *session;
             }
 
             return result;
@@ -1246,7 +1246,7 @@ namespace {
                                         XrVisibilityMaskTypeKHR visibilityMaskType,
                                         XrVisibilityMaskKHR* visibilityMask) {
             // When doing the Pimax FOV hack, we swap left and right eyes.
-            if (m_supportFOVHack && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
+            if (m_supportFOVHack && isVrSession(session) && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
                 viewIndex ^= 1;
             }
 
@@ -1390,12 +1390,13 @@ namespace {
         }
 
         XrResult xrLocateSpace(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation* location) override {
-            m_performanceCounters.handTrackingTimer->start();
-            if (m_handTracker && location->type == XR_TYPE_SPACE_LOCATION &&
-                m_handTracker->locate(space, baseSpace, time, getTimeNow(), *location)) {
-                m_performanceCounters.handTrackingTimer->stop();
-                m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
-                return XR_SUCCESS;
+            if (m_handTracker && location->type == XR_TYPE_SPACE_LOCATION) {
+                m_performanceCounters.handTrackingTimer->start();
+                if (m_handTracker->locate(space, baseSpace, time, getTimeNow(), *location)) {
+                    m_performanceCounters.handTrackingTimer->stop();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                    return XR_SUCCESS;
+                }
             }
 
             return OpenXrApi::xrLocateSpace(space, baseSpace, time, location);
@@ -1530,7 +1531,9 @@ namespace {
         XrResult xrWaitFrame(XrSession session,
                              const XrFrameWaitInfo* frameWaitInfo,
                              XrFrameState* frameState) override {
-            m_performanceCounters.waitCpuTimer->start();
+            if (isVrSession(session)) {
+                m_performanceCounters.waitCpuTimer->start();
+            }
             const XrResult result = OpenXrApi::xrWaitFrame(session, frameWaitInfo, frameState);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 m_performanceCounters.waitCpuTimer->stop();
