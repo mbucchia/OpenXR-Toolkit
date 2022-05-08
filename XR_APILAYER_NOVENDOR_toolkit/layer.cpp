@@ -805,8 +805,10 @@ namespace {
             }
 
             // Identify the swapchains of interest for our processing chain.
-            const bool useSwapchain = createInfo->usageFlags & (XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT |
-                                                                XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+            const bool useSwapchain =
+                createInfo->usageFlags &
+                (XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                 XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT);
 
             TraceLoggingWrite(g_traceProvider,
                               "xrCreateSwapchain_AppSwapchain",
@@ -832,9 +834,9 @@ namespace {
                 // Modify the swapchain to handle our processing chain (eg: change resolution and/or select usage
                 // XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT).
 
-                if (createInfo->usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT) {
+                // We do no processing to depth buffers.
+                if (!(createInfo->usageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
                     if (m_imageProcessors[ImgProc::Pre]) {
-                        // This is redundant (given the useSwapchain conditions) but we do this for correctness.
                         chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
                     }
 
@@ -852,7 +854,6 @@ namespace {
                         // texture.
                         chainCreateInfo.usageFlags &= ~XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
 
-                        // This is redundant (given the useSwapchain conditions) but we do this for correctness.
                         chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
                     }
                 }
@@ -951,7 +952,7 @@ namespace {
                     SwapchainImages& images = swapchainState.images[i];
 
                     // We do no processing to depth buffers.
-                    if (!(createInfo->usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT)) {
+                    if (createInfo->usageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
                         continue;
                     }
 
