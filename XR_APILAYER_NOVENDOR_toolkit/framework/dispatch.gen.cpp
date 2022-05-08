@@ -823,9 +823,29 @@ namespace LAYER_NAMESPACE
 		{
 			throw std::runtime_error("Failed to resolve xrEnumerateViewConfigurationViews");
 		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrEnumerateSwapchainFormats", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrEnumerateSwapchainFormats))))
+		{
+			throw std::runtime_error("Failed to resolve xrEnumerateSwapchainFormats");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrCreateSwapchain", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateSwapchain))))
+		{
+			throw std::runtime_error("Failed to resolve xrCreateSwapchain");
+		}
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrEnumerateSwapchainImages", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrEnumerateSwapchainImages))))
 		{
 			throw std::runtime_error("Failed to resolve xrEnumerateSwapchainImages");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrAcquireSwapchainImage", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrAcquireSwapchainImage))))
+		{
+			throw std::runtime_error("Failed to resolve xrAcquireSwapchainImage");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrWaitSwapchainImage", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrWaitSwapchainImage))))
+		{
+			throw std::runtime_error("Failed to resolve xrWaitSwapchainImage");
+		}
+		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrReleaseSwapchainImage", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrReleaseSwapchainImage))))
+		{
+			throw std::runtime_error("Failed to resolve xrReleaseSwapchainImage");
 		}
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrStringToPath", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrStringToPath))))
 		{

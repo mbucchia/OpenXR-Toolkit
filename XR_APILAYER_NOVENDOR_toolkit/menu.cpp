@@ -163,21 +163,6 @@ namespace {
                 m_configManager->setValue("first_run", firstRun + 1);
             }
 
-            switch (m_configManager->getValue(SettingMenuEyeVisibility)) {
-            case 0:
-            default:
-                m_displayLeftEye = m_displayRightEye = true;
-                break;
-            case 1:
-                m_displayLeftEye = true;
-                m_displayRightEye = false;
-                break;
-            case 2:
-                m_displayLeftEye = false;
-                m_displayRightEye = true;
-                break;
-            }
-
             if (std::count(m_keyModifiers.cbegin(), m_keyModifiers.cend(), VK_CONTROL)) {
                 m_keyModifiersLabel += L"CTRL+";
             }
@@ -352,34 +337,15 @@ namespace {
             }
         }
 
-        void render(Eye eye, std::shared_ptr<ITexture> renderTarget) const override {
-            if ((eye == Eye::Left && !m_displayLeftEye) || (eye == Eye::Right && !m_displayRightEye)) {
-                return;
-            }
-
+        void render(std::shared_ptr<ITexture> renderTarget) const override {
             const auto& renderTargetInfo = renderTarget->getInfo();
 
-            float leftEyeOffset = 0.0f;
-            float rightEyeOffset = 2.f * (m_projCenter[1].x - m_projCenter[0].x) * renderTargetInfo.width +
-                                   m_configManager->getValue(SettingMenuEyeOffset);
-            // When doing the Pimax FOV hack, we swap left and right eyes.
-            if (m_supportFOVHack && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
-                std::swap(leftEyeOffset, rightEyeOffset);
-            }
-            const float eyeOffset = eye == Eye::Left ? leftEyeOffset : rightEyeOffset;
+            const float leftAlign = (renderTargetInfo.width - m_menuBackgroundWidth) / 2;
+            const float centerAlign = leftAlign + m_menuBackgroundWidth / 2;
+            const float rightAlign = leftAlign + m_menuBackgroundWidth;
+            const float topAlign = (renderTargetInfo.height - m_menuBackgroundHeight) / 2;
 
-            const float leftAnchor = m_projCenter[0].x * renderTargetInfo.width - m_menuBackgroundWidth / 2;
-            const float leftAlign = leftAnchor + eyeOffset;
-            const float centerAlign = leftAnchor + m_menuBackgroundWidth / 2 + eyeOffset;
-            const float rightAlign = leftAnchor + m_menuBackgroundWidth + eyeOffset;
-            const float topAlign = m_projCenter[0].y * renderTargetInfo.height - m_menuBackgroundHeight / 2;
-
-            const float fontSizes[to_integral(MenuFontSize::MaxValue)] = {
-                renderTargetInfo.height * 0.0075f,
-                renderTargetInfo.height * 0.015f,
-                renderTargetInfo.height * 0.02f,
-            };
-            const float fontSize = fontSizes[m_configManager->getValue(SettingMenuFontSize)];
+            const float fontSize = m_configManager->getValue(SettingMenuFontSize) * 0.75f; // pt -> px
 
             const double timeouts[to_integral(MenuTimeout::MaxValue)] = {3.0, 12.0, 60.0, INFINITY};
             const double timeout =
@@ -389,7 +355,8 @@ namespace {
             const auto duration = std::chrono::duration<double>(now - m_lastInput).count();
 
             // Apply menu fade.
-            const auto alpha = static_cast<uint32_t>(std::clamp(timeout - duration, 0.0, 1.0) * 255.0) << 24;
+            const auto alphaValue = static_cast<float>(std::clamp(timeout - duration, 0.0, 1.0));
+            const auto alpha = static_cast<uint32_t>(alphaValue * 255) << 24;
             const auto textColorOverlay = MakeRGB24(ColorOverlay) | alpha;
 
             // Leave upon timeout.
@@ -403,17 +370,17 @@ namespace {
                                                 m_keyModifiersLabel,
                                                 m_keyMenuLabel,
                                                 (int)(std::ceil(timeout - duration)));
-                const auto width = m_device->measureString(banner, TextStyle::Normal, fontSize);
+                const auto width = m_device->measureString(banner, TextStyle::Normal, fontSize * 1.5f);
                 m_device->drawString(
-                    banner, TextStyle::Normal, fontSize, leftAlign - width / 2, topAlign, textColorOverlay);
+                    banner, TextStyle::Normal, fontSize * 1.5f, leftAlign - width / 2, topAlign, textColorOverlay);
 
                 m_device->drawString(fmt::format("(this message will be displayed {} more time{})",
                                                  m_numSplashLeft,
                                                  m_numSplashLeft == 1 ? "" : "s"),
                                      TextStyle::Normal,
-                                     fontSize * 0.75f,
+                                     fontSize,
                                      leftAlign - width / 2,
-                                     topAlign + 1.05f * fontSize,
+                                     topAlign + 1.55f * fontSize,
                                      textColorOverlay);
 
             } else if (m_state == MenuState::Visible) {
@@ -421,7 +388,6 @@ namespace {
 
                 // Apply menu fade.
                 const auto textColorNormal = MakeRGB24(ColorNormal) | alpha;
-                const auto textColorDisable = MakeRGB24(ColorNormal) | (alpha / 2);
                 const auto textColorHighlightText = MakeRGB24(ColorHighlightText) | alpha;
                 const auto textColorSelected = MakeRGB24(ColorSelected) | alpha;
                 const auto textColorHint = MakeRGB24(ColorHint) | alpha;
@@ -430,8 +396,7 @@ namespace {
                 // Measurements must be done in 2 steps: first mesure the necessary spacing for alignment of the values,
                 // then measure the background area.
                 const bool measureEntriesTitleWidth = m_resetTextLayout;
-                const bool measureBackgroundWidth =
-                    !measureEntriesTitleWidth && m_resetBackgroundLayout && (eye == Eye::Left || !m_displayLeftEye);
+                const bool measureBackgroundWidth = !measureEntriesTitleWidth && m_resetBackgroundLayout;
 
                 // Draw the background.
                 if (!measureEntriesTitleWidth && !measureBackgroundWidth) {
@@ -439,17 +404,19 @@ namespace {
                                          leftAlign - BorderHorizontalSpacing,
                                          topAlign + m_menuHeaderHeight,
                                          leftAlign + m_menuBackgroundWidth + BorderHorizontalSpacing,
-                                         ColorHeader);
-                    m_device->clearColor(topAlign + m_menuHeaderHeight,
-                                         leftAlign - BorderHorizontalSpacing,
-                                         topAlign + m_menuHeaderHeight + HeaderLineWeight,
-                                         leftAlign + m_menuBackgroundWidth + BorderHorizontalSpacing,
-                                         ColorHeaderSeparator);
-                    m_device->clearColor(topAlign + m_menuHeaderHeight + HeaderLineWeight,
-                                         leftAlign - BorderHorizontalSpacing,
-                                         topAlign + m_menuBackgroundHeight + BorderVerticalSpacing,
-                                         leftAlign + m_menuBackgroundWidth + BorderHorizontalSpacing,
-                                         ColorBackground);
+                                         XrColor4f{ColorHeader.r, ColorHeader.g, ColorHeader.b, alphaValue});
+                    m_device->clearColor(
+                        topAlign + m_menuHeaderHeight,
+                        leftAlign - BorderHorizontalSpacing,
+                        topAlign + m_menuHeaderHeight + HeaderLineWeight,
+                        leftAlign + m_menuBackgroundWidth + BorderHorizontalSpacing,
+                        XrColor4f{ColorHeaderSeparator.r, ColorHeaderSeparator.g, ColorHeaderSeparator.b, alphaValue});
+                    m_device->clearColor(
+                        topAlign + m_menuHeaderHeight + HeaderLineWeight,
+                        leftAlign - BorderHorizontalSpacing,
+                        topAlign + m_menuBackgroundHeight + BorderVerticalSpacing,
+                        leftAlign + m_menuBackgroundWidth + BorderHorizontalSpacing,
+                        XrColor4f{ColorBackground.r, ColorBackground.g, ColorBackground.b, alphaValue});
                 }
 
                 // To avoid flickering, we do this after drawing the background.
@@ -537,11 +504,12 @@ namespace {
                             const auto width = m_device->measureString(label, style, fontSize);
 
                             if (j == value) {
-                                m_device->clearColor(top + SelectionVerticalSpacing,
-                                                     left - SelectionHorizontalSpacing,
-                                                     top + SelectionVerticalSpacing + 1.33f * fontSize - 1,
-                                                     left + width + SelectionHorizontalSpacing + 2,
-                                                     backgroundColor);
+                                m_device->clearColor(
+                                    top + SelectionVerticalSpacing,
+                                    left - SelectionHorizontalSpacing,
+                                    top + SelectionVerticalSpacing + 1.33f * fontSize - 1,
+                                    left + width + SelectionHorizontalSpacing + 2,
+                                    XrColor4f{backgroundColor.r, backgroundColor.g, backgroundColor.b, alphaValue});
                             }
 
                             m_device->drawString(label, style, fontSize, left, top, valueColor);
@@ -562,7 +530,7 @@ namespace {
                         break;
 
                     case MenuEntryType::ExitButton:
-                        if (duration > 1.0 && duration <= 60.0) {
+                        if (duration > 1.0 && duration <= 60.0 && isfinite(timeout)) {
                             left += m_device->drawString(fmt::format("({}s)", (int)(std::ceil(timeout - duration))),
                                                          TextStyle::Normal,
                                                          fontSize,
@@ -577,7 +545,7 @@ namespace {
                     top += 1.5f * fontSize;
 
                     if (measureBackgroundWidth) {
-                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - eyeOffset);
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign);
                     }
 
                     if (menuEntry.type == MenuEntryType::Tabs) {
@@ -614,7 +582,7 @@ namespace {
                     }
 
                     if (measureBackgroundWidth) {
-                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - eyeOffset);
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign);
                     }
                 }
 
@@ -648,7 +616,7 @@ namespace {
                     top += 0.8f * fontSize;
 
                     if (measureBackgroundWidth) {
-                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - eyeOffset);
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign);
                     }
                 }
                 m_menuBackgroundHeight = (top + fontSize * 0.2f) - topAlign;
@@ -663,7 +631,7 @@ namespace {
                 const auto screenOffset = NdcToScreen({m_configManager->getValue(SettingOverlayXOffset) / 100.f,
                                                        m_configManager->getValue(SettingOverlayYOffset) / 100.f});
 
-                const float overlayAlign = screenOffset.x * renderTargetInfo.width + eyeOffset;
+                const float overlayAlign = screenOffset.x * renderTargetInfo.width;
                 float top = screenOffset.y * renderTargetInfo.height;
 
                 // FPS display.
@@ -683,7 +651,7 @@ namespace {
                         // Display a reference to help aligning the overlay.
                         m_device->drawString("(overlay position)",
                                              TextStyle::Normal,
-                                             fontSizes[0], // Small
+                                             fontSize,
                                              overlayAlign - 300,
                                              top,
                                              textColorOverlayNoFade,
@@ -873,14 +841,9 @@ namespace {
             m_eyeGazeState = state;
         }
 
-        void setViewProjectionCenters(XrVector2f left, XrVector2f right) override {
-            left = utilities::NdcToScreen(left);
-            m_projCenter[0].x = left.x;
-            m_projCenter[0].y = left.y;
-
-            right = utilities::NdcToScreen(right);
-            m_projCenter[1].x = right.x;
-            m_projCenter[1].y = right.y;
+        bool isVisible() const {
+            return m_state != MenuState::NotVisible ||
+                   m_configManager->getEnumValue<OverlayType>(SettingOverlayType) != OverlayType::None;
         }
 
       private:
@@ -1464,9 +1427,9 @@ namespace {
                                      "Font size",
                                      MenuEntryType::Slider,
                                      SettingMenuFontSize,
-                                     0,
-                                     MenuEntry::LastVal<MenuFontSize>(),
-                                     MenuEntry::FmtEnum<MenuFontSize>});
+                                     8,
+                                     72,
+                                     [&](int value) { return fmt::format("{}pt", value); }});
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Menu timeout",
                                      MenuEntryType::Slider,
@@ -1475,12 +1438,12 @@ namespace {
                                      MenuEntry::LastVal<MenuTimeout>(),
                                      MenuEntry::FmtEnum<MenuTimeout>});
             m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                     "Menu eye offset",
+                                     "Menu distance",
                                      MenuEntryType::Slider,
-                                     SettingMenuEyeOffset,
-                                     -3000,
-                                     3000,
-                                     [](int value) { return fmt::format("{} pixels", value); }});
+                                     SettingMenuDistance,
+                                     30,
+                                     400,
+                                     [](int value) { return fmt::format("{:.2f}m", value / 100.f); }});
             m_menuEntries.back().acceleration = 10;
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Overlay horizontal offset",
@@ -1638,9 +1601,6 @@ namespace {
         GesturesState m_gesturesState{};
         EyeGazeState m_eyeGazeState{};
 
-        bool m_displayLeftEye{true};
-        bool m_displayRightEye{true};
-
         std::vector<int> m_keyModifiers;
         std::wstring m_keyModifiersLabel;
         int m_keyLeft;
@@ -1651,8 +1611,6 @@ namespace {
         std::wstring m_keyMenuLabel;
         int m_keyUp;
         std::wstring m_keyUpLabel;
-
-        XrVector2f m_projCenter[ViewCount]{{0.5f, 0.5f}, {0.5f, 0.5f}};
 
         int m_numSplashLeft;
         std::vector<MenuEntry> m_menuEntries;

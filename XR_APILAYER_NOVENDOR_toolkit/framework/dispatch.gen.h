@@ -175,6 +175,14 @@ namespace LAYER_NAMESPACE
 		PFN_xrEnumerateViewConfigurationViews m_xrEnumerateViewConfigurationViews{ nullptr };
 
 	public:
+		virtual XrResult xrEnumerateSwapchainFormats(XrSession session, uint32_t formatCapacityInput, uint32_t* formatCountOutput, int64_t* formats)
+		{
+			return m_xrEnumerateSwapchainFormats(session, formatCapacityInput, formatCountOutput, formats);
+		}
+	private:
+		PFN_xrEnumerateSwapchainFormats m_xrEnumerateSwapchainFormats{ nullptr };
+
+	public:
 		virtual XrResult xrCreateSwapchain(XrSession session, const XrSwapchainCreateInfo* createInfo, XrSwapchain* swapchain)
 		{
 			return m_xrCreateSwapchain(session, createInfo, swapchain);
@@ -205,6 +213,14 @@ namespace LAYER_NAMESPACE
 		}
 	private:
 		PFN_xrAcquireSwapchainImage m_xrAcquireSwapchainImage{ nullptr };
+
+	public:
+		virtual XrResult xrWaitSwapchainImage(XrSwapchain swapchain, const XrSwapchainImageWaitInfo* waitInfo)
+		{
+			return m_xrWaitSwapchainImage(swapchain, waitInfo);
+		}
+	private:
+		PFN_xrWaitSwapchainImage m_xrWaitSwapchainImage{ nullptr };
 
 	public:
 		virtual XrResult xrReleaseSwapchainImage(XrSwapchain swapchain, const XrSwapchainImageReleaseInfo* releaseInfo)
