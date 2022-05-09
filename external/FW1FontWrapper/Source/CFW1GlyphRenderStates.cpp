@@ -611,7 +611,7 @@ HRESULT CFW1GlyphRenderStates::createPixelShaders() {
 	"	if(a == 0.0f)\r\n"
 	"		discard;\r\n"
 	"	\r\n"
-	"	return (a * Input.GlyphColor.a) * float4(Input.GlyphColor.rgb, 1.0f);\r\n"
+	"	return float4(a * Input.GlyphColor.rgb, Input.GlyphColor.a);\r\n"
 	"}\r\n"
 	"";
 	
@@ -635,7 +635,7 @@ HRESULT CFW1GlyphRenderStates::createPixelShaders() {
 	"	if(a == 0.0f)\r\n"
 	"		discard;\r\n"
 	"	\r\n"
-	"	return (a * Input.GlyphColor.a) * float4(Input.GlyphColor.rgb, 1.0f);\r\n"
+	"	return float4(a * Input.GlyphColor.rgb, Input.GlyphColor.a);\r\n"
 	"}\r\n"
 	"";
 	
