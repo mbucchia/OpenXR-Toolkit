@@ -52,6 +52,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrPollEvent_Error", TLArg(exc.what(), "Error"));
+			Log("xrPollEvent: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -73,6 +74,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrGetSystem_Error", TLArg(exc.what(), "Error"));
+			Log("xrGetSystem: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -94,6 +96,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrCreateSession_Error", TLArg(exc.what(), "Error"));
+			Log("xrCreateSession: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -115,6 +118,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrDestroySession_Error", TLArg(exc.what(), "Error"));
+			Log("xrDestroySession: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -136,6 +140,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrCreateActionSpace_Error", TLArg(exc.what(), "Error"));
+			Log("xrCreateActionSpace: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -157,6 +162,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrLocateSpace_Error", TLArg(exc.what(), "Error"));
+			Log("xrLocateSpace: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -178,6 +184,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrDestroySpace_Error", TLArg(exc.what(), "Error"));
+			Log("xrDestroySpace: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -199,6 +206,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrEnumerateViewConfigurationViews_Error", TLArg(exc.what(), "Error"));
+			Log("xrEnumerateViewConfigurationViews: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -220,6 +228,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrCreateSwapchain_Error", TLArg(exc.what(), "Error"));
+			Log("xrCreateSwapchain: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -241,6 +250,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrDestroySwapchain_Error", TLArg(exc.what(), "Error"));
+			Log("xrDestroySwapchain: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -262,6 +272,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrEnumerateSwapchainImages_Error", TLArg(exc.what(), "Error"));
+			Log("xrEnumerateSwapchainImages: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -283,6 +294,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrAcquireSwapchainImage_Error", TLArg(exc.what(), "Error"));
+			Log("xrAcquireSwapchainImage: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -304,6 +316,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrReleaseSwapchainImage_Error", TLArg(exc.what(), "Error"));
+			Log("xrReleaseSwapchainImage: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -325,6 +338,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrWaitFrame_Error", TLArg(exc.what(), "Error"));
+			Log("xrWaitFrame: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -346,6 +360,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrBeginFrame_Error", TLArg(exc.what(), "Error"));
+			Log("xrBeginFrame: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -367,6 +382,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrEndFrame_Error", TLArg(exc.what(), "Error"));
+			Log("xrEndFrame: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -388,6 +404,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrLocateViews_Error", TLArg(exc.what(), "Error"));
+			Log("xrLocateViews: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -409,6 +426,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrCreateAction_Error", TLArg(exc.what(), "Error"));
+			Log("xrCreateAction: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -430,6 +448,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrDestroyAction_Error", TLArg(exc.what(), "Error"));
+			Log("xrDestroyAction: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -451,6 +470,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrSuggestInteractionProfileBindings_Error", TLArg(exc.what(), "Error"));
+			Log("xrSuggestInteractionProfileBindings: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -472,6 +492,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrAttachSessionActionSets_Error", TLArg(exc.what(), "Error"));
+			Log("xrAttachSessionActionSets: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -493,6 +514,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrGetCurrentInteractionProfile_Error", TLArg(exc.what(), "Error"));
+			Log("xrGetCurrentInteractionProfile: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -514,6 +536,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrGetActionStateBoolean_Error", TLArg(exc.what(), "Error"));
+			Log("xrGetActionStateBoolean: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -535,6 +558,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrGetActionStateFloat_Error", TLArg(exc.what(), "Error"));
+			Log("xrGetActionStateFloat: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -556,6 +580,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrGetActionStatePose_Error", TLArg(exc.what(), "Error"));
+			Log("xrGetActionStatePose: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -577,6 +602,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrSyncActions_Error", TLArg(exc.what(), "Error"));
+			Log("xrSyncActions: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -598,6 +624,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrApplyHapticFeedback_Error", TLArg(exc.what(), "Error"));
+			Log("xrApplyHapticFeedback: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
@@ -619,6 +646,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{
 			TraceLoggingWriteTagged(local, "xrStopHapticFeedback_Error", TLArg(exc.what(), "Error"));
+			Log("xrStopHapticFeedback: %s\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
