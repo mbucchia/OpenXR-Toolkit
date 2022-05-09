@@ -174,6 +174,7 @@ namespace LAYER_NAMESPACE
 		catch (std::exception& exc)
 		{{
 			TraceLoggingWriteTagged(local, "{cur_cmd.name}_Error", TLArg(exc.what(), "Error"));
+			Log("{cur_cmd.name}: %s\\n", exc.what());
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}}
 
@@ -196,7 +197,7 @@ namespace LAYER_NAMESPACE
 		catch (std::runtime_error& exc)
 		{{
 			TraceLoggingWriteTagged(local, "{cur_cmd.name}_Error", TLArg(exc.what(), "Error"));
-			Log("%s\\n", exc.what());
+			Log("{cur_cmd.name}: %s\\n", exc.what());
 		}}
 
 		TraceLoggingWriteStop(local, "{cur_cmd.name}");
