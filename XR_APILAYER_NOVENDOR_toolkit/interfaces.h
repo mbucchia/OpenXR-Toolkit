@@ -119,7 +119,6 @@ namespace toolkit {
         const std::string SettingOverlayType = "overlay";
         const std::string SettingOverlayXOffset = "overlay_x_offset";
         const std::string SettingOverlayYOffset = "overlay_y_offset";
-        const std::string SettingMenuFontSize = "font_size2";
         const std::string SettingMenuTimeout = "menu_timeout";
         const std::string SettingMenuExpert = "expert_menu";
         const std::string SettingScalingType = "scaling_type";
@@ -181,7 +180,6 @@ namespace toolkit {
         enum class OffOnType { Off = 0, On, MaxValue };
         enum class NoYesType { No = 0, Yes, MaxValue };
         enum class OverlayType { None = 0, FPS, Advanced, Developer, MaxValue };
-        enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
         enum class MenuTimeout { Small = 0, Medium, Large, None, MaxValue };
         enum class ScalingType { None = 0, NIS, FSR, MaxValue };
         enum class MipMapBias { Off = 0, Anisotropic, All, MaxValue };
