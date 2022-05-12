@@ -162,6 +162,7 @@ namespace {
             m_configManager->setDefault(config::SettingFOVRightLeft, 100);
             m_configManager->setDefault(config::SettingFOVRightRight, 100);
             m_configManager->setDefault(config::SettingPimaxFOVHack, 0);
+            m_configManager->setDefault(config::SettingZoom, 10);
             m_configManager->setDefault(config::SettingPredictionDampen, 100);
             m_configManager->setDefault(config::SettingResolutionOverride, 0);
             m_configManager->setEnumDefault(config::SettingMotionReprojection, config::MotionReprojection::Default);
@@ -1335,8 +1336,8 @@ namespace {
                 assert(*viewCountOutput == utilities::ViewCount);
                 using namespace DirectX;
 
-                m_posesForFrame[0] = views[0];
-                m_posesForFrame[1] = views[1];
+                m_posesForFrame[0].pose = views[0].pose;
+                m_posesForFrame[1].pose = views[1].pose;
 
                 // Override the canting angle if requested.
                 const int cantOverride = m_configManager->getValue("canting");
@@ -1439,6 +1440,16 @@ namespace {
 
                 StoreXrFov(&m_stats.fov[0], ConvertToDegrees(views[0].fov));
                 StoreXrFov(&m_stats.fov[1], ConvertToDegrees(views[1].fov));
+
+                m_posesForFrame[0].fov = views[0].fov;
+                m_posesForFrame[1].fov = views[1].fov;
+
+                // Apply zoom if requested.
+                const auto zoom = m_configManager->getValue(config::SettingZoom);
+                if (zoom != 10) {
+                    StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * XMVectorReplicate(1.f / (zoom * 0.1f)));
+                    StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * XMVectorReplicate(1.f / (zoom * 0.1f)));
+                }
 
                 // When doing the Pimax FOV hack, we swap left and right eyes.
                 if (m_supportFOVHack && m_configManager->hasChanged(config::SettingPimaxFOVHack)) {
@@ -1994,6 +2005,9 @@ namespace {
                         if (cantOverride != 0) {
                             correctedProjectionViews[eye].pose = m_posesForFrame[eye].pose;
                         }
+
+                        // Patch the FOV.
+                        correctedProjectionViews[eye].fov = m_posesForFrame[eye].fov;
 
                         viewsForOverlay[eye].Pose = correctedProjectionViews[eye].pose;
                         viewsForOverlay[eye].Fov = correctedProjectionViews[eye].fov;
