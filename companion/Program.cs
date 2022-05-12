@@ -256,10 +256,10 @@ namespace companion
 
             return value switch
             {
-                "unlocked" => 0,
-                "1/2" => 1,
-                "1/3" => 2,
-                "1/4" => 3,
+                "unlocked" => 1,
+                "1/2" => 2,
+                "1/3" => 3,
+                "1/4" => 4,
                 _ => throw new Exception("Unsupported value: " + value),
             };
         }
@@ -268,10 +268,10 @@ namespace companion
         {
             return value switch
             {
-                0 => "unlocked",
-                1 => "1/2",
-                2 => "1/3",
-                3 => "1/4",
+                1 => "unlocked",
+                2 => "1/2",
+                3 => "1/3",
+                4 => "1/4",
                 _ => "invalid",
             };
         }
@@ -285,7 +285,7 @@ namespace companion
 
             // When toggling, we save/restore the correct value.
             int current = (int)key.GetValue(arg.Regkey, arg.Default);
-            int restore = (int)key.GetValue(arg.Regkey + "_bak", 1);
+            int restore = (int)key.GetValue(arg.Regkey + "_bak", current ^ 1);
             key.SetValue(arg.Regkey + "_bak", current);
             return restore;
         }
