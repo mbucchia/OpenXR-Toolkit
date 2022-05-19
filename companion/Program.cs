@@ -285,7 +285,7 @@ namespace companion
 
             // When toggling, we save/restore the correct value.
             int current = (int)key.GetValue(arg.Regkey, arg.Default);
-            int restore = (int)key.GetValue(arg.Regkey + "_bak", current ^ 1);
+            int restore = (int)key.GetValue(arg.Regkey + "_bak", current == 0 ? 1 : 0);
             key.SetValue(arg.Regkey + "_bak", current);
             return restore;
         }
