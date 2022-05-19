@@ -1722,6 +1722,9 @@ namespace {
                 m_textInteropDevice->AcquireWrappedResources(resources, ARRAYSIZE(resources));
             }
 
+            // Serialize between the parent queue and interop context.
+            flushContext(false, false);
+
             // Setup the interop context for rendering.
             m_textDevice->setRenderTargets(1, &m_currentTextRenderTarget, &m_currentDrawRenderTargetSlice);
             m_textDevice->beginText();

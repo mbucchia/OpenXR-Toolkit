@@ -2135,14 +2135,7 @@ namespace {
                 }
 
                 // Render the menu.
-                // Ideally, we would not have to split this from the branch above, however with D3D12 we are forced
-                // to flush the context, and we'd rather do it only once.
-                // We omit the depth buffer for menu (2D) content.
                 if (m_menuHandler && m_menuHandler->isVisible()) {
-                    if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
-                        m_graphicsDevice->flushContext();
-                    }
-
                     uint32_t menuImageIndex;
                     {
                         XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
