@@ -56,11 +56,15 @@ namespace {
             std::string baseKey = RegPrefix + "\\" + appName;
             m_baseKey = std::wstring(baseKey.begin(), baseKey.end());
 
-            m_watcher = wil::make_registry_watcher(
-                HKEY_CURRENT_USER, m_baseKey.c_str(), true, [&](wil::RegistryChangeKind changeType) {
-                    // TODO: Every call to writeValue() will also cause us to invoke this (unnecessarily).
-                    m_needRefresh = true;
-                });
+            try {
+                m_watcher = wil::make_registry_watcher(
+                    HKEY_CURRENT_USER, m_baseKey.c_str(), true, [&](wil::RegistryChangeKind changeType) {
+                        // TODO: Every call to writeValue() will also cause us to invoke this (unnecessarily).
+                        m_needRefresh = true;
+                    });
+            } catch (std::exception& exc) {
+                // Ignore errors that can happen with UWP applications not able to write to the registry.
+            }
         }
 
         ~ConfigManager() override {
