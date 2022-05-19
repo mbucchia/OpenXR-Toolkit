@@ -92,6 +92,9 @@ namespace {
                     if (entry.writeCountdown == 0) {
                         writeValue(name, entry);
 
+                        // Delete any backup created by the companion tool. This is to avoid bad statefulness.
+                        deleteValue(name + "_bak");
+
                         // Don't refresh this value, since we just wrote it!
                         m_ignoreRefresh.insert(name);
                     }
