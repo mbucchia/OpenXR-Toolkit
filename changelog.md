@@ -29,16 +29,17 @@ nav_order: 6
 - Add an option to disable timeout in the menu.
 - Add detailed traces capture from the Companion app (for troubleshooting).
 - Save screenshot for both eyes.
-- Hotfix #1: Add command-line tool to modify settings on-the-fly
-- Hotfix #1: Add zoom feature
-- Hotfix #1: Add option to select which eye to take a screenshot of
-- Hotfix #1: Make the overlay position customizable
-- Hotfix #1: Fix the menu display on Pimax
-- Hotfix #1: Fix eye tracking detection on G2 Omnicept
-- Hotfix #1: Fix various crashes with OpenComposite (DCS, ACC, IL2)
-- Hotfix #1: Fix issue with OpenComposite and Oculus devices
-- Hotfix #1: Fix issue with OpenComposite and missing menu/loading screens
-- Hotfix #1: Fix issue with OpenComposite and upside-down menu
+- Hotfix #1: Add command-line tool to modify settings on-the-fly.
+- Hotfix #1: Add zoom feature.
+- Hotfix #1: Add option to select which eye to take a screenshot of.
+- Hotfix #1: Make the overlay position customizable.
+- Hotfix #1: Fix the menu display on Pimax.
+- Hotfix #1: Fix eye tracking detection on G2 Omnicept.
+- Hotfix #1: Fix various crashes with OpenComposite (DCS, ACC, IL2).
+- Hotfix #1: Fix issue with OpenComposite and Oculus devices.
+- Hotfix #1: Fix issue with OpenComposite and missing menu/loading screens.
+- Hotfix #1: Fix issue with OpenComposite and upside-down menu.
+- Hotfix #2: Fix a crash with OpenXR Tools for Windows Mixed Reality.
 
 ## Changes in Beta #3 (Mar 2022 / v1.0.1 - 1.0.5)
 
