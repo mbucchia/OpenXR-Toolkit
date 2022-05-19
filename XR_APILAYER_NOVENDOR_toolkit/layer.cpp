@@ -346,7 +346,9 @@ namespace {
             // We cleanup after ourselves (again) to avoid leaving state registry entries.
             utilities::ClearWindowsMixedRealityReprojection();
 
-            m_configManager->setActiveSession("");
+            if (m_configManager) {
+                m_configManager->setActiveSession("");
+            }
 
             graphics::UnhookForD3D11DebugLayer();
         }
@@ -831,7 +833,9 @@ namespace {
                 // We cleanup after ourselves as soon as possible to avoid leaving state registry entries.
                 utilities::ClearWindowsMixedRealityReprojection();
 
-                m_configManager->setActiveSession("");
+                if (m_configManager) {
+                    m_configManager->setActiveSession("");
+                }
 
                 // Wait for any pending operation to complete.
                 if (m_graphicsDevice) {
