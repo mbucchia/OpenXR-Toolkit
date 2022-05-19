@@ -305,8 +305,8 @@ namespace {
                     // When switching tab, changing the font size, switching expert menu or displaying the restart
                     // banner, force re-alignment/re-size.
                     if (wasRestartNeeded != m_needRestart ||
-                        ((menuEntry.type == MenuEntryType::Tabs || menuEntry.configName == SettingMenuExpert ||
-                          menuEntry.configName == SettingPostProcess) &&
+                        ((menuEntry.type == MenuEntryType::Tabs || menuEntry.configName == SettingMenuFontSize ||
+                          menuEntry.configName == SettingMenuExpert || menuEntry.configName == SettingPostProcess) &&
                          previousValue != peekEntryValue(menuEntry))) {
                         m_resetTextLayout = m_resetBackgroundLayout = true;
                     }
@@ -345,7 +345,7 @@ namespace {
             const float rightAlign = leftAlign + m_menuBackgroundWidth;
             const float topAlign = (renderTargetInfo.height - m_menuBackgroundHeight) / 2;
 
-            static constexpr float fontSize = 44 * 0.75f; // pt -> px
+            const float fontSize = m_configManager->getValue(SettingMenuFontSize) * 0.75f; // pt -> px
 
             const double timeouts[to_integral(MenuTimeout::MaxValue)] = {3.0, 12.0, 60.0, INFINITY};
             const double timeout =
@@ -1430,6 +1430,13 @@ namespace {
                                      MenuEntry::LastVal<NoYesType>(),
                                      MenuEntry::FmtEnum<NoYesType>});
             m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Font size",
+                                     MenuEntryType::Slider,
+                                     SettingMenuFontSize,
+                                     8,
+                                     72,
+                                     [&](int value) { return fmt::format("{}pt", value); }});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Menu timeout",
                                      MenuEntryType::Slider,
                                      SettingMenuTimeout,
@@ -1437,11 +1444,11 @@ namespace {
                                      MenuEntry::LastVal<MenuTimeout>(),
                                      MenuEntry::FmtEnum<MenuTimeout>});
             m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                     "Menu distance / size",
+                                     "Menu distance",
                                      MenuEntryType::Slider,
                                      SettingMenuDistance,
                                      30,
-                                     200,
+                                     400,
                                      [](int value) { return fmt::format("{:.2f}m", value / 100.f); }});
             m_menuEntries.back().acceleration = 10;
             m_menuEntries.push_back({MenuIndent::OptionIndent,

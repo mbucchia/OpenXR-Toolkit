@@ -74,6 +74,7 @@ namespace {
             m_configManager->setDefault(config::SettingScreenshotKey, VK_F12);
             m_configManager->setDefault(config::SettingMenuEyeVisibility, 0); // Both
             m_configManager->setDefault(config::SettingMenuDistance, 100);    // 1m
+            m_configManager->setDefault(config::SettingMenuFontSize, 44);     // pt
             m_configManager->setEnumDefault(config::SettingMenuTimeout, config::MenuTimeout::Medium);
             m_configManager->setDefault(config::SettingMenuExpert, m_configManager->getValue(config::SettingDeveloper));
             m_configManager->setEnumDefault(config::SettingOverlayType, config::OverlayType::None);
