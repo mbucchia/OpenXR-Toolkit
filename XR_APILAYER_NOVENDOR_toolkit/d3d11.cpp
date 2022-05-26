@@ -514,7 +514,8 @@ namespace {
         }
 
         void copyTo(std::shared_ptr<ITexture> destination) const override {
-            m_device->getContextAs<D3D11>()->CopyResource(destination->getAs<D3D11>(), m_texture.Get());
+            m_device->getContextAs<D3D11>()->CopySubresourceRegion(
+                destination->getAs<D3D11>(), 0, 0, 0, 0, m_texture.Get(), 0, nullptr);
         }
 
         void saveToFile(const std::filesystem::path& path) const override {

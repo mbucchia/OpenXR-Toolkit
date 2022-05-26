@@ -463,7 +463,10 @@ namespace {
         }
 
         void copyTo(std::shared_ptr<ITexture> destination) const override {
-            m_device->getContextAs<D3D12>()->CopyResource(destination->getAs<D3D12>(), m_texture.Get());
+            D3D12_TEXTURE_COPY_LOCATION destLoc{destination->getAs<D3D12>(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
+            D3D12_TEXTURE_COPY_LOCATION srcLoc{m_texture.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
+            m_device->getContextAs<D3D12>()->CopyTextureRegion(&destLoc, 0, 0, 0, &srcLoc, nullptr);
+
         }
 
         void saveToFile(const std::filesystem::path& path) const override {
