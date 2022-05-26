@@ -2139,7 +2139,13 @@ namespace {
                 }
 
                 // Render the menu.
-                if (m_menuHandler && m_menuHandler->isVisible()) {
+                if (m_menuHandler && (m_menuHandler->isVisible() || m_menuLingering)) {
+                    // Workaround: there is a bug in the WMR runtime that causes a past quad layer content to linger on
+                    // the next projection layer. We make sure to submit a completely blank quad layer for 3 frames
+                    // after its disappearance. The number 3 comes from the number of depth buffers cached inside the
+                    // precompositor of the WMR runtime.
+                    m_menuLingering = m_menuHandler->isVisible() ? 3 : m_menuLingering - 1;
+
                     uint32_t menuImageIndex;
                     {
                         XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
@@ -2317,6 +2323,7 @@ namespace {
         XrSwapchain m_menuSwapchain{XR_NULL_HANDLE};
         std::vector<std::shared_ptr<graphics::ITexture>> m_menuSwapchainImages;
         std::shared_ptr<menu::IMenuHandler> m_menuHandler;
+        int m_menuLingering{0};
         bool m_requestScreenShotKeyState{false};
 
         struct {
