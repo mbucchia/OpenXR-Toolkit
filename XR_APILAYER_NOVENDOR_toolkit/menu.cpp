@@ -400,23 +400,24 @@ namespace {
 
                 // Draw the background.
                 if (!measureEntriesTitleWidth && !measureBackgroundWidth) {
+                    const auto bgAlpha = std::min(m_configManager->getValue(SettingMenuOpacity) / 100.f, alphaValue);
+
                     m_device->clearColor(topAlign - BorderVerticalSpacing,
                                          leftAlign - BorderHorizontalSpacing,
                                          topAlign + m_menuHeaderHeight,
                                          leftAlign + m_menuBackgroundWidth + BorderHorizontalSpacing,
-                                         XrColor4f{ColorHeader.r, ColorHeader.g, ColorHeader.b, alphaValue});
+                                         XrColor4f{ColorHeader.r, ColorHeader.g, ColorHeader.b, bgAlpha});
                     m_device->clearColor(
                         topAlign + m_menuHeaderHeight,
                         leftAlign - BorderHorizontalSpacing,
                         topAlign + m_menuHeaderHeight + HeaderLineWeight,
                         leftAlign + m_menuBackgroundWidth + BorderHorizontalSpacing,
-                        XrColor4f{ColorHeaderSeparator.r, ColorHeaderSeparator.g, ColorHeaderSeparator.b, alphaValue});
-                    m_device->clearColor(
-                        topAlign + m_menuHeaderHeight + HeaderLineWeight,
-                        leftAlign - BorderHorizontalSpacing,
-                        topAlign + m_menuBackgroundHeight + BorderVerticalSpacing,
-                        leftAlign + m_menuBackgroundWidth + BorderHorizontalSpacing,
-                        XrColor4f{ColorBackground.r, ColorBackground.g, ColorBackground.b, alphaValue});
+                        XrColor4f{ColorHeaderSeparator.r, ColorHeaderSeparator.g, ColorHeaderSeparator.b, bgAlpha});
+                    m_device->clearColor(topAlign + m_menuHeaderHeight + HeaderLineWeight,
+                                         leftAlign - BorderHorizontalSpacing,
+                                         topAlign + m_menuBackgroundHeight + BorderVerticalSpacing,
+                                         leftAlign + m_menuBackgroundWidth + BorderHorizontalSpacing,
+                                         XrColor4f{ColorBackground.r, ColorBackground.g, ColorBackground.b, bgAlpha});
                 }
 
                 // To avoid flickering, we do this after drawing the background.
@@ -1450,6 +1451,13 @@ namespace {
                                      30,
                                      400,
                                      [](int value) { return fmt::format("{:.2f}m", value / 100.f); }});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Menu opacity",
+                                     MenuEntryType::Slider,
+                                     SettingMenuOpacity,
+                                     0,
+                                     100,
+                                     MenuEntry::FmtPercent});
             m_menuEntries.back().acceleration = 10;
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Overlay horizontal offset",
