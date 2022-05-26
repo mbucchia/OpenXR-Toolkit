@@ -62,7 +62,7 @@ namespace {
                         // TODO: Every call to writeValue() will also cause us to invoke this (unnecessarily).
                         m_needRefresh = true;
                     });
-            } catch (std::exception& exc) {
+            } catch (std::exception&) {
                 // Ignore errors that can happen with UWP applications not able to write to the registry.
             }
         }
