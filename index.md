@@ -16,9 +16,9 @@ DISCLAIMER: This software is distributed as-is, without any warranties or condit
 
 ## Downloads
 
-Current version: **1.1.2**
+Current version: **1.1.3**
 
-[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.1.2/OpenXR-Toolkit-1.1.2.msi){: .btn .btn-blue }
+[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.1.3/OpenXR-Toolkit-1.1.3.msi){: .btn .btn-blue }
 
 ...or expore [all versions](https://github.com/mbucchia/OpenXR-Toolkit/releases).
 
@@ -42,11 +42,11 @@ The following OpenXR ToolKit features have additional restrictions:
 + This software was only extensively tested with Microsoft Flight Simulator 2020.
   + It is also expected this software should work with most Steam games if they are using OpenXR (instead of Steam's OpenVR).
   + It can be used with certain games through [OpenComposite-ACC](oc-acc).
++ If using Windows Mixed Reality, please disable Hardware Accelerated Graphics Scheduler (HAGS).
 + If using with an HTC Vive Pro 2 or Cosmos, please select SteamVR as your OpenXR runtime.
 + Fixed Foveated Rendering in Microsoft Flight Simulator only works when TAA is enabled with a render scale of at least 51%.
 + Fixed Foveated Rendering in Microsoft Flight Simulator is incorrectly applied in the main menu, resulting in blurry menu windows.
-+ The menu does not display correctly on Pimax headsets.
-+ The OpenXR Toolkit is incompatble with ReShade.
++ The OpenXR Toolkit is incompatible with ReShade.
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
 For future plans, see the [Roadmap](roadmap).
