@@ -40,6 +40,9 @@ nav_order: 6
 - Hotfix #1: Fix issue with OpenComposite and missing menu/loading screens.
 - Hotfix #1: Fix issue with OpenComposite and upside-down menu.
 - Hotfix #2: Fix a crash with OpenXR Tools for Windows Mixed Reality.
+- Hotfix #3: Fix visual issues introduced in 1.1.2 for WMR users.
+- Hotfix #3: Fix NIS/FSR support with OpenComposite.
+- Hotfix #3: Add an option to change opacity of the menu.
 
 ## Changes in Beta #3 (Mar 2022 / v1.0.1 - 1.0.5)
 
