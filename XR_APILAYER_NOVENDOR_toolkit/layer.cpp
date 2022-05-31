@@ -937,8 +937,8 @@ namespace {
 
                     if (m_imageProcessors[ImgProc::Scale]) {
                         // When upscaling, be sure to request the full resolution with the runtime.
-                        chainCreateInfo.width = m_displayWidth;
-                        chainCreateInfo.height = m_displayHeight;
+                        chainCreateInfo.width = std::max(m_displayWidth, createInfo->width);
+                        chainCreateInfo.height = std::max(m_displayHeight, createInfo->height);
 
                         // The upscaler requires to use as an unordered access view.
                         chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
@@ -2035,8 +2035,10 @@ namespace {
                         depthForOverlay[eye] = depthBuffer;
 
                         // Patch the resolution.
-                        correctedProjectionViews[eye].subImage.imageRect.extent.width = m_displayWidth;
-                        correctedProjectionViews[eye].subImage.imageRect.extent.height = m_displayHeight;
+                        if (m_imageProcessors[ImgProc::Scale]) {
+                            correctedProjectionViews[eye].subImage.imageRect.extent.width = m_displayWidth;
+                            correctedProjectionViews[eye].subImage.imageRect.extent.height = m_displayHeight;
+                        }
 
                         // Patch the eye poses.
                         const int cantOverride = m_configManager->getValue("canting");
@@ -2131,8 +2133,8 @@ namespace {
                             if (drawEyeGaze) {
                                 XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
                                 auto pos = utilities::NdcToScreen(m_eyeGaze[eye]);
-                                pos.x *= m_displayWidth;
-                                pos.y *= m_displayHeight;
+                                pos.x *= textureForOverlay[eye]->getInfo().width;
+                                pos.y *= textureForOverlay[eye]->getInfo().height;
                                 m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
                             }
                         }
