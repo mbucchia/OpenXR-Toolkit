@@ -23,13 +23,11 @@ nav_order: 5
 | Texture LOD biasing                  | [Stable](){: .btn .btn-green }          | Released        |
 | Per-application disable setting      | [Stable](){: .btn .btn-green }          | Released        |
 | Per-application resolution override  | [Stable](){: .btn .btn-green }          | Released        |
-| Field of view override               | [Experimental](){: .btn .btn-purple}    | Released        |
+| Field of view override               | [Stable](){: .btn .btn-green}           | Released        |
 | Pimax culling workaround             | [Experimental](){: .btn .btn-purple}    | Released        |
 | Improved desktop companion app       | [Implementation](){: .btn .btn-blue }   |                 |
 | Field of view override v2 / zoom     | [Investigation](){: .btn .btn-blue }    |                 |
-| DLSS                                 | [Blocked](){: .btn .btn-primary }       |                 |
-| "Neck Saver"                         | [Not started](){: .btn .btn-outline }   |                 |
-| Motion compensation                  | [Not started](){: .btn .btn-outline }   |                 |
+| Motion compensation                  | [Investigation](){: .btn .btn-blue }    |                 |
 | Quality of life improvements         | [Implementation](){: .btn .btn-blue }   | Periodic        |
 
 Want to see something up there that is not already listed? Join our [Discord server](https://discord.gg/WXFshwMnke) and discuss it on the #features channel.
