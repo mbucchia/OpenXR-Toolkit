@@ -1485,6 +1485,7 @@ namespace {
                 }
                 if (m_supportFOVHack && m_configManager->getValue(config::SettingPimaxFOVHack)) {
                     std::swap(views[0], views[1]);
+                    std::swap(m_posesForFrame[0], m_posesForFrame[1]);
                 }
             }
 
