@@ -43,6 +43,7 @@ nav_order: 6
 - Hotfix #3: Fix visual issues introduced in 1.1.2 for WMR users.
 - Hotfix #3: Fix NIS/FSR support with OpenComposite.
 - Hotfix #3: Add an option to change opacity of the menu.
+- Hotfix #4: Fix Pimax WFOV hack issue introduced in 1.1.1.
 
 ## Changes in Beta #3 (Mar 2022 / v1.0.1 - 1.0.5)
 
