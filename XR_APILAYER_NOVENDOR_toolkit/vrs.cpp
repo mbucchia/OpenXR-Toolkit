@@ -232,6 +232,7 @@ namespace {
 
             TraceLoggingWrite(
                 g_traceProvider, "EnableVariableRateShading", TLArg((int)eyeHint.value_or(Eye::Both), "Eye"));
+
             if (auto context11 = context->getAs<D3D11>()) {
                 // TODO: for now redraw all the views until we implement better logic
                 // const auto updateSingleRTV = eyeHint.has_value() && info.arraySize == 1;
@@ -256,6 +257,7 @@ namespace {
 
                 doCapture(context /* post */);
                 doCapture(context, renderTarget, eyeHint);
+
             } else if (auto context12 = context->getAs<D3D12>()) {
                 ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
                 if (FAILED(context12->QueryInterface(set(vrsCommandList)))) {
@@ -303,6 +305,18 @@ namespace {
 
         uint8_t getMaxRate() const override {
             return static_cast<uint8_t>(m_tileRateMax);
+        }
+
+        VariableRateShaderState getShaderState(Eye eye) const override {
+            static_assert(ARRAYSIZE(VariableRateShaderState::rings) == ARRAYSIZE(m_Rings));
+
+            VariableRateShaderState state;
+            state.gazeXY = m_gazeLocation[to_integral(eye)];
+            for (size_t i = 0; i < std::size(m_Rings); i++) {
+                state.rings[i] = m_Rings[i];
+                state.rates[i] = shadingRateToSettingsRate(m_Rates[to_integral(eye)][i]);
+            }
+            return state;
         }
 
         void startCapture() override {
@@ -446,7 +460,7 @@ namespace {
                 for (size_t i = 0; i < 3; i++) {
                     const auto rate = i + (quality != VariableShadingRateQuality::Quality ? i : 0);
                     m_Rates[2][i] = m_Rates[1][i] = m_Rates[0][i] = settingsRateToShadingRate(rate);
-                    m_Rates[i][3] = m_shadingRates[SHADING_RATE_CULL];
+                    m_Rates[i][3] = SHADING_RATE_CULL;
                 }
 
             } else if (mode == VariableShadingRateType::Custom) {
@@ -463,16 +477,16 @@ namespace {
                     m_Rates[eye][0] = settingsRateToShadingRate(rates[0], rateBias[eye], preferHorizontal);
                     m_Rates[eye][1] = settingsRateToShadingRate(rates[1], rateBias[eye], preferHorizontal);
                     m_Rates[eye][2] = settingsRateToShadingRate(rates[2], rateBias[eye], preferHorizontal);
-                    m_Rates[eye][3] = m_shadingRates[SHADING_RATE_CULL];
+                    m_Rates[eye][3] = SHADING_RATE_CULL;
                 }
             }
 
             TraceLoggingWrite(g_traceProvider,
                               "VariableRateShading_Rates",
-                              TLArg(m_Rates[2][0], "Rate1"),
-                              TLArg(m_Rates[2][1], "Rate2"),
-                              TLArg(m_Rates[2][2], "Rate3"),
-                              TLArg(m_Rates[2][3], "Rate4"));
+                              TLArg(m_shadingRates[m_Rates[2][0]], "Rate1"),
+                              TLArg(m_shadingRates[m_Rates[2][1]], "Rate2"),
+                              TLArg(m_shadingRates[m_Rates[2][2]], "Rate3"),
+                              TLArg(m_shadingRates[m_Rates[2][3]], "Rate4"));
         }
 
         bool checkUpdateRings(VariableShadingRateType mode) const {
@@ -701,13 +715,13 @@ namespace {
             constants.InvDim = {1.f / texW, 1.f / texH};
             for (size_t i = 0; i < std::size(m_Rings); i++) {
                 constants.Rings[i] = m_Rings[i];
-                constants.Rates[i] = m_Rates[eye][i];
+                constants.Rates[i] = m_shadingRates[m_Rates[eye][i]];
             }
             return constants;
         }
 
         uint8_t settingsRateToShadingRate(size_t settingsRate, int rateBias = 0, bool preferHorizontal = false) const {
-            static const uint8_t lut[] = {
+            static const uint8_t lut[to_integral(VariableShadingRateVal::MaxValue) - 1] = {
                 SHADING_RATE_x1, SHADING_RATE_2x1, SHADING_RATE_2x2, SHADING_RATE_4x2, SHADING_RATE_4x4};
 
             static_assert(SHADING_RATE_1x2 == (SHADING_RATE_2x1 + 1), "preferHorizonal arithmetic");
@@ -718,9 +732,15 @@ namespace {
                 if (preferHorizontal) {
                     rate += (rate == SHADING_RATE_2x1 || rate == SHADING_RATE_4x2);
                 }
-                return m_shadingRates[rate];
+                return rate;
             }
-            return m_shadingRates[SHADING_RATE_CULL];
+            return SHADING_RATE_CULL;
+        }
+
+        uint8_t shadingRateToSettingsRate(uint8_t shadingRate) const {
+            // VariableShadingRateVal::R_x1 to VariableShadingRateVal::R_Cull
+            static const uint8_t lut[ARRAYSIZE(m_shadingRates)] = {5, 0, 0, 0, 0, 0, 1, 1, 2, 3, 3, 4};
+            return lut[shadingRate < std::size(lut) ? shadingRate : 0];
         }
 
         void resetShadingRates(Api api) {
