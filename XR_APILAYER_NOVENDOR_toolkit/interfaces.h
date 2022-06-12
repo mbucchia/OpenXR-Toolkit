@@ -678,9 +678,15 @@ namespace toolkit {
 
         // A Variable Rate Shader (VRS) control implementation.
         struct VariableRateShaderState {
-            XrVector2f gazeXY;   // ndc
-            XrVector2f rings[4]; // 1/(a1^2), 1/(b1^2)
-            uint8_t rates[4];   // setting rates
+            XrVector2f gazeXY[3]; // ndc
+            XrVector2f rings[4];  // 1/(a1^2), 1/(b1^2)
+            uint8_t rates[4];     // setting rates
+        };
+
+        struct VariableRateShaderConstants {
+            XrVector2f gazeXY; // ndc
+            XrVector2f rings[4];  // 1/(a1^2), 1/(b1^2)
+            uint32_t rates[4];     // setting rates
         };
 
         struct IVariableRateShader {
@@ -699,7 +705,9 @@ namespace toolkit {
             virtual void setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
 
             virtual uint8_t getMaxRate() const = 0;
-            virtual VariableRateShaderState getShaderState(Eye eye) const = 0;
+            virtual uint64_t getCurrentGen() const = 0;
+            virtual void getShaderState(VariableRateShaderState*) const = 0;
+            virtual void getShaderConstants(VariableRateShaderConstants*, utilities::Eye) const = 0;
 
             virtual void startCapture() = 0;
             virtual void stopCapture() = 0;

@@ -85,11 +85,13 @@ namespace toolkit {
                                                    ID3D12Resource* texture,
                                                    std::string_view debugName);
 
-        std::shared_ptr<IImageProcessor> CreateImageProcessor(
-            std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
-
         std::shared_ptr<IFrameAnalyzer> CreateFrameAnalyzer(
             std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
+
+        std::shared_ptr<IImageProcessor>
+        CreateImageProcessor(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                             std::shared_ptr<IDevice> graphicsDevice,
+                             std::shared_ptr<IVariableRateShader> variableRateShader);
 
         std::shared_ptr<IImageProcessor>
         CreateNISUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,

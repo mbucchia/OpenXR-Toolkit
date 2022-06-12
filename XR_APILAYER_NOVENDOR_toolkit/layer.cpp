@@ -602,6 +602,7 @@ namespace {
                     uint32_t renderWidth = m_displayWidth;
                     uint32_t renderHeight = m_displayHeight;
                     if (m_upscaleMode != config::ScalingType::None) {
+                        
                         std::tie(renderWidth, renderHeight) =
                             config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
 
@@ -610,9 +611,6 @@ namespace {
                                                                (renderWidth * renderHeight));
                         Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
                     }
-
-                    m_imageProcessors[ImgProc::Post] =
-                        graphics::CreateImageProcessor(m_configManager, m_graphicsDevice);
 
                     if (m_graphicsDevice->isEventsSupported()) {
                         if (!m_configManager->getValue("disable_frame_analyzer")) {
@@ -679,6 +677,9 @@ namespace {
                             }
                         });
                     }
+
+                    m_imageProcessors[ImgProc::Post] =
+                        graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, m_variableRateShader);
 
                     m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.waitCpuTimer = utilities::CreateCpuTimer();
@@ -848,17 +849,19 @@ namespace {
                     xrDestroySpace(m_viewSpace);
                     m_viewSpace = XR_NULL_HANDLE;
                 }
-                if (m_handTracker) {
-                    m_handTracker->endSession();
-                }
 
+                // Destroy session instances in reverse order of their dependencies.
                 m_imageProcessors.fill(nullptr);
-
-                m_frameAnalyzer.reset();
-                if (m_eyeTracker) {
-                    m_eyeTracker->endSession();
-                }
                 m_variableRateShader.reset();
+                m_frameAnalyzer.reset();
+
+                // End session of these global instances but don't destroy.
+                if (m_handTracker)
+                    m_handTracker->endSession();
+
+                if (m_eyeTracker)
+                    m_eyeTracker->endSession();
+
                 for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
                     m_performanceCounters.appGpuTimer[i].reset();
                     m_performanceCounters.overlayGpuTimer[i].reset();
@@ -1801,21 +1804,20 @@ namespace {
                 }
             }
 
-            // Refresh the configuration.
+            // Update eye tracking and vrs first
+            if (m_eyeTracker) 
+                m_eyeTracker->update();
+
+            if (m_variableRateShader)
+                m_variableRateShader->update();
+
+            // Update image processors second.
             for (auto& processor : m_imageProcessors) {
                 if (processor) {
                     if (reloadShaders)
                         processor->reload();
                     processor->update();
                 }
-            }
-
-            if (m_eyeTracker) {
-                m_eyeTracker->update();
-            }
-
-            if (m_variableRateShader) {
-                m_variableRateShader->update();
             }
         }
 
@@ -2020,7 +2022,7 @@ namespace {
                                 timer->start();
                                 m_imageProcessors[i]->process(swapchainImages.chain[lastImage],
                                                               swapchainImages.chain[nextImage],
-                                                              useVPRT ? eye : -1);
+                                                              useVPRT ? eye : -(eye+1));
                                 timer->stop();
                                 lastImage++;
                             }
@@ -2067,6 +2069,7 @@ namespace {
                     correctedProjectionLayer->views = correctedProjectionViews;
                     correctedLayers.push_back(
                         reinterpret_cast<const XrCompositionLayerBaseHeader*>(correctedProjectionLayer));
+
                 } else if (chainFrameEndInfo.layers[i]->type == XR_TYPE_COMPOSITION_LAYER_QUAD) {
                     const XrCompositionLayerQuad* quad =
                         reinterpret_cast<const XrCompositionLayerQuad*>(chainFrameEndInfo.layers[i]);

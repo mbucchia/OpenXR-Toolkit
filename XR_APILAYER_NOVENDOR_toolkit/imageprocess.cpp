@@ -40,12 +40,15 @@ namespace {
         XrVector4f Params1; // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
         XrVector4f Params2; // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
         XrVector4f Params3; // Highlights, Shadows, Vibrance (0..1 params)
+        XrVector4f Params4; // Gaze, Ring
     };
 
     class ImageProcessor : public IImageProcessor {
       public:
-        ImageProcessor(std::shared_ptr<IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice)
-            : m_configManager(configManager), m_device(graphicsDevice),
+        ImageProcessor(std::shared_ptr<IConfigManager> configManager,
+                       std::shared_ptr<IDevice> graphicsDevice,
+                       std::shared_ptr<IVariableRateShader> variableRateShader)
+            : m_configManager(configManager), m_device(graphicsDevice), m_vrs(variableRateShader),
               m_userParams(GetParams(configManager.get(), 1)) {
             createRenderResources();
         }
@@ -67,9 +70,21 @@ namespace {
                     updateConfig();
                 }
             }
+
+            if (checkUpdateConfigVrs()) {
+                updateConfigVrs();
+            }
         }
 
         void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
+            if (m_configUpdated) {
+                const auto gazeIdx = abs(slice) - (slice < 0); // slice < 0 ? -(slice + 1) : slice;
+                m_configUpdated = gazeIdx != 0;
+                m_config.Params4.x = m_vrsState.gazeXY[gazeIdx].x;
+                m_config.Params4.y = m_vrsState.gazeXY[gazeIdx].y;
+                m_cbParams->uploadData(&m_config, sizeof(m_config));
+            }
+
             const auto usePostProcess = m_mode != PostProcessType::Off;
             m_device->setShader(m_shaders[input->isArray()][usePostProcess], SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_cbParams);
@@ -102,6 +117,10 @@ namespace {
             // TODO: For now, we're going to require that all image processing shaders share the same configuration
             // structure.
             m_cbParams = m_device->createBuffer(sizeof(ImageProcessorConfig), "Postprocess CB");
+
+            // Initialize gaze and ring large enough.
+            m_config.Params4.x = m_config.Params4.y = 0;
+            m_config.Params4.z = m_config.Params4.w = 0.00001f;
 
             updateConfig();
         }
@@ -150,7 +169,40 @@ namespace {
                 StoreXrVector4(&m_config.Params1 + i, (param * kGainBias[i][0]) - kGainBias[i][1]);
             }
 
-            m_cbParams->uploadData(&m_config, sizeof(m_config));
+            // m_cbParams->uploadData(&m_config, sizeof(m_config));
+            m_configUpdated = true;
+        }
+
+        bool checkUpdateConfigVrs() {
+            auto currentGen = m_vrs ? m_vrs->getCurrentGen() : 0;
+            if (m_vrsCurrentGen != currentGen) {
+                m_vrsCurrentGen = currentGen;
+                return true;
+            }
+            return false;
+        }
+
+        void updateConfigVrs() {
+            assert(m_vrs);
+
+            // TODO: determine whether
+            // - ring changes: highlight the ring.
+            // - rate changes: highlight the ring.
+
+            m_vrs->getShaderState(&m_vrsState);
+
+            // find the ring which rate needs post-processing
+            XrVector2f ring = {0.00001f, 0.00001f}; // sufficiently large
+            for (size_t i = 0; i < std::size(m_vrsState.rates); i++) {
+                if (m_vrsState.rates[i] >= to_integral(VariableShadingRateVal::R_4x2)) {
+                    ring = m_vrsState.rings[i];
+                    break;
+                }
+            }
+            m_config.Params4.z = ring.x;
+            m_config.Params4.w = ring.y;
+
+            m_configUpdated = true;
         }
 
         static std::array<DirectX::XMINT4, 3> GetParams(const IConfigManager* configManager, size_t index) {
@@ -190,7 +242,7 @@ namespace {
 
                 // sunglasses dark: +2.5 contrast, -10 bright, -10 expo, -40 high, +5 shad
                 {{{25, -100, -100, 0}, {0, 0, 0, 0}, {-400, 50, 0, 0}}},
-                
+
                 //// deep night (beta1): +0.5 contrast, -40 bright, +20 expo, -15 sat, -75 high, +15 shad, +5 vib
                 //{{{5, -400, 200, -150}, {0, 0, 0, 0}, {-750, 150, 50, 0}}},
 
@@ -203,13 +255,22 @@ namespace {
 
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
+        const std::shared_ptr<IVariableRateShader> m_vrs;
+
         const std::array<DirectX::XMINT4, 3> m_userParams;
 
         std::shared_ptr<IQuadShader> m_shaders[2][2]; // off, on, vprt
         std::shared_ptr<IShaderBuffer> m_cbParams;
 
+        bool m_configUpdated{false};
+        bool m_gazeAndRingsUpdated{false};
+
         PostProcessType m_mode{PostProcessType::Off};
         ImageProcessorConfig m_config{};
+
+        uint64_t m_vrsCurrentGen{0};
+        VariableRateShaderState m_vrsState;
+        VariableRateShaderConstants m_vrsConstants;
     };
 
 } // namespace
@@ -265,8 +326,9 @@ namespace toolkit::graphics {
     }
 
     std::shared_ptr<IImageProcessor> CreateImageProcessor(std::shared_ptr<IConfigManager> configManager,
-                                                          std::shared_ptr<IDevice> graphicsDevice) {
-        return std::make_shared<ImageProcessor>(configManager, graphicsDevice);
+                                                          std::shared_ptr<IDevice> graphicsDevice,
+                                                          std::shared_ptr<IVariableRateShader> variableRateShader) {
+        return std::make_shared<ImageProcessor>(configManager, graphicsDevice, variableRateShader);
     }
 
 } // namespace toolkit::graphics
