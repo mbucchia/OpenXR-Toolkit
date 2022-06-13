@@ -2022,7 +2022,7 @@ namespace {
                                 timer->start();
                                 m_imageProcessors[i]->process(swapchainImages.chain[lastImage],
                                                               swapchainImages.chain[nextImage],
-                                                              useVPRT ? eye : -(eye+1));
+                                                              useVPRT ? eye : -int32_t(eye+1));
                                 timer->stop();
                                 lastImage++;
                             }

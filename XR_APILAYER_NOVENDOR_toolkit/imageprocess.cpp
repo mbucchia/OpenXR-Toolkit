@@ -37,10 +37,11 @@ namespace {
     using namespace toolkit::log;
 
     struct alignas(16) ImageProcessorConfig {
-        XrVector4f Params1; // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
-        XrVector4f Params2; // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
-        XrVector4f Params3; // Highlights, Shadows, Vibrance (0..1 params)
-        XrVector4f Params4; // Gaze, Ring
+        XrVector4f Params1;  // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
+        XrVector4f Params2;  // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
+        XrVector4f Params3;  // Highlights, Shadows, Vibrance (0..1 params)
+        XrVector4f Params4;  // Gaze, Ring anti-flicker
+        XrVector2f Rings[4]; // 1/(a1^2), 1/(b1^2)
     };
 
     class ImageProcessor : public IImageProcessor {
@@ -121,6 +122,7 @@ namespace {
             // Initialize gaze and ring large enough.
             m_config.Params4.x = m_config.Params4.y = 0;
             m_config.Params4.z = m_config.Params4.w = 0.00001f;
+            std::fill_n(m_config.Rings, std ::size(m_config.Rings), XrVector2f{0.00001f, 0.00001f});
 
             updateConfig();
         }
@@ -189,18 +191,32 @@ namespace {
             // - ring changes: highlight the ring.
             // - rate changes: highlight the ring.
 
-            m_vrs->getShaderState(&m_vrsState);
+            m_vrs->getShaderState(m_vrsState);
 
-            // find the ring which rate needs post-processing
+#if 0
+            // We post-process rings with a rate above 4x2 to reduce flickering.
             XrVector2f ring = {0.00001f, 0.00001f}; // sufficiently large
-            for (size_t i = 0; i < std::size(m_vrsState.rates); i++) {
-                if (m_vrsState.rates[i] >= to_integral(VariableShadingRateVal::R_4x2)) {
-                    ring = m_vrsState.rings[i];
+            for (size_t i = 0; i < std::size(vrsState.rates); i++) {
+                if (vrsState.rates[i] > to_integral(VariableShadingRateVal::R_2x2)) {
+                    ring = vrsState.rings[i];
                     break;
                 }
             }
             m_config.Params4.z = ring.x;
             m_config.Params4.w = ring.y;
+#endif
+#if 1
+            // We post-process the 3rd ring if its rate is above 2x2 to reduce flickering.
+            constexpr auto kLowResRate = to_integral(VariableShadingRateVal::R_2x2);
+
+            size_t idx = m_vrsState.rates[1] > kLowResRate   ? 0
+                         : m_vrsState.rates[2] > kLowResRate ? 1
+                         : m_vrsState.rates[3] > kLowResRate ? 2
+                                                             : 3;
+            m_config.Params4.z = m_vrsState.rings[idx].x;
+            m_config.Params4.w = m_vrsState.rings[idx].y;
+#endif
+            std::copy_n(m_vrsState.rings, std::size(m_vrsState.rings), m_config.Rings);
 
             m_configUpdated = true;
         }

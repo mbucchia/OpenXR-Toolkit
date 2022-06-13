@@ -27,6 +27,9 @@ cbuffer config : register(b0) {
     float4 Params1;  // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
     float4 Params2;  // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
     float4 Params3;  // Highlights, Shadows, Vibrance (0..1 params)
+    float4 Params4;  // Gaze, Ring anti-flicker
+    float4 Rings12;  // 1/(a1^2), 1/(b1^2), 1/(a2^2), 1/(b2^2)
+    float4 Rings34;  // 1/(a3^2), 1/(b3^2), 1/(a4^2), 1/(b4^2)
 };
 
 SamplerState sourceSampler : register(s0);
@@ -187,6 +190,14 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
     color = AdjustHighlightsShadows(color, Params3.xy);
   }
 
+  if (any(Params4.zw)) {
+    float2 pos_xy = float2(2.0f,-2.0f) * texcoord + float2(-1.0f,+1.0f) - Params4.xy;
+    if (dot(pos_xy * pos_xy, Params4.zw) >= 1.0f) {
+      // Green tint for debug
+      color = AdjustGains(color, float3(0.0,1.0,0.0));
+    }
+  }
+
 #ifdef POST_PROCESS_DST_SRGB
   color = linear2srgb(color);
 #endif
@@ -212,6 +223,14 @@ float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TE
 #endif
 
 #endif
+
+  if (any(Params4.zw)) {
+    float2 pos_xy = float2(2.0f,-2.0f) * texcoord + float2(-1.0f,+1.0f) - Params4.xy;
+    if (dot(pos_xy * pos_xy, Params4.zw) >= 1.0f) {
+      // Green tint for debug
+      color = AdjustGains(color, float3(0.0,1.0,0.0));
+    }
+  }
 
   return float4(saturate(color), 1.0);
 }
