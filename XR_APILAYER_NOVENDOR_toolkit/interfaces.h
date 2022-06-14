@@ -706,8 +706,7 @@ namespace toolkit {
 
             virtual uint8_t getMaxRate() const = 0;
             virtual uint64_t getCurrentGen() const = 0;
-            virtual void getShaderState(VariableRateShaderState&) const = 0;
-            //virtual void getShaderConstants(VariableRateShaderConstants*, utilities::Eye) const = 0;
+            virtual void getShaderState(VariableRateShaderState&, utilities::Eye) const = 0;
 
             virtual void startCapture() = 0;
             virtual void stopCapture() = 0;

@@ -27,9 +27,9 @@ cbuffer config : register(b0) {
     float4 Params1;  // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
     float4 Params2;  // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
     float4 Params3;  // Highlights, Shadows, Vibrance (0..1 params)
-    float4 Params4;  // Gaze, Ring anti-flicker
-    float4 Rings12;  // 1/(a1^2), 1/(b1^2), 1/(a2^2), 1/(b2^2)
-    float4 Rings34;  // 1/(a3^2), 1/(b3^2), 1/(a4^2), 1/(b4^2)
+    float4 Params4;  // Gaze.xy, Ring.zw (anti-flicker)
+    float4 Rings12; // 1/(a1^2), 1/(b1^2), 1/(a2^2), 1/(b2^2)
+    float4 Rings34; // 1/(a3^2), 1/(b3^2), 1/(a4^2), 1/(b4^2)
 };
 
 SamplerState sourceSampler : register(s0);
@@ -162,6 +162,25 @@ float3 AdjustHighlightsShadows(float3 color, float2 amount) {
   return (color/luma) * (h + s - luma);
 }
 
+float3 BlendScreen(float3 c1, float3 c2) {
+  return (1.0f - ((1.0f - c1) * (1.0f - c2)));
+}
+
+#if VISUALIZE_SHADING_RINGS
+float3 AdjustRingColor(float3 color, float2 pos_uv) {
+  float2 pos_xy = float2(2.0f,-2.0f) * pos_uv + float2(-1.0f,+1.0f) - Params4.xy;
+  pos_xy *= pos_xy;
+
+  float3 ringColor = float3(0,0,0);
+  if      (dot(pos_xy, Rings12.xy) <= 1.0f) ringColor = float3(0.05f, 0.0f, 0.0f);
+  else if (dot(pos_xy, Rings12.zw) <= 1.0f) ringColor = float3(0.05f, 0.05f, 0.0f);
+  else if (dot(pos_xy, Rings34.xy) <= 1.0f) ringColor = float3(0.0f, 0.05f, 0.0f);
+  //else if (dot(pos_xy, Rings34.zw) <= 1.0f) ringColor = float3(0.0f, 0.05f, 0.05f);
+  return BlendScreen(color, ringColor);
+}
+#endif
+
+
 // For now, our shader only does a copy, effectively allowing Direct3D to convert between color formats.
 float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
   float3 color = SAMPLE_TEXTURE(texcoord).rgb;
@@ -190,13 +209,16 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
     color = AdjustHighlightsShadows(color, Params3.xy);
   }
 
-  if (any(Params4.zw)) {
-    float2 pos_xy = float2(2.0f,-2.0f) * texcoord + float2(-1.0f,+1.0f) - Params4.xy;
-    if (dot(pos_xy * pos_xy, Params4.zw) >= 1.0f) {
-      // Green tint for debug
-      color = AdjustGains(color, float3(0.0,1.0,0.0));
-    }
-  }
+#if VISUALIZE_SHADING_RINGS
+  color = AdjustRingColor(color, texcoord);
+
+  //if (any(Params4.zw)) {
+    // Anti-Flicker
+    //if (dot(pos_xy * pos_xy, Params4.zw) >= 1.0f) {
+    //  color = BlendScreen(color, float3(0.0,0.05,0.0));
+    //}
+  //}
+#endif
 
 #ifdef POST_PROCESS_DST_SRGB
   color = linear2srgb(color);
@@ -224,13 +246,17 @@ float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TE
 
 #endif
 
-  if (any(Params4.zw)) {
-    float2 pos_xy = float2(2.0f,-2.0f) * texcoord + float2(-1.0f,+1.0f) - Params4.xy;
-    if (dot(pos_xy * pos_xy, Params4.zw) >= 1.0f) {
-      // Green tint for debug
-      color = AdjustGains(color, float3(0.0,1.0,0.0));
-    }
-  }
+#if VISUALIZE_SHADING_RINGS
+  color = AdjustRingColor(color, texcoord);
+
+  //if (any(Params4.zw)) {
+  //  float2 pos_xy = float2(2.0f,-2.0f) * texcoord + float2(-1.0f,+1.0f) - Params4.xy;
+  //  if (dot(pos_xy * pos_xy, Params4.zw) >= 1.0f) {
+  //    // Green tint for debug
+  //    color = BlendScreen(color, float3(0.0,0.05,0.0));
+  //  }
+  //}
+#endif
 
   return float4(saturate(color), 1.0);
 }

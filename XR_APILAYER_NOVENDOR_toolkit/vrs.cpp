@@ -312,28 +312,18 @@ namespace {
             return m_currentGen;
         }
 
-        void getShaderState(VariableRateShaderState& state) const override {
+        void getShaderState(VariableRateShaderState& state, utilities::Eye eye) const override {
             static_assert(ARRAYSIZE(VariableRateShaderState::gazeXY) == ARRAYSIZE(m_gazeLocation));
             static_assert(ARRAYSIZE(VariableRateShaderState::rings) == ARRAYSIZE(m_Rings));
             static_assert(ARRAYSIZE(VariableRateShaderState::rates) == ARRAYSIZE(m_Rates[0]));
             
             std::copy_n(m_gazeLocation, std::size(state.gazeXY), state.gazeXY);
             std::copy_n(m_Rings, std::size(state.rings), state.rings);
-            std::copy_n(m_Rates[to_integral(Eye::Both)], std::size(state.rates), state.rates);
-        }
 
-        //void getShaderConstants(VariableRateShaderConstants* pConstants, utilities::Eye eye) const override {
-        //    static_assert(ARRAYSIZE(VariableRateShaderConstants::rings) == ARRAYSIZE(m_Rings));
-        //    static_assert(ARRAYSIZE(VariableRateShaderConstants::rates) == ARRAYSIZE(m_Rates[0]));
-        //
-        //    if (pConstants) {
-        //        pConstants->gazeXY = m_gazeLocation[to_integral(eye)];
-        //        for (size_t i = 0; i < std::size(m_Rings); i++) {
-        //            pConstants->rings[i] = m_Rings[i];
-        //            pConstants->rates[i] = m_Rates[to_integral(eye)][i];
-        //        }
-        //    }
-        //}
+            for (size_t i = 0; i < std::size(m_Rates); i++) {
+                state.rates[i] = shadingRateToSettingsRate(m_Rates[to_integral(eye)][i]);
+            }
+        }
 
         void startCapture() override {
             DebugLog("VRS: Start capture\n");
