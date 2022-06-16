@@ -114,6 +114,7 @@ namespace {
             m_configManager->setEnumDefault(config::SettingVRS, config::VariableShadingRateType::None);
             m_configManager->setEnumDefault(config::SettingVRSQuality, config::VariableShadingRateQuality::Performance);
             m_configManager->setEnumDefault(config::SettingVRSPattern, config::VariableShadingRatePattern::Wide);
+            m_configManager->setEnumDefault(config::SettingVRSShowRings, config::NoYesType::No);
             m_configManager->setDefault(config::SettingVRSInner, 0); // 1x
             m_configManager->setDefault(config::SettingVRSInnerRadius, 55);
             m_configManager->setDefault(config::SettingVRSMiddle, 2); // 1/4x

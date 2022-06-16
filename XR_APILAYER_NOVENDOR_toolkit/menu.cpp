@@ -999,6 +999,13 @@ namespace {
                            VariableShadingRateType::Preset;
                 });
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                         "Show rings",
+                                         MenuEntryType::Choice,
+                                         SettingVRSShowRings,
+                                         0,
+                                         MenuEntry::LastVal<NoYesType>(),
+                                         MenuEntry::FmtEnum<NoYesType>});
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Mode",
                                          MenuEntryType::Slider,
                                          SettingVRSQuality,
@@ -1023,6 +1030,13 @@ namespace {
                     const auto maxVRSLeftRightBias =
                         std::min(int(menuInfo.variableRateShaderMaxRate), to_integral(VariableShadingRateVal::R_4x4));
 
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Show rings",
+                                             MenuEntryType::Choice,
+                                             SettingVRSShowRings,
+                                             0,
+                                             MenuEntry::LastVal<NoYesType>(),
+                                             MenuEntry::FmtEnum<NoYesType>});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Inner resolution",
                                              MenuEntryType::Slider,

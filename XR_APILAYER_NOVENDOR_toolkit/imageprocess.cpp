@@ -72,7 +72,7 @@ namespace {
                 }
             }
 
-            if (checkUpdateConfigVrs()) {
+            if (m_vrs && checkUpdateConfigVrs()) {
                 updateConfigVrs();
             }
         }
@@ -104,7 +104,7 @@ namespace {
             // defines.add("POST_PROCESS_DST_SRGB", true);
 
             defines.add("PASS_THROUGH_USE_GAINS", true);
-            defines.add("VISUALIZE_SHADING_RINGS", true);
+            defines.add("VRS_NUM_RATES", 3);
 
             m_shaders[0][0] = m_device->createQuadShader(
                 shaderFile, "mainPassThrough", "Passthrough PS", defines.get() /*,  shadersDir*/);
@@ -127,6 +127,7 @@ namespace {
             std::fill_n(m_config.Rings, std ::size(m_config.Rings), XrVector2f{0.00001f, 0.00001f});
 
             updateConfig();
+            updateConfigVrs();
         }
 
         bool checkUpdateConfig(PostProcessType mode) const {
@@ -178,40 +179,63 @@ namespace {
         }
 
         bool checkUpdateConfigVrs() {
-            auto currentGen = m_vrs ? m_vrs->getCurrentGen() : 0;
-            if (m_vrsCurrentGen != currentGen) {
+            const auto currentGen = m_vrs ? m_vrs->getCurrentGen() : 0;
+            const auto showRings =
+                currentGen && m_configManager->getEnumValue<NoYesType>(config::SettingVRSShowRings) != NoYesType::No;
+
+            if (m_vrsCurrentGen != currentGen || m_vrsShowRings != showRings) {
                 m_vrsCurrentGen = currentGen;
+                m_vrsShowRings = showRings;
                 return true;
             }
             return false;
         }
 
         void updateConfigVrs() {
-            assert(m_vrs);
+#if 0
+            VariableRateShaderState vrsState;
+            if (m_vrs && m_vrsCurrentGen) {
+                m_vrs->getShaderState(vrsState, utilities::Eye::Both);
 
-            // TODO: determine whether
-            // - ring changes: highlight the ring.
-            // - rate changes: highlight the ring.
+                // Don't track gaze changes when using eye tracking.
+                const auto hasGazeChanged =
+                   vrsState.mode != 2 &&
+                   !std::equal(std::begin(vrsState.gazeXY), std::end(vrsState.gazeXY),
+                   std::begin(m_vrsState.gazeXY));
 
-            m_vrs->getShaderState(m_vrsState, utilities::Eye::Both);
+                // Track rings and rate for anti-flicker
+                const auto hasRingChanged =
+                   !std::equal(std::begin(vrsState.rings), std::end(vrsState.rings), std::begin(m_vrsState.rings));
+                const auto hasRateChanged =
+                   !std::equal(std::begin(vrsState.rates), std::end(vrsState.rates), std::begin(m_vrsState.rates));
+                
+                if (hasRingChanged || hasRateChanged) {
+                }
 
-            // Only use the rings smaller than 10x width or 10x height.
-            for (size_t i = 0; i < std::size(m_vrsState.rings); i++) {
-                auto ring = m_vrsState.rings[i];
-                //if (ring.x <= 0.01 || ring.y <= 0.01)
-                //    ring.y = ring.x = 0;
-                m_config.Rings[i] = ring;
+                m_vrsState = vrsState;
+            }
+#endif
+            if (m_vrs && m_vrsCurrentGen) {
+                m_vrs->getShaderState(m_vrsState, utilities::Eye::Both);
+
+                // Reduce flickering for rings with a rate above 2x2.
+                constexpr auto kLowResRate = to_integral(VariableShadingRateVal::R_2x2);
+                const auto flickerIdx = m_vrsState.rates[1] > kLowResRate   ? 0
+                                        : m_vrsState.rates[2] > kLowResRate ? 1
+                                        : m_vrsState.rates[3] > kLowResRate ? 2
+                                                                            : 3;
+                m_config.Params4.z = m_vrsState.rings[flickerIdx].x;
+                m_config.Params4.w = m_vrsState.rings[flickerIdx].y;
+
+            } else {
+                m_config.Params4.z = m_config.Params4.w = 0;
             }
 
-            // We post-process rings with a rate above 2x2 to reduce flickering.
-            constexpr auto kLowResRate = to_integral(VariableShadingRateVal::R_2x2);
-
-            size_t idx = m_vrsState.rates[1] > kLowResRate   ? 0
-                         : m_vrsState.rates[2] > kLowResRate ? 1
-                         : m_vrsState.rates[3] > kLowResRate ? 2
-                                                             : 3;
-            m_config.Params4.z = m_config.Rings[idx].x;
-            m_config.Params4.w = m_config.Rings[idx].y;
+            if (m_vrsShowRings) {
+                std::copy_n(m_vrsState.rings, ARRAYSIZE(m_vrsState.rings), m_config.Rings);
+            } else {
+                std::fill_n(m_config.Rings, ARRAYSIZE(m_config.Rings), XrVector2f{0, 0});
+            }
 
             m_configUpdated = true;
         }
@@ -274,14 +298,14 @@ namespace {
         std::shared_ptr<IShaderBuffer> m_cbParams;
 
         bool m_configUpdated{false};
-        bool m_gazeAndRingsUpdated{false};
+        bool m_configVrsUpdated{false};
+
+        bool m_vrsShowRings{false};
+        uint64_t m_vrsCurrentGen{0};
+        VariableRateShaderState m_vrsState{};
 
         PostProcessType m_mode{PostProcessType::Off};
         ImageProcessorConfig m_config{};
-
-        uint64_t m_vrsCurrentGen{0};
-        VariableRateShaderState m_vrsState;
-        VariableRateShaderConstants m_vrsConstants;
     };
 
 } // namespace

@@ -150,6 +150,7 @@ namespace toolkit {
         const std::string SettingVRS = "vrs";
         const std::string SettingVRSQuality = "vrs_quality";
         const std::string SettingVRSPattern = "vrs_pattern";
+        const std::string SettingVRSShowRings = "vrs_show_rings";
         const std::string SettingVRSOuter = "vrs_outer";
         const std::string SettingVRSOuterRadius = "vrs_outer_radius";
         const std::string SettingVRSMiddle = "vrs_middle";
@@ -681,6 +682,7 @@ namespace toolkit {
             XrVector2f gazeXY[3]; // ndc
             XrVector2f rings[4];  // 1/(a1^2), 1/(b1^2)
             uint8_t rates[4];     // setting rates
+            uint8_t mode;         // 0: off, 1: active 2: with eye tracking
         };
 
         struct VariableRateShaderConstants {

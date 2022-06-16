@@ -46,6 +46,10 @@ Texture2D sourceTexture : register(t0);
 #define FLT_EPSILON     1.192092896e-07
 #endif
 
+#ifndef VRS_NUM_RATES
+#define VRS_NUM_RATES 4
+#endif
+
 #if 0
 // http://www.martinreddy.net/gfx/faqs/colorconv.faq
 
@@ -166,16 +170,22 @@ float3 BlendScreen(float3 c1, float3 c2) {
   return (1.0f - ((1.0f - c1) * (1.0f - c2)));
 }
 
-#if VISUALIZE_SHADING_RINGS
+#if VRS_NUM_RATES >= 1
 float3 AdjustRingColor(float3 color, float2 pos_uv) {
   float2 pos_xy = float2(2.0f,-2.0f) * pos_uv + float2(-1.0f,+1.0f) - Params4.xy;
   pos_xy *= pos_xy;
 
   float3 ringColor = float3(0,0,0);
   if      (dot(pos_xy, Rings12.xy) <= 1.0f) ringColor = float3(0.05f, 0.0f, 0.0f);
+#if VRS_NUM_RATES >= 2
   else if (dot(pos_xy, Rings12.zw) <= 1.0f) ringColor = float3(0.05f, 0.05f, 0.0f);
+#if VRS_NUM_RATES >= 3
   else if (dot(pos_xy, Rings34.xy) <= 1.0f) ringColor = float3(0.0f, 0.05f, 0.0f);
-  //else if (dot(pos_xy, Rings34.zw) <= 1.0f) ringColor = float3(0.0f, 0.05f, 0.05f);
+#if VRS_NUM_RATES >= 4
+  else if (dot(pos_xy, Rings34.zw) <= 1.0f) ringColor = float3(0.0f, 0.05f, 0.05f);
+#endif
+#endif
+#endif
   return BlendScreen(color, ringColor);
 }
 #endif
@@ -209,8 +219,10 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
     color = AdjustHighlightsShadows(color, Params3.xy);
   }
 
-#if VISUALIZE_SHADING_RINGS
-  color = AdjustRingColor(color, texcoord);
+#if VRS_NUM_RATES >= 1
+  if (any(Rings34.zw)) {
+    color = AdjustRingColor(color, texcoord);
+  }
 
   //if (any(Params4.zw)) {
     // Anti-Flicker
@@ -246,8 +258,10 @@ float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TE
 
 #endif
 
-#if VISUALIZE_SHADING_RINGS
-  color = AdjustRingColor(color, texcoord);
+#if VRS_NUM_RATES >= 1
+  if (any(Rings34.zw)) {
+    color = AdjustRingColor(color, texcoord);
+  }
 
   //if (any(Params4.zw)) {
   //  float2 pos_xy = float2(2.0f,-2.0f) * texcoord + float2(-1.0f,+1.0f) - Params4.xy;

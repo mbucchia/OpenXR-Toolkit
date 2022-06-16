@@ -309,7 +309,7 @@ namespace {
 
         
         uint64_t getCurrentGen() const override {
-            return m_currentGen;
+            return m_mode != VariableShadingRateType::None ? m_currentGen : 0;
         }
 
         void getShaderState(VariableRateShaderState& state, utilities::Eye eye) const override {
@@ -317,12 +317,14 @@ namespace {
             static_assert(ARRAYSIZE(VariableRateShaderState::rings) == ARRAYSIZE(m_Rings));
             static_assert(ARRAYSIZE(VariableRateShaderState::rates) == ARRAYSIZE(m_Rates[0]));
             
-            std::copy_n(m_gazeLocation, std::size(state.gazeXY), state.gazeXY);
-            std::copy_n(m_Rings, std::size(state.rings), state.rings);
+            std::copy_n(m_gazeLocation, ARRAYSIZE(state.gazeXY), state.gazeXY);
+            std::copy_n(m_Rings, ARRAYSIZE(state.rings), state.rings);
 
-            for (size_t i = 0; i < std::size(m_Rates); i++) {
+            for (size_t i = 0; i < ARRAYSIZE(m_Rates); i++) {
                 state.rates[i] = shadingRateToSettingsRate(m_Rates[to_integral(eye)][i]);
             }
+
+            state.mode = m_usingEyeTracking ? 2 : m_mode != VariableShadingRateType::None;
         }
 
         void startCapture() override {
