@@ -568,8 +568,8 @@ namespace {
                 gaze[1] = m_gazeOffset[1];
             }
             // location = view center + view offset (L/R)
-            m_gazeLocation[m_swapViews] = gaze[0] + m_gazeOffset[2];
-            m_gazeLocation[!m_swapViews] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
+            m_gazeLocation[0] = gaze[0] + m_gazeOffset[2];
+            m_gazeLocation[1] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
 
             // The generic mask only supports vertical offsets.
             m_gazeLocation[2].x = 0;
@@ -719,7 +719,7 @@ namespace {
 
         ShadingConstants makeShadingConstants(size_t eye, uint32_t texW, uint32_t texH) {
             ShadingConstants constants;
-            constants.GazeXY = m_gazeLocation[eye];
+            constants.GazeXY = m_gazeLocation[eye ^ (eye != 2 && m_swapViews)];
             constants.InvDim = {1.f / texW, 1.f / texH};
             for (size_t i = 0; i < std::size(m_Rings); i++) {
                 constants.Rings[i] = m_Rings[i];
