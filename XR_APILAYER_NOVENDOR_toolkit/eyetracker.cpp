@@ -113,23 +113,20 @@ namespace {
                     CHECK_HRCMD(
                         m_openXR.xrLocateViews(m_session, &locateInfo, &state, 2, &viewCountOutput, eyeInViewSpace));
 
-                    if (!Pose::IsPoseValid(state.viewStateFlags)) {
+                    if (!Pose::IsPoseValid(state)) {
                         return false;
                     }
                 }
 
-                XrVector3f projectedPoint{};
-                if (!getEyeGaze(projectedPoint)) {
+                if (!getEyeGaze(m_eyeGazeState.gazeRay)) {
                     return false;
                 }
-
-                m_eyeGazeState.gazeRay = projectedPoint;
 
                 // Project the pose onto the screen.
 
                 // 1) We have a 3D point (forward) for the gaze. This point is relative to the view space.
-                const auto gazeProjectedPoint =
-                    DirectX::XMVectorSet(projectedPoint.x, projectedPoint.y, projectedPoint.z, 1.f);
+                const auto gazeProjectedPoint = DirectX::XMVectorSet(
+                    m_eyeGazeState.gazeRay.x, m_eyeGazeState.gazeRay.y, m_eyeGazeState.gazeRay.z, 1.f);
 
                 for (uint32_t eye = 0; eye < ViewCount; eye++) {
                     // 2) Compute the view space to camera transform for this eye.
@@ -156,10 +153,8 @@ namespace {
                 }
 
                 if (m_valid) {
-                    m_eyeGazeState.leftPoint.x = m_gaze[0].x;
-                    m_eyeGazeState.leftPoint.y = m_gaze[0].y;
-                    m_eyeGazeState.rightPoint.x = m_gaze[1].x;
-                    m_eyeGazeState.rightPoint.y = m_gaze[1].y;
+                    m_eyeGazeState.gazeNdc[0] = m_gaze[0];
+                    m_eyeGazeState.gazeNdc[1] = m_gaze[1];
                 }
             }
 
@@ -178,6 +173,7 @@ namespace {
         OpenXrApi& m_openXR;
         const std::shared_ptr<IConfigManager> m_configManager;
         float m_projectionDistance{2.f};
+        mutable bool m_valid{false};
 
         XrSession m_session{XR_NULL_HANDLE};
         XrSpace m_viewSpace{XR_NULL_HANDLE};
@@ -186,7 +182,6 @@ namespace {
         XrActionSet m_eyeTrackerActionSet{XR_NULL_HANDLE};
 
         mutable XrVector2f m_gaze[ViewCount];
-        mutable bool m_valid{false};
         mutable EyeGazeState m_eyeGazeState{};
     };
 
@@ -295,23 +290,16 @@ namespace {
 
             CHECK_XRCMD(m_openXR.xrLocateSpace(m_eyeSpace, m_viewSpace, m_frameTime, &location));
 
-            if (!Pose::IsPoseValid(location.locationFlags)) {
+            if (!Pose::IsPoseValid(location)) {
                 return false;
             }
 
-            if (m_debugWithController) {
-                location.pose.position.x = location.pose.position.y = location.pose.position.z = 0.f;
+            if (!m_debugWithController) {
+                static constexpr DirectX::XMVECTORF32 kGazeForward = {{{0, 0, 2, 1}}}; /* 2m forward */
+                StoreXrVector3(&projectedPoint, DirectX::XMVector3Transform(kGazeForward, LoadXrPose(location.pose)));
+            } else {
+                projectedPoint = location.pose.position;
             }
-
-            const auto gaze = LoadXrPose(location.pose);
-            const auto gazeProjectedPoint =
-                m_debugWithController
-                    ? LoadXrVector3(location.pose.position)
-                    : DirectX::XMVector3Transform(DirectX::XMVectorSet(0, 0, 2, 1) /* 2m forward */, gaze);
-
-            projectedPoint.x = gazeProjectedPoint.m128_f32[0];
-            projectedPoint.y = gazeProjectedPoint.m128_f32[1];
-            projectedPoint.z = gazeProjectedPoint.m128_f32[2];
 
             return true;
         }

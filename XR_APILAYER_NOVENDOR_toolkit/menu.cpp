@@ -812,14 +812,14 @@ namespace {
                                 top += 1.05f * fontSize;
 
                                 m_device->drawString(fmt::format("eye.l: {:.3f},{:.3f}",
-                                                                 m_eyeGazeState.leftPoint.x,
-                                                                 m_eyeGazeState.leftPoint.y),
+                                                                 m_eyeGazeState.gazeNdc[0].x,
+                                                                 m_eyeGazeState.gazeNdc[0].y),
                                                      OVERLAY_COMMON);
                                 top += 1.05f * fontSize;
 
                                 m_device->drawString(fmt::format("eye.r: {:.3f},{:.3f}",
-                                                                 m_eyeGazeState.rightPoint.x,
-                                                                 m_eyeGazeState.rightPoint.y),
+                                                                 m_eyeGazeState.gazeNdc[1].x,
+                                                                 m_eyeGazeState.gazeNdc[1].y),
                                                      OVERLAY_COMMON);
                                 top += 1.05f * fontSize;
                             }
