@@ -28,8 +28,8 @@ cbuffer config : register(b0) {
     float4 Params2;  // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
     float4 Params3;  // Highlights, Shadows, Vibrance (0..1 params)
     float4 Params4;  // Gaze.xy, Ring.zw (anti-flicker)
-    float4 Rings12; // 1/(a1^2), 1/(b1^2), 1/(a2^2), 1/(b2^2)
-    float4 Rings34; // 1/(a3^2), 1/(b3^2), 1/(a4^2), 1/(b4^2)
+    float4 Rings12;  // 1/(a1^2), 1/(b1^2), 1/(a2^2), 1/(b2^2)
+    float4 Rings34;  // 1/(a3^2), 1/(b3^2), 1/(a4^2), 1/(b4^2)
 };
 
 SamplerState sourceSampler : register(s0);
@@ -99,7 +99,7 @@ float Smoothstep(float x, float p) {
 
 float3 srgb2linear(float3 c ) {
   //return pow(c, 2.2);
-  return saturate(c*c); // fast aproximation
+  return c*c; // fast aproximation
 }
 float3 linear2srgb(float3 c) {
   //return pow(c, 1.0/2.2);
@@ -166,27 +166,27 @@ float3 AdjustHighlightsShadows(float3 color, float2 amount) {
   return (color/luma) * (h + s - luma);
 }
 
-float3 BlendScreen(float3 c1, float3 c2) {
-  return (1.0f - ((1.0f - c1) * (1.0f - c2)));
-}
-
 #if VRS_NUM_RATES >= 1
-float3 AdjustRingColor(float3 color, float2 pos_uv) {
-  float2 pos_xy = float2(2.0f,-2.0f) * pos_uv + float2(-1.0f,+1.0f) - Params4.xy;
+float3 AdjustRingColor(float3 color, float2 pos_uv, float blend) {
+  //uint w,h; sourceTexture.GetDimensions(w, h);
+  // TODO: align by multiple of 16 
+
+  float2 pos_xy = float2(2.0f,-2.0f) * pos_uv + float2(-1.0f,+1.0f); // uv to ndc (y flip)
+  pos_xy -= Params4.xy; // ndc to gaze ndc
   pos_xy *= pos_xy;
 
   float3 ringColor = float3(0,0,0);
-  if      (dot(pos_xy, Rings12.xy) <= 1.0f) ringColor = float3(0.05f, 0.0f, 0.0f);
+  if      (dot(pos_xy, Rings12.xy) <= 1.0f) ringColor = float3(1.0f, 0.0f, 0.0f);
 #if VRS_NUM_RATES >= 2
-  else if (dot(pos_xy, Rings12.zw) <= 1.0f) ringColor = float3(0.05f, 0.05f, 0.0f);
+  else if (dot(pos_xy, Rings12.zw) <= 1.0f) ringColor = float3(1.0f, 1.0f, 0.0f);
 #if VRS_NUM_RATES >= 3
-  else if (dot(pos_xy, Rings34.xy) <= 1.0f) ringColor = float3(0.0f, 0.05f, 0.0f);
+  else if (dot(pos_xy, Rings34.xy) <= 1.0f) ringColor = float3(0.0f, 1.0f, 0.0f);
 #if VRS_NUM_RATES >= 4
-  else if (dot(pos_xy, Rings34.zw) <= 1.0f) ringColor = float3(0.0f, 0.05f, 0.05f);
+  else if (dot(pos_xy, Rings34.zw) <= 1.0f) ringColor = float3(0.0f, 1.0f, 1.0f);
 #endif
 #endif
 #endif
-  return BlendScreen(color, ringColor);
+  return lerp(color, ringColor, blend);
 }
 #endif
 
@@ -195,9 +195,14 @@ float3 AdjustRingColor(float3 color, float2 pos_uv) {
 float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
   float3 color = SAMPLE_TEXTURE(texcoord).rgb;
 
+  if (!any(color)) {
+    //discard;
+    return float4(1,0,0,1);
+  }
+
 #ifdef POST_PROCESS_SRC_SRGB
   color = srgb2linear(color);
- #endif
+#endif
   
   // adjust color input gains.
   if (any(Params2.rgb)) {
@@ -221,7 +226,7 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
 
 #if VRS_NUM_RATES >= 1
   if (any(Rings34.zw)) {
-    color = AdjustRingColor(color, texcoord);
+    color = AdjustRingColor(color, texcoord, 0.1);
   }
 
   //if (any(Params4.zw)) {
@@ -233,34 +238,42 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
 #endif
 
 #ifdef POST_PROCESS_DST_SRGB
-  color = linear2srgb(color);
+  color = linear2srgb(saturate(color));
+#else
+  color = saturate(color);
 #endif
 
-  return float4(saturate(color), 1.0);
+  return float4(color, 1.0);
 }
 
 float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
   float3 color = SAMPLE_TEXTURE(texcoord).rgb;
 
-#ifdef PASS_THROUGH_USE_GAINS
-#ifdef POST_PROCESS_SRC_SRGB
-  color = srgb2linear(color);
- #endif
-
-  // adjust color input gains.
-  if (any(Params2.rgb)) {
-    color = AdjustGains(color, Params2.rgb);
+  if (!any(color)) {
+    //discard;
+    return float4(1,0,0,1);
   }
 
-#ifdef POST_PROCESS_DST_SRGB
-  color = linear2srgb(color);
+#ifdef PASS_THROUGH_USE_GAINS
+  // adjust color input gains.
+  if (any(Params2.rgb)) {
+
+#ifdef POST_PROCESS_SRC_SRGB
+    color = srgb2linear(color);
 #endif
 
+    color = AdjustGains(color, Params2.rgb);
+
+#ifdef POST_PROCESS_DST_SRGB
+    color = linear2srgb(color);
 #endif
+
+  }
+#endif // PASS_THROUGH_USE_GAINS
 
 #if VRS_NUM_RATES >= 1
   if (any(Rings34.zw)) {
-    color = AdjustRingColor(color, texcoord);
+    color = AdjustRingColor(color, texcoord, 0.1);
   }
 
   //if (any(Params4.zw)) {
@@ -272,7 +285,7 @@ float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TE
   //}
 #endif
 
-  return float4(saturate(color), 1.0);
+  return float4(color, 1.0);
 }
 
 // clang-format on

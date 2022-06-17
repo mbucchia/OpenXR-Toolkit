@@ -34,6 +34,7 @@ namespace {
     using namespace toolkit;
     using namespace toolkit::config;
     using namespace toolkit::graphics;
+    using namespace toolkit::utilities;
     using namespace toolkit::log;
 
     struct alignas(16) ImageProcessorConfig {
@@ -78,17 +79,19 @@ namespace {
         }
 
         void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
+            const auto gazeIdx = slice >= 0 ? slice : 2;
+
+            // TODO: check whether we can use a single buffer instead.
             if (m_configUpdated) {
-                const auto gazeIdx = abs(slice) - (slice < 0); // slice < 0 ? -(slice + 1) : slice;
-                m_configUpdated = gazeIdx != 0;
+                m_configUpdated = slice == 0; // re-arm for the 2nd view
                 m_config.Params4.x = m_vrsState.gazeXY[gazeIdx].x;
                 m_config.Params4.y = m_vrsState.gazeXY[gazeIdx].y;
-                m_cbParams->uploadData(&m_config, sizeof(m_config));
+                m_cbParams[gazeIdx]->uploadData(&m_config, sizeof(m_config));
             }
 
             const auto usePostProcess = m_mode != PostProcessType::Off;
             m_device->setShader(m_shaders[input->isArray()][usePostProcess], SamplerType::LinearClamp);
-            m_device->setShaderInput(0, m_cbParams);
+            m_device->setShaderInput(0, m_cbParams[gazeIdx]);
             m_device->setShaderInput(0, input, slice);
             m_device->setShaderOutput(0, output, slice);
             m_device->dispatchShader();
@@ -99,7 +102,7 @@ namespace {
             const auto shadersDir = dllHome / "shaders";
             const auto shaderFile = shadersDir / "postprocess.hlsl";
 
-            utilities::shader::Defines defines;
+            shader::Defines defines;
             // defines.add("POST_PROCESS_SRC_SRGB", true);
             // defines.add("POST_PROCESS_DST_SRGB", true);
 
@@ -117,9 +120,9 @@ namespace {
             m_shaders[1][1] = m_device->createQuadShader(
                 shaderFile, "mainPostProcess", "Postprocess PS (VPRT)", defines.get() /*,  shadersDir*/);
 
-            // TODO: For now, we're going to require that all image processing shaders share the same configuration
-            // structure.
-            m_cbParams = m_device->createBuffer(sizeof(ImageProcessorConfig), "Postprocess CB");
+            for (auto& it : m_cbParams) {
+                it = m_device->createBuffer(sizeof(ImageProcessorConfig), "Postprocess CB");
+            }
 
             // Initialize gaze and ring large enough.
             m_config.Params4.x = m_config.Params4.y = 0;
@@ -150,7 +153,6 @@ namespace {
         void updateConfig() {
             using namespace DirectX;
             using namespace xr::math;
-            using namespace utilities;
 
             // Transform normalized user settings to shader values:
             // - reduce brighness range  (scale: 0.8)
@@ -195,7 +197,7 @@ namespace {
 #if 0
             VariableRateShaderState vrsState;
             if (m_vrs && m_vrsCurrentGen) {
-                m_vrs->getShaderState(vrsState, utilities::Eye::Both);
+                m_vrs->getShaderState(vrsState, Eye::Both);
 
                 // Don't track gaze changes when using eye tracking.
                 const auto hasGazeChanged =
@@ -215,20 +217,22 @@ namespace {
                 m_vrsState = vrsState;
             }
 #endif
+            m_config.Params4.z = m_config.Params4.w = 0;
+
             if (m_vrs && m_vrsCurrentGen) {
-                m_vrs->getShaderState(m_vrsState, utilities::Eye::Both);
+                // Get gazes and rings but ignore L/R rate bias.
+                m_vrs->getShaderState(m_vrsState, Eye::Both);
 
                 // Reduce flickering for rings with a rate above 2x2.
                 constexpr auto kLowResRate = to_integral(VariableShadingRateVal::R_2x2);
-                const auto flickerIdx = m_vrsState.rates[1] > kLowResRate   ? 0
-                                        : m_vrsState.rates[2] > kLowResRate ? 1
-                                        : m_vrsState.rates[3] > kLowResRate ? 2
-                                                                            : 3;
-                m_config.Params4.z = m_vrsState.rings[flickerIdx].x;
-                m_config.Params4.w = m_vrsState.rings[flickerIdx].y;
-
-            } else {
-                m_config.Params4.z = m_config.Params4.w = 0;
+                const auto ringIdx = m_vrsState.rates[1] > kLowResRate   ? 0
+                                     : m_vrsState.rates[2] > kLowResRate ? 1
+                                     : m_vrsState.rates[3] > kLowResRate ? 2
+                                                                         : -1;
+                if (ringIdx >= 0) {
+                    m_config.Params4.z = m_vrsState.rings[ringIdx].x;
+                    m_config.Params4.w = m_vrsState.rings[ringIdx].y;
+                }
             }
 
             if (m_vrsShowRings) {
@@ -295,12 +299,12 @@ namespace {
         const std::array<DirectX::XMINT4, 3> m_userParams;
 
         std::shared_ptr<IQuadShader> m_shaders[2][2]; // off, on, vprt
-        std::shared_ptr<IShaderBuffer> m_cbParams;
+        std::shared_ptr<IShaderBuffer> m_cbParams[ViewCount + 1];
 
         bool m_configUpdated{false};
         bool m_configVrsUpdated{false};
-
         bool m_vrsShowRings{false};
+
         uint64_t m_vrsCurrentGen{0};
         VariableRateShaderState m_vrsState{};
 
