@@ -134,7 +134,7 @@ namespace {
 
             // Set initial projection center
             std::fill_n(m_gazeOffset, std::size(m_gazeOffset), XrVector2f{0.f, 0.f});
-            updateGazeLocation({0.f, 0.f}, Eye::Both);
+            std::fill_n(m_gazeLocation, std::size(m_gazeLocation), XrVector2f{0.f, 0.f});
 
             // Request update.
             m_currentGen++;
@@ -288,16 +288,6 @@ namespace {
             disable(context);
         }
 
-        void updateGazeLocation(XrVector2f gaze, Eye eye) override {
-            // works with left, right and both
-            if (eye != Eye::Right)
-                m_gazeLocation[0] = gaze;
-            if (eye != Eye::Left)
-                m_gazeLocation[1] = gaze;
-            if (eye == Eye::Both)
-                m_gazeLocation[2] = gaze;
-        }
-
         void setViewProjectionCenters(XrVector2f left, XrVector2f right) override {
             m_gazeOffset[0] = left;
             m_gazeOffset[1] = right;
@@ -317,10 +307,10 @@ namespace {
             static_assert(ARRAYSIZE(VariableRateShaderState::rings) == ARRAYSIZE(m_Rings));
             static_assert(ARRAYSIZE(VariableRateShaderState::rates) == ARRAYSIZE(m_Rates[0]));
             
-            std::copy_n(m_gazeLocation, ARRAYSIZE(state.gazeXY), state.gazeXY);
-            std::copy_n(m_Rings, ARRAYSIZE(state.rings), state.rings);
+            std::copy_n(m_gazeLocation, std::size(m_gazeLocation), state.gazeXY);
+            std::copy_n(m_Rings, std::size(m_Rings), state.rings);
 
-            for (size_t i = 0; i < ARRAYSIZE(m_Rates); i++) {
+            for (size_t i = 0; i < std::size(m_Rates); i++) {
                 state.rates[i] = shadingRateToSettingsRate(m_Rates[to_integral(eye)][i]);
             }
 

@@ -703,7 +703,6 @@ namespace toolkit {
                                            std::optional<utilities::Eye> eyeHint) = 0;
             virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
 
-            virtual void updateGazeLocation(XrVector2f gaze, utilities::Eye eye) = 0;
             virtual void setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
 
             virtual uint8_t getMaxRate() const = 0;
