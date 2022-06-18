@@ -717,6 +717,8 @@ namespace toolkit {
 
     namespace input {
         enum class Hand : uint32_t { Left, Right };
+        
+        enum class EyeTrackerType { None, OpenXR, Pimax, Omnicept, Any };
 
         struct GesturesState {
             float pinchValue[2]{NAN, NAN};
@@ -791,6 +793,7 @@ namespace toolkit {
             virtual XrActionSet getActionSet() const = 0;
             virtual bool getProjectedGaze(XrVector2f gaze[utilities::ViewCount]) const = 0;
 
+            virtual bool isTrackingThroughRuntime() const = 0;
             virtual bool isProjectionDistanceSupported() const = 0;
 
             virtual const EyeGazeState& getEyeGazeState() const = 0;

@@ -41,8 +41,8 @@ namespace {
 
     class EyeTrackerBase : public IEyeTracker {
       public:
-        EyeTrackerBase(OpenXrApi& openXR, std::shared_ptr<IConfigManager> configManager)
-            : m_openXR(openXR), m_configManager(configManager) {
+        EyeTrackerBase(OpenXrApi& openXR, std::shared_ptr<IConfigManager> configManager, EyeTrackerType trackerType)
+            : m_openXR(openXR), m_configManager(configManager), m_trackerType(trackerType) {
         }
 
         ~EyeTrackerBase() override {
@@ -169,10 +169,15 @@ namespace {
             return m_eyeGazeState;
         }
 
+        bool isTrackingThroughRuntime() const override {
+            return m_trackerType == EyeTrackerType::OpenXR;
+        }
+
       protected:
         OpenXrApi& m_openXR;
         const std::shared_ptr<IConfigManager> m_configManager;
         float m_projectionDistance{2.f};
+        EyeTrackerType m_trackerType{EyeTrackerType::None};
         mutable bool m_valid{false};
 
         XrSession m_session{XR_NULL_HANDLE};
@@ -188,7 +193,7 @@ namespace {
     class OpenXrEyeTracker : public EyeTrackerBase {
       public:
         OpenXrEyeTracker(OpenXrApi& openXR, std::shared_ptr<IConfigManager> configManager)
-            : EyeTrackerBase(openXR, configManager) {
+            : EyeTrackerBase(openXR, configManager, EyeTrackerType::OpenXR) {
         }
 
         ~OpenXrEyeTracker() override {
@@ -319,7 +324,8 @@ namespace {
         OmniceptEyeTracker(OpenXrApi& openXR,
                            std::shared_ptr<IConfigManager> configManager,
                            std::unique_ptr<Client> omniceptClient)
-            : EyeTrackerBase(openXR, configManager), m_omniceptClient(std::move(omniceptClient)) {
+            : EyeTrackerBase(openXR, configManager, EyeTrackerType::Omnicept),
+              m_omniceptClient(std::move(omniceptClient)) {
             std::shared_ptr<Abi::SubscriptionList> subList = Abi::SubscriptionList::GetSubscriptionListToNone();
 
             Abi::Subscription eyeTrackingSub = Abi::Subscription::generateSubscriptionForDomainType<Abi::EyeTracking>();
@@ -371,7 +377,7 @@ namespace {
     class PimaxEyeTracker : public EyeTrackerBase {
       public:
         PimaxEyeTracker(OpenXrApi& openXR, std::shared_ptr<IConfigManager> configManager)
-            : EyeTrackerBase(openXR, configManager) {
+            : EyeTrackerBase(openXR, configManager, EyeTrackerType::Pimax) {
             aSeeVR_register_callback(aSeeVRCallbackType::state, stateCallback, this);
             aSeeVR_register_callback(aSeeVRCallbackType::eye_data, eyeDataCallback, this);
             aSeeVR_register_callback(aSeeVRCallbackType::coefficient, getCoefficientCallback, this);
@@ -476,21 +482,75 @@ namespace {
 } // namespace
 
 namespace toolkit::input {
+
     std::shared_ptr<IEyeTracker> CreateEyeTracker(toolkit::OpenXrApi& openXR,
-                                                  std::shared_ptr<toolkit::config::IConfigManager> configManager) {
-        return std::make_shared<OpenXrEyeTracker>(openXR, configManager);
-    }
+                                                  std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                                                  EyeTrackerType trackerType /* = EyeTrackerType::Any */) {
+        // For eye tracking, we try to use the Omnicept runtime if it's available.
+        if (trackerType == EyeTrackerType::Omnicept || trackerType == EyeTrackerType::Any) {
+            if (utilities::IsServiceRunning("HP Omnicept")) {
+                using namespace HP::Omnicept;
+                try {
+                    auto omniceptClientBuilder = Glia::StartBuildClient_Async(
+                        "OpenXR-Toolkit",
+                        std::move(std::make_unique<Abi::SessionLicense>("", "", Abi::LicensingModel::CORE, false)),
+                        [&](const Client::State state) {
+                            if (state == Client::State::RUNNING || state == Client::State::PAUSED) {
+                                Log("Omnicept client connected\n");
+                            } else if (state == Client::State::DISCONNECTED) {
+                                Log("Omnicept client disconnected\n");
+                            }
+                        });
 
-    std::shared_ptr<IEyeTracker>
-    CreateOmniceptEyeTracker(toolkit::OpenXrApi& openXR,
-                             std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                             std::unique_ptr<Client> omniceptClient) {
-        return std::make_shared<OmniceptEyeTracker>(openXR, configManager, std::move(omniceptClient));
-    }
+                    if (auto omniceptClient = omniceptClientBuilder->getBuildClientResultOrThrow()) {
+                        Log("Detected HP Omnicept support\n");
+                        return std::make_shared<OmniceptEyeTracker>(openXR, configManager, std::move(omniceptClient));
+                    }
 
-    std::shared_ptr<IEyeTracker> CreatePimaxEyeTracker(toolkit::OpenXrApi& openXR,
-                                                       std::shared_ptr<toolkit::config::IConfigManager> configManager) {
-        return std::make_shared<PimaxEyeTracker>(openXR, configManager);
+                } catch (const HP::Omnicept::Abi::HandshakeError& e) {
+                    Log("Could not connect to Omnicept runtime HandshakeError: %s\n", e.what());
+                } catch (const HP::Omnicept::Abi::TransportError& e) {
+                    Log("Could not connect to Omnicept runtime TransportError: %s\n", e.what());
+                } catch (const HP::Omnicept::Abi::ProtocolError& e) {
+                    Log("Could not connect to Omnicept runtime ProtocolError: %s\n", e.what());
+                } catch (std::exception& e) {
+                    Log("Could not connect to Omnicept runtime: %s\n", e.what());
+                }
+            }
+        }
+
+        // ...and the Pimax eye tracker if available.
+
+        if (trackerType == EyeTrackerType::Pimax || trackerType == EyeTrackerType::Any) {
+            XrSystemGetInfo getInfo{XR_TYPE_SYSTEM_GET_INFO};
+            getInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
+            XrSystemId systemId;
+            if (XR_SUCCEEDED(openXR.xrGetSystem(openXR.GetXrInstance(), &getInfo, &systemId))) {
+                XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES};
+                CHECK_XRCMD(openXR.xrGetSystemProperties(openXR.GetXrInstance(), systemId, &systemProperties));
+                if (std::string(systemProperties.systemName).find("aapvr") != std::string::npos) {
+                    aSeeVRInitParam param;
+                    param.ports[0] = 5777;
+                    Log("--> aSeeVR_connect_server\n");
+                    auto result = aSeeVR_connect_server(&param);
+                    Log("<-- aSeeVR_connect_server\n");
+                    if (result == ASEEVR_RETURN_CODE::success) {
+                        Log("Detected Pimax Droolon support\n");
+                        return std::make_shared<PimaxEyeTracker>(openXR, configManager);
+                    }
+                }
+            }
+        }
+
+        // ...otherwise, we will try to fallback to OpenXR.
+
+        // TODO: shouldn't we skip based on eyeTrackingSystemProperties.supportsEyeGazeInteraction ?
+
+        if (trackerType == EyeTrackerType::OpenXR || trackerType == EyeTrackerType::Any) {
+            return std::make_shared<OpenXrEyeTracker>(openXR, configManager);
+        }
+
+        return nullptr;
     }
 
 } // namespace toolkit::input

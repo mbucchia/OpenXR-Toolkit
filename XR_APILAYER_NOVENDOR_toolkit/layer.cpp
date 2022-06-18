@@ -273,72 +273,9 @@ namespace {
                 m_sendInterationProfileEvent = true;
             }
 
-            // For eye tracking, we try to use the Omnicept runtime if it's available.
-            std::unique_ptr<HP::Omnicept::Client> omniceptClient;
-            if (utilities::IsServiceRunning("HP Omnicept")) {
-                try {
-                    HP::Omnicept::Client::StateCallback_T stateCallback = [&](const HP::Omnicept::Client::State state) {
-                        if (state == HP::Omnicept::Client::State::RUNNING ||
-                            state == HP::Omnicept::Client::State::PAUSED) {
-                            Log("Omnicept client connected\n");
-                        } else if (state == HP::Omnicept::Client::State::DISCONNECTED) {
-                            Log("Omnicept client disconnected\n");
-                        }
-                    };
-
-                    std::unique_ptr<HP::Omnicept::Glia::AsyncClientBuilder> omniceptClientBuilder =
-                        HP::Omnicept::Glia::StartBuildClient_Async(
-                            "OpenXR-Toolkit",
-                            std::move(std::make_unique<HP::Omnicept::Abi::SessionLicense>(
-                                "", "", HP::Omnicept::Abi::LicensingModel::CORE, false)),
-                            stateCallback);
-
-                    omniceptClient = std::move(omniceptClientBuilder->getBuildClientResultOrThrow());
-                    Log("Detected HP Omnicept support\n");
-                    m_isOmniceptDetected = true;
-                } catch (const HP::Omnicept::Abi::HandshakeError& e) {
-                    Log("Could not connect to Omnicept runtime HandshakeError: %s\n", e.what());
-                } catch (const HP::Omnicept::Abi::TransportError& e) {
-                    Log("Could not connect to Omnicept runtime TransportError: %s\n", e.what());
-                } catch (const HP::Omnicept::Abi::ProtocolError& e) {
-                    Log("Could not connect to Omnicept runtime ProtocolError: %s\n", e.what());
-                } catch (std::exception& e) {
-                    Log("Could not connect to Omnicept runtime: %s\n", e.what());
-                }
-            }
-
-            // ...and the Pimax eye tracker if available.
-            {
-                XrSystemGetInfo getInfo{XR_TYPE_SYSTEM_GET_INFO};
-                getInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
-                XrSystemId systemId;
-                if (XR_SUCCEEDED(OpenXrApi::xrGetSystem(GetXrInstance(), &getInfo, &systemId))) {
-                    XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES};
-                    CHECK_XRCMD(OpenXrApi::xrGetSystemProperties(GetXrInstance(), systemId, &systemProperties));
-                    if (std::string(systemProperties.systemName).find("aapvr") != std::string::npos) {
-                        aSeeVRInitParam param;
-                        param.ports[0] = 5777;
-                        Log("--> aSeeVR_connect_server\n");
-                        m_hasPimaxEyeTracker = aSeeVR_connect_server(&param) == ASEEVR_RETURN_CODE::success;
-                        Log("<-- aSeeVR_connect_server\n");
-                        if (m_hasPimaxEyeTracker) {
-                            Log("Detected Pimax Droolon support\n");
-                        }
-                    }
-                }
-            }
-
-            // ...otherwise, we will try to fallback to OpenXR.
-
             // TODO: If Foveated Rendering is disabled, maybe do not initialize the eye tracker?
             if (m_configManager->getValue(config::SettingEyeTrackingEnabled)) {
-                if (omniceptClient) {
-                    m_eyeTracker = input::CreateOmniceptEyeTracker(*this, m_configManager, std::move(omniceptClient));
-                } else if (m_hasPimaxEyeTracker) {
-                    m_eyeTracker = input::CreatePimaxEyeTracker(*this, m_configManager);
-                } else {
-                    m_eyeTracker = input::CreateEyeTracker(*this, m_configManager);
-                }
+                m_eyeTracker = input::CreateEyeTracker(*this, m_configManager, input::EyeTrackerType::Any);
             }
 
             return XR_SUCCESS;
@@ -427,11 +364,12 @@ namespace {
                 m_supportMotionReprojectionLock = isWMR;
 
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
-                m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction || m_isOmniceptDetected ||
-                                       m_hasPimaxEyeTracker ||
+                m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction ||
+                                       (m_eyeTracker && !m_eyeTracker->isTrackingThroughRuntime()) ||
                                        m_configManager->getValue(config::SettingEyeDebugWithController);
+                
                 const bool isEyeTrackingThruRuntime =
-                    m_supportEyeTracking && !(m_isOmniceptDetected || m_hasPimaxEyeTracker);
+                    m_supportEyeTracking && m_eyeTracker && m_eyeTracker->isTrackingThroughRuntime();
 
                 // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
                 // will (falsely) advertise hand tracking support. Check for the Ultraleap layer in this case.
@@ -1806,7 +1744,7 @@ namespace {
             }
 
             // Update eye tracking and vrs first
-            if (m_eyeTracker) 
+            if (m_eyeTracker)
                 m_eyeTracker->update();
 
             if (m_variableRateShader)
@@ -2296,8 +2234,6 @@ namespace {
         bool m_supportEyeTracking{false};
         bool m_supportFOVHack{false};
         bool m_supportMotionReprojectionLock{false};
-        bool m_isOmniceptDetected{false};
-        bool m_hasPimaxEyeTracker{false};
 
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;
