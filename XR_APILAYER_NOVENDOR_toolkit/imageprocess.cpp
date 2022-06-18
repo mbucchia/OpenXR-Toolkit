@@ -62,10 +62,8 @@ namespace {
             if (hasModeChanged)
                 m_mode = mode;
 
-            if (mode != PostProcessType::Off) {
-                if (hasModeChanged || checkUpdateConfig(mode)) {
-                    updateConfig();
-                }
+            if (hasModeChanged || checkUpdateConfig(mode)) {
+                updateConfig();
             }
         }
 
@@ -119,8 +117,11 @@ namespace {
                        m_configManager->hasChanged(SettingPostColorGainR) ||
                        m_configManager->hasChanged(SettingPostColorGainG) ||
                        m_configManager->hasChanged(SettingPostColorGainB);
+            } else {
+                return m_configManager->hasChanged(SettingPostColorGainR) ||
+                       m_configManager->hasChanged(SettingPostColorGainG) ||
+                       m_configManager->hasChanged(SettingPostColorGainB);
             }
-            return false;
         }
 
         void updateConfig() {
