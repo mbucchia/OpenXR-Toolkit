@@ -1,7 +1,7 @@
 ---
 layout: default
 title: How does it work?
-nav_order: 9
+nav_order: 10
 ---
 
 ## Table of contents

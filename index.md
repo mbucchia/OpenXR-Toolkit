@@ -41,7 +41,7 @@ The following OpenXR ToolKit features have additional restrictions:
 
 + This software was only extensively tested with Microsoft Flight Simulator 2020.
   + It is also expected this software should work with most Steam games if they are using OpenXR (instead of Steam's OpenVR).
-  + It can be used with certain games through [OpenComposite-ACC](oc-acc).
+  + It can be used with certain games through [OpenComposite](opencomposite).
 + If using Windows Mixed Reality, please disable Hardware Accelerated Graphics Scheduler (HAGS).
 + If using with an HTC Vive Pro 2 or Cosmos, please select SteamVR as your OpenXR runtime.
 + Fixed Foveated Rendering in Microsoft Flight Simulator only works when TAA is enabled with a render scale of at least 51%.
