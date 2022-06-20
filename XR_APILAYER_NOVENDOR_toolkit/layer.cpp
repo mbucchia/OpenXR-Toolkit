@@ -430,33 +430,24 @@ namespace {
                                                    XrViewConfigurationView* views) override {
             const XrResult result = OpenXrApi::xrEnumerateViewConfigurationViews(
                 instance, systemId, viewConfigurationType, viewCapacityInput, viewCountOutput, views);
+
             if (XR_SUCCEEDED(result) && isVrSystem(systemId) && views) {
+                using namespace toolkit::config;
+
                 // Determine the application resolution.
-                const auto upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
+                auto inputWidth = m_displayWidth;
+                auto inputHeight = m_displayHeight;
 
-                uint32_t inputWidth = m_displayWidth;
-                uint32_t inputHeight = m_displayHeight;
-
-                switch (upscaleMode) {
-                case config::ScalingType::FSR:
-                case config::ScalingType::NIS: {
+                if (m_configManager->getEnumValue<ScalingType>(SettingScalingType) != ScalingType::None) {
                     std::tie(inputWidth, inputHeight) =
-                        config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
-                } break;
-
-                case config::ScalingType::None:
-                    break;
-
-                default:
-                    Log("Unknown upscaling type, falling back to no upscaling\n");
-                    break;
+                        GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
                 }
 
                 // Override the recommended image size to account for scaling.
-                for (uint32_t i = 0; i < *viewCountOutput; i++) {
-                    views[i].recommendedImageRectWidth = inputWidth;
-                    views[i].recommendedImageRectHeight = inputHeight;
-                }
+                std::for_each_n(views, *viewCountOutput, [inputWidth, inputHeight](auto& view) {
+                    view.recommendedImageRectWidth = inputWidth;
+                    view.recommendedImageRectHeight = inputHeight;
+                });
 
                 if (inputWidth != m_displayWidth || inputHeight != m_displayHeight) {
                     Log("Upscaling from %ux%u to %ux%u (%u%%)\n",
@@ -464,7 +455,7 @@ namespace {
                         inputHeight,
                         m_displayWidth,
                         m_displayHeight,
-                        (unsigned int)((((float)m_displayWidth / inputWidth) + 0.001f) * 100));
+                        std::max(m_displayWidth * 100u / inputWidth, 1u));
                 } else {
                     Log("Using OpenXR resolution (no upscaling): %ux%u\n", m_displayWidth, m_displayHeight);
                 }
@@ -514,40 +505,39 @@ namespace {
                 }
 
                 if (m_graphicsDevice) {
+                    using namespace toolkit::config;
+
                     // Initialize the other resources.
-
-                    m_upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
-
-                    switch (m_upscaleMode) {
-                    case config::ScalingType::FSR:
-                        m_imageProcessors[ImgProc::Scale] = graphics::CreateFSRUpscaler(
-                            m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
-                        break;
-
-                    case config::ScalingType::NIS:
-                        m_imageProcessors[ImgProc::Scale] = graphics::CreateNISUpscaler(
-                            m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
-                        break;
-
-                    case config::ScalingType::None:
-                        break;
-
-                    default:
-                        Log("Unknown upscaling type, falling back to no upscaling\n");
-                        m_upscaleMode = config::ScalingType::None;
-                        break;
-                    }
-
                     uint32_t renderWidth = m_displayWidth;
                     uint32_t renderHeight = m_displayHeight;
-                    if (m_upscaleMode != config::ScalingType::None) {
-                        
+
+                    m_upscaleMode = m_configManager->getEnumValue<ScalingType>(SettingScalingType);
+
+                    if (m_upscaleMode != ScalingType::None) {
                         std::tie(renderWidth, renderHeight) =
-                            config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
+                            GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
+
+                        if (m_upscaleMode == ScalingType::FSR) {
+                            m_imageProcessors[ImgProc::Scale] = graphics::CreateFSRUpscaler(m_configManager,
+                                                                                            m_graphicsDevice,
+                                                                                            renderWidth,
+                                                                                            renderHeight,
+                                                                                            m_displayWidth,
+                                                                                            m_displayHeight);
+                        }
+                        if (m_upscaleMode == ScalingType::NIS) {
+                            m_imageProcessors[ImgProc::Scale] = graphics::CreateNISUpscaler(m_configManager,
+                                                                                            m_graphicsDevice,
+                                                                                            renderWidth,
+                                                                                            renderHeight,
+                                                                                            m_displayWidth,
+                                                                                            m_displayHeight);
+                        }
 
                         // Per FSR SDK documentation.
                         m_mipMapBiasForUpscaling = -std::log2f(static_cast<float>(m_displayWidth * m_displayHeight) /
                                                                (renderWidth * renderHeight));
+
                         Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
                     }
 

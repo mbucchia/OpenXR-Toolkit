@@ -96,14 +96,18 @@ namespace toolkit {
         std::shared_ptr<IImageProcessor>
         CreateNISUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                           std::shared_ptr<IDevice> graphicsDevice,
-                          uint32_t outputWidth,
-                          uint32_t outputHeight);
+                          uint32_t renderWidth,
+                          uint32_t renderHeight,
+                          uint32_t displayWidth,
+                          uint32_t displayHeight);
 
         std::shared_ptr<IImageProcessor>
         CreateFSRUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                           std::shared_ptr<IDevice> graphicsDevice,
-                          uint32_t outputWidth,
-                          uint32_t outputHeight);
+                          uint32_t renderWidth,
+                          uint32_t renderHeight,
+                          uint32_t displayWidth,
+                          uint32_t displayHeight);
 
         std::shared_ptr<IVariableRateShader>
         CreateVariableRateShader(std::shared_ptr<toolkit::config::IConfigManager> configManager,
