@@ -674,7 +674,7 @@ namespace toolkit {
                                        int sourceSlice = -1,
                                        int destinationSlice = -1) = 0;
 
-            virtual std::optional<utilities::Eye> getEyeHint() const = 0;
+            virtual utilities::Eye getEyeHint() const = 0;
         };
 
         // A Variable Rate Shader (VRS) control implementation.
@@ -686,9 +686,9 @@ namespace toolkit {
         };
 
         struct VariableRateShaderConstants {
-            XrVector2f gazeXY; // ndc
-            XrVector2f rings[4];  // 1/(a1^2), 1/(b1^2)
-            uint32_t rates[4];     // setting rates
+            XrVector2f gazeXY;   // ndc
+            XrVector2f rings[4]; // 1/(a1^2), 1/(b1^2)
+            uint32_t rates[4];   // setting rates
         };
 
         struct IVariableRateShader {
@@ -700,7 +700,7 @@ namespace toolkit {
 
             virtual bool onSetRenderTarget(std::shared_ptr<IContext> context,
                                            std::shared_ptr<ITexture> renderTarget,
-                                           std::optional<utilities::Eye> eyeHint) = 0;
+                                           utilities::Eye eyeHint) = 0;
             virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
 
             virtual void setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
@@ -717,7 +717,7 @@ namespace toolkit {
 
     namespace input {
         enum class Hand : uint32_t { Left, Right };
-        
+
         enum class EyeTrackerType { None, OpenXR, Pimax, Omnicept, Any };
 
         struct GesturesState {
@@ -820,8 +820,8 @@ namespace toolkit {
             uint32_t numBiasedSamplers{0};
             uint32_t numRenderTargetsWithVRS{0};
 
-            bool hasColorBuffer[utilities::ViewCount]{false, false};
-            bool hasDepthBuffer[utilities::ViewCount]{false, false};
+            bool hasColorBuffer[utilities::ViewCount + 1]{false, false, false};
+            bool hasDepthBuffer[utilities::ViewCount + 1]{false, false, false};
         };
 
         // A menu handler.

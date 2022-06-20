@@ -569,50 +569,38 @@ namespace {
                         m_graphicsDevice->registerSetRenderTargetEvent(
                             [&](std::shared_ptr<graphics::IContext> context,
                                 std::shared_ptr<graphics::ITexture> renderTarget) {
-                                if (!m_isInFrame) {
-                                    return;
-                                }
-
-                                if (m_frameAnalyzer) {
-                                    m_frameAnalyzer->onSetRenderTarget(context, renderTarget);
-                                    const auto& eyeHint = m_frameAnalyzer->getEyeHint();
-                                    if (eyeHint.has_value()) {
-                                        m_stats.hasColorBuffer[(int)eyeHint.value()] = true;
+                                if (m_isInFrame) {
+                                    auto eyeHint = utilities::Eye::Both;
+                                    if (m_frameAnalyzer) {
+                                        m_frameAnalyzer->onSetRenderTarget(context, renderTarget);
+                                        eyeHint = m_frameAnalyzer->getEyeHint();
+                                        m_stats.hasColorBuffer[to_integral(eyeHint)] = true;
                                     }
-                                }
-                                if (m_variableRateShader) {
-                                    if (m_variableRateShader->onSetRenderTarget(
-                                            context,
-                                            renderTarget,
-                                            m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt)) {
-                                        m_stats.numRenderTargetsWithVRS++;
+                                    if (m_variableRateShader) {
+                                        if (m_variableRateShader->onSetRenderTarget(context, renderTarget, eyeHint))
+                                            m_stats.numRenderTargetsWithVRS++;
                                     }
                                 }
                             });
+
                         m_graphicsDevice->registerUnsetRenderTargetEvent(
                             [&](std::shared_ptr<graphics::IContext> context) {
-                                if (!m_isInFrame) {
-                                    return;
-                                }
-
-                                if (m_frameAnalyzer) {
-                                    m_frameAnalyzer->onUnsetRenderTarget(context);
-                                }
-                                if (m_variableRateShader) {
-                                    m_variableRateShader->onUnsetRenderTarget(context);
+                                if (m_isInFrame) {
+                                    if (m_frameAnalyzer)
+                                        m_frameAnalyzer->onUnsetRenderTarget(context);
+                                    if (m_variableRateShader)
+                                        m_variableRateShader->onUnsetRenderTarget(context);
                                 }
                             });
-                        m_graphicsDevice->registerCopyTextureEvent([&](std::shared_ptr<graphics::IContext> context,
-                                                                       std::shared_ptr<graphics::ITexture> source,
-                                                                       std::shared_ptr<graphics::ITexture> destination,
-                                                                       int sourceSlice,
-                                                                       int destinationSlice) {
-                            if (!m_isInFrame) {
-                                return;
-                            }
 
-                            if (m_frameAnalyzer) {
-                                m_frameAnalyzer->onCopyTexture(source, destination, sourceSlice, destinationSlice);
+                        m_graphicsDevice->registerCopyTextureEvent([&](std::shared_ptr<graphics::IContext>,
+                                                                       std::shared_ptr<graphics::ITexture> src,
+                                                                       std::shared_ptr<graphics::ITexture> dst,
+                                                                       int srcSlice,
+                                                                       int dstSlice) {
+                            if (m_isInFrame) {
+                                if (m_frameAnalyzer)
+                                    m_frameAnalyzer->onCopyTexture(src, dst, srcSlice, dstSlice);
                             }
                         });
                     }

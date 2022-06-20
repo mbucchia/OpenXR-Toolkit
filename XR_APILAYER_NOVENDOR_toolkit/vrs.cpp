@@ -222,7 +222,7 @@ namespace {
 
         bool onSetRenderTarget(std::shared_ptr<graphics::IContext> context,
                                std::shared_ptr<ITexture> renderTarget,
-                               std::optional<Eye> eyeHint) override {
+                               Eye eyeHint) override {
             const auto& info = renderTarget->getInfo();
 
             if (m_mode == VariableShadingRateType::None || !isVariableRateShadingCandidate(info)) {
@@ -230,12 +230,11 @@ namespace {
                 return false;
             }
 
-            TraceLoggingWrite(
-                g_traceProvider, "EnableVariableRateShading", TLArg((int)eyeHint.value_or(Eye::Both), "Eye"));
+            TraceLoggingWrite(g_traceProvider, "EnableVariableRateShading", TLArg(to_integral(eyeHint), "Eye"));
 
             if (auto context11 = context->getAs<D3D11>()) {
                 // TODO: for now redraw all the views until we implement better logic
-                // const auto updateSingleRTV = eyeHint.has_value() && info.arraySize == 1;
+                // const auto updateSingleRTV = eyeHint != Eye::Both && info.arraySize == 1;
                 // const auto updateArrayRTV = info.arraySize > 1;
                 // updateViews(updateSingleRTV, updateArrayRTV, false);
                 size_t maskIndex;
@@ -249,9 +248,8 @@ namespace {
                 desc.pViewports = m_nvRates;
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context11, &desc));
 
-                auto idx = static_cast<size_t>(eyeHint.value_or(Eye::Both));
                 auto& mask = info.arraySize == 2 ? m_NvShadingRateResources.viewsVPRT[maskIndex]
-                                                 : m_NvShadingRateResources.views[maskIndex][idx];
+                                                 : m_NvShadingRateResources.views[maskIndex][to_integral(eyeHint)];
 
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context11, get(mask)));
 
@@ -272,10 +270,8 @@ namespace {
                 // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
 
                 // Use the special SHADING_RATE_SOURCE resource state for barriers on the VRS surface
-                auto idx = static_cast<size_t>(eyeHint.value_or(Eye::Both));
-                auto mask = maskForSize.mask[idx]->getAs<D3D12>();
-
-                m_Dx12ShadingRateResources.RSSetShadingRateImage(get(vrsCommandList), mask, idx);
+                auto mask = maskForSize.mask[to_integral(eyeHint)]->getAs<D3D12>();
+                m_Dx12ShadingRateResources.RSSetShadingRateImage(get(vrsCommandList), mask, to_integral(eyeHint));
 
             } else {
                 throw std::runtime_error("Unsupported graphics runtime");
@@ -297,7 +293,6 @@ namespace {
             return static_cast<uint8_t>(m_tileRateMax);
         }
 
-        
         uint64_t getCurrentGen() const override {
             return m_mode != VariableShadingRateType::None ? m_currentGen : 0;
         }
@@ -306,7 +301,7 @@ namespace {
             static_assert(ARRAYSIZE(VariableRateShaderState::gazeXY) == ARRAYSIZE(m_gazeLocation));
             static_assert(ARRAYSIZE(VariableRateShaderState::rings) == ARRAYSIZE(m_Rings));
             static_assert(ARRAYSIZE(VariableRateShaderState::rates) == ARRAYSIZE(m_Rates[0]));
-            
+
             std::copy_n(m_gazeLocation, std::size(m_gazeLocation), state.gazeXY);
             std::copy_n(m_Rings, std::size(m_Rings), state.rings);
 
@@ -335,44 +330,36 @@ namespace {
 
         void doCapture(std::shared_ptr<graphics::IContext> context,
                        std::shared_ptr<ITexture> renderTarget = nullptr,
-                       std::optional<Eye> eyeHint = std::nullopt) {
-            if (m_isCapturing) {
-                if (renderTarget) {
-                    const auto& info = renderTarget->getInfo();
+                       Eye eyeHint = Eye::Both) {
+            if (!m_isCapturing)
+                return;
 
-                    TraceLoggingWrite(g_traceProvider,
-                                      "VariableRateShadingCapture",
-                                      TLArg(m_captureID, "CaptureID"),
-                                      TLArg(m_captureFileIndex, "CaptureFileIndex"));
+            const auto is_post = !renderTarget;
+            if (!is_post) {
+                TraceLoggingWrite(g_traceProvider,
+                                  "VariableRateShadingCapture",
+                                  TLArg(m_captureID, "CaptureID"),
+                                  TLArg(m_captureFileIndex, "CaptureFileIndex"));
 
-                    renderTarget->saveToFile(
-                        (localAppData / "screenshots" /
-                         fmt::format("vrs_{}_{}_{}_pre.dds",
-                                     m_captureID,
-                                     m_captureFileIndex,
-                                     info.arraySize == 2   ? "dual"
-                                     : eyeHint.has_value() ? eyeHint.value() == Eye::Left ? "left" : "right"
-                                                           : "generic"))
-                            .string());
+                m_captureRT = std::move(renderTarget);
+                m_captureEye = eyeHint;
+            }
 
-                    m_currentRenderTarget = renderTarget;
-                    m_currentEyeHint = eyeHint;
-                } else if (m_currentRenderTarget) {
-                    const auto& info = m_currentRenderTarget->getInfo();
+            if (m_captureRT) {
+                constexpr const char* eyeHintLabels[] = {"left", "rite", "gene"};
+                const auto& info = m_captureRT->getInfo();
+                m_captureRT->saveToFile(
+                    (localAppData / "screenshots" /
+                     fmt::format("vrs_{}_{}_{}_{}.dds",
+                                 m_captureID,
+                                 m_captureFileIndex,
+                                 is_post ? "pst" : "pre",
+                                 info.arraySize == 2 ? "dual" : eyeHintLabels[to_integral(m_captureEye)]))
+                        .string());
+            }
 
-                    m_currentRenderTarget->saveToFile(
-                        (localAppData / "screenshots" /
-                         fmt::format("vrs_{}_{}_{}_post.dds",
-                                     m_captureID,
-                                     m_captureFileIndex++,
-                                     info.arraySize == 2 ? "dual"
-                                     : m_currentEyeHint.has_value()
-                                         ? m_currentEyeHint.value() == Eye::Left ? "left" : "right"
-                                         : "generic"))
-                            .string());
-
-                    m_currentRenderTarget = nullptr;
-                }
+            if (is_post) {
+                m_captureRT = nullptr;
             }
         }
 
@@ -791,8 +778,8 @@ namespace {
                               TLArg(info.format, "Format"));
 
             // Check for proportionality with the size of our render target.
-            // Also check that the texture is not under 50% of the render scale. We expect that no one should use in-app
-            // render scale that is so small.
+            // Also check that the texture is not under 50% of the render scale. We expect that no one should use
+            // in-app render scale that is so small.
             if (info.width < (m_renderWidth * 0.51f))
                 return false;
 
@@ -819,6 +806,7 @@ namespace {
         const bool m_supportFOVHack;
         bool m_usingEyeTracking{false};
         bool m_swapViews{false};
+        bool m_isCapturing{false};
 
         // The current "generation" of the mask parameters.
         uint64_t m_currentGen{0};
@@ -885,8 +873,8 @@ namespace {
                     ResourceBarrier(pCommandList, pResource, D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE, idx);
 
                     // RSSetShadingRate() function sets both the combiners and the per-drawcall shading rate.
-                    // We set to 1X1 for all sources and all combiners to MAX, so that the coarsest wins (per-drawcall,
-                    // per-primitive, VRS surface).
+                    // We set to 1X1 for all sources and all combiners to MAX, so that the coarsest wins
+                    // (per-drawcall, per-primitive, VRS surface).
 
                     static const D3D12_SHADING_RATE_COMBINER combiners[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT] = {
                         D3D12_SHADING_RATE_COMBINER_MAX, D3D12_SHADING_RATE_COMBINER_MAX};
@@ -913,16 +901,13 @@ namespace {
         // We use a constant table and a varying shading rate texture filled with a compute shader.
         inline static NV_D3D11_VIEWPORT_SHADING_RATE_DESC m_nvRates[2] = {};
 
-        bool m_isCapturing{false};
+        std::shared_ptr<ITexture> m_captureRT;
         uint32_t m_captureID{0};
         uint32_t m_captureFileIndex;
-
-        std::shared_ptr<ITexture> m_currentRenderTarget;
-        std::optional<Eye> m_currentEyeHint;
+        Eye m_captureEye{Eye::Both};
     }; // namespace
 
 } // namespace
-
 #ifdef _DEBUG
 #include <dxgi1_3.h> // DXGIGetDebugInterface1
 #endif
