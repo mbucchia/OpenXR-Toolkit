@@ -34,8 +34,8 @@ namespace {
 
     using namespace toolkit;
     using namespace toolkit::log;
-    using namespace xr::math;
     using namespace toolkit::math;
+    using namespace xr::math;
 
     // The xrWaitFrame() loop might cause to have 2 frames in-flight, so we want to delay the GPU timer re-use by those
     // 2 frames.
@@ -60,6 +60,17 @@ namespace {
       public:
         OpenXrLayer() = default;
 
+        ~OpenXrLayer() override {
+            // We cleanup after ourselves (again) to avoid leaving state registry entries.
+            utilities::ClearWindowsMixedRealityReprojection();
+
+            if (m_configManager) {
+                m_configManager->setActiveSession("");
+            }
+
+            graphics::UnhookForD3D11DebugLayer();
+        }
+
         void setOptionsDefaults() {
             m_configManager->setDefault(config::SettingDeveloper, 0);
 
@@ -81,8 +92,8 @@ namespace {
             // Legacy setting is 1/3rd from top and 2/3rd from left.
             {
                 const auto ndcOffset = utilities::ScreenToNdc({2 / 3.f, 1 / 3.f});
-                m_configManager->setDefault(config::SettingOverlayXOffset, (int)(ndcOffset.x * 100.f));
-                m_configManager->setDefault(config::SettingOverlayYOffset, (int)(ndcOffset.y * 100.f));
+                m_configManager->setDefault(config::SettingOverlayXOffset, static_cast<int>(ndcOffset.x * 100));
+                m_configManager->setDefault(config::SettingOverlayYOffset, static_cast<int>(ndcOffset.y * 100));
             }
 
             // Hand tracking feature.
@@ -106,8 +117,8 @@ namespace {
             // We default mip-map biasing to Off with OpenComposite since it's causing issues with certain apps. Users
             // have the (Expert) option to turn it back on.
             m_configManager->setEnumDefault(config::SettingMipMapBias,
-                                            !m_isOpenComposite ? config::MipMapBias::Anisotropic
-                                                               : config::MipMapBias::Off);
+                                            m_isOpenComposite ? config::MipMapBias::Off
+                                                              : config::MipMapBias::Anisotropic);
 
             // Foveated rendering.
             m_configManager->setEnumDefault(config::SettingVRS, config::VariableShadingRateType::None);
@@ -153,8 +164,7 @@ namespace {
             m_configManager->setDefault(config::SettingPostShadows + "_u1", 0);
 #endif
             // Misc features.
-            m_configManager->setDefault(config::SettingICD, 1000);
-            m_configManager->setDefault(config::SettingFOVType, 0); // Simple
+            m_configManager->setEnumDefault(config::SettingFOVType, config::FovModeType::Simple);
             m_configManager->setDefault(config::SettingFOV, 100);
             m_configManager->setDefault(config::SettingFOVUp, 100);
             m_configManager->setDefault(config::SettingFOVDown, 100);
@@ -163,6 +173,7 @@ namespace {
             m_configManager->setDefault(config::SettingFOVRightLeft, 100);
             m_configManager->setDefault(config::SettingFOVRightRight, 100);
             m_configManager->setDefault(config::SettingPimaxFOVHack, 0);
+            m_configManager->setDefault(config::SettingICD, 1000);
             m_configManager->setDefault(config::SettingZoom, 10);
             m_configManager->setDefault(config::SettingPredictionDampen, 100);
             m_configManager->setDefault(config::SettingResolutionOverride, 0);
@@ -183,21 +194,18 @@ namespace {
             // rendering will not be offered.
             m_configManager->setDefault(
                 "disable_interceptor",
-                !(m_applicationName == "OpenComposite_AC2-Win64-Shipping" || m_applicationName == "OpenComposite_Il-2")
-                    ? 0
-                    : 1);
+                (m_applicationName == "OpenComposite_AC2-Win64-Shipping" || m_applicationName == "OpenComposite_Il-2"));
             // We disable the frame analyzer when using OpenComposite, because the app does not see the OpenXR
             // textures anyways.
-            m_configManager->setDefault("disable_frame_analyzer", !m_isOpenComposite ? 0 : 1);
+            m_configManager->setDefault("disable_frame_analyzer", m_isOpenComposite);
             m_configManager->setDefault("canting", 0);
             m_configManager->setDefault("vrs_capture", 0);
 
             // Workaround: the first versions of the toolkit used a different representation for the world scale.
             // Migrate the value upon first run.
             m_configManager->setDefault("icd", 0);
-            if (m_configManager->getValue("icd") != 0) {
-                const int migratedValue = 1'000'000 / m_configManager->getValue("icd");
-                m_configManager->setValue(config::SettingICD, migratedValue, true);
+            if (auto icdValue = m_configManager->getValue("icd")) {
+                m_configManager->setValue(config::SettingICD, 1'000'000 / icdValue, true);
                 m_configManager->deleteValue("icd");
             }
 
@@ -211,16 +219,15 @@ namespace {
             OpenXrApi::xrCreateInstance(createInfo);
 
             m_applicationName = createInfo->applicationInfo.applicationName;
-            Log("Application name: '%s', Engine name: '%s'\n",
+            m_isOpenComposite = contains_string(m_applicationName, "OpenComposite_");
+
+            Log("Application name: '%s', Engine name: '%s'%s\n",
                 createInfo->applicationInfo.applicationName,
-                createInfo->applicationInfo.engineName);
-            m_isOpenComposite = m_applicationName.find("OpenComposite_") == 0;
-            if (m_isOpenComposite) {
-                Log("Detected OpenComposite\n");
-            }
+                createInfo->applicationInfo.engineName,
+                m_isOpenComposite ? "\nDetected OpenComposite" : "");
 
             // Dump the OpenXR runtime information to help debugging customer issues.
-            XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES, nullptr};
+            auto instanceProperties = XrInstanceProperties{XR_TYPE_INSTANCE_PROPERTIES};
             CHECK_XRCMD(xrGetInstanceProperties(GetXrInstance(), &instanceProperties));
             m_runtimeName = fmt::format("{} {}.{}.{}",
                                         instanceProperties.runtimeName,
@@ -239,7 +246,7 @@ namespace {
             // We may let this fail intentionally and check that the pointer is populated later.
             // Workaround: the implementation of this function on the Varjo runtime seems to be using a time base
             // different than the timings returned by xrWaitFrame(). Do not use it.
-            if (m_runtimeName.find("Varjo") == std::string::npos) {
+            if (contains_string(m_runtimeName, "Varjo")) {
                 xrGetInstanceProcAddr(
                     GetXrInstance(),
                     "xrConvertWin32PerformanceCounterToTimeKHR",
@@ -280,30 +287,15 @@ namespace {
             return XR_SUCCESS;
         }
 
-        ~OpenXrLayer() override {
-            // We cleanup after ourselves (again) to avoid leaving state registry entries.
-            utilities::ClearWindowsMixedRealityReprojection();
-
-            if (m_configManager) {
-                m_configManager->setActiveSession("");
-            }
-
-            graphics::UnhookForD3D11DebugLayer();
-        }
-
         XrResult xrGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function) override {
-            const std::string apiName(name);
-            XrResult result;
-
             // TODO: This should be auto-generated by the dispatch layer, but today our generator only looks at core
             // spec. We may let this fail intentionally and check that the pointer is populated later.
-            if (apiName == "xrGetVisibilityMaskKHR") {
-                result = m_xrGetInstanceProcAddr(instance, name, function);
-                m_xrGetVisibilityMaskKHR = reinterpret_cast<PFN_xrGetVisibilityMaskKHR>(*function);
-                *function = reinterpret_cast<PFN_xrVoidFunction>(_xrGetVisibilityMaskKHR);
-            } else {
-                result = OpenXrApi::xrGetInstanceProcAddr(instance, name, function);
-            }
+            if (std::string_view(name) != "xrGetVisibilityMaskKHR")
+                return OpenXrApi::xrGetInstanceProcAddr(instance, name, function);
+
+            auto result = m_xrGetInstanceProcAddr(instance, name, function);
+            m_xrGetVisibilityMaskKHR = reinterpret_cast<PFN_xrGetVisibilityMaskKHR>(*function);
+            *function = reinterpret_cast<PFN_xrVoidFunction>(_xrGetVisibilityMaskKHR);
             return result;
         }
 
@@ -316,97 +308,46 @@ namespace {
                 // Retrieve the actual OpenXR resolution.
                 XrViewConfigurationView views[utilities::ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW, nullptr},
                                                                        {XR_TYPE_VIEW_CONFIGURATION_VIEW, nullptr}};
-                uint32_t viewCount;
-                CHECK_XRCMD(OpenXrApi::xrEnumerateViewConfigurationViews(instance,
-                                                                         *systemId,
-                                                                         XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
-                                                                         utilities::ViewCount,
-                                                                         &viewCount,
-                                                                         views));
 
-                m_displayWidth = views[0].recommendedImageRectWidth;
-                m_configManager->setDefault(config::SettingResolutionWidth, m_displayWidth);
-                m_displayHeight = views[0].recommendedImageRectHeight;
-
-                m_resolutionHeightRatio = (float)m_displayHeight / m_displayWidth;
-                m_maxDisplayWidth = std::min(views[0].maxImageRectWidth,
-                                             (uint32_t)(views[0].maxImageRectHeight / m_resolutionHeightRatio));
+                uint32_t viewCount = utilities::ViewCount;
+                CHECK_XRCMD(OpenXrApi::xrEnumerateViewConfigurationViews(
+                    instance, *systemId, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, viewCount, &viewCount, views));
 
                 // Check for hand and eye tracking support.
-                XrSystemHandTrackingPropertiesEXT handTrackingSystemProperties{
-                    XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT, nullptr};
-                handTrackingSystemProperties.supportsHandTracking = false;
+                auto systemProperties = XrSystemProperties{XR_TYPE_SYSTEM_PROPERTIES};
+                auto handTrackingProps = XrSystemHandTrackingPropertiesEXT{XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT};
+                auto eyeTrackingProps =
+                    XrSystemEyeGazeInteractionPropertiesEXT{XR_TYPE_SYSTEM_EYE_GAZE_INTERACTION_PROPERTIES_EXT};
 
-                XrSystemEyeGazeInteractionPropertiesEXT eyeTrackingSystemProperties{
-                    XR_TYPE_SYSTEM_EYE_GAZE_INTERACTION_PROPERTIES_EXT, &handTrackingSystemProperties};
-                eyeTrackingSystemProperties.supportsEyeGazeInteraction = false;
+                xr::InsertExtensionStruct(systemProperties, handTrackingProps);
+                xr::InsertExtensionStruct(systemProperties, eyeTrackingProps);
 
-                XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES, &eyeTrackingSystemProperties};
                 CHECK_XRCMD(OpenXrApi::xrGetSystemProperties(instance, *systemId, &systemProperties));
 
+                TraceLoggingWrite(g_traceProvider,
+                                  "xrGetSystem",
+                                  TLArg(systemProperties.systemName, "System"),
+                                  TLArg(views[0].recommendedImageRectWidth, "RecommendedResolutionX"),
+                                  TLArg(views[0].recommendedImageRectHeight, "RecommendedResolutionY"),
+                                  TLArg(handTrackingProps.supportsHandTracking, "SupportsHandTracking"),
+                                  TLArg(eyeTrackingProps.supportsEyeGazeInteraction, "SupportsEyeGazeInteraction"));
+
+                // assert(viewCount);
+
+                m_vrSystemId = *systemId; // Remember the XrSystemId to use.
                 m_systemName = systemProperties.systemName;
-                TraceLoggingWrite(
-                    g_traceProvider,
-                    "xrGetSystem",
-                    TLArg(m_systemName.c_str(), "System"),
-                    TLArg(m_displayWidth, "RecommendedResolutionX"),
-                    TLArg(m_displayHeight, "RecommendedResolutionY"),
-                    TLArg(handTrackingSystemProperties.supportsHandTracking, "SupportsHandTracking"),
-                    TLArg(eyeTrackingSystemProperties.supportsEyeGazeInteraction, "SupportsEyeGazeInteraction"));
+
                 Log("Using OpenXR system %s\n", m_systemName.c_str());
 
-                // Detect when the Pimax FOV hack is applicable.
-                m_supportFOVHack =
-                    isDeveloper || (m_applicationName == "FS2020" && m_systemName.find("aapvr") != std::string::npos);
-
-                const auto isWMR = m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
-                m_supportMotionReprojectionLock = isWMR;
-
-                m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
-                m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction ||
-                                       (m_eyeTracker && !m_eyeTracker->isTrackingThroughRuntime()) ||
-                                       m_configManager->getValue(config::SettingEyeDebugWithController);
-
-                const bool isEyeTrackingThruRuntime =
-                    m_supportEyeTracking && m_eyeTracker && m_eyeTracker->isTrackingThroughRuntime();
-
-                // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
-                // will (falsely) advertise hand tracking support. Check for the Ultraleap layer in this case.
-                if (m_supportHandTracking &&
-                    (!isDeveloper &&
-                     (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck) && isWMR))) {
-                    bool hasUltraleapLayer = false;
-                    for (const auto& layer : GetUpstreamLayers()) {
-                        if (layer == "XR_APILAYER_ULTRALEAP_hand_tracking") {
-                            hasUltraleapLayer = true;
-                        }
-                    }
-                    if (!hasUltraleapLayer) {
-                        Log("Ignoring XR_MSFT_hand_interaction for %s\n", m_runtimeName.c_str());
-                        m_supportHandTracking = false;
-                    }
-                }
-
-                // Workaround: the WMR runtime supports emulating eye tracking for development through
-                // XR_EXT_eye_gaze_interaction, which will (falsely) advertise eye tracking support. Disable it.
-                if (isEyeTrackingThruRuntime &&
-                    (!isDeveloper &&
-                     (!m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck) && isWMR))) {
-                    Log("Ignoring XR_EXT_eye_gaze_interaction for %s\n", m_runtimeName.c_str());
-                    m_supportEyeTracking = false;
-                }
-
-                // We had to initialize the hand and eye trackers early on. If we find out now that they are not
-                // supported, then destroy them. This could happen if the option was set while a hand tracking device
-                // was connected, but later the hand tracking device was disconnected.
-                if (!m_supportHandTracking) {
-                    m_handTracker.reset();
-                }
-                if (!m_supportEyeTracking) {
-                    m_eyeTracker.reset();
-                }
+                m_displayWidth = std::max(views[0].recommendedImageRectWidth, 1u);
+                m_displayHeight = std::max(views[0].recommendedImageRectHeight, 1u);
+                m_resolutionHeightRatio = static_cast<float>(m_displayHeight) / m_displayWidth;
+                m_maxDisplayWidth =
+                    std::min(views[0].maxImageRectWidth,
+                             static_cast<uint32_t>(views[0].maxImageRectHeight / m_resolutionHeightRatio));
 
                 // Apply override to the target resolution.
+                m_configManager->setDefault(config::SettingResolutionWidth, m_displayWidth);
                 if (m_configManager->getValue(config::SettingResolutionOverride)) {
                     m_displayWidth = m_configManager->getValue(config::SettingResolutionWidth);
                     m_displayHeight = (uint32_t)(m_displayWidth * m_resolutionHeightRatio);
@@ -414,8 +355,49 @@ namespace {
                     Log("Overriding OpenXR resolution: %ux%u\n", m_displayWidth, m_displayHeight);
                 }
 
-                // Remember the XrSystemId to use.
-                m_vrSystemId = *systemId;
+                // Detect when the Pimax FOV hack is applicable.
+
+                const auto isRuntimeWMR = contains_string(m_runtimeName, "Windows Mixed Reality Runtime");
+                const auto isSystemPimax = contains_string(m_systemName, "aapvr");
+
+                m_supportMotionReprojectionLock = isRuntimeWMR;
+                m_supportFOVHack = isDeveloper || (m_applicationName == "FS2020" && isSystemPimax);
+
+                m_supportHandTracking = handTrackingProps.supportsHandTracking;
+                m_supportEyeTracking = eyeTrackingProps.supportsEyeGazeInteraction ||
+                                       (m_eyeTracker && !m_eyeTracker->isTrackingThroughRuntime()) ||
+                                       m_configManager->getValue(config::SettingEyeDebugWithController);
+
+                // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
+                // will (falsely) advertise hand tracking support. Check for the Ultraleap layer in this case.
+                if (m_supportHandTracking && isRuntimeWMR && !isDeveloper) {
+                    if (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck)) {
+                        if (!contains(GetUpstreamLayers(), "XR_APILAYER_ULTRALEAP_hand_tracking")) {
+                            Log("Ignoring XR_MSFT_hand_interaction for %s\n", m_runtimeName.c_str());
+                            m_supportHandTracking = false;
+                        }
+                    }
+                }
+
+                // Workaround: the WMR runtime supports emulating eye tracking for development through
+                // XR_EXT_eye_gaze_interaction, which will (falsely) advertise eye tracking support. Disable it.
+                if (m_supportEyeTracking && isRuntimeWMR && !isDeveloper) {
+                    if (!m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck)) {
+                        if (m_eyeTracker && m_eyeTracker->isTrackingThroughRuntime()) {
+                            Log("Ignoring XR_EXT_eye_gaze_interaction for %s\n", m_runtimeName.c_str());
+                            m_supportEyeTracking = false;
+                        }
+                    }
+                }
+
+                // We had to initialize the hand and eye trackers early on. If we find out now that they are not
+                // supported, then destroy them. This could happen if the option was set while a hand tracking device
+                // was connected, but later the hand tracking device was disconnected.
+                if (!m_supportHandTracking)
+                    m_handTracker.reset();
+
+                if (!m_supportEyeTracking)
+                    m_eyeTracker.reset();
             }
 
             return result;

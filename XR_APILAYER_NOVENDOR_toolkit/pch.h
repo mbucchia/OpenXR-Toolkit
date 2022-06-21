@@ -124,6 +124,7 @@ constexpr inline T roundDown(T value, uint32_t pad) noexcept {
 // OpenXR utilities.
 #include <XrError.h>
 #include <XrMath.h>
+#include <XrStruct.h>
 
 // FW1FontWrapper.
 #include <FW1FontWrapper.h>
