@@ -1154,7 +1154,6 @@ namespace {
                 OpenXrApi::xrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
             if (XR_SUCCEEDED(result) && isVrSession(session) &&
                 viewLocateInfo->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
-                assert(*viewCountOutput == utilities::ViewCount);
                 using namespace DirectX;
 
                 m_posesForFrame[0].pose = views[0].pose;
@@ -1175,6 +1174,8 @@ namespace {
 
                 // Calibrate the projection center for each eye.
                 if (m_needCalibrateEyeProjections) {
+                    assert(*viewCountOutput == utilities::ViewCount);
+
                     XrViewLocateInfo info = *viewLocateInfo;
                     info.space = m_viewSpace;
 
@@ -1225,23 +1226,21 @@ namespace {
                 // Override the ICD if requested.
                 const int icdOverride = m_configManager->getValue(config::SettingICD);
                 if (icdOverride != 1000) {
-                    const float icd = (ipd * 1000) / std::max(icdOverride, 1);
-                    const auto center = views[0].pose.position + (vec * 0.5f);
-                    const auto offset = Normalize(vec) * (icd * 0.5f);
-                    views[0].pose.position = center - offset;
-                    views[1].pose.position = center + offset;
-                    m_stats.icd = icd;
-
+                    const float icd = 1000.f / std::max(icdOverride, 1);
+                    views[1].pose.position = views[0].pose.position + (vec * ((1 + icd) * 0.5f));
+                    views[0].pose.position = views[0].pose.position + (vec * ((1 - icd) * 0.5f));
+                    m_stats.icd = icd * ipd;
                 } else {
                     m_stats.icd = ipd;
                 }
 
                 // Override the FOV if requested.
-                if (m_configManager->getValue(config::SettingFOVType) == 0) {
+                if (m_configManager->getEnumValue<config::FovModeType>(config::SettingFOVType) ==
+                    config::FovModeType::Simple) {
                     const auto fovOverride = m_configManager->getValue(config::SettingFOV);
                     if (fovOverride != 100) {
-                        StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * XMVectorReplicate(fovOverride * 0.01f));
-                        StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * XMVectorReplicate(fovOverride * 0.01f));
+                        StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * (fovOverride * 0.01f));
+                        StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * (fovOverride * 0.01f));
                     }
                 } else {
                     // XrFovF layout is: L,R,U,D
@@ -1255,8 +1254,8 @@ namespace {
                                              fov1.z,
                                              fov1.w);
 
-                    StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * XMLoadSInt4(&fov1) * XMVectorReplicate(0.01f));
-                    StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * XMLoadSInt4(&fov2) * XMVectorReplicate(0.01f));
+                    StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * (XMLoadSInt4(&fov1) * 0.01f));
+                    StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * (XMLoadSInt4(&fov2) * 0.01f));
                 }
 
                 StoreXrFov(&m_stats.fov[0], ConvertToDegrees(views[0].fov));
@@ -1268,14 +1267,13 @@ namespace {
                 // Apply zoom if requested.
                 const auto zoom = m_configManager->getValue(config::SettingZoom);
                 if (zoom != 10) {
-                    StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * XMVectorReplicate(1.f / (zoom * 0.1f)));
-                    StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * XMVectorReplicate(1.f / (zoom * 0.1f)));
+                    StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * (10.f / zoom));
+                    StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * (10.f / zoom));
                 }
 
                 // When doing the Pimax FOV hack, we swap left and right eyes.
                 if (m_supportFOVHack && m_configManager->hasChanged(config::SettingPimaxFOVHack)) {
-                    // Send the necessary events to the app.
-                    m_visibilityMaskEventIndex = 0;
+                    m_visibilityMaskEventIndex = 0; // Send the necessary events to the app.
                 }
                 if (m_supportFOVHack && m_configManager->getValue(config::SettingPimaxFOVHack)) {
                     std::swap(views[0], views[1]);
@@ -1706,7 +1704,6 @@ namespace {
 
             std::vector<XrCompositionLayerProjection> layerProjectionAllocator;
             std::vector<std::array<XrCompositionLayerProjectionView, 2>> layerProjectionViewsAllocator;
-            XrCompositionLayerQuad layerQuadForMenu{XR_TYPE_COMPOSITION_LAYER_QUAD};
 
             // We must reserve the underlying storage to keep our pointers stable.
             layerProjectionAllocator.reserve(chainFrameEndInfo.layerCount);
@@ -1970,6 +1967,7 @@ namespace {
                     }
 
                     // Add the quad layer to the frame.
+                    XrCompositionLayerQuad layerQuadForMenu{XR_TYPE_COMPOSITION_LAYER_QUAD};
                     layerQuadForMenu.space = m_viewSpace;
                     StoreXrPose(&layerQuadForMenu.pose,
                                 DirectX::XMMatrixMultiply(
