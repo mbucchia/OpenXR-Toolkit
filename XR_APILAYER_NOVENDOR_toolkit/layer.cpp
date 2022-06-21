@@ -73,6 +73,7 @@ namespace {
         }
 
         void setOptionsDefaults() {
+            m_configManager->setDefault(config::SettingFirstRun, 1);
             m_configManager->setDefault(config::SettingDeveloper, 0);
 
             // Input & menu options.
