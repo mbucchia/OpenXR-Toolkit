@@ -699,6 +699,28 @@ namespace LAYER_NAMESPACE
 		return result;
 	}
 
+	XrResult xrGetVisibilityMaskKHR(XrSession session, XrViewConfigurationType viewConfigurationType, uint32_t viewIndex, XrVisibilityMaskTypeKHR visibilityMaskType, XrVisibilityMaskKHR* visibilityMask)
+	{
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrGetVisibilityMaskKHR");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrGetVisibilityMaskKHR(session, viewConfigurationType, viewIndex, visibilityMaskType, visibilityMask);
+		}
+		catch (std::exception& exc)
+		{
+			TraceLoggingWriteTagged(local, "xrGetVisibilityMaskKHR_Error", TLArg(exc.what(), "Error"));
+			Log("xrGetVisibilityMaskKHR: %s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		TraceLoggingWriteStop(local, "xrGetVisibilityMaskKHR", TLArg((int)result, "Result"));
+
+		return result;
+	}
+
 
 	// Auto-generated dispatcher handler.
 	XrResult OpenXrApi::xrGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function)
@@ -864,6 +886,11 @@ namespace LAYER_NAMESPACE
 				m_xrStopHapticFeedback = reinterpret_cast<PFN_xrStopHapticFeedback>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrStopHapticFeedback);
 			}
+			else if (apiName == "xrGetVisibilityMaskKHR")
+			{
+				m_xrGetVisibilityMaskKHR = reinterpret_cast<PFN_xrGetVisibilityMaskKHR>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrGetVisibilityMaskKHR);
+			}
 
 		}
 
@@ -961,6 +988,10 @@ namespace LAYER_NAMESPACE
 		{
 			throw std::runtime_error("Failed to resolve xrSyncActions");
 		}
+		m_xrGetInstanceProcAddr(m_instance, "xrConvertWin32PerformanceCounterToTimeKHR", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrConvertWin32PerformanceCounterToTimeKHR));
+		m_xrGetInstanceProcAddr(m_instance, "xrCreateHandTrackerEXT", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateHandTrackerEXT));
+		m_xrGetInstanceProcAddr(m_instance, "xrDestroyHandTrackerEXT", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrDestroyHandTrackerEXT));
+		m_xrGetInstanceProcAddr(m_instance, "xrLocateHandJointsEXT", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrLocateHandJointsEXT));
 		m_applicationName = createInfo->applicationInfo.applicationName;
 		return XR_SUCCESS;
 	}

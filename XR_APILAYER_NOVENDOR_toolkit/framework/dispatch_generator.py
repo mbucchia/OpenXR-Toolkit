@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 import os
+import re
 import sys
 
 # Import dependencies from the OpenXR SDK.
@@ -154,7 +155,7 @@ namespace LAYER_NAMESPACE
     def genWrappers(self):
         generated = ''
 
-        for cur_cmd in self.core_commands:
+        for cur_cmd in self.core_commands + self.ext_commands:
             if cur_cmd.name in layer_apis.override_functions:
                 parameters_list = self.makeParametersList(cur_cmd)
                 arguments_list = self.makeArgumentsList(cur_cmd)
@@ -219,6 +220,12 @@ namespace LAYER_NAMESPACE
 		}}
 '''
 
+        # Functions from extensions are allowed to be null.
+        for cur_cmd in self.ext_commands:
+            if cur_cmd.name in layer_apis.requested_functions:
+                generated += f'''		m_xrGetInstanceProcAddr(m_instance, "{cur_cmd.name}", reinterpret_cast<PFN_xrVoidFunction*>(&m_{cur_cmd.name}));
+'''
+
         generated += '''		m_applicationName = createInfo->applicationInfo.applicationName;
 		return XR_SUCCESS;
 	}'''
@@ -241,7 +248,7 @@ namespace LAYER_NAMESPACE
 			}
 '''
 
-        for cur_cmd in self.core_commands:
+        for cur_cmd in self.core_commands + self.ext_commands:
             if cur_cmd.name in layer_apis.override_functions:
                 generated += f'''			else if (apiName == "{cur_cmd.name}")
 			{{
@@ -342,7 +349,7 @@ namespace LAYER_NAMESPACE
         generated = ''
 
         commands_to_include = list(set(layer_apis.override_functions + layer_apis.requested_functions + ['xrDestroyInstance']))
-        for cur_cmd in self.core_commands:
+        for cur_cmd in self.core_commands + self.ext_commands:
             if cur_cmd.name in commands_to_include:
                 parameters_list = self.makeParametersList(cur_cmd)
                 arguments_list = self.makeArgumentsList(cur_cmd)
@@ -371,13 +378,19 @@ namespace LAYER_NAMESPACE
                 
         return generated
 
+def makeREstring(strings, default=None):
+    """Turn a list of strings into a regexp string matching exactly those strings."""
+    if strings or default is None:
+        return '^(' + '|'.join((re.escape(s) for s in strings)) + ')$'
+    return default
 
 if __name__ == '__main__':
     registry = Registry()
     registry.loadFile(os.path.join(sdk_dir, 'specification', 'registry', 'xr.xml'))
 
     conventions = OpenXRConventions()
-    featuresPat = "XR_VERSION_1_0"
+    featuresPat = '.*'
+    extensionsPat = makeREstring(layer_apis.extensions_to_search)
 
     registry.setGenerator(DispatchGenCppOutputGenerator(diagFile=None))
     registry.apiGen(AutomaticSourceGeneratorOptions(
@@ -391,7 +404,7 @@ if __name__ == '__main__':
             defaultExtensions = 'openxr',
             addExtensions     = None,
             removeExtensions  = None,
-            emitExtensions    = None))
+            emitExtensions    = extensionsPat))
 
     registry.setGenerator(DispatchGenHOutputGenerator(diagFile=None))
     registry.apiGen(AutomaticSourceGeneratorOptions(
@@ -405,4 +418,4 @@ if __name__ == '__main__':
             defaultExtensions = 'openxr',
             addExtensions     = None,
             removeExtensions  = None,
-            emitExtensions    = None))
+            emitExtensions    = extensionsPat))

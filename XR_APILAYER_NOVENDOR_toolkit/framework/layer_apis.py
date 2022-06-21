@@ -29,7 +29,8 @@ override_functions = [
     "xrStopHapticFeedback",
     "xrWaitFrame",
     "xrBeginFrame",
-    "xrEndFrame"
+    "xrEndFrame",
+    "xrGetVisibilityMaskKHR",
 ]
 
 # The list of OpenXR functions our layer will use from the runtime.
@@ -56,5 +57,11 @@ requested_functions = [
     "xrSyncActions",
     "xrGetActionStatePose",
     "xrPathToString",
-    "xrStringToPath"
+    "xrStringToPath",
+    "xrConvertWin32PerformanceCounterToTimeKHR",
+    "xrCreateHandTrackerEXT",
+    "xrDestroyHandTrackerEXT",
+    "xrLocateHandJointsEXT",
 ]
+
+extensions_to_search = ["XR_KHR_visibility_mask", "XR_KHR_win32_convert_performance_counter_time", "XR_EXT_hand_tracking"]

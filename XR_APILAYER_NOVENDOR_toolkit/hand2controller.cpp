@@ -210,16 +210,6 @@ namespace {
             CHECK_HRCMD(openXR.xrStringToPath(
                 openXR.GetXrInstance(), m_config.interactionProfile.c_str(), &m_interactionProfile));
 
-            CHECK_XRCMD(openXR.xrGetInstanceProcAddr(openXR.GetXrInstance(),
-                                                     "xrCreateHandTrackerEXT",
-                                                     reinterpret_cast<PFN_xrVoidFunction*>(&xrCreateHandTrackerEXT)));
-            CHECK_XRCMD(openXR.xrGetInstanceProcAddr(openXR.GetXrInstance(),
-                                                     "xrDestroyHandTrackerEXT",
-                                                     reinterpret_cast<PFN_xrVoidFunction*>(&xrDestroyHandTrackerEXT)));
-            CHECK_XRCMD(openXR.xrGetInstanceProcAddr(openXR.GetXrInstance(),
-                                                     "xrLocateHandJointsEXT",
-                                                     reinterpret_cast<PFN_xrVoidFunction*>(&xrLocateHandJointsEXT)));
-
             CHECK_HRCMD(m_openXR.xrStringToPath(m_openXR.GetXrInstance(), "/user/hand/left", &m_leftHandSubaction));
             CHECK_HRCMD(m_openXR.xrStringToPath(m_openXR.GetXrInstance(), "/user/hand/right", &m_rightHandSubaction));
 
@@ -380,8 +370,8 @@ namespace {
             rightTrackerCreateInfo.hand = XR_HAND_RIGHT_EXT;
             rightTrackerCreateInfo.handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT;
 
-            CHECK_XRCMD(xrCreateHandTrackerEXT(session, &leftTrackerCreateInfo, &m_handTracker[0]));
-            CHECK_XRCMD(xrCreateHandTrackerEXT(session, &rightTrackerCreateInfo, &m_handTracker[1]));
+            CHECK_XRCMD(m_openXR.xrCreateHandTrackerEXT(session, &leftTrackerCreateInfo, &m_handTracker[0]));
+            CHECK_XRCMD(m_openXR.xrCreateHandTrackerEXT(session, &rightTrackerCreateInfo, &m_handTracker[1]));
 
             XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO, nullptr};
             referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
@@ -412,7 +402,7 @@ namespace {
             }
             for (uint32_t i = 0; i < HandCount; i++) {
                 if (m_handTracker[i] != XR_NULL_HANDLE) {
-                    xrDestroyHandTrackerEXT(m_handTracker[i]);
+                    m_openXR.xrDestroyHandTrackerEXT(m_handTracker[i]);
                     m_handTracker[i] = XR_NULL_HANDLE;
                 }
             }
@@ -769,7 +759,7 @@ namespace {
                 locations.jointLocations = entry.second;
                 entry.first = time;
 
-                CHECK_HRCMD(xrLocateHandJointsEXT(m_handTracker[side], &locateInfo, &locations));
+                CHECK_HRCMD(m_openXR.xrLocateHandJointsEXT(m_handTracker[side], &locateInfo, &locations));
                 if (Pose::IsPoseTracked(locations.jointLocations[XR_HAND_JOINT_PALM_EXT].locationFlags)) {
                     m_lastTimestampWithPoseTracked[side] = std::max(time, m_lastTimestampWithPoseTracked[side]);
                 } else {
@@ -1002,11 +992,6 @@ namespace {
         mutable std::optional<XrSpace> m_preferredBaseSpace;
         mutable XrTime m_lastTimestampWithPoseTracked[HandCount]{0, 0};
         mutable GesturesState m_gesturesState{};
-
-        // TODO: These should be auto-generated and accessible via OpenXrApi.
-        PFN_xrCreateHandTrackerEXT xrCreateHandTrackerEXT{nullptr};
-        PFN_xrDestroyHandTrackerEXT xrDestroyHandTrackerEXT{nullptr};
-        PFN_xrLocateHandJointsEXT xrLocateHandJointsEXT{nullptr};
     };
 
     Config::Config() {
