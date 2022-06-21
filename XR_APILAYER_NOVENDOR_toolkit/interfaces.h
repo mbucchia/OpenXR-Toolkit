@@ -102,6 +102,7 @@ namespace toolkit {
 
     namespace config {
 
+        const std::string SettingFirstRun = "first_run2";
         const std::string SettingDeveloper = "developer";
         const std::string SettingReloadShaders = "reload_shaders";
         const std::string SettingScreenshotEnabled = "enable_screenshot";

@@ -191,7 +191,6 @@ namespace {
         }
 
         void resetToDefaults() override {
-            // TODO: For now we do the same as a hard reset. Ideally, we wish to exclude `first_run' from this.
             hardReset();
         }
 
