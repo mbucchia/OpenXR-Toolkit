@@ -23,6 +23,7 @@
 
 #include "pch.h"
 
+#include "layer.h"
 #include "factories.h"
 #include "interfaces.h"
 #include "shader_utilities.h"
@@ -334,3 +335,65 @@ namespace toolkit::utilities::shader {
     }
 
 } // namespace toolkit::utilities::shader
+
+namespace toolkit::graphics {
+
+    static std::shared_ptr<ITexture> WrapXrSwapchainImage(std::shared_ptr<IDevice> device,
+                                                   const XrSwapchainCreateInfo& info,
+                                                   const void* imageHeader,
+                                                   std::string_view debugName) {
+        if (auto baseHeader = reinterpret_cast<const XrSwapchainImageBaseHeader*>(imageHeader)) {
+            if (baseHeader->type == XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR) {
+                return WrapD3D11Texture(
+                    device, info, reinterpret_cast<const XrSwapchainImageD3D11KHR*>(imageHeader)->texture, debugName);
+            }
+            if (baseHeader->type == XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR) {
+                return WrapD3D12Texture(
+                    device, info, reinterpret_cast<const XrSwapchainImageD3D12KHR*>(imageHeader)->texture, debugName);
+            }
+            throw std::runtime_error("Not a supported swapchain image type");
+        }
+        return nullptr;
+    }
+
+    std::vector<std::shared_ptr<ITexture>> WrapXrSwapchainImages(std::shared_ptr<IDevice> device,
+                                                                 const XrSwapchainCreateInfo& info,
+                                                                 XrSwapchain swapchain,
+                                                                 std::string_view debugName) {
+        // D3D11::Api, D3D12::Api
+        static const struct {
+            XrStructureType type;
+            uint32_t size;
+        } kTraits[] = {{XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR, sizeof(XrSwapchainImageD3D11KHR)},
+                       {XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR, sizeof(XrSwapchainImageD3D12KHR)}};
+
+        std::vector<std::shared_ptr<ITexture>> textures;
+
+        uint32_t imageCount = 0;
+        CHECK_XRCMD(GetInstance()->OpenXrApi::xrEnumerateSwapchainImages(swapchain, 0, &imageCount, nullptr));
+
+        if (imageCount) {
+            const auto elemType = kTraits[to_integral(device->getApi())].type;
+            const auto elemSize = kTraits[to_integral(device->getApi())].size;
+            const auto allocData = std::make_unique<uint8_t[]>(size_t(imageCount) * elemSize);
+
+            auto baseHeader = allocData.get();
+            for (uint32_t i = 0; i < imageCount; i++) {
+                reinterpret_cast<XrSwapchainImageBaseHeader*>(baseHeader)->type = elemType;
+                baseHeader += elemSize;
+            }
+
+            auto imageHeader = allocData.get();
+            CHECK_XRCMD(GetInstance()->OpenXrApi::xrEnumerateSwapchainImages(
+                swapchain, imageCount, &imageCount, reinterpret_cast<XrSwapchainImageBaseHeader*>(imageHeader)));
+
+            textures.reserve(imageCount);
+            for (uint32_t i = 0; i < imageCount; i++) {
+                textures.push_back(WrapXrSwapchainImage(device, info, imageHeader, fmt::format(debugName, i)));
+                imageHeader += elemSize;
+            }
+        }
+        return textures;
+    }
+
+} // namespace toolkit::graphics

@@ -506,6 +506,10 @@ namespace {
             return get(m_texture);
         }
 
+        uint64_t getNativeFormat() const override {
+            return static_cast<uint64_t>(m_textureDesc.Format);
+        }
+
       private:
         std::shared_ptr<D3D12ResourceView> makeShaderInputViewInternal(uint32_t slice) const {
             if (m_textureDesc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) {

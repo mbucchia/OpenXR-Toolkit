@@ -52,6 +52,16 @@ namespace toolkit {
             return static_cast<std::underlying_type_t<E>>(e);
         }
 
+        template <typename Container, typename Other>
+        inline constexpr bool contains(Container&& container, Other&& other) {
+            return std::end(container) != std::find(std::begin(container), std::end(container), other);
+        }
+
+        template <typename Other>
+        inline constexpr bool contains_string(const std::string& string, Other&& other) {
+            return string.find(std::forward<Other>(other)) != std::string::npos;
+        }
+
     } // namespace
 
     namespace math {
@@ -444,6 +454,7 @@ namespace toolkit {
             virtual void saveToFile(const std::filesystem::path& path) const = 0;
 
             virtual void* getNativePtr() const = 0;
+            virtual uint64_t getNativeFormat() const = 0;
 
             template <typename ApiTraits>
             auto getAs() const {
@@ -562,8 +573,8 @@ namespace toolkit {
             // Must be invoked prior to setting the input/output.
             virtual void setShader(std::shared_ptr<IComputeShader> shader, SamplerType sampler) = 0;
 
-            virtual void setShaderInput(uint32_t slot, std::shared_ptr<ITexture> input, int32_t slice = -1) = 0;
             virtual void setShaderInput(uint32_t slot, std::shared_ptr<IShaderBuffer> input) = 0;
+            virtual void setShaderInput(uint32_t slot, std::shared_ptr<ITexture> input, int32_t slice = -1) = 0;
             virtual void setShaderOutput(uint32_t slot, std::shared_ptr<ITexture> output, int32_t slice = -1) = 0;
 
             virtual void dispatchShader(bool doNotClear = false) const = 0;
@@ -579,6 +590,7 @@ namespace toolkit {
             virtual void clearDepth(float value) = 0;
 
             virtual void setViewProjection(const xr::math::ViewProjection& view) = 0;
+            
             virtual void draw(std::shared_ptr<ISimpleMesh> mesh,
                               const XrPosef& pose,
                               XrVector3f scaling = {1.0f, 1.0f, 1.0f}) = 0;
@@ -599,8 +611,10 @@ namespace toolkit {
                                      uint32_t color,
                                      bool measure = false,
                                      int alignment = FW1_LEFT) = 0;
+            
             virtual float measureString(std::wstring_view string, TextStyle style, float size) const = 0;
             virtual float measureString(std::string_view string, TextStyle style, float size) const = 0;
+            
             virtual void beginText() = 0;
             virtual void flushText() = 0;
 
@@ -615,8 +629,10 @@ namespace toolkit {
             using SetRenderTargetEvent =
                 std::function<void(std::shared_ptr<IContext>, std::shared_ptr<ITexture> renderTarget)>;
             virtual void registerSetRenderTargetEvent(SetRenderTargetEvent event) = 0;
+            
             using UnsetRenderTargetEvent = std::function<void(std::shared_ptr<IContext>)>;
             virtual void registerUnsetRenderTargetEvent(UnsetRenderTargetEvent event) = 0;
+            
             using CopyTextureEvent = std::function<void(std::shared_ptr<IContext> /* context */,
                                                         std::shared_ptr<ITexture> /* source */,
                                                         std::shared_ptr<ITexture> /* destination */,
