@@ -398,6 +398,46 @@ namespace LAYER_NAMESPACE
 	private:
 		PFN_xrStopHapticFeedback m_xrStopHapticFeedback{ nullptr };
 
+	public:
+		virtual XrResult xrGetVisibilityMaskKHR(XrSession session, XrViewConfigurationType viewConfigurationType, uint32_t viewIndex, XrVisibilityMaskTypeKHR visibilityMaskType, XrVisibilityMaskKHR* visibilityMask)
+		{
+			return m_xrGetVisibilityMaskKHR(session, viewConfigurationType, viewIndex, visibilityMaskType, visibilityMask);
+		}
+	private:
+		PFN_xrGetVisibilityMaskKHR m_xrGetVisibilityMaskKHR{ nullptr };
+
+	public:
+		virtual XrResult xrConvertWin32PerformanceCounterToTimeKHR(XrInstance instance, const LARGE_INTEGER* performanceCounter, XrTime* time)
+		{
+			return m_xrConvertWin32PerformanceCounterToTimeKHR(instance, performanceCounter, time);
+		}
+	private:
+		PFN_xrConvertWin32PerformanceCounterToTimeKHR m_xrConvertWin32PerformanceCounterToTimeKHR{ nullptr };
+
+	public:
+		virtual XrResult xrCreateHandTrackerEXT(XrSession session, const XrHandTrackerCreateInfoEXT* createInfo, XrHandTrackerEXT* handTracker)
+		{
+			return m_xrCreateHandTrackerEXT(session, createInfo, handTracker);
+		}
+	private:
+		PFN_xrCreateHandTrackerEXT m_xrCreateHandTrackerEXT{ nullptr };
+
+	public:
+		virtual XrResult xrDestroyHandTrackerEXT(XrHandTrackerEXT handTracker)
+		{
+			return m_xrDestroyHandTrackerEXT(handTracker);
+		}
+	private:
+		PFN_xrDestroyHandTrackerEXT m_xrDestroyHandTrackerEXT{ nullptr };
+
+	public:
+		virtual XrResult xrLocateHandJointsEXT(XrHandTrackerEXT handTracker, const XrHandJointsLocateInfoEXT* locateInfo, XrHandJointLocationsEXT* locations)
+		{
+			return m_xrLocateHandJointsEXT(handTracker, locateInfo, locations);
+		}
+	private:
+		PFN_xrLocateHandJointsEXT m_xrLocateHandJointsEXT{ nullptr };
+
 
 
 	};
