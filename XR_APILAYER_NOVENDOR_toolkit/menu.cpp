@@ -156,11 +156,8 @@ namespace {
             m_lastInput = std::chrono::steady_clock::now();
 
             // We display the hint for menu hotkeys for the first few runs.
-            int firstRun = m_configManager->getValue("first_run");
-            if (firstRun <= 10) {
-                m_numSplashLeft = 10 - firstRun;
+            if (m_configManager->getValue(SettingFirstRun)) {
                 m_state = MenuState::Splash;
-                m_configManager->setValue("first_run", firstRun + 1);
             }
 
             if (std::count(m_keyModifiers.cbegin(), m_keyModifiers.cend(), VK_CONTROL)) {
@@ -228,6 +225,7 @@ namespace {
                     m_state = MenuState::Visible;
 
                     Log("Opening menu\n");
+                    m_configManager->setValue(SettingFirstRun, 0);
 
                     m_needRestart = checkNeedRestartCondition();
                     m_resetTextLayout = m_resetBackgroundLayout = true;
@@ -349,7 +347,7 @@ namespace {
 
             const double timeouts[to_integral(MenuTimeout::MaxValue)] = {3.0, 12.0, 60.0, INFINITY};
             const double timeout =
-                m_state == MenuState::Splash ? 10.0 : timeouts[m_configManager->getValue(SettingMenuTimeout)];
+                m_state == MenuState::Splash ? INFINITY : timeouts[m_configManager->getValue(SettingMenuTimeout)];
 
             const auto now = std::chrono::steady_clock::now();
             const auto duration = std::chrono::duration<double>(now - m_lastInput).count();
@@ -366,22 +364,118 @@ namespace {
 
             if (m_state == MenuState::Splash) {
                 // The helper "splash screen".
-                const auto banner = fmt::format(L"Press {}{} to bring up the menu ({}s)",
-                                                m_keyModifiersLabel,
-                                                m_keyMenuLabel,
-                                                (int)(std::ceil(timeout - duration)));
-                const auto width = m_device->measureString(banner, TextStyle::Normal, fontSize * 1.5f);
-                m_device->drawString(
-                    banner, TextStyle::Normal, fontSize * 1.5f, leftAlign - width / 2, topAlign, textColorOverlay);
+                const auto textColorNormal = MakeRGB24(ColorNormal) | 0xff000000;
+                const auto textColorInstructions = MakeRGB24(ColorSelected) | 0xff000000;
+                const auto textColorHint = MakeRGB24(ColorHint) | 0xff000000;
+                const auto textColorPressed = MakeRGB24(ColorOverlay) | 0xff000000;
 
-                m_device->drawString(fmt::format("(this message will be displayed {} more time{})",
-                                                 m_numSplashLeft,
-                                                 m_numSplashLeft == 1 ? "" : "s"),
+                float top = renderTargetInfo.height / 2.f;
+
+                const float splashWidth = m_device->measureString(
+                    "You may show the in-game settings menu at any time by pressing", TextStyle::Normal, fontSize);
+                const float left = (renderTargetInfo.width - splashWidth) / 2.f;
+
+                m_device->clearColor(top - BorderVerticalSpacing,
+                                     left - BorderHorizontalSpacing,
+                                     top + 1.2f * fontSize,
+                                     left + splashWidth + BorderHorizontalSpacing,
+                                     XrColor4f{ColorHeader.r, ColorHeader.g, ColorHeader.b, 1.0f});
+
+                m_device->drawString(
+                    toolkit::LayerPrettyNameFull, TextStyle::Bold, fontSize * 0.75f, left, top, textColorHint);
+                top += 1.2f * fontSize;
+
+                m_device->clearColor(top,
+                                     left - BorderHorizontalSpacing,
+                                     top + (1.9f + 1.35f + 2.25f + 2.f) * fontSize,
+                                     left + splashWidth + BorderHorizontalSpacing,
+                                     XrColor4f{ColorBackground.r, ColorBackground.g, ColorBackground.b, 1.0f});
+
+                m_device->drawString(
+                    "Welcome to the OpenXR Toolkit", TextStyle::Bold, fontSize * 1.2f, left, top, textColorNormal);
+                top += 1.9f * fontSize;
+
+                m_device->drawString("You may show the in-game settings menu at any time by pressing",
                                      TextStyle::Normal,
-                                     fontSize,
-                                     leftAlign - width / 2,
-                                     topAlign + 1.55f * fontSize,
-                                     textColorOverlay);
+                                     fontSize * 0.75f,
+                                     left,
+                                     top,
+                                     textColorInstructions);
+                top += 1.35f * fontSize;
+
+                float textAlign = left;
+                if (std::count(m_keyModifiers.cbegin(), m_keyModifiers.cend(), VK_CONTROL)) {
+                    const bool pressed = GetAsyncKeyState(VK_CONTROL) < 0;
+                    textAlign += m_device->drawString("CTRL",
+                                                      TextStyle::Normal,
+                                                      fontSize * 1.5f,
+                                                      textAlign,
+                                                      top,
+                                                      pressed ? textColorPressed : textColorInstructions,
+                                                      true) +
+                                 10.f;
+                    textAlign +=
+                        m_device->drawString(
+                            "+", TextStyle::Normal, fontSize * 1.5f, textAlign, top, textColorInstructions, true) +
+                        10.f;
+                }
+                if (std::count(m_keyModifiers.cbegin(), m_keyModifiers.cend(), VK_MENU)) {
+                    const bool pressed = GetAsyncKeyState(VK_MENU) < 0;
+                    textAlign += m_device->drawString("ALT",
+                                                      TextStyle::Normal,
+                                                      fontSize * 1.5f,
+                                                      textAlign,
+                                                      top,
+                                                      pressed ? textColorPressed : textColorInstructions,
+                                                      true) +
+                                 10.f;
+                    textAlign +=
+                        m_device->drawString(
+                            "+", TextStyle::Normal, fontSize * 1.5f, textAlign, top, textColorInstructions, true) +
+                        10.f;
+                }
+                {
+                    const bool pressed = GetAsyncKeyState(m_keyMenu) < 0;
+                    textAlign += m_device->drawString(fmt::format(L"{}", m_keyMenuLabel),
+                                                      TextStyle::Normal,
+                                                      fontSize * 1.5f,
+                                                      textAlign,
+                                                      top,
+                                                      pressed ? textColorPressed : textColorInstructions,
+                                                      true);
+                    top += 2.25f * fontSize;
+                }
+
+                std::wstring otherKeysPressed;
+                for (uint16_t vk = VK_BACK; vk < 256; vk++) {
+                    if (std::count(m_keyModifiers.cbegin(), m_keyModifiers.cend(), vk) || vk == m_keyMenu ||
+                        vk == VK_LMENU || vk == VK_RMENU || vk == VK_LSHIFT || vk == VK_RSHIFT || vk == VK_LCONTROL ||
+                        vk == VK_RCONTROL) {
+                        continue;
+                    }
+
+                    const bool pressed = GetAsyncKeyState(vk) < 0;
+                    if (pressed) {
+                        if (!otherKeysPressed.empty()) {
+                            otherKeysPressed += L" + ";
+                        }
+                        otherKeysPressed += keyToString(vk);
+                    }
+                }
+
+                if (otherKeysPressed.empty()) {
+                    m_device->drawString(
+                        "Try it now!", TextStyle::Normal, fontSize * 0.75f, left, top, textColorInstructions);
+                } else {
+                    std::transform(otherKeysPressed.begin(),
+                                   otherKeysPressed.end(),
+                                   otherKeysPressed.begin(),
+                                   [](wchar_t c) { return std::toupper(c); });
+                    m_device->drawString(
+                        otherKeysPressed, TextStyle::Normal, fontSize * 0.75f, left, top, textColorHint);
+                }
+
+                top += 1.05f * fontSize;
 
             } else if (m_state == MenuState::Visible) {
                 // The actual menu.
@@ -1534,7 +1628,7 @@ namespace {
         }
 
         std::wstring keyToString(int key) const {
-            wchar_t buf[16];
+            wchar_t buf[16] = {};
             GetKeyNameTextW(MAKELPARAM(0, MapVirtualKeyA(key, MAPVK_VK_TO_VSC)), buf, ARRAYSIZE(buf));
             return buf;
         }
@@ -1626,7 +1720,6 @@ namespace {
         int m_keyUp;
         std::wstring m_keyUpLabel;
 
-        int m_numSplashLeft;
         std::vector<MenuEntry> m_menuEntries;
         std::vector<MenuGroup> m_menuGroups;
         size_t m_selectedItem{0};
