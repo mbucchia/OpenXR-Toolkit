@@ -543,8 +543,11 @@ namespace toolkit::input {
         }
 
         // ...otherwise, we will try to fallback to OpenXR.
-
-        // TODO: shouldn't we skip based on eyeTrackingSystemProperties.supportsEyeGazeInteraction ?
+        //
+        // NB: form factor will almost always going to be HMD, so maybe we can just move
+        // all those checks up into xrCreateInstance() and check eyeTrackingSystemProperties.supportsEyeGazeInteraction,
+        // but at this stage, xrGetSystem() was not called by the app, so we don't know what form factor the app will
+        // request (and therefore we did not do all the get system properties etc ourselves).
 
         if (trackerType == EyeTrackerType::OpenXR || trackerType == EyeTrackerType::Any) {
             return std::make_shared<OpenXrEyeTracker>(openXR, configManager);
