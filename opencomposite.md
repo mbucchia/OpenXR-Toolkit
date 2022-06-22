@@ -87,9 +87,9 @@ OpenComposite is an implementation of the OpenVR API, which is typically done on
 
 This can be done in two ways:
 
-1) Per-game. You replace the `openvr_api.dll` file in the game folder directly.
+1) Per-game. You replace the `openvr_api.dll` file in the game folder directly with the one supplied by OpenComposite.
 
-2) System-wide. You use the OpenComposite launcher application to replace the `openvr_api.dll` file in the Windows folder.
+2) System-wide. You use the OpenComposite launcher application to change where all games looks for the `openvr_api.dll` file and make them use the copy supplied by OpenComposite.
 
 ### Be sure to grab the OpenXR of OpenComposite
 
