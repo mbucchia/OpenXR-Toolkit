@@ -877,7 +877,7 @@ namespace {
                         // We place the texture at the very front (app texture).
                         auto texture = m_graphicsDevice->createTexture(
                             imageCreateInfo, fmt::format("Pre swapchain {} TEX2D", i), overrideFormat);
-                        chain.insert(chain.begin(), texture);
+                        chain.insert(chain.begin(), std::move(texture));
                     }
 
                     if (m_imageProcessors[ImgProc::Scale]) {
@@ -888,7 +888,7 @@ namespace {
                         // front (app texture) or after the pre-processor.
                         auto texture = m_graphicsDevice->createTexture(
                             imageCreateInfo, fmt::format("App swapchain {} TEX2D", i), overrideFormat);
-                        chain.insert(chain.end() - 1, texture);
+                        chain.insert(chain.end() - 1, std::move(texture));
                     }
 
                     if (m_imageProcessors[ImgProc::Post]) {
@@ -910,7 +910,7 @@ namespace {
                         // We place the texture just before the runtime texture.
                         auto texture = m_graphicsDevice->createTexture(
                             imageCreateInfo, fmt::format("Pst swapchain {} TEX2D", i), overrideFormat);
-                        chain.insert(chain.end() - 1, texture);
+                        chain.insert(chain.end() - 1, std::move(texture));
                     }
 
                     for (auto j = to_integral(ImgProc::Pre); j < to_integral(ImgProc::MaxValue); j++) {
