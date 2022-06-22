@@ -1152,89 +1152,55 @@ namespace {
                                XrView* views) override {
             const XrResult result =
                 OpenXrApi::xrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
+
             if (XR_SUCCEEDED(result) && isVrSession(session) &&
                 viewLocateInfo->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
                 using namespace DirectX;
 
+                // Calibrate the projection center for each eye.
+                if (m_needCalibrateEyeProjections) {
+                    // TODO: since we call our own xrLocateViews, is this still necessary to assert this?
+                    assert(*viewCountOutput == utilities::ViewCount);
+                    if (calibrateEyeProjection(session, *viewLocateInfo))
+                        m_needCalibrateEyeProjections = false;
+                }
+
+                // save the original views poses prior altering them.
                 m_posesForFrame[0].pose = views[0].pose;
                 m_posesForFrame[1].pose = views[1].pose;
 
-                // Override the canting angle if requested.
-                const int cantOverride = m_configManager->getValue("canting");
-                if (cantOverride != 0) {
-                    const float angle = (float)(cantOverride * (M_PI / 180));
-
-                    StoreXrPose(&views[0].pose,
-                                XMMatrixMultiply(LoadXrPose(views[0].pose),
-                                                 XMMatrixRotationRollPitchYaw(0.f, -angle / 2.f, 0.f)));
-                    StoreXrPose(&views[1].pose,
-                                XMMatrixMultiply(LoadXrPose(views[1].pose),
-                                                 XMMatrixRotationRollPitchYaw(0.f, angle / 2.f, 0.f)));
-                }
-
-                // Calibrate the projection center for each eye.
-                if (m_needCalibrateEyeProjections) {
-                    assert(*viewCountOutput == utilities::ViewCount);
-
-                    XrViewLocateInfo info = *viewLocateInfo;
-                    info.space = m_viewSpace;
-
-                    XrViewState state{XR_TYPE_VIEW_STATE, nullptr};
-                    XrView eyeInViewSpace[2] = {{XR_TYPE_VIEW, nullptr}, {XR_TYPE_VIEW, nullptr}};
-                    CHECK_HRCMD(OpenXrApi::xrLocateViews(
-                        session, &info, &state, viewCapacityInput, viewCountOutput, eyeInViewSpace));
-
-                    if (Pose::IsPoseValid(state.viewStateFlags)) {
-                        XMFLOAT4X4 leftView, rightView;
-                        XMStoreFloat4x4(&leftView, LoadXrPose(eyeInViewSpace[0].pose));
-                        XMStoreFloat4x4(&rightView, LoadXrPose(eyeInViewSpace[1].pose));
-
-                        // This code is based on vrperfkit by Frydrych Holger.
-                        // https://github.com/fholger/vrperfkit/blob/master/src/openvr/openvr_manager.cpp
-                        const float dotForward = leftView.m[2][0] * rightView.m[2][0] +
-                                                 leftView.m[2][1] * rightView.m[2][1] +
-                                                 leftView.m[2][2] * rightView.m[2][2];
-
-                        // In normalized screen coordinates.
-                        for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                            const auto& fov = eyeInViewSpace[eye].fov;
-                            const float cantedAngle = std::abs(std::acosf(dotForward) / 2) * (eye ? -1 : 1);
-                            const float canted = std::tanf(cantedAngle);
-                            m_projCenters[eye].x =
-                                (fov.angleRight + fov.angleLeft - 2 * canted) / (fov.angleLeft - fov.angleRight);
-                            m_projCenters[eye].y = -(fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown);
-                            m_eyeGaze[eye] = m_projCenters[eye];
-                        }
-
-                        Log("Projection calibration: %.5f, %.5f | %.5f, %.5f\n",
-                            m_projCenters[0].x,
-                            m_projCenters[0].y,
-                            m_projCenters[1].x,
-                            m_projCenters[1].y);
-
-                        if (m_variableRateShader) {
-                            m_variableRateShader->setViewProjectionCenters(m_projCenters[0], m_projCenters[1]);
-                        }
-
-                        m_needCalibrateEyeProjections = false;
-                    }
-                }
-
+                // Override the ICD if requested.
                 const auto vec = views[1].pose.position - views[0].pose.position;
                 const auto ipd = Length(vec);
-
-                // Override the ICD if requested.
-                const int icdOverride = m_configManager->getValue(config::SettingICD);
+                const auto icdOverride = m_configManager->getValue(config::SettingICD);
+                
                 if (icdOverride != 1000) {
                     const float icd = 1000.f / std::max(icdOverride, 1);
                     views[1].pose.position = views[0].pose.position + (vec * ((1 + icd) * 0.5f));
                     views[0].pose.position = views[0].pose.position + (vec * ((1 - icd) * 0.5f));
-                    m_stats.icd = icd * ipd;
+                    m_stats.icd = ipd * icd;
                 } else {
                     m_stats.icd = ipd;
                 }
 
+                // Override the canting angle if requested.
+                if (auto cantingOverride = m_configManager->getValue("canting")) {
+                    // rotate each views around the vertical axis of the requested reference space.
+                    // ideally we would rotate in view space, but this feature is for dev/debug only.
+                    static constexpr XMVECTORF32 kLocalYawAxis = {{{0, 1, 0, 0}}};
+
+                    const auto semiAngle = static_cast<float>(cantingOverride * (M_PI / 360));
+
+                    StoreXrQuaternion(&views[0].pose.orientation,
+                                      XMQuaternionMultiply(LoadXrQuaternion(views[0].pose.orientation),
+                                                           XMQuaternionRotationNormal(kLocalYawAxis, -semiAngle)));
+                    StoreXrQuaternion(&views[1].pose.orientation,
+                                      XMQuaternionMultiply(LoadXrQuaternion(views[1].pose.orientation),
+                                                           XMQuaternionRotationNormal(kLocalYawAxis, +semiAngle)));
+                }
+
                 // Override the FOV if requested.
+                // TODO: cache these values and update them only when settings change.
                 if (m_configManager->getEnumValue<config::FovModeType>(config::SettingFOVType) ==
                     config::FovModeType::Simple) {
                     const auto fovOverride = m_configManager->getValue(config::SettingFOV);
@@ -1265,6 +1231,7 @@ namespace {
                 m_posesForFrame[1].fov = views[1].fov;
 
                 // Apply zoom if requested.
+                // TODO: wrapp all FOV calculations into a single scale factor.
                 const auto zoom = m_configManager->getValue(config::SettingZoom);
                 if (zoom != 10) {
                     StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * (10.f / zoom));
@@ -1272,11 +1239,12 @@ namespace {
                 }
 
                 // When doing the Pimax FOV hack, we swap left and right eyes.
-                if (m_supportFOVHack && m_configManager->hasChanged(config::SettingPimaxFOVHack)) {
-                    m_visibilityMaskEventIndex = 0; // Send the necessary events to the app.
-                }
-                if (m_supportFOVHack && m_configManager->getValue(config::SettingPimaxFOVHack)) {
-                    std::swap(views[0], views[1]);
+                if (m_supportFOVHack) {
+                    if (m_configManager->hasChanged(config::SettingPimaxFOVHack))
+                        m_visibilityMaskEventIndex = 0; // Send the necessary events to the app.
+
+                    if (m_configManager->getValue(config::SettingPimaxFOVHack))
+                        std::swap(views[0], views[1]);
                 }
             }
 
@@ -2068,6 +2036,55 @@ namespace {
             }
 
             return xrTimeNow;
+        }
+
+        bool calibrateEyeProjection(XrSession session, XrViewLocateInfo viewLocateInfo) {
+            viewLocateInfo.space = m_viewSpace;
+            auto viewsState = XrViewState{XR_TYPE_VIEW_STATE};
+            XrView eyeInViewSpace[utilities::ViewCount] = {{XR_TYPE_VIEW, nullptr}, {XR_TYPE_VIEW, nullptr}};
+            uint32_t viewsCount = utilities::ViewCount;
+
+            CHECK_HRCMD(OpenXrApi::xrLocateViews(
+                session, &viewLocateInfo, &viewsState, viewsCount, &viewsCount, eyeInViewSpace));
+
+            if (Pose::IsPoseValid(viewsState)) {
+                // This code is based on vrperfkit by Frydrych Holger.
+                // https://github.com/fholger/vrperfkit/blob/master/src/openvr/openvr_manager.cpp
+
+                using namespace DirectX;
+
+                // get angle between the two view planes
+                const auto viewsDotAngle = XMVectorGetX(
+                    XMVector3Dot(LoadXrPose(eyeInViewSpace[0].pose).r[2], LoadXrPose(eyeInViewSpace[1].pose).r[2]));
+
+                // get the diff angle tangent around the center
+                auto canted = std::tanf(std::abs(std::acosf(viewsDotAngle)) / 2) * 2;
+
+                // In normalized screen coordinates.
+                for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
+                    const auto& fov = eyeInViewSpace[eye].fov;
+                    m_projCenters[eye].x = (fov.angleLeft + fov.angleRight - canted) / (fov.angleLeft - fov.angleRight);
+                    m_projCenters[eye].y = (fov.angleDown + fov.angleUp) / (fov.angleDown - fov.angleUp);
+                    m_eyeGaze[eye] = m_projCenters[eye];
+                    canted = -canted; // for next eye
+                }
+
+                // Example with G2:
+                // [OXRTK] Projection calibration : 0.05228, 0.00091 | -0.05176, -0.00091
+
+                Log("Projection calibration: %.5f, %.5f | %.5f, %.5f\n",
+                    m_projCenters[0].x,
+                    m_projCenters[0].y,
+                    m_projCenters[1].x,
+                    m_projCenters[1].y);
+
+                if (m_variableRateShader) {
+                    m_variableRateShader->setViewProjectionCenters(m_projCenters[0], m_projCenters[1]);
+                }
+
+                return true;
+            }
+            return false;
         }
 
         std::string m_applicationName;
