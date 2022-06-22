@@ -59,13 +59,13 @@ namespace toolkit::log {
         va_end(va);
     }
 
-    void DebugLog(const char* fmt, ...) {
 #ifdef _DEBUG
+    void DebugLog(const char* fmt, ...) {
         va_list va;
         va_start(va, fmt);
         InternalLog(fmt, va);
         va_end(va);
-#endif
     }
+#endif
 
 } // namespace toolkit::log
