@@ -339,9 +339,9 @@ namespace toolkit::utilities::shader {
 namespace toolkit::graphics {
 
     static std::shared_ptr<ITexture> WrapXrSwapchainImage(std::shared_ptr<IDevice> device,
-                                                   const XrSwapchainCreateInfo& info,
-                                                   const void* imageHeader,
-                                                   std::string_view debugName) {
+                                                          const XrSwapchainCreateInfo& info,
+                                                          const void* imageHeader,
+                                                          std::string_view debugName) {
         if (auto baseHeader = reinterpret_cast<const XrSwapchainImageBaseHeader*>(imageHeader)) {
             if (baseHeader->type == XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR) {
                 return WrapD3D11Texture(

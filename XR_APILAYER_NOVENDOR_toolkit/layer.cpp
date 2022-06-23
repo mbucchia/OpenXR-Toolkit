@@ -82,8 +82,8 @@ namespace {
             m_configManager->setDefault(config::SettingMenuKeyDown, VK_F2);
             m_configManager->setDefault(config::SettingMenuKeyUp, 0);
             m_configManager->setDefault(config::SettingScreenshotKey, VK_F12);
-            m_configManager->setDefault(config::SettingMenuEyeVisibility, 0); // Both
-            m_configManager->setDefault(config::SettingMenuDistance, 100);    // 1m
+            m_configManager->setDefault(config::SettingMenuEyeVisibility, XR_EYE_VISIBILITY_BOTH); // Both
+            m_configManager->setDefault(config::SettingMenuDistance, 100);                         // 1m
             m_configManager->setDefault(config::SettingMenuOpacity, 85);
             m_configManager->setDefault(config::SettingMenuFontSize, 44); // pt
             m_configManager->setEnumDefault(config::SettingMenuTimeout, config::MenuTimeout::Medium);
@@ -781,10 +781,11 @@ namespace {
                 createInfo->format,
                 createInfo->usageFlags);
 
-            auto chainCreateInfo = *createInfo;
-
             // Modify the swapchain to handle our processing chain (eg: change resolution and/or select usage
             // XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT).
+
+            auto chainCreateInfo = *createInfo;
+
             const auto useSwapchain =
                 chainCreateInfo.usageFlags &
                 (XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
@@ -874,9 +875,11 @@ namespace {
                         // Create an intermediate texture with the same resolution as the input.
                         auto imageCreateInfo = *createInfo;
                         imageCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                        // We place the texture at the very front (app texture).
+
                         auto texture = m_graphicsDevice->createTexture(
                             imageCreateInfo, fmt::format("Pre swapchain {} TEX2D", i), overrideFormat);
+
+                        // We place the texture at the very front (app texture).
                         chain.insert(chain.begin(), std::move(texture));
                     }
 
@@ -884,10 +887,12 @@ namespace {
                         // Create an app texture with the lower resolution.
                         auto imageCreateInfo = *createInfo;
                         imageCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                        // We place the texture before the runtime texture, which means at the very
-                        // front (app texture) or after the pre-processor.
+
                         auto texture = m_graphicsDevice->createTexture(
                             imageCreateInfo, fmt::format("App swapchain {} TEX2D", i), overrideFormat);
+
+                        // We place the texture before the runtime texture, which means at the very
+                        // front (app texture) or after the pre-processor.
                         chain.insert(chain.end() - 1, std::move(texture));
                     }
 
@@ -906,10 +911,10 @@ namespace {
                                     graphics::TextureFormat::R10G10B10A2_UNORM); // good perf/visual balance
                             }
                         }
-
-                        // We place the texture just before the runtime texture.
                         auto texture = m_graphicsDevice->createTexture(
                             imageCreateInfo, fmt::format("Pst swapchain {} TEX2D", i), overrideFormat);
+
+                        // We place the texture just before the runtime texture.
                         chain.insert(chain.end() - 1, std::move(texture));
                     }
 
