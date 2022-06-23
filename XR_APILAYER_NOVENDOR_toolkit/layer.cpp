@@ -1169,30 +1169,30 @@ namespace {
                         m_needCalibrateEyeProjections = false;
                 }
 
-                // save the original views poses prior altering them.
+                // Save the original views poses and orientations for xrEndFrame.
                 m_posesForFrame[0].pose = views[0].pose;
                 m_posesForFrame[1].pose = views[1].pose;
 
+                // Measure the real ICD
+                const auto pos = LoadXrVector3(views[0].pose.position);
+                const auto vec = LoadXrVector3(views[1].pose.position) - pos;
+                m_stats.icd = XMVectorGetX(XMVector3Length(vec));
+
                 // Override the ICD if requested.
-                const auto vec = views[1].pose.position - views[0].pose.position;
-                const auto ipd = Length(vec);
                 const auto icdOverride = m_configManager->getValue(config::SettingICD);
-                
                 if (icdOverride != 1000) {
-                    const float icd = 1000.f / std::max(icdOverride, 1);
-                    views[1].pose.position = views[0].pose.position + (vec * ((1 + icd) * 0.5f));
-                    views[0].pose.position = views[0].pose.position + (vec * ((1 - icd) * 0.5f));
-                    m_stats.icd = ipd * icd;
-                } else {
-                    m_stats.icd = ipd;
+                    // L = L + (v/2) - (vec*icd)/2, R = L + (v/2) + (vec*icd)/2
+                    const auto icd = 1000.f / std::max(icdOverride, 1);
+                    StoreXrVector3(&views[1].pose.position, pos + (vec * ((1 + icd) * 0.5f)));
+                    StoreXrVector3(&views[0].pose.position, pos + (vec * ((1 - icd) * 0.5f)));
+                    m_stats.icd *= icd;
                 }
 
                 // Override the canting angle if requested.
-                if (auto cantingOverride = m_configManager->getValue("canting")) {
+                if (const auto cantingOverride = m_configManager->getValue("canting")) {
                     // rotate each views around the vertical axis of the requested reference space.
                     // ideally we would rotate in view space, but this feature is for dev/debug only.
                     static constexpr XMVECTORF32 kLocalYawAxis = {{{0, 1, 0, 0}}};
-
                     const auto semiAngle = static_cast<float>(cantingOverride * (M_PI / 360));
 
                     StoreXrQuaternion(&views[0].pose.orientation,
@@ -1204,43 +1204,49 @@ namespace {
                 }
 
                 // Override the FOV if requested.
-                // TODO: cache these values and update them only when settings change.
+                auto fov_l = LoadXrFov(views[0].fov);
+                auto fov_r = LoadXrFov(views[1].fov);
+
                 if (m_configManager->getEnumValue<config::FovModeType>(config::SettingFOVType) ==
                     config::FovModeType::Simple) {
-                    const auto fovOverride = m_configManager->getValue(config::SettingFOV);
-                    if (fovOverride != 100) {
-                        StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * (fovOverride * 0.01f));
-                        StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * (fovOverride * 0.01f));
+                    const auto scale_lr = m_configManager->getValue(config::SettingFOV);
+                    if (scale_lr != 100) {
+                        fov_l *= (scale_lr * 0.01f);
+                        fov_r *= (scale_lr * 0.01f);
                     }
                 } else {
                     // XrFovF layout is: L,R,U,D
-                    const auto fov1 = XMINT4(m_configManager->getValue(config::SettingFOVLeftLeft),
-                                             m_configManager->getValue(config::SettingFOVLeftRight),
-                                             m_configManager->getValue(config::SettingFOVUp),
-                                             m_configManager->getValue(config::SettingFOVDown));
-
-                    const auto fov2 = XMINT4(m_configManager->getValue(config::SettingFOVRightLeft),
-                                             m_configManager->getValue(config::SettingFOVRightRight),
-                                             fov1.z,
-                                             fov1.w);
-
-                    StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * (XMLoadSInt4(&fov1) * 0.01f));
-                    StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * (XMLoadSInt4(&fov2) * 0.01f));
+                    const auto scale_l = XMINT4(m_configManager->getValue(config::SettingFOVLeftLeft),
+                                                m_configManager->getValue(config::SettingFOVLeftRight),
+                                                m_configManager->getValue(config::SettingFOVUp),
+                                                m_configManager->getValue(config::SettingFOVDown));
+                    const auto scale_r = XMINT4(m_configManager->getValue(config::SettingFOVRightLeft),
+                                                m_configManager->getValue(config::SettingFOVRightRight),
+                                                scale_l.z,
+                                                scale_l.w);
+                    fov_l *= (XMLoadSInt4(&scale_l) * 0.01f);
+                    fov_r *= (XMLoadSInt4(&scale_r) * 0.01f);
                 }
 
-                StoreXrFov(&m_stats.fov[0], ConvertToDegrees(views[0].fov));
-                StoreXrFov(&m_stats.fov[1], ConvertToDegrees(views[1].fov));
+                // Store new User FOV in radians now, convert to degrees for display later.
+                StoreXrFov(&m_stats.fov[0], fov_l);
+                StoreXrFov(&m_stats.fov[1], fov_r);
 
-                m_posesForFrame[0].fov = views[0].fov;
-                m_posesForFrame[1].fov = views[1].fov;
+                // Save new Render FOV for xrEndFrame.
+                StoreXrFov(&m_posesForFrame[0].fov, fov_l);
+                StoreXrFov(&m_posesForFrame[1].fov, fov_r);
 
                 // Apply zoom if requested.
                 // TODO: wrapp all FOV calculations into a single scale factor.
                 const auto zoom = m_configManager->getValue(config::SettingZoom);
                 if (zoom != 10) {
-                    StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * (10.f / zoom));
-                    StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * (10.f / zoom));
+                    fov_l *= (10.f / zoom);
+                    fov_r *= (10.f / zoom);
                 }
+
+                // And return new Render FOV to the application.
+                StoreXrFov(&views[0].fov, fov_l);
+                StoreXrFov(&views[1].fov, fov_r);
 
                 // When doing the Pimax FOV hack, we swap left and right eyes.
                 if (m_supportFOVHack) {
@@ -1504,6 +1510,9 @@ namespace {
                 }
 
                 if (m_menuHandler) {
+                    // convert to degrees for display (1Hz)
+                    StoreXrFov(&m_stats.fov[0], ConvertToDegrees(m_stats.fov[0]));
+                    StoreXrFov(&m_stats.fov[1], ConvertToDegrees(m_stats.fov[1]));
                     m_menuHandler->updateStatistics(m_stats);
                 }
 
