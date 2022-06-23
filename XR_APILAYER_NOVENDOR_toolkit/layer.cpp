@@ -1139,8 +1139,9 @@ namespace {
                                         XrVisibilityMaskTypeKHR visibilityMaskType,
                                         XrVisibilityMaskKHR* visibilityMask) {
             // When doing the Pimax FOV hack, we swap left and right eyes.
-            if (m_supportFOVHack && isVrSession(session) && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
-                viewIndex ^= 1;
+            if (isVrSession(session)) {
+                if (m_supportFOVHack && m_configManager->peekValue(config::SettingPimaxFOVHack))
+                    viewIndex ^= 1;
             }
 
             return m_xrGetVisibilityMaskKHR(
