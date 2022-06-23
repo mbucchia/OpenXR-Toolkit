@@ -1094,27 +1094,25 @@ namespace {
         }
 
         XrResult xrPollEvent(XrInstance instance, XrEventDataBuffer* eventData) override {
-            if (m_sendInterationProfileEvent && m_vrSession != XR_NULL_HANDLE) {
-                XrEventDataInteractionProfileChanged* const buffer =
-                    reinterpret_cast<XrEventDataInteractionProfileChanged*>(eventData);
-                buffer->type = XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED;
-                buffer->next = nullptr;
-                buffer->session = m_vrSession;
-
-                m_sendInterationProfileEvent = false;
-                return XR_SUCCESS;
-            }
-
-            if (m_visibilityMaskEventIndex != utilities::ViewCount && m_vrSession != XR_NULL_HANDLE) {
-                XrEventDataVisibilityMaskChangedKHR* const buffer =
-                    reinterpret_cast<XrEventDataVisibilityMaskChangedKHR*>(eventData);
-                buffer->type = XR_TYPE_EVENT_DATA_VISIBILITY_MASK_CHANGED_KHR;
-                buffer->next = nullptr;
-                buffer->session = m_vrSession;
-                buffer->viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
-                buffer->viewIndex = m_visibilityMaskEventIndex++;
-                Log("Send XrEventDataVisibilityMaskChangedKHR event for view %u\n", buffer->viewIndex);
-                return XR_SUCCESS;
+            if (m_vrSession != XR_NULL_HANDLE) {
+                if (m_sendInterationProfileEvent) {
+                    auto buffer = reinterpret_cast<XrEventDataInteractionProfileChanged*>(eventData);
+                    buffer->type = XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED;
+                    buffer->next = nullptr;
+                    buffer->session = m_vrSession;
+                    m_sendInterationProfileEvent = false;
+                    return XR_SUCCESS;
+                }
+                if (m_visibilityMaskEventIndex != utilities::ViewCount) {
+                    auto buffer = reinterpret_cast<XrEventDataVisibilityMaskChangedKHR*>(eventData);
+                    buffer->type = XR_TYPE_EVENT_DATA_VISIBILITY_MASK_CHANGED_KHR;
+                    buffer->next = nullptr;
+                    buffer->session = m_vrSession;
+                    buffer->viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+                    buffer->viewIndex = m_visibilityMaskEventIndex++;
+                    Log("Send XrEventDataVisibilityMaskChangedKHR event for view %u\n", buffer->viewIndex);
+                    return XR_SUCCESS;
+                }
             }
 
             return OpenXrApi::xrPollEvent(instance, eventData);
