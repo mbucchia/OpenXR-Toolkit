@@ -41,6 +41,14 @@ namespace {
     // 2 frames.
     constexpr uint32_t GpuTimerLatency = 2;
 
+    // We are going to need to reconstruct a writable version of the frame info.
+    // We keep a global pool of resources to reduce fragmentation every frame.
+
+    static std::vector<const XrCompositionLayerBaseHeader*> gLayerHeaders;
+    static std::vector<XrCompositionLayerProjection> gLayerProjections;
+    static std::vector<XrCompositionLayerProjectionView> gLayerProjectionsViews;
+    static XrCompositionLayerQuad gLayerQuadForMenu;
+
     // Up to 3 image processing stages are supported.
     enum ImgProc { Pre, Scale, Post, MaxValue };
 
@@ -1627,7 +1635,6 @@ namespace {
 
             m_graphicsDevice->saveContext();
 
-            // Handle inputs.
             if (m_menuHandler) {
                 m_menuHandler->handleInput();
             }
@@ -1638,101 +1645,99 @@ namespace {
             // Unbind all textures from the render targets.
             m_graphicsDevice->unsetRenderTargets();
 
-            std::shared_ptr<graphics::ITexture> textureForOverlay[utilities::ViewCount] = {};
-            std::shared_ptr<graphics::ITexture> depthForOverlay[utilities::ViewCount] = {};
-            xr::math::ViewProjection viewsForOverlay[utilities::ViewCount];
-            XrSpace spaceForOverlay = XR_NULL_HANDLE;
-
-            // Because the frame info is passed const, we are going to need to reconstruct a writable version of it
-            // to patch the resolution.
-            XrFrameEndInfo chainFrameEndInfo = *frameEndInfo;
-            std::vector<const XrCompositionLayerBaseHeader*> correctedLayers;
-
-            std::vector<XrCompositionLayerProjection> layerProjectionAllocator;
-            std::vector<std::array<XrCompositionLayerProjectionView, 2>> layerProjectionViewsAllocator;
-
-            // We must reserve the underlying storage to keep our pointers stable.
-            layerProjectionAllocator.reserve(chainFrameEndInfo.layerCount);
-            layerProjectionViewsAllocator.reserve(chainFrameEndInfo.layerCount);
+            struct {
+                std::shared_ptr<graphics::ITexture> color;
+                std::shared_ptr<graphics::ITexture> depth;
+                ViewProjection vproj;
+                XrSpace space;
+            } overlayData[utilities::ViewCount] = {{}};
 
             // Apply the processing chain to all the (supported) layers.
-            for (uint32_t i = 0; i < chainFrameEndInfo.layerCount; i++) {
-                if (chainFrameEndInfo.layers[i]->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION) {
-                    const XrCompositionLayerProjection* proj =
-                        reinterpret_cast<const XrCompositionLayerProjection*>(chainFrameEndInfo.layers[i]);
+            gLayerHeaders.reserve(frameEndInfo->layerCount + 1); // reserve space for the menu
+            gLayerHeaders.assign(frameEndInfo->layers, frameEndInfo->layers + frameEndInfo->layerCount);
 
-                    // To patch the resolution of the layer we need to recreate the whole projection & views
-                    // data structures.
-                    auto correctedProjectionLayer = &layerProjectionAllocator.emplace_back(*proj);
-                    auto correctedProjectionViews = layerProjectionViewsAllocator
-                                                        .emplace_back(std::array<XrCompositionLayerProjectionView, 2>(
-                                                            {proj->views[0], proj->views[1]}))
-                                                        .data();
+            // We must reserve the underlying storage to keep our pointers stable.
+            gLayerProjections.clear();
+            gLayerProjections.reserve(gLayerHeaders.size());
+
+            gLayerProjectionsViews.clear();
+            gLayerProjectionsViews.reserve(gLayerHeaders.size() * utilities::ViewCount);
+
+            for (auto& baselayer : gLayerHeaders) {
+                if (baselayer->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION) {
+                    static_assert(utilities::ViewCount == 2);
+
+                    const auto layer = reinterpret_cast<const XrCompositionLayerProjection*>(baselayer);
 
                     // For VPRT, we need to handle texture arrays.
-                    static_assert(utilities::ViewCount == 2);
-                    const bool useVPRT = proj->views[0].subImage.swapchain == proj->views[1].subImage.swapchain;
-                    // TODO: We need to use subImage.imageArrayIndex instead of assuming 0/left and 1/right.
-
+                    const auto useVPRT = layer->views[0].subImage.swapchain == layer->views[1].subImage.swapchain;
                     if (useVPRT) {
                         // Assume that we've properly distinguished left/right eyes.
-                        m_stats.hasColorBuffer[(int)utilities::Eye::Left] =
-                            m_stats.hasColorBuffer[(int)utilities::Eye::Right] = true;
+                        // TODO: We need to use subImage.imageArrayIndex instead of assuming 0/left and 1/right.
+                        m_stats.hasColorBuffer[to_integral(utilities::Eye::Left)] =
+                            m_stats.hasColorBuffer[to_integral(utilities::Eye::Right)] = true;
                     }
 
-                    assert(proj->viewCount == utilities::ViewCount);
+                    assert(layer->viewCount == utilities::ViewCount);
+
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                        const XrCompositionLayerProjectionView& view = proj->views[eye];
+                        auto& view = gLayerProjectionsViews.emplace_back(layer->views[eye]);
 
                         auto swapchainIt = m_swapchains.find(view.subImage.swapchain);
                         if (swapchainIt == m_swapchains.end()) {
                             throw std::runtime_error("Swapchain is not registered");
                         }
-                        auto& swapchainState = swapchainIt->second;
-                        auto& swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
-                        uint32_t nextImage = 0;
-                        uint32_t lastImage = 0;
-                        uint32_t gpuTimerIndex = useVPRT ? eye : 0;
+
+                        // Patch the eye poses (works with canting too) and the FOV.
+                        view.pose.orientation = m_posesForFrame[eye].pose.orientation;
+                        view.fov = m_posesForFrame[eye].fov;
+
+                        // Prepare our overlay data.
+                        overlayData[eye].vproj.Pose = view.pose;
+                        overlayData[eye].vproj.Fov = view.fov;
+                        overlayData[eye].vproj.NearFar = {0.001f, 100.f};
+                        overlayData[eye].space = layer->space;
 
                         // Look for the depth buffer.
-                        std::shared_ptr<graphics::ITexture> depthBuffer;
-                        NearFar nearFar{0.001f, 100.f};
-                        const XrBaseInStructure* entry = reinterpret_cast<const XrBaseInStructure*>(view.next);
-                        while (entry) {
-                            if (entry->type == XR_TYPE_COMPOSITION_LAYER_DEPTH_INFO_KHR) {
-                                const XrCompositionLayerDepthInfoKHR* depth =
-                                    reinterpret_cast<const XrCompositionLayerDepthInfoKHR*>(entry);
-                                // The order of color/depth textures must match.
-                                if (depth->subImage.imageArrayIndex == view.subImage.imageArrayIndex) {
-                                    auto depthSwapchainIt = m_swapchains.find(depth->subImage.swapchain);
-                                    if (depthSwapchainIt == m_swapchains.end()) {
-                                        throw std::runtime_error("Swapchain is not registered");
-                                    }
-                                    auto& depthSwapchainState = depthSwapchainIt->second;
+                        for (auto it = reinterpret_cast<const XrBaseInStructure*>(view.next); it; it = it->next) {
+                            if (it->type != XR_TYPE_COMPOSITION_LAYER_DEPTH_INFO_KHR)
+                                continue;
 
-                                    assert(depthSwapchainState.images[depthSwapchainState.acquiredImageIndex]
-                                               .chain.size() == 1);
-                                    depthBuffer =
-                                        depthSwapchainState.images[depthSwapchainState.acquiredImageIndex].chain[0];
-                                    nearFar.Near = depth->nearZ;
-                                    nearFar.Far = depth->farZ;
+                            // The order of color/depth textures must match.
+                            const auto depthInfo = reinterpret_cast<const XrCompositionLayerDepthInfoKHR*>(it);
+                            if (depthInfo->subImage.imageArrayIndex != view.subImage.imageArrayIndex)
+                                continue;
 
-                                    m_stats.hasDepthBuffer[eye] = true;
-                                }
+                            auto depthchainIt = m_swapchains.find(depthInfo->subImage.swapchain);
+                            if (depthchainIt != m_swapchains.end()) {
+                                const auto& swapchainState = depthchainIt->second;
+                                const auto& swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
+
+                                assert(swapchainImages.chain.size() == 1u);
+
+                                overlayData[eye].depth = swapchainImages.chain[0];
+                                overlayData[eye].vproj.NearFar = {depthInfo->nearZ, depthInfo->farZ};
+
+                                m_stats.hasDepthBuffer[eye] = true;
                                 break;
-                            }
-                            entry = entry->next;
+
+                            } else
+                                throw std::runtime_error("Swapchain is not registered");
                         }
 
-                        const bool isDepthInverted = nearFar.Far < nearFar.Near;
+                        // const bool isDepthInverted =
+                        //    overlayData[eye].viewProj.NearFar.Far < overlayData[eye].viewProj.NearFar.Near;
 
                         // Now that we know what eye the swapchain is used for, register it.
                         // TODO: We always assume that if VPRT is used, left eye is texture 0 and right eye is
                         // texture 1. I'm sure this holds in like 99% of the applications, but still not very clean
                         // to assume.
+                        auto& swapchainState = swapchainIt->second;
+
                         if (m_frameAnalyzer && !useVPRT && !swapchainState.registeredWithFrameAnalyzer) {
                             for (const auto& image : swapchainState.images) {
-                                m_frameAnalyzer->registerColorSwapchainImage(image.chain[0], (utilities::Eye)eye);
+                                m_frameAnalyzer->registerColorSwapchainImage(image.chain[0],
+                                                                             static_cast<utilities::Eye>(eye));
                             }
                             swapchainState.registeredWithFrameAnalyzer = true;
                         }
@@ -1747,9 +1752,15 @@ namespace {
                         // - Stop the timer;
                         // - Advanced to the right source and/or destination image;
 
+                        auto& swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
+                        overlayData[eye].color = swapchainImages.chain.back();
+
+                        uint32_t nextImage = 0;
+                        uint32_t lastImage = 0;
+
                         for (size_t i = 0; i < std::size(m_imageProcessors); i++) {
                             if (m_imageProcessors[i]) {
-                                auto timer = swapchainImages.gpuTimers[i][gpuTimerIndex].get();
+                                auto timer = swapchainImages.gpuTimers[i][useVPRT ? eye : 0].get();
                                 m_stats.processorGpuTimeUs[i] += timer->query();
 
                                 nextImage++;
@@ -1767,62 +1778,40 @@ namespace {
                             throw std::runtime_error("Processing chain incomplete!");
                         }
 
-                        textureForOverlay[eye] = swapchainImages.chain.back();
-                        depthForOverlay[eye] = depthBuffer;
-
                         // Patch the resolution.
                         if (m_imageProcessors[ImgProc::Scale]) {
-                            correctedProjectionViews[eye].subImage.imageRect.extent.width = m_displayWidth;
-                            correctedProjectionViews[eye].subImage.imageRect.extent.height = m_displayHeight;
+                            view.subImage.imageRect.extent.width = m_displayWidth;
+                            view.subImage.imageRect.extent.height = m_displayHeight;
                         }
-
-                        // Patch the eye poses.
-                        const int cantOverride = m_configManager->getValue("canting");
-                        if (cantOverride != 0) {
-                            correctedProjectionViews[eye].pose = m_posesForFrame[eye].pose;
-                        }
-
-                        // Patch the FOV.
-                        correctedProjectionViews[eye].fov = m_posesForFrame[eye].fov;
-
-                        viewsForOverlay[eye].Pose = correctedProjectionViews[eye].pose;
-                        viewsForOverlay[eye].Fov = correctedProjectionViews[eye].fov;
-                        viewsForOverlay[eye].NearFar = nearFar;
                     }
 
-                    spaceForOverlay = proj->space;
+                    auto lastView = std::addressof(gLayerProjectionsViews.back());
 
                     // When doing the Pimax FOV hack, we swap left and right eyes.
                     if (m_supportFOVHack && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
-                        std::swap(correctedProjectionViews[0], correctedProjectionViews[1]);
-                        std::swap(viewsForOverlay[0], viewsForOverlay[1]);
-                        std::swap(textureForOverlay[0], textureForOverlay[1]);
-                        std::swap(depthForOverlay[0], depthForOverlay[1]);
+                        std::swap(lastView[0], lastView[-1]);
+                        std::swap(overlayData[0].color, overlayData[1].color);
+                        std::swap(overlayData[0].depth, overlayData[1].depth);
+                        std::swap(overlayData[0].vproj, overlayData[1].vproj);
+                        std::swap(overlayData[0].space, overlayData[1].space);
                     }
 
-                    correctedProjectionLayer->views = correctedProjectionViews;
-                    correctedLayers.push_back(
-                        reinterpret_cast<const XrCompositionLayerBaseHeader*>(correctedProjectionLayer));
+                    // To patch the layer resolution we recreate the whole projection and views data structures.
+                    gLayerProjections.emplace_back(*layer).views = std::addressof(lastView[-1]);
 
-                } else if (chainFrameEndInfo.layers[i]->type == XR_TYPE_COMPOSITION_LAYER_QUAD) {
-                    const XrCompositionLayerQuad* quad =
-                        reinterpret_cast<const XrCompositionLayerQuad*>(chainFrameEndInfo.layers[i]);
+                    baselayer = reinterpret_cast<const XrCompositionLayerBaseHeader*>(
+                        std::addressof(gLayerProjections.back()));
 
-                    auto swapchainIt = m_swapchains.find(quad->subImage.swapchain);
-                    if (swapchainIt == m_swapchains.end()) {
+                } else if (baselayer->type == XR_TYPE_COMPOSITION_LAYER_QUAD) {
+                    const auto layer = reinterpret_cast<const XrCompositionLayerQuad*>(baselayer);
+                    auto swapchainIt = m_swapchains.find(layer->subImage.swapchain);
+                    if (swapchainIt != m_swapchains.end()) {
+                        auto& swapchainState = swapchainIt->second;
+                        auto& swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
+                        if (swapchainImages.chain.size() > 1u)
+                            swapchainImages.chain.front()->copyTo(swapchainImages.chain.back());
+                    } else
                         throw std::runtime_error("Swapchain is not registered");
-                    }
-
-                    auto& swapchainState = swapchainIt->second;
-                    auto& swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
-
-                    size_t swapChainSize = std::size(swapchainImages.chain);
-                    if (swapChainSize > 1)
-                        swapchainImages.chain[0]->copyTo(swapchainImages.chain[swapChainSize - 1]);
-
-                    correctedLayers.push_back(chainFrameEndInfo.layers[i]);
-                } else {
-                    correctedLayers.push_back(chainFrameEndInfo.layers[i]);
                 }
             }
 
@@ -1844,34 +1833,32 @@ namespace {
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
                 }
 
-                if (textureForOverlay[0]) {
-                    const bool useVPRT = textureForOverlay[1] == textureForOverlay[0];
+                // Render the hands or eye gaze helper.
+                if ((drawHands || drawEyeGaze) && overlayData[0].color) {
+                    const auto useVPRT = overlayData[0].color == overlayData[1].color;
 
-                    // Render the hands or eye gaze helper.
-                    if (drawHands || drawEyeGaze) {
-                        auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze);
+                    for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
+                        auto& overlay = overlayData[eye];
 
-                        for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                            m_graphicsDevice->setRenderTargets(1,
-                                                               &textureForOverlay[eye],
-                                                               useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr,
-                                                               depthForOverlay[eye],
-                                                               useVPRT ? eye : -1);
+                        m_graphicsDevice->setRenderTargets(1,
+                                                           &overlay.color,
+                                                           useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr,
+                                                           overlay.depth,
+                                                           useVPRT ? eye : -1);
 
-                            m_graphicsDevice->setViewProjection(viewsForOverlay[eye]);
+                        m_graphicsDevice->setViewProjection(overlay.vproj);
 
-                            if (drawHands) {
-                                m_handTracker->render(
-                                    viewsForOverlay[eye].Pose, spaceForOverlay, getXrTimeNow(), textureForOverlay[eye]);
-                            }
+                        if (drawHands) {
+                            m_handTracker->render(overlay.vproj.Pose, overlay.space, getXrTimeNow(), overlay.color);
+                        }
 
-                            if (drawEyeGaze) {
-                                XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
-                                auto pos = utilities::NdcToScreen(m_eyeGaze[eye]);
-                                pos.x *= textureForOverlay[eye]->getInfo().width;
-                                pos.y *= textureForOverlay[eye]->getInfo().height;
-                                m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
-                            }
+                        if (drawEyeGaze) {
+                            const auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze);
+                            const XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
+                            auto pos = utilities::NdcToScreen(m_eyeGaze[eye]);
+                            pos.x *= overlay.color->getInfo().width;
+                            pos.y *= overlay.color->getInfo().height;
+                            m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
                         }
                     }
                 }
@@ -1902,7 +1889,6 @@ namespace {
                     m_graphicsDevice->beginText();
                     m_menuHandler->render(m_menuSwapchainImages[menuImageIndex]);
                     m_graphicsDevice->flushText();
-
                     m_graphicsDevice->unsetRenderTargets();
 
                     {
@@ -1911,24 +1897,24 @@ namespace {
                     }
 
                     // Add the quad layer to the frame.
-                    XrCompositionLayerQuad layerQuadForMenu{XR_TYPE_COMPOSITION_LAYER_QUAD};
-                    layerQuadForMenu.space = m_viewSpace;
-                    StoreXrPose(&layerQuadForMenu.pose,
-                                DirectX::XMMatrixMultiply(
-                                    DirectX::XMMatrixTranslation(
-                                        0, 0, -m_configManager->getValue(config::SettingMenuDistance) / 100.f),
-                                    LoadXrPose(Pose::Identity())));
-                    layerQuadForMenu.size.width = layerQuadForMenu.size.height = 1; // 1m x 1m
-                    static const XrEyeVisibility visibility[] = {
-                        XR_EYE_VISIBILITY_BOTH, XR_EYE_VISIBILITY_LEFT, XR_EYE_VISIBILITY_RIGHT};
-                    layerQuadForMenu.eyeVisibility = visibility[std::min(
-                        m_configManager->getValue(config::SettingMenuEyeVisibility), (int)std::size(visibility))];
-                    layerQuadForMenu.subImage.swapchain = m_menuSwapchain;
-                    layerQuadForMenu.subImage.imageRect.extent.width = textureInfo.width;
-                    layerQuadForMenu.subImage.imageRect.extent.height = textureInfo.height;
-                    layerQuadForMenu.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+                    const auto menuEyeVisibility =
+                        static_cast<XrEyeVisibility>(m_configManager->getValue(config::SettingMenuEyeVisibility));
 
-                    correctedLayers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&layerQuadForMenu));
+                    gLayerQuadForMenu.type = XR_TYPE_COMPOSITION_LAYER_QUAD;
+                    gLayerQuadForMenu.next = nullptr;
+                    gLayerQuadForMenu.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+                    gLayerQuadForMenu.space = m_viewSpace;
+                    gLayerQuadForMenu.eyeVisibility =
+                        std::clamp(menuEyeVisibility, XR_EYE_VISIBILITY_BOTH, XR_EYE_VISIBILITY_RIGHT);
+                    gLayerQuadForMenu.subImage.swapchain = m_menuSwapchain;
+                    gLayerQuadForMenu.subImage.imageRect.extent.width = textureInfo.width;
+                    gLayerQuadForMenu.subImage.imageRect.extent.height = textureInfo.height;
+                    gLayerQuadForMenu.size = {1.f, 1.f}; // 1m x 1m
+                    gLayerQuadForMenu.pose =
+                        Pose::Translation({0, 0, m_configManager->getValue(config::SettingMenuDistance) * -0.01f});
+
+                    gLayerHeaders.push_back(
+                        reinterpret_cast<const XrCompositionLayerBaseHeader*>(std::addressof(gLayerQuadForMenu)));
                 }
 
                 if (drawOverlays) {
@@ -1944,15 +1930,15 @@ namespace {
                 utilities::UpdateKeyState(m_requestScreenShotKeyState, m_keyModifiers, m_keyScreenshot, false) &&
                 m_configManager->getValue(config::SettingScreenshotEnabled);
 
-            if (textureForOverlay[0] && requestScreenshot) {
+            if (requestScreenshot && overlayData[0].color) {
                 // TODO: this is capturing frame N-3
                 // review the command queues/lists and context flush
                 if (m_configManager->getValue(config::SettingScreenshotEye) != 2 /* Right only */) {
-                    takeScreenshot(textureForOverlay[0], "L");
+                    takeScreenshot(overlayData[0].color, "L");
                 }
-                if (textureForOverlay[1] &&
+                if (overlayData[1].color &&
                     m_configManager->getValue(config::SettingScreenshotEye) != 1 /* Left only */) {
-                    takeScreenshot(textureForOverlay[1], "R");
+                    takeScreenshot(overlayData[1].color, "R");
                 }
 
                 if (m_variableRateShader && m_configManager->getValue("vrs_capture")) {
@@ -1972,16 +1958,14 @@ namespace {
                 }
             }
 
-            chainFrameEndInfo.layers = correctedLayers.data();
-            chainFrameEndInfo.layerCount = (uint32_t)correctedLayers.size();
+            auto chainFrameEndInfo = *frameEndInfo;
+            chainFrameEndInfo.layerCount = static_cast<uint32_t>(gLayerHeaders.size());
+            chainFrameEndInfo.layers = gLayerHeaders.data();
 
-            {
-                const auto result = OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
+            const auto result = OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
+            m_graphicsDevice->unblockCallbacks();
 
-                m_graphicsDevice->unblockCallbacks();
-
-                return result;
-            }
+            return result;
         }
 
       private:
