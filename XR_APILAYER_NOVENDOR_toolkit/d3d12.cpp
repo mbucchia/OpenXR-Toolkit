@@ -463,10 +463,10 @@ namespace {
         }
 
         void copyTo(std::shared_ptr<ITexture> destination) const override {
-            D3D12_TEXTURE_COPY_LOCATION destLoc{destination->getAs<D3D12>(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
+            D3D12_TEXTURE_COPY_LOCATION destLoc{
+                destination->getAs<D3D12>(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
             D3D12_TEXTURE_COPY_LOCATION srcLoc{m_texture.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
             m_device->getContextAs<D3D12>()->CopyTextureRegion(&destLoc, 0, 0, 0, &srcLoc, nullptr);
-
         }
 
         void saveToFile(const std::filesystem::path& path) const override {
@@ -785,7 +785,7 @@ namespace {
             m_device->getContextAs<D3D12>()->EndQuery(get(m_queryHeap), D3D12_QUERY_TYPE_TIMESTAMP, m_stopIndex);
         }
 
-        uint64_t query(bool reset) const override {
+        uint64_t query() const override {
             return m_queryTimestampDelta(m_startIndex, m_stopIndex);
         }
 

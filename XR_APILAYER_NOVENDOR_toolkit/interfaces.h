@@ -33,16 +33,6 @@ namespace toolkit {
 
     namespace {
 
-        // A generic timer.
-        struct ITimer {
-            virtual ~ITimer() = default;
-
-            virtual void start() = 0;
-            virtual void stop() = 0;
-
-            virtual uint64_t query(bool reset = true) const = 0;
-        };
-
         // Quick and dirty API helper
         template <class T, class... Types>
         inline constexpr bool is_any_of_v = std::disjunction_v<std::is_same<T, Types>...>;
@@ -94,9 +84,6 @@ namespace toolkit {
         // 2 views to process, one per eye.
         constexpr uint32_t ViewCount = 2;
         enum class Eye : uint32_t { Left, Right, Both };
-
-        // A CPU synchronous timer.
-        struct ICpuTimer : public ITimer {};
 
         // [-1,+1] (+up) -> [0..1] (+dn)
         inline constexpr XrVector2f NdcToScreen(XrVector2f v) {
@@ -342,6 +329,18 @@ namespace toolkit {
         struct IDevice;
         struct ITexture;
 
+        // A GPU asynchronous timer.
+        struct IGpuTimer {
+            virtual ~IGpuTimer() = default;
+
+            virtual Api getApi() const = 0;
+            virtual std::shared_ptr<IDevice> getDevice() const = 0;
+
+            virtual void start() = 0;
+            virtual void stop() = 0;
+            virtual uint64_t query() const = 0;
+        };
+
         // A shader that will be rendered on a quad wrapping the entire target.
         struct IQuadShader {
             virtual ~IQuadShader() = default;
@@ -499,12 +498,6 @@ namespace toolkit {
             }
         };
 
-        // A GPU asynchronous timer.
-        struct IGpuTimer : public ITimer {
-            virtual Api getApi() const = 0;
-            virtual std::shared_ptr<IDevice> getDevice() const = 0;
-        };
-
         // A graphics execution context (eg: command list).
         struct IContext {
             virtual ~IContext() = default;
@@ -590,7 +583,7 @@ namespace toolkit {
             virtual void clearDepth(float value) = 0;
 
             virtual void setViewProjection(const xr::math::ViewProjection& view) = 0;
-            
+
             virtual void draw(std::shared_ptr<ISimpleMesh> mesh,
                               const XrPosef& pose,
                               XrVector3f scaling = {1.0f, 1.0f, 1.0f}) = 0;
@@ -611,10 +604,10 @@ namespace toolkit {
                                      uint32_t color,
                                      bool measure = false,
                                      int alignment = FW1_LEFT) = 0;
-            
+
             virtual float measureString(std::wstring_view string, TextStyle style, float size) const = 0;
             virtual float measureString(std::string_view string, TextStyle style, float size) const = 0;
-            
+
             virtual void beginText() = 0;
             virtual void flushText() = 0;
 
@@ -629,10 +622,10 @@ namespace toolkit {
             using SetRenderTargetEvent =
                 std::function<void(std::shared_ptr<IContext>, std::shared_ptr<ITexture> renderTarget)>;
             virtual void registerSetRenderTargetEvent(SetRenderTargetEvent event) = 0;
-            
+
             using UnsetRenderTargetEvent = std::function<void(std::shared_ptr<IContext>)>;
             virtual void registerUnsetRenderTargetEvent(UnsetRenderTargetEvent event) = 0;
-            
+
             using CopyTextureEvent = std::function<void(std::shared_ptr<IContext> /* context */,
                                                         std::shared_ptr<ITexture> /* source */,
                                                         std::shared_ptr<ITexture> /* destination */,

@@ -763,7 +763,7 @@ namespace {
             }
         }
 
-        uint64_t query(bool reset) const override {
+        uint64_t query() const override {
             uint64_t duration = 0;
             auto context = m_device->getContextAs<D3D11>();
             if (context && m_valid) {
@@ -777,7 +777,7 @@ namespace {
                     !disData.Disjoint) {
                     duration = static_cast<uint64_t>(((endtime - startime) * 1e6) / disData.Frequency);
                 }
-                m_valid = !reset;
+                m_valid = false;
             }
             return duration;
         }

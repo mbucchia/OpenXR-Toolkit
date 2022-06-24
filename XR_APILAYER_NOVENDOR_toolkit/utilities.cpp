@@ -29,35 +29,28 @@
 #include "shader_utilities.h"
 #include "log.h"
 
-namespace {
+namespace toolkit::utilities {
 
-    using namespace toolkit::utilities;
+    void CpuTimer::start() {
+        m_timeStart = std::chrono::high_resolution_clock::now();
+    }
 
-    class CpuTimer : public ICpuTimer {
-        using clock = std::chrono::high_resolution_clock;
+    uint64_t CpuTimer::stop() {
+        const auto tnow = std::chrono::high_resolution_clock::now();
+        const auto lap = tnow - std::exchange(m_timeStart, tnow);
+        return std::chrono::duration_cast<std::chrono::microseconds>(lap).count();
+    }
 
-      public:
-        void start() override {
-            m_timeStart = clock::now();
+    bool CpuTimer::restart(const std::chrono::high_resolution_clock::duration& lap) {
+        const auto tnow = std::chrono::high_resolution_clock::now();
+        if ((tnow - m_timeStart) >= lap) {
+            m_timeStart = tnow;
+            return true;
         }
+        return false;
+    }
 
-        void stop() override {
-            m_duration = clock::now() - m_timeStart;
-        }
-
-        uint64_t query(bool reset) const override {
-            const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(m_duration);
-            if (reset)
-                m_duration = clock::duration::zero();
-            return duration.count();
-        }
-
-      private:
-        clock::time_point m_timeStart;
-        mutable clock::duration m_duration{0};
-    };
-
-} // namespace
+} // namespace toolkit::utilities
 
 namespace toolkit::config {
 
@@ -147,10 +140,6 @@ namespace toolkit::utilities {
 
     void RegDeleteKey(HKEY hKey, const std::wstring& subKey) {
         ::RegDeleteKey(hKey, subKey.c_str());
-    }
-
-    std::shared_ptr<ICpuTimer> CreateCpuTimer() {
-        return std::make_shared<CpuTimer>();
     }
 
     uint32_t GetScaledInputSize(uint32_t outputSize, int scalePercent, uint32_t blockSize) {

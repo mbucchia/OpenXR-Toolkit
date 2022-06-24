@@ -575,18 +575,12 @@ namespace {
                     m_imageProcessors[ImgProc::Post] =
                         graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, m_variableRateShader);
 
-                    m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
-                    m_performanceCounters.waitCpuTimer = utilities::CreateCpuTimer();
-                    m_performanceCounters.endFrameCpuTimer = utilities::CreateCpuTimer();
-                    m_performanceCounters.overlayCpuTimer = utilities::CreateCpuTimer();
-                    m_performanceCounters.handTrackingTimer = utilities::CreateCpuTimer();
-
                     for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
                         m_performanceCounters.appGpuTimer[i] = m_graphicsDevice->createTimer();
                         m_performanceCounters.overlayGpuTimer[i] = m_graphicsDevice->createTimer();
                     }
 
-                    m_performanceCounters.lastWindowStart = std::chrono::steady_clock::now();
+                    m_performanceCounters.updateTimer.start();
 
                     // Create the Menu swapchain images
                     {
@@ -726,10 +720,7 @@ namespace {
                     m_performanceCounters.appGpuTimer[i].reset();
                     m_performanceCounters.overlayGpuTimer[i].reset();
                 }
-                m_performanceCounters.appCpuTimer.reset();
-                m_performanceCounters.waitCpuTimer.reset();
-                m_performanceCounters.endFrameCpuTimer.reset();
-                m_performanceCounters.overlayCpuTimer.reset();
+
                 m_swapchains.clear();
                 m_menuSwapchainImages.clear();
                 if (m_menuSwapchain != XR_NULL_HANDLE) {
@@ -1263,10 +1254,9 @@ namespace {
 
         XrResult xrLocateSpace(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation* location) override {
             if (m_handTracker && location->type == XR_TYPE_SPACE_LOCATION) {
-                m_performanceCounters.handTrackingTimer->start();
+                m_performanceCounters.handTrackingTimer.start();
                 if (m_handTracker->locate(space, baseSpace, time, getXrTimeNow(), *location)) {
-                    m_performanceCounters.handTrackingTimer->stop();
-                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
                     return XR_SUCCESS;
                 }
             }
@@ -1277,12 +1267,9 @@ namespace {
         XrResult xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo) override {
             const XrResult result = OpenXrApi::xrSyncActions(session, syncInfo);
             if (XR_SUCCEEDED(result) && m_handTracker && isVrSession(session)) {
-                m_performanceCounters.handTrackingTimer->start();
-
+                m_performanceCounters.handTrackingTimer.start();
                 m_handTracker->sync(m_begunFrameTime, getXrTimeNow(), *syncInfo);
-
-                m_performanceCounters.handTrackingTimer->stop();
-                m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
             }
 
             return result;
@@ -1293,10 +1280,9 @@ namespace {
                                          XrActionStateBoolean* state) override {
             if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
                 state->type == XR_TYPE_ACTION_STATE_BOOLEAN) {
-                m_performanceCounters.handTrackingTimer->start();
+                m_performanceCounters.handTrackingTimer.start();
                 if (m_handTracker->getActionState(*getInfo, *state)) {
-                    m_performanceCounters.handTrackingTimer->stop();
-                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
                     return XR_SUCCESS;
                 }
             }
@@ -1309,10 +1295,9 @@ namespace {
                                        XrActionStateFloat* state) override {
             if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
                 state->type == XR_TYPE_ACTION_STATE_FLOAT) {
-                m_performanceCounters.handTrackingTimer->start();
+                m_performanceCounters.handTrackingTimer.start();
                 if (m_handTracker->getActionState(*getInfo, *state)) {
-                    m_performanceCounters.handTrackingTimer->stop();
-                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
                     return XR_SUCCESS;
                 }
             }
@@ -1325,7 +1310,7 @@ namespace {
                                       XrActionStatePose* state) override {
             if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
                 state->type == XR_TYPE_ACTION_STATE_POSE) {
-                m_performanceCounters.handTrackingTimer->start();
+                m_performanceCounters.handTrackingTimer.start();
                 const std::string fullPath = m_handTracker->getFullPath(getInfo->action, getInfo->subactionPath);
                 bool supportedPath = false;
                 input::Hand hand = input::Hand::Left;
@@ -1339,8 +1324,7 @@ namespace {
                 }
                 if (supportedPath) {
                     state->isActive = m_handTracker->isTrackedRecently(hand);
-                    m_performanceCounters.handTrackingTimer->stop();
-                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
                     return XR_SUCCESS;
                 }
             }
@@ -1353,7 +1337,7 @@ namespace {
                                        const XrHapticBaseHeader* hapticFeedback) override {
             if (m_handTracker && isVrSession(session) && hapticActionInfo->type == XR_TYPE_HAPTIC_ACTION_INFO &&
                 hapticFeedback->type == XR_TYPE_HAPTIC_VIBRATION) {
-                m_performanceCounters.handTrackingTimer->start();
+                m_performanceCounters.handTrackingTimer.start();
                 const std::string fullPath =
                     m_handTracker->getFullPath(hapticActionInfo->action, hapticActionInfo->subactionPath);
                 bool supportedPath = false;
@@ -1368,8 +1352,7 @@ namespace {
                 if (supportedPath) {
                     auto haptics = reinterpret_cast<const XrHapticVibration*>(hapticFeedback);
                     m_handTracker->handleOutput(hand, haptics->frequency, haptics->duration);
-                    m_performanceCounters.handTrackingTimer->stop();
-                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
                 }
             }
 
@@ -1378,7 +1361,7 @@ namespace {
 
         XrResult xrStopHapticFeedback(XrSession session, const XrHapticActionInfo* hapticActionInfo) override {
             if (m_handTracker && isVrSession(session) && hapticActionInfo->type == XR_TYPE_HAPTIC_ACTION_INFO) {
-                m_performanceCounters.handTrackingTimer->start();
+                m_performanceCounters.handTrackingTimer.start();
                 const std::string fullPath =
                     m_handTracker->getFullPath(hapticActionInfo->action, hapticActionInfo->subactionPath);
                 bool supportedPath = false;
@@ -1392,8 +1375,7 @@ namespace {
                 }
                 if (supportedPath) {
                     m_handTracker->handleOutput(hand, NAN, 0);
-                    m_performanceCounters.handTrackingTimer->stop();
-                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
                 }
             }
 
@@ -1404,32 +1386,20 @@ namespace {
                              const XrFrameWaitInfo* frameWaitInfo,
                              XrFrameState* frameState) override {
             if (isVrSession(session)) {
-                m_performanceCounters.waitCpuTimer->start();
+                m_performanceCounters.waitCpuTimer.start();
             }
             const XrResult result = OpenXrApi::xrWaitFrame(session, frameWaitInfo, frameState);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
-                m_performanceCounters.waitCpuTimer->stop();
-                m_stats.waitCpuTimeUs += m_performanceCounters.waitCpuTimer->query();
+                m_stats.waitCpuTimeUs += m_performanceCounters.waitCpuTimer.stop();
 
                 // Apply prediction dampening if possible and if needed.
-                if (xrConvertWin32PerformanceCounterToTimeKHR) {
-                    const int predictionDampen = m_configManager->getValue(config::SettingPredictionDampen);
-                    if (predictionDampen != 100) {
-                        // Find the current time.
-                        LARGE_INTEGER qpcTimeNow;
-                        QueryPerformanceCounter(&qpcTimeNow);
-
-                        XrTime xrTimeNow;
-                        CHECK_XRCMD(
-                            xrConvertWin32PerformanceCounterToTimeKHR(GetXrInstance(), &qpcTimeNow, &xrTimeNow));
-
-                        XrTime predictionAmount = frameState->predictedDisplayTime - xrTimeNow;
-                        if (predictionAmount > 0) {
-                            frameState->predictedDisplayTime = xrTimeNow + (predictionDampen * predictionAmount) / 100;
-                        }
-
-                        m_stats.predictionTimeUs += predictionAmount;
+                const int predictionDampen = m_configManager->getValue(config::SettingPredictionDampen);
+                if (predictionDampen != 100) {
+                    const auto predictionAmount = frameState->predictedDisplayTime - getXrTimeNow();
+                    if (predictionAmount > 0) {
+                        frameState->predictedDisplayTime += (predictionAmount * (predictionDampen - 100u)) / 100u;
                     }
+                    m_stats.predictionTimeUs += predictionAmount;
                 }
 
                 // Record the predicted display time.
@@ -1447,7 +1417,8 @@ namespace {
                 m_isInFrame = true;
 
                 if (m_graphicsDevice) {
-                    m_performanceCounters.appCpuTimer->start();
+                    m_performanceCounters.appCpuTimer.start();
+
                     m_stats.appGpuTimeUs +=
                         m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
                     m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
@@ -1482,9 +1453,8 @@ namespace {
                 m_stats.numBiasedSamplers = m_graphicsDevice->getNumBiasedSamplersThisFrame();
             }
 
-            if ((now - m_performanceCounters.lastWindowStart) >= std::chrono::seconds(1)) {
+            if (m_performanceCounters.updateTimer.restart(std::chrono::seconds(1))) {
                 m_performanceCounters.numFrames = 0;
-                m_performanceCounters.lastWindowStart = now;
 
                 // TODO: no need to compute these if no menu handler
                 // or if menu isn't displaying any stats.
@@ -1504,9 +1474,9 @@ namespace {
                 m_stats.fps = static_cast<float>(numFrames);
 
                 // When CPU-bound, do not bother giving a (false) GPU time for D3D12
-                if (m_graphicsDevice->getApi() == graphics::Api::D3D12 &&
-                    m_stats.appCpuTimeUs + 500 > m_stats.appGpuTimeUs) {
-                    m_stats.appGpuTimeUs = 0;
+                if (m_graphicsDevice->getAs<graphics::D3D12>()) {
+                    if (m_stats.appGpuTimeUs < (m_stats.appCpuTimeUs + 500))
+                        m_stats.appGpuTimeUs = 0;
                 }
 
                 if (m_menuHandler) {
@@ -1630,24 +1600,19 @@ namespace {
             }
 
             m_isInFrame = false;
-
             updateStatisticsForFrame();
 
-            m_performanceCounters.appCpuTimer->stop();
-            m_stats.appCpuTimeUs += m_performanceCounters.appCpuTimer->query();
-            m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
+            m_stats.appCpuTimeUs += m_performanceCounters.appCpuTimer.stop();
+            m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex++]->stop();
+            if (m_performanceCounters.gpuTimerIndex == GpuTimerLatency)
+                m_performanceCounters.gpuTimerIndex = 0;
 
-            m_stats.endFrameCpuTimeUs += m_performanceCounters.endFrameCpuTimer->query();
-            m_performanceCounters.endFrameCpuTimer->start();
-
-            // Toggle to the next set of GPU timers.
-            m_performanceCounters.gpuTimerIndex = (m_performanceCounters.gpuTimerIndex + 1) % (GpuTimerLatency + 1);
+            m_performanceCounters.endFrameCpuTimer.start();
             m_graphicsDevice->resolveQueries();
 
             if (m_frameAnalyzer) {
                 m_frameAnalyzer->prepareForEndFrame();
             }
-
             // TODO: Ensure restoreContext() even on error.
             m_graphicsDevice->blockCallbacks();
 
@@ -1862,7 +1827,7 @@ namespace {
             }
 
             // We intentionally exclude the overlay from this timer, as it has its own separate timer.
-            m_performanceCounters.endFrameCpuTimer->stop();
+            m_stats.endFrameCpuTimeUs += m_performanceCounters.endFrameCpuTimer.stop();
 
             // Render our overlays.
             {
@@ -1873,11 +1838,9 @@ namespace {
                 const bool drawOverlays = m_menuHandler || drawHands || drawEyeGaze;
 
                 if (drawOverlays) {
-                    m_stats.overlayCpuTimeUs += m_performanceCounters.overlayCpuTimer->query();
                     m_stats.overlayGpuTimeUs +=
                         m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
-
-                    m_performanceCounters.overlayCpuTimer->start();
+                    m_performanceCounters.overlayCpuTimer.start();
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
                 }
 
@@ -1969,7 +1932,8 @@ namespace {
                 }
 
                 if (drawOverlays) {
-                    m_performanceCounters.overlayCpuTimer->stop();
+                    m_stats.overlayCpuTimeUs += m_performanceCounters.overlayCpuTimer.stop();
+
                     m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
                 }
             }
@@ -2044,10 +2008,8 @@ namespace {
             if (xrConvertWin32PerformanceCounterToTimeKHR) {
                 LARGE_INTEGER qpcTimeNow;
                 QueryPerformanceCounter(&qpcTimeNow);
-
                 CHECK_XRCMD(xrConvertWin32PerformanceCounterToTimeKHR(GetXrInstance(), &qpcTimeNow, &xrTimeNow));
             }
-
             return xrTimeNow;
         }
 
@@ -2150,16 +2112,17 @@ namespace {
         bool m_requestScreenShotKeyState{false};
 
         struct {
-            std::shared_ptr<utilities::ICpuTimer> appCpuTimer;
             std::shared_ptr<graphics::IGpuTimer> appGpuTimer[GpuTimerLatency + 1];
-            std::shared_ptr<utilities::ICpuTimer> waitCpuTimer;
-            std::shared_ptr<utilities::ICpuTimer> endFrameCpuTimer;
-            std::shared_ptr<utilities::ICpuTimer> overlayCpuTimer;
             std::shared_ptr<graphics::IGpuTimer> overlayGpuTimer[GpuTimerLatency + 1];
-            std::shared_ptr<utilities::ICpuTimer> handTrackingTimer;
+
+            utilities::CpuTimer updateTimer;
+            utilities::CpuTimer appCpuTimer;
+            utilities::CpuTimer waitCpuTimer;
+            utilities::CpuTimer endFrameCpuTimer;
+            utilities::CpuTimer overlayCpuTimer;
+            utilities::CpuTimer handTrackingTimer;
 
             unsigned int gpuTimerIndex{0};
-            std::chrono::steady_clock::time_point lastWindowStart;
             uint32_t numFrames{0};
         } m_performanceCounters;
 

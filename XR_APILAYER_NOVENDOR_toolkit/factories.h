@@ -37,8 +37,6 @@ namespace toolkit {
         void RegDeleteValue(HKEY hKey, const std::wstring& subKey, const std::wstring& value);
         void RegDeleteKey(HKEY hKey, const std::wstring& subKey);
 
-        std::shared_ptr<ICpuTimer> CreateCpuTimer();
-
         uint32_t GetScaledInputSize(uint32_t outputSize, int scalePercent, uint32_t blockSize);
 
         bool UpdateKeyState(bool& keyState, const std::vector<int>& vkModifiers, int vkKey, bool isRepeat);
@@ -48,6 +46,17 @@ namespace toolkit {
         void ClearWindowsMixedRealityReprojection();
 
         bool IsServiceRunning(const std::string& name);
+
+        // A CPU synchronous timer.
+        struct CpuTimer {
+          public:
+            void start();
+            bool restart(const std::chrono::high_resolution_clock::duration& lap);
+            uint64_t stop();
+
+          private:
+            std::chrono::high_resolution_clock::time_point m_timeStart;
+        };
 
     } // namespace utilities
 
@@ -93,7 +102,6 @@ namespace toolkit {
                                                                      const XrSwapchainCreateInfo& info,
                                                                      XrSwapchain swapchain,
                                                                      std::string_view debugName);
-
 
         std::shared_ptr<IFrameAnalyzer> CreateFrameAnalyzer(
             std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
