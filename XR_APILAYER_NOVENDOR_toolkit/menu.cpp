@@ -698,7 +698,7 @@ namespace {
                     }
 
                     // We give a little headroom to avoid flickering (hysteresis).
-                    if (m_stats.appCpuTimeUs + 500 > m_stats.appGpuTimeUs) {
+                    if (m_stats.appGpuTimeUs < (m_stats.appCpuTimeUs + 500)) {
                         m_device->drawString(
                             fmt::format(
                                 "CPU bound (+{:.1f}ms)",
