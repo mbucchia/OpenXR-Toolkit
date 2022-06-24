@@ -32,9 +32,8 @@ namespace toolkit {
     namespace utilities {
 
         std::optional<int> RegGetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value);
-        void RegSetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value, DWORD dwordValue);
-        void
-        RegSetString(HKEY hKey, const std::wstring& subKey, const std::wstring& value, const std::string& stringValue);
+        void RegSetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value, DWORD data);
+        void RegSetString(HKEY hKey, const std::wstring& subKey, const std::wstring& value, const std::string& data);
         void RegDeleteValue(HKEY hKey, const std::wstring& subKey, const std::wstring& value);
         void RegDeleteKey(HKEY hKey, const std::wstring& subKey);
 

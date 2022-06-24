@@ -121,22 +121,21 @@ namespace toolkit::utilities {
         return data;
     }
 
-    void RegSetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value, DWORD dwordValue) {
-        DWORD dataSize = sizeof(dwordValue);
-        LONG retCode = ::RegSetKeyValue(hKey, subKey.c_str(), value.c_str(), REG_DWORD, &dwordValue, dataSize);
+    void RegSetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value, DWORD data) {
+        DWORD dataSize = sizeof(data);
+        LONG retCode = ::RegSetKeyValue(hKey, subKey.c_str(), value.c_str(), REG_DWORD, &data, dataSize);
         if (retCode != ERROR_SUCCESS) {
             Log("Failed to write value: %d\n", retCode);
         }
     }
 
-    void
-    RegSetString(HKEY hKey, const std::wstring& subKey, const std::wstring& value, const std::string& stringValue) {
+    void RegSetString(HKEY hKey, const std::wstring& subKey, const std::wstring& name, const std::string& data) {
         LONG retCode = ::RegSetKeyValue(hKey,
                                         subKey.c_str(),
-                                        value.c_str(),
+                                        name.c_str(),
                                         REG_SZ,
-                                        std::wstring(stringValue.begin(), stringValue.end()).c_str(),
-                                        (DWORD)(2 * (stringValue.length() + 1)));
+                                        std::wstring(data.begin(), data.end()).c_str(),
+                                        (DWORD)(2 * (data.length() + 1)));
         if (retCode != ERROR_SUCCESS) {
             Log("Failed to write value: %d\n", retCode);
         }
