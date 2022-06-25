@@ -305,8 +305,8 @@ namespace {
 
         XrResult xrGetSystem(XrInstance instance, const XrSystemGetInfo* getInfo, XrSystemId* systemId) override {
             const XrResult result = OpenXrApi::xrGetSystem(instance, getInfo, systemId);
-            if (XR_SUCCEEDED(result) && getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY &&
-                m_vrSystemId == XR_NULL_SYSTEM_ID) {
+            if (XR_SUCCEEDED(result) && m_vrSystemId == XR_NULL_SYSTEM_ID &&
+                getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY) {
                 const bool isDeveloper = m_configManager->getValue(config::SettingDeveloper);
 
                 // Retrieve the actual OpenXR resolution.
@@ -975,8 +975,9 @@ namespace {
                                 const XrActionCreateInfo* createInfo,
                                 XrAction* action) override {
             const XrResult result = OpenXrApi::xrCreateAction(actionSet, createInfo, action);
-            if (XR_SUCCEEDED(result) && m_handTracker) {
-                m_handTracker->registerAction(*action, actionSet);
+            if (XR_SUCCEEDED(result)) {
+                if (m_handTracker)
+                    m_handTracker->registerAction(*action, actionSet);
             }
 
             return result;
@@ -984,8 +985,9 @@ namespace {
 
         XrResult xrDestroyAction(XrAction action) override {
             const XrResult result = OpenXrApi::xrDestroyAction(action);
-            if (XR_SUCCEEDED(result) && m_handTracker) {
-                m_handTracker->unregisterAction(action);
+            if (XR_SUCCEEDED(result)) {
+                if (m_handTracker)
+                    m_handTracker->unregisterAction(action);
             }
 
             return result;
@@ -995,12 +997,16 @@ namespace {
                                      const XrActionSpaceCreateInfo* createInfo,
                                      XrSpace* space) override {
             const XrResult result = OpenXrApi::xrCreateActionSpace(session, createInfo, space);
-            if (XR_SUCCEEDED(result) && m_handTracker && isVrSession(session)) {
-                // Keep track of the XrSpace for controllers, so we can override the behavior for them.
-                const std::string fullPath = m_handTracker->getFullPath(createInfo->action, createInfo->subactionPath);
-                if (fullPath == "/user/hand/right/input/grip/pose" || fullPath == "/user/hand/right/input/aim/pose" ||
-                    fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") {
-                    m_handTracker->registerActionSpace(*space, fullPath, createInfo->poseInActionSpace);
+            if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                if (m_handTracker) {
+                    // Keep track of the XrSpace for controllers, so we can override the behavior for them.
+                    const std::string fullPath =
+                        m_handTracker->getFullPath(createInfo->action, createInfo->subactionPath);
+                    if (fullPath == "/user/hand/right/input/grip/pose" ||
+                        fullPath == "/user/hand/right/input/aim/pose" ||
+                        fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") {
+                        m_handTracker->registerActionSpace(*space, fullPath, createInfo->poseInActionSpace);
+                    }
                 }
             }
 
@@ -1009,10 +1015,10 @@ namespace {
 
         XrResult xrDestroySpace(XrSpace space) override {
             const XrResult result = OpenXrApi::xrDestroySpace(space);
-            if (XR_SUCCEEDED(result) && m_handTracker) {
-                m_handTracker->unregisterActionSpace(space);
+            if (XR_SUCCEEDED(result)) {
+                if (m_handTracker)
+                    m_handTracker->unregisterActionSpace(space);
             }
-
             return result;
         }
 
@@ -1109,13 +1115,15 @@ namespace {
         XrResult xrGetCurrentInteractionProfile(XrSession session,
                                                 XrPath topLevelUserPath,
                                                 XrInteractionProfileState* interactionProfile) override {
-            if (m_handTracker && isVrSession(session)) {
-                // Return our emulated interaction profile for the hands.
-                const auto path = getXrPath(topLevelUserPath);
-                if ((path.empty() || path == "/user/hand/left" || path == "/user/hand/right") &&
-                    interactionProfile->type == XR_TYPE_INTERACTION_PROFILE_STATE) {
-                    interactionProfile->interactionProfile = m_handTracker->getInteractionProfile();
-                    return XR_SUCCESS;
+            if (isVrSession(session)) {
+                if (m_handTracker) {
+                    // Return our emulated interaction profile for the hands.
+                    const auto path = getXrPath(topLevelUserPath);
+                    if ((path.empty() || path == "/user/hand/left" || path == "/user/hand/right") &&
+                        interactionProfile->type == XR_TYPE_INTERACTION_PROFILE_STATE) {
+                        interactionProfile->interactionProfile = m_handTracker->getInteractionProfile();
+                        return XR_SUCCESS;
+                    }
                 }
             }
             return OpenXrApi::xrGetCurrentInteractionProfile(session, topLevelUserPath, interactionProfile);
@@ -1246,11 +1254,13 @@ namespace {
         }
 
         XrResult xrLocateSpace(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation* location) override {
-            if (m_handTracker && location->type == XR_TYPE_SPACE_LOCATION) {
-                m_performanceCounters.handTrackingTimer.start();
-                if (m_handTracker->locate(space, baseSpace, time, getXrTimeNow(), *location)) {
-                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
-                    return XR_SUCCESS;
+            if (location->type == XR_TYPE_SPACE_LOCATION) {
+                if (m_handTracker) {
+                    m_performanceCounters.handTrackingTimer.start();
+                    if (m_handTracker->locate(space, baseSpace, time, getXrTimeNow(), *location)) {
+                        m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
+                        return XR_SUCCESS;
+                    }
                 }
             }
 
@@ -1259,10 +1269,12 @@ namespace {
 
         XrResult xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo) override {
             const XrResult result = OpenXrApi::xrSyncActions(session, syncInfo);
-            if (XR_SUCCEEDED(result) && m_handTracker && isVrSession(session)) {
-                m_performanceCounters.handTrackingTimer.start();
-                m_handTracker->sync(m_begunFrameTime, getXrTimeNow(), *syncInfo);
-                m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
+            if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                if (m_handTracker) {
+                    m_performanceCounters.handTrackingTimer.start();
+                    m_handTracker->sync(m_begunFrameTime, getXrTimeNow(), *syncInfo);
+                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
+                }
             }
 
             return result;
@@ -1271,12 +1283,15 @@ namespace {
         XrResult xrGetActionStateBoolean(XrSession session,
                                          const XrActionStateGetInfo* getInfo,
                                          XrActionStateBoolean* state) override {
-            if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
-                state->type == XR_TYPE_ACTION_STATE_BOOLEAN) {
-                m_performanceCounters.handTrackingTimer.start();
-                if (m_handTracker->getActionState(*getInfo, *state)) {
-                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
-                    return XR_SUCCESS;
+            if (isVrSession(session)) {
+                assert(getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
+                       state->type == XR_TYPE_ACTION_STATE_BOOLEAN); // implicit
+                if (m_handTracker) {
+                    m_performanceCounters.handTrackingTimer.start();
+                    if (m_handTracker->getActionState(*getInfo, *state)) {
+                        m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
+                        return XR_SUCCESS;
+                    }
                 }
             }
 
@@ -1286,12 +1301,15 @@ namespace {
         XrResult xrGetActionStateFloat(XrSession session,
                                        const XrActionStateGetInfo* getInfo,
                                        XrActionStateFloat* state) override {
-            if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
-                state->type == XR_TYPE_ACTION_STATE_FLOAT) {
-                m_performanceCounters.handTrackingTimer.start();
-                if (m_handTracker->getActionState(*getInfo, *state)) {
-                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
-                    return XR_SUCCESS;
+            if (isVrSession(session)) {
+                assert(getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
+                       state->type == XR_TYPE_ACTION_STATE_FLOAT); // implicit
+                if (m_handTracker) {
+                    m_performanceCounters.handTrackingTimer.start();
+                    if (m_handTracker->getActionState(*getInfo, *state)) {
+                        m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
+                        return XR_SUCCESS;
+                    }
                 }
             }
 
@@ -1301,24 +1319,27 @@ namespace {
         XrResult xrGetActionStatePose(XrSession session,
                                       const XrActionStateGetInfo* getInfo,
                                       XrActionStatePose* state) override {
-            if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
-                state->type == XR_TYPE_ACTION_STATE_POSE) {
-                m_performanceCounters.handTrackingTimer.start();
-                const std::string fullPath = m_handTracker->getFullPath(getInfo->action, getInfo->subactionPath);
-                bool supportedPath = false;
-                input::Hand hand = input::Hand::Left;
-                if (fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") {
-                    supportedPath = true;
-                    hand = input::Hand::Left;
-                } else if (fullPath == "/user/hand/right/input/grip/pose" ||
-                           fullPath == "/user/hand/right/input/aim/pose") {
-                    supportedPath = true;
-                    hand = input::Hand::Right;
-                }
-                if (supportedPath) {
-                    state->isActive = m_handTracker->isTrackedRecently(hand);
-                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
-                    return XR_SUCCESS;
+            if (isVrSession(session)) {
+                assert(getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
+                       state->type == XR_TYPE_ACTION_STATE_POSE); // implicit
+                if (m_handTracker) {
+                    m_performanceCounters.handTrackingTimer.start();
+                    const std::string fullPath = m_handTracker->getFullPath(getInfo->action, getInfo->subactionPath);
+                    bool supportedPath = false;
+                    input::Hand hand = input::Hand::Left;
+                    if (fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") {
+                        supportedPath = true;
+                        hand = input::Hand::Left;
+                    } else if (fullPath == "/user/hand/right/input/grip/pose" ||
+                               fullPath == "/user/hand/right/input/aim/pose") {
+                        supportedPath = true;
+                        hand = input::Hand::Right;
+                    }
+                    if (supportedPath) {
+                        state->isActive = m_handTracker->isTrackedRecently(hand);
+                        m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
+                        return XR_SUCCESS;
+                    }
                 }
             }
 
@@ -1328,24 +1349,27 @@ namespace {
         XrResult xrApplyHapticFeedback(XrSession session,
                                        const XrHapticActionInfo* hapticActionInfo,
                                        const XrHapticBaseHeader* hapticFeedback) override {
-            if (m_handTracker && isVrSession(session) && hapticActionInfo->type == XR_TYPE_HAPTIC_ACTION_INFO &&
-                hapticFeedback->type == XR_TYPE_HAPTIC_VIBRATION) {
-                m_performanceCounters.handTrackingTimer.start();
-                const std::string fullPath =
-                    m_handTracker->getFullPath(hapticActionInfo->action, hapticActionInfo->subactionPath);
-                bool supportedPath = false;
-                input::Hand hand = input::Hand::Left;
-                if (fullPath == "/user/hand/left/output/haptic") {
-                    supportedPath = true;
-                    hand = input::Hand::Left;
-                } else if (fullPath == "/user/hand/right/output/haptic") {
-                    supportedPath = true;
-                    hand = input::Hand::Right;
-                }
-                if (supportedPath) {
-                    auto haptics = reinterpret_cast<const XrHapticVibration*>(hapticFeedback);
-                    m_handTracker->handleOutput(hand, haptics->frequency, haptics->duration);
-                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
+            if (isVrSession(session)) {
+                assert(hapticActionInfo->type == XR_TYPE_HAPTIC_ACTION_INFO); // implicit
+                if (m_handTracker &&
+                    hapticFeedback->type == XR_TYPE_HAPTIC_VIBRATION) { // explicit (if expanded in the future)
+                    m_performanceCounters.handTrackingTimer.start();
+                    const std::string fullPath =
+                        m_handTracker->getFullPath(hapticActionInfo->action, hapticActionInfo->subactionPath);
+                    bool supportedPath = false;
+                    input::Hand hand = input::Hand::Left;
+                    if (fullPath == "/user/hand/left/output/haptic") {
+                        supportedPath = true;
+                        hand = input::Hand::Left;
+                    } else if (fullPath == "/user/hand/right/output/haptic") {
+                        supportedPath = true;
+                        hand = input::Hand::Right;
+                    }
+                    if (supportedPath) {
+                        auto haptics = reinterpret_cast<const XrHapticVibration*>(hapticFeedback);
+                        m_handTracker->handleOutput(hand, haptics->frequency, haptics->duration);
+                        m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
+                    }
                 }
             }
 
@@ -1353,22 +1377,25 @@ namespace {
         }
 
         XrResult xrStopHapticFeedback(XrSession session, const XrHapticActionInfo* hapticActionInfo) override {
-            if (m_handTracker && isVrSession(session) && hapticActionInfo->type == XR_TYPE_HAPTIC_ACTION_INFO) {
-                m_performanceCounters.handTrackingTimer.start();
-                const std::string fullPath =
-                    m_handTracker->getFullPath(hapticActionInfo->action, hapticActionInfo->subactionPath);
-                bool supportedPath = false;
-                input::Hand hand = input::Hand::Left;
-                if (fullPath == "/user/hand/left/output/haptic") {
-                    supportedPath = true;
-                    hand = input::Hand::Left;
-                } else if (fullPath == "/user/hand/right/output/haptic") {
-                    supportedPath = true;
-                    hand = input::Hand::Right;
-                }
-                if (supportedPath) {
-                    m_handTracker->handleOutput(hand, NAN, 0);
-                    m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
+            if (isVrSession(session)) {
+                assert(hapticActionInfo->type == XR_TYPE_HAPTIC_ACTION_INFO); // implicit
+                if (m_handTracker) {
+                    m_performanceCounters.handTrackingTimer.start();
+                    const std::string fullPath =
+                        m_handTracker->getFullPath(hapticActionInfo->action, hapticActionInfo->subactionPath);
+                    bool supportedPath = false;
+                    input::Hand hand = input::Hand::Left;
+                    if (fullPath == "/user/hand/left/output/haptic") {
+                        supportedPath = true;
+                        hand = input::Hand::Left;
+                    } else if (fullPath == "/user/hand/right/output/haptic") {
+                        supportedPath = true;
+                        hand = input::Hand::Right;
+                    }
+                    if (supportedPath) {
+                        m_handTracker->handleOutput(hand, NAN, 0);
+                        m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer.stop();
+                    }
                 }
             }
 
