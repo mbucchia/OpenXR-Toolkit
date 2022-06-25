@@ -1761,16 +1761,14 @@ namespace {
         }
 
         void resolveQueries() override {
-            if (m_nextGpuTimestampIndex == 0) {
-                return;
+            if (m_nextGpuTimestampIndex) {
+                // Readback the previous set of timers. The queries are resolved in flushContext().
+                uint64_t* mappedBuffer;
+                D3D12_RANGE range{0, sizeof(uint64_t) * m_nextGpuTimestampIndex};
+                CHECK_HRCMD(m_queryReadbackBuffer->Map(0, &range, reinterpret_cast<void**>(&mappedBuffer)));
+                memcpy(m_queryBuffer, mappedBuffer, range.End);
+                m_queryReadbackBuffer->Unmap(0, nullptr);
             }
-
-            // Readback the previous set of timers. The queries are resolved in flushContext().
-            uint64_t* mappedBuffer;
-            D3D12_RANGE range{0, sizeof(uint64_t) * m_nextGpuTimestampIndex};
-            CHECK_HRCMD(m_queryReadbackBuffer->Map(0, &range, reinterpret_cast<void**>(&mappedBuffer)));
-            memcpy(m_queryBuffer, mappedBuffer, range.End);
-            m_queryReadbackBuffer->Unmap(0, nullptr);
         }
 
         void blockCallbacks() override {
