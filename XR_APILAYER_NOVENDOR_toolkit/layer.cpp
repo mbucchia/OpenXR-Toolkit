@@ -1551,39 +1551,6 @@ namespace {
             }
         }
 
-        void takeScreenshot(std::shared_ptr<graphics::ITexture> texture, const std::string& suffix) const {
-            SYSTEMTIME st;
-            ::GetLocalTime(&st);
-
-            std::stringstream parameters;
-            parameters << '_' << ((st.wYear * 10000u) + (st.wMonth * 100u) + (st.wDay)) << '_'
-                       << ((st.wHour * 10000u) + (st.wMinute * 100u) + (st.wSecond));
-
-            if (m_upscaleMode != config::ScalingType::None) {
-                // TODO: add a getUpscaleModeName() helper to keep enum and string in sync.
-                const auto upscaleName = m_upscaleMode == config::ScalingType::NIS   ? "_NIS_"
-                                         : m_upscaleMode == config::ScalingType::FSR ? "_FSR_"
-                                                                                     : "_SCL_";
-                parameters << upscaleName << m_configManager->getValue(config::SettingScaling) << "_"
-                           << m_configManager->getValue(config::SettingSharpness);
-            }
-
-            parameters << "_" << suffix;
-
-            const auto fileFormat =
-                m_configManager->getEnumValue<config::ScreenshotFileFormat>(config::SettingScreenshotFileFormat);
-
-            const auto fileExtension = fileFormat == config::ScreenshotFileFormat::DDS   ? ".dds"
-                                       : fileFormat == config::ScreenshotFileFormat::JPG ? ".jpg"
-                                       : fileFormat == config::ScreenshotFileFormat::BMP ? ".bmp"
-                                                                                         : ".png";
-            // Using std::filesystem automatically filters out unwanted app name chars.
-            auto path = localAppData / "screenshots" / (m_applicationName + parameters.str());
-            path.replace_extension(fileExtension);
-
-            texture->saveToFile(path);
-        }
-
         XrResult xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo) override {
             if (!isVrSession(session) || !m_graphicsDevice) {
                 return OpenXrApi::xrEndFrame(session, frameEndInfo);
@@ -1923,11 +1890,11 @@ namespace {
                 // TODO: this is capturing frame N-3
                 // review the command queues/lists and context flush
                 if (m_configManager->getValue(config::SettingScreenshotEye) != 2 /* Right only */) {
-                    takeScreenshot(overlayData[0].color, "L");
+                    takeScreenshot(overlayData[0].color.get(), "L");
                 }
                 if (overlayData[1].color &&
                     m_configManager->getValue(config::SettingScreenshotEye) != 1 /* Left only */) {
-                    takeScreenshot(overlayData[1].color, "R");
+                    takeScreenshot(overlayData[1].color.get(), "R");
                 }
 
                 if (m_variableRateShader && m_configManager->getValue("vrs_capture")) {
@@ -2036,6 +2003,39 @@ namespace {
                 return true;
             }
             return false;
+        }
+
+        void takeScreenshot(const graphics::ITexture* texture, std::string_view suffix) const {
+            auto path = localAppData / "screenshots";
+            {
+                SYSTEMTIME st;
+                ::GetLocalTime(&st);
+
+                std::stringstream parameters;
+                parameters << m_applicationName << '_' << ((st.wYear * 10000u) + (st.wMonth * 100u) + (st.wDay)) << '_'
+                           << ((st.wHour * 10000u) + (st.wMinute * 100u) + (st.wSecond));
+
+                if (m_upscaleMode != config::ScalingType::None) {
+                    // TODO: add a getUpscaleModeName() helper to keep enum and string in sync.
+                    const auto upscaleName = m_upscaleMode == config::ScalingType::NIS   ? "_NIS_"
+                                             : m_upscaleMode == config::ScalingType::FSR ? "_FSR_"
+                                                                                         : "_SCL_";
+                    parameters << upscaleName << m_configManager->getValue(config::SettingScaling) << "_"
+                               << m_configManager->getValue(config::SettingSharpness);
+                }
+                parameters << "_" << suffix;
+                path /= parameters.str();
+            }
+
+            const auto fileFormat =
+                m_configManager->getEnumValue<config::ScreenshotFileFormat>(config::SettingScreenshotFileFormat);
+
+            const auto fileExtension = fileFormat == config::ScreenshotFileFormat::DDS   ? ".dds"
+                                       : fileFormat == config::ScreenshotFileFormat::JPG ? ".jpg"
+                                       : fileFormat == config::ScreenshotFileFormat::BMP ? ".bmp"
+                                                                                         : ".png";
+            // Using std::filesystem automatically filters out unwanted app name chars.
+            texture->saveToFile(path.replace_extension(fileExtension));
         }
 
         std::string m_applicationName;
