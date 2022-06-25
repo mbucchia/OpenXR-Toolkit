@@ -934,7 +934,7 @@ namespace {
             if (m_configManager->getValue(config::SettingEyeDebugWithController)) {
                 // We must drop calls to allow the controller override for debugging.
                 if (suggestedBindings->countSuggestedBindings > 1 ||
-                    getPath(suggestedBindings->interactionProfile) !=
+                    getXrPath(suggestedBindings->interactionProfile) !=
                         "/interaction_profiles/hp/mixed_reality_controller") {
                     return XR_SUCCESS;
                 }
@@ -1109,15 +1109,15 @@ namespace {
         XrResult xrGetCurrentInteractionProfile(XrSession session,
                                                 XrPath topLevelUserPath,
                                                 XrInteractionProfileState* interactionProfile) override {
-            std::string path = topLevelUserPath != XR_NULL_PATH ? getPath(topLevelUserPath) : "";
-            if (m_handTracker && isVrSession(session) &&
-                (path.empty() || path == "/user/hand/left" || path == "/user/hand/right") &&
-                interactionProfile->type == XR_TYPE_INTERACTION_PROFILE_STATE) {
+            if (m_handTracker && isVrSession(session)) {
                 // Return our emulated interaction profile for the hands.
-                interactionProfile->interactionProfile = m_handTracker->getInteractionProfile();
-                return XR_SUCCESS;
+                const auto path = getXrPath(topLevelUserPath);
+                if ((path.empty() || path == "/user/hand/left" || path == "/user/hand/right") &&
+                    interactionProfile->type == XR_TYPE_INTERACTION_PROFILE_STATE) {
+                    interactionProfile->interactionProfile = m_handTracker->getInteractionProfile();
+                    return XR_SUCCESS;
+                }
             }
-
             return OpenXrApi::xrGetCurrentInteractionProfile(session, topLevelUserPath, interactionProfile);
         }
 
@@ -1966,12 +1966,15 @@ namespace {
             return session == m_vrSession;
         }
 
-        const std::string getPath(XrPath path) {
-            char buf[XR_MAX_PATH_LENGTH];
-            uint32_t count;
-            CHECK_XRCMD(xrPathToString(GetXrInstance(), path, sizeof(buf), &count, buf));
+        std::string getXrPath(XrPath path) {
             std::string str;
-            str.assign(buf, count - 1);
+            if (path != XR_NULL_PATH) {
+                // TODO: I can't find in the spec if max path includes the trailing 0?
+                str.resize(XR_MAX_PATH_LENGTH + 1);
+                auto count = static_cast<uint32_t>(str.size());
+                CHECK_XRCMD(xrPathToString(GetXrInstance(), path, count, &count, &*str.begin())); // safe idiom
+                str.resize(size_t(count) - (count != 0));
+            }
             return str;
         }
 
