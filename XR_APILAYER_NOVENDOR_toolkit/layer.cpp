@@ -37,10 +37,6 @@ namespace {
     using namespace toolkit::math;
     using namespace xr::math;
 
-    // The xrWaitFrame() loop might cause to have 2 frames in-flight, so we want to delay the GPU timer re-use by those
-    // 2 frames.
-    constexpr uint32_t GpuTimerLatency = 2;
-
     // We are going to need to reconstruct a writable version of the frame info.
     // We keep a global pool of resources to reduce fragmentation every frame.
 
@@ -583,11 +579,10 @@ namespace {
                     m_imageProcessors[ImgProc::Post] =
                         graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, m_variableRateShader);
 
-                    for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
-                        m_performanceCounters.appGpuTimer[i] = m_graphicsDevice->createTimer();
-                        m_performanceCounters.overlayGpuTimer[i] = m_graphicsDevice->createTimer();
-                    }
+                    m_gpuTimerApp = m_performanceCounters.getNextGpuTimerId();
+                    m_gpuTimerOvr = m_performanceCounters.getNextGpuTimerId();
 
+                    m_performanceCounters.createGpuTimers(m_graphicsDevice.get());
                     m_performanceCounters.updateTimer.start();
 
                     // Create the Menu swapchain images
@@ -724,10 +719,7 @@ namespace {
                 if (m_eyeTracker)
                     m_eyeTracker->endSession();
 
-                for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
-                    m_performanceCounters.appGpuTimer[i].reset();
-                    m_performanceCounters.overlayGpuTimer[i].reset();
-                }
+                m_performanceCounters.destroyGpuTimers();
 
                 m_swapchains.clear();
                 m_menuSwapchainImages.clear();
@@ -1423,9 +1415,9 @@ namespace {
                 if (m_graphicsDevice) {
                     m_performanceCounters.appCpuTimer.start();
 
-                    m_stats.appGpuTimeUs +=
-                        m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
-                    m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
+                    m_stats.appGpuTimeUs += m_performanceCounters.gpuTimers[m_gpuTimerApp]->query();
+                    m_gpuTimerApp = m_performanceCounters.getNextGpuTimerId();
+                    m_performanceCounters.gpuTimers[m_gpuTimerApp]->start();
 
                     // With D3D12, we want to make sure the query is enqueued now.
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
@@ -1607,9 +1599,7 @@ namespace {
             updateStatisticsForFrame();
 
             m_stats.appCpuTimeUs += m_performanceCounters.appCpuTimer.stop();
-            m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex++]->stop();
-            if (m_performanceCounters.gpuTimerIndex == GpuTimerLatency)
-                m_performanceCounters.gpuTimerIndex = 0;
+            m_performanceCounters.gpuTimers[m_gpuTimerApp]->stop();
 
             m_performanceCounters.endFrameCpuTimer.start();
             m_graphicsDevice->resolveQueries();
@@ -1795,8 +1785,8 @@ namespace {
                     // To patch the layer resolution we recreate the whole projection and views data structures.
                     gLayerProjections.emplace_back(*layer).views = std::addressof(lastView[-1]);
 
-                    baselayer = reinterpret_cast<const XrCompositionLayerBaseHeader*>(
-                        std::addressof(gLayerProjections.back()));
+                    baselayer =
+                        reinterpret_cast<const XrCompositionLayerBaseHeader*>(std::addressof(gLayerProjections.back()));
 
                 } else if (baselayer->type == XR_TYPE_COMPOSITION_LAYER_QUAD) {
                     const auto layer = reinterpret_cast<const XrCompositionLayerQuad*>(baselayer);
@@ -1823,10 +1813,11 @@ namespace {
                 const bool drawOverlays = m_menuHandler || drawHands || drawEyeGaze;
 
                 if (drawOverlays) {
-                    m_stats.overlayGpuTimeUs +=
-                        m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
                     m_performanceCounters.overlayCpuTimer.start();
-                    m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
+
+                    m_stats.overlayGpuTimeUs += m_performanceCounters.gpuTimers[m_gpuTimerOvr]->query();
+                    m_gpuTimerOvr = m_performanceCounters.getNextGpuTimerId();
+                    m_performanceCounters.gpuTimers[m_gpuTimerOvr]->start();
                 }
 
                 // Render the hands or eye gaze helper.
@@ -1915,8 +1906,7 @@ namespace {
 
                 if (drawOverlays) {
                     m_stats.overlayCpuTimeUs += m_performanceCounters.overlayCpuTimer.stop();
-
-                    m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
+                    m_performanceCounters.gpuTimers[m_gpuTimerOvr]->stop();
                 }
             }
 
@@ -2091,9 +2081,11 @@ namespace {
         int m_menuLingering{0};
         bool m_requestScreenShotKeyState{false};
 
+        uint8_t m_gpuTimerApp{0};
+        uint8_t m_gpuTimerOvr{0};
+
         struct {
-            std::shared_ptr<graphics::IGpuTimer> appGpuTimer[GpuTimerLatency + 1];
-            std::shared_ptr<graphics::IGpuTimer> overlayGpuTimer[GpuTimerLatency + 1];
+            std::shared_ptr<graphics::IGpuTimer> gpuTimers[8];
 
             utilities::CpuTimer updateTimer;
             utilities::CpuTimer appCpuTimer;
@@ -2101,9 +2093,24 @@ namespace {
             utilities::CpuTimer endFrameCpuTimer;
             utilities::CpuTimer overlayCpuTimer;
             utilities::CpuTimer handTrackingTimer;
-
-            unsigned int gpuTimerIndex{0};
             uint32_t numFrames{0};
+            uint32_t gpuTimersId{0};
+
+            uint8_t getNextGpuTimerId() {
+                if (++gpuTimersId == std::size(gpuTimers))
+                    gpuTimersId = 0;
+                return static_cast<uint8_t>(gpuTimersId);
+            }
+
+            void createGpuTimers(graphics::IDevice* device) {
+                for (auto& it : gpuTimers)
+                    it = device->createTimer();
+            }
+
+            void destroyGpuTimers() {
+                std::fill_n(gpuTimers, std::size(gpuTimers), nullptr);
+            }
+
         } m_performanceCounters;
 
         menu::MenuStatistics m_stats{};
