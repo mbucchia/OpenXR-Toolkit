@@ -47,9 +47,9 @@ namespace toolkit {
             return std::end(container) != std::find(std::begin(container), std::end(container), other);
         }
 
-        template <typename Other>
-        inline constexpr bool contains_string(const std::string& string, Other&& other) {
-            return string.find(std::forward<Other>(other)) != std::string::npos;
+        template <typename String, typename Other>
+        inline constexpr bool contains_string(const String& string, Other&& other) {
+            return string.find(std::forward<Other>(other)) != String::npos;
         }
 
     } // namespace

@@ -528,7 +528,7 @@ namespace toolkit::input {
             if (XR_SUCCEEDED(openXR.xrGetSystem(openXR.GetXrInstance(), &getInfo, &systemId))) {
                 XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES};
                 CHECK_XRCMD(openXR.xrGetSystemProperties(openXR.GetXrInstance(), systemId, &systemProperties));
-                if (std::string(systemProperties.systemName).find("aapvr") != std::string::npos) {
+                if (contains_string(std::string_view(systemProperties.systemName), "aapvr")) {
                     aSeeVRInitParam param;
                     param.ports[0] = 5777;
                     Log("--> aSeeVR_connect_server\n");
