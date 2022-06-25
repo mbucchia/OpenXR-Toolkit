@@ -579,9 +579,6 @@ namespace {
                     m_imageProcessors[ImgProc::Post] =
                         graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, m_variableRateShader);
 
-                    m_gpuTimerApp = m_performanceCounters.getNextGpuTimerId();
-                    m_gpuTimerOvr = m_performanceCounters.getNextGpuTimerId();
-
                     m_performanceCounters.createGpuTimers(m_graphicsDevice.get());
                     m_performanceCounters.updateTimer.start();
 
@@ -1414,10 +1411,7 @@ namespace {
 
                 if (m_graphicsDevice) {
                     m_performanceCounters.appCpuTimer.start();
-
-                    m_stats.appGpuTimeUs += m_performanceCounters.gpuTimers[m_gpuTimerApp]->query();
-                    m_gpuTimerApp = m_performanceCounters.getNextGpuTimerId();
-                    m_performanceCounters.gpuTimers[m_gpuTimerApp]->start();
+                    m_stats.appGpuTimeUs += m_performanceCounters.startGpuTimer(m_gpuTimerApp);
 
                     // With D3D12, we want to make sure the query is enqueued now.
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
@@ -1596,37 +1590,49 @@ namespace {
             }
 
             m_isInFrame = false;
-            updateStatisticsForFrame();
 
-            m_stats.appCpuTimeUs += m_performanceCounters.appCpuTimer.stop();
-            m_performanceCounters.gpuTimers[m_gpuTimerApp]->stop();
+            {
+                // Because gpu timers are async, we must accumulate cpu timer after updating the statistics:
+                //   frame beg(N  ): accumulate GPU N-1
+                //   frame end(N  ): updateStats N-1
+                //                   accumulate CPU N
+                //   frame beg(N+1): accumulate GPU N
+                //   frame end(N+1): updateStats N
+                //                   accumulate CPU N+1
+                //   etc...
 
-            m_performanceCounters.endFrameCpuTimer.start();
-            m_graphicsDevice->resolveQueries();
+                updateStatisticsForFrame();
+                m_stats.appCpuTimeUs += m_performanceCounters.appCpuTimer.stop();
+                m_performanceCounters.gpuTimers[m_gpuTimerApp]->stop();
 
-            if (m_frameAnalyzer) {
-                m_frameAnalyzer->prepareForEndFrame();
+                m_performanceCounters.endFrameCpuTimer.start();
+                m_graphicsDevice->resolveQueries();
+
+                if (m_frameAnalyzer) {
+                    m_frameAnalyzer->prepareForEndFrame();
+                }
+                // TODO: Ensure restoreContext() even on error.
+                m_graphicsDevice->blockCallbacks();
+
+                if (m_eyeTracker) {
+                    m_eyeTracker->endFrame();
+                }
+
+                if (m_variableRateShader) {
+                    m_variableRateShader->endFrame();
+                    m_variableRateShader->stopCapture();
+                }
+
+                // Unbind all textures from the render targets.
+                m_graphicsDevice->saveContext();
+                m_graphicsDevice->unsetRenderTargets();
+
+                if (m_menuHandler) {
+                    m_menuHandler->handleInput();
+                }
+                updateConfiguration();
             }
-            // TODO: Ensure restoreContext() even on error.
-            m_graphicsDevice->blockCallbacks();
 
-            if (m_eyeTracker) {
-                m_eyeTracker->endFrame();
-            }
-
-            if (m_variableRateShader) {
-                m_variableRateShader->endFrame();
-                m_variableRateShader->stopCapture();
-            }
-
-            m_graphicsDevice->saveContext();
-
-            if (m_menuHandler) {
-                m_menuHandler->handleInput();
-            }
-
-            // Prepare the Shaders for rendering.
-            updateConfiguration();
 
             // Unbind all textures from the render targets.
             m_graphicsDevice->unsetRenderTargets();
@@ -1814,10 +1820,7 @@ namespace {
 
                 if (drawOverlays) {
                     m_performanceCounters.overlayCpuTimer.start();
-
-                    m_stats.overlayGpuTimeUs += m_performanceCounters.gpuTimers[m_gpuTimerOvr]->query();
-                    m_gpuTimerOvr = m_performanceCounters.getNextGpuTimerId();
-                    m_performanceCounters.gpuTimers[m_gpuTimerOvr]->start();
+                    m_stats.overlayGpuTimeUs += m_performanceCounters.startGpuTimer(m_gpuTimerOvr);
                 }
 
                 // Render the hands or eye gaze helper.
@@ -2096,10 +2099,19 @@ namespace {
             uint32_t numFrames{0};
             uint32_t gpuTimersId{0};
 
+            uint64_t startGpuTimer(uint8_t& id) {
+                const auto lap = gpuTimers[id]->query();
+                id = getNextGpuTimerId();
+                gpuTimers[id]->start();
+                return lap;
+            }
+            void stopGpuTimer(uint8_t id) {
+                gpuTimers[id]->stop();
+            }
+
             uint8_t getNextGpuTimerId() {
-                if (++gpuTimersId == std::size(gpuTimers))
-                    gpuTimersId = 0;
-                return static_cast<uint8_t>(gpuTimersId);
+                static_assert(isPow2(ARRAYSIZE(gpuTimers)));
+                return static_cast<uint8_t>((++gpuTimersId) % std::size(gpuTimers));
             }
 
             void createGpuTimers(graphics::IDevice* device) {
