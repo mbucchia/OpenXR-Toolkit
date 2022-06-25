@@ -1487,9 +1487,8 @@ namespace {
                 m_menuHandler->updateEyeGazeState(m_eyeTracker->getEyeGazeState());
             }
 
-            for (unsigned int eye = 0; eye < utilities::ViewCount; eye++) {
-                m_stats.hasColorBuffer[eye] = m_stats.hasDepthBuffer[eye] = false;
-            }
+            std::fill_n(m_stats.hasColorBuffer, std::size(m_stats.hasColorBuffer), false);
+            std::fill_n(m_stats.hasDepthBuffer, std::size(m_stats.hasDepthBuffer), false);
             m_stats.numRenderTargetsWithVRS = 0;
         }
 
@@ -1541,7 +1540,7 @@ namespace {
             if (m_variableRateShader)
                 m_variableRateShader->update();
 
-            // Update image processors second.
+            // Update image processors and prepare the Shaders for rendering.
             for (auto& processor : m_imageProcessors) {
                 if (processor) {
                     if (reloadShaders)
@@ -1600,9 +1599,14 @@ namespace {
                 updateConfiguration();
             }
 
+            // We must reserve the underlying storage to keep our pointers stable.
 
-            // Unbind all textures from the render targets.
-            m_graphicsDevice->unsetRenderTargets();
+            gLayerHeaders.reserve(frameEndInfo->layerCount + 1); // reserve space for the menu
+            gLayerHeaders.assign(frameEndInfo->layers, frameEndInfo->layers + frameEndInfo->layerCount);
+            gLayerProjections.clear();
+            gLayerProjections.reserve(gLayerHeaders.size());
+            gLayerProjectionsViews.clear();
+            gLayerProjectionsViews.reserve(gLayerHeaders.size() * utilities::ViewCount);
 
             struct {
                 std::shared_ptr<graphics::ITexture> color;
@@ -1612,16 +1616,6 @@ namespace {
             } overlayData[utilities::ViewCount] = {{}};
 
             // Apply the processing chain to all the (supported) layers.
-            gLayerHeaders.reserve(frameEndInfo->layerCount + 1); // reserve space for the menu
-            gLayerHeaders.assign(frameEndInfo->layers, frameEndInfo->layers + frameEndInfo->layerCount);
-
-            // We must reserve the underlying storage to keep our pointers stable.
-            gLayerProjections.clear();
-            gLayerProjections.reserve(gLayerHeaders.size());
-
-            gLayerProjectionsViews.clear();
-            gLayerProjectionsViews.reserve(gLayerHeaders.size() * utilities::ViewCount);
-
             for (auto& baselayer : gLayerHeaders) {
                 if (baselayer->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION) {
                     static_assert(utilities::ViewCount == 2);
