@@ -774,14 +774,14 @@ namespace {
 
             auto chainCreateInfo = *createInfo;
 
-            const auto useSwapchain =
+            const auto validUsageFlags =
                 chainCreateInfo.usageFlags &
                 (XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                  XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT | XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT);
 
             // Identify the swapchains of interest for our processing chain.
             // We do no processing to depth buffers.
-            if (useSwapchain && !(useSwapchain & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+            if (validUsageFlags && !(validUsageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
                 if (m_imageProcessors[ImgProc::Pre]) {
                     chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
                 }
@@ -801,7 +801,7 @@ namespace {
 
             const auto result = OpenXrApi::xrCreateSwapchain(session, &chainCreateInfo, swapchain);
 
-            if (XR_SUCCEEDED(result) && useSwapchain) {
+            if (XR_SUCCEEDED(result) && validUsageFlags) {
                 SwapchainState swapchainState;
                 {
                     auto chainImages = graphics::WrapXrSwapchainImages(
@@ -814,9 +814,6 @@ namespace {
                         swapchainState.images.push_back(std::move(images));
                     }
                 }
-
-                // Make sure to create the underlying texture typeless.
-                auto overrideFormat = swapchainState.images[0].chain[0]->getNativeFormat();
 
                 // Dump the descriptor for the first texture returned by the runtime for debug purposes.
                 if (auto texture = swapchainState.images[0].chain[0]->getAs<graphics::D3D11>()) {
@@ -848,6 +845,9 @@ namespace {
                 } else {
                     throw std::runtime_error("Unsupported graphics runtime"); // unlikely
                 }
+
+                // Make sure to create the underlying texture typeless.
+                auto overrideFormat = swapchainState.images[0].chain[0]->getNativeFormat();
 
                 for (size_t i = 0; i < swapchainState.images.size(); i++) {
                     // TODO: this is invariant, why testing this inside the loop?
@@ -906,7 +906,7 @@ namespace {
                         chain.insert(chain.end() - 1, std::move(texture));
                     }
 
-                    for (auto j = to_integral(ImgProc::Pre); j < to_integral(ImgProc::MaxValue); j++) {
+                    for (size_t j = 0; j < std::size(m_imageProcessors); j++) {
                         if (m_imageProcessors[j]) {
                             for (size_t k = 0; k < std::min(createInfo->arraySize, 2u); k++)
                                 swapchainState.images[i].gpuTimers[j][k] = m_graphicsDevice->createTimer();
@@ -1435,121 +1435,6 @@ namespace {
             return result;
         }
 
-        void updateStatisticsForFrame() {
-            const auto now = std::chrono::steady_clock::now();
-            const auto numFrames = ++m_performanceCounters.numFrames;
-
-            if (m_graphicsDevice) {
-                m_stats.numBiasedSamplers = m_graphicsDevice->getNumBiasedSamplersThisFrame();
-            }
-
-            if (m_performanceCounters.updateTimer.restart(std::chrono::seconds(1))) {
-                m_performanceCounters.numFrames = 0;
-
-                // TODO: no need to compute these if no menu handler
-                // or if menu isn't displaying any stats.
-
-                // Push the last averaged statistics.
-                m_stats.appCpuTimeUs /= numFrames;
-                m_stats.appGpuTimeUs /= numFrames;
-                m_stats.waitCpuTimeUs /= numFrames;
-                m_stats.endFrameCpuTimeUs /= numFrames;
-                m_stats.processorGpuTimeUs[0] /= numFrames;
-                m_stats.processorGpuTimeUs[1] /= numFrames;
-                m_stats.processorGpuTimeUs[2] /= numFrames;
-                m_stats.overlayCpuTimeUs /= numFrames;
-                m_stats.overlayGpuTimeUs /= numFrames;
-                m_stats.handTrackingCpuTimeUs /= numFrames;
-                m_stats.predictionTimeUs /= numFrames;
-                m_stats.fps = static_cast<float>(numFrames);
-
-                // When CPU-bound, do not bother giving a (false) GPU time for D3D12
-                if (m_graphicsDevice->getAs<graphics::D3D12>()) {
-                    if (m_stats.appGpuTimeUs < (m_stats.appCpuTimeUs + 500))
-                        m_stats.appGpuTimeUs = 0;
-                }
-
-                if (m_menuHandler) {
-                    // convert to degrees for display (1Hz)
-                    StoreXrFov(&m_stats.fov[0], ConvertToDegrees(m_posesForFrame[0].fov));
-                    StoreXrFov(&m_stats.fov[1], ConvertToDegrees(m_posesForFrame[1].fov));
-                    m_menuHandler->updateStatistics(m_stats);
-                }
-
-                // Start from fresh!
-                memset(&m_stats, 0, sizeof(m_stats));
-            }
-
-            if (m_handTracker && m_menuHandler) {
-                m_menuHandler->updateGesturesState(m_handTracker->getGesturesState());
-            }
-            if (m_eyeTracker && m_menuHandler) {
-                m_menuHandler->updateEyeGazeState(m_eyeTracker->getEyeGazeState());
-            }
-
-            std::fill_n(m_stats.hasColorBuffer, std::size(m_stats.hasColorBuffer), false);
-            std::fill_n(m_stats.hasDepthBuffer, std::size(m_stats.hasDepthBuffer), false);
-            m_stats.numRenderTargetsWithVRS = 0;
-        }
-
-        void updateConfiguration() {
-            // Make sure config gets written if needed.
-            m_configManager->tick();
-
-            // Forward the motion reprojection locking values to WMR.
-            if (m_supportMotionReprojectionLock &&
-                (m_configManager->hasChanged(config::SettingMotionReprojection) ||
-                 m_configManager->hasChanged(config::SettingMotionReprojectionRate))) {
-                const auto motionReprojection =
-                    m_configManager->getEnumValue<config::MotionReprojection>(config::SettingMotionReprojection);
-                const auto rate = m_configManager->getEnumValue<config::MotionReprojectionRate>(
-                    config::SettingMotionReprojectionRate);
-
-                // If motion reprojection is not controlled by us, then make sure the reprojection rate is left to
-                // default.
-                if (motionReprojection != config::MotionReprojection::On) {
-                    utilities::UpdateWindowsMixedRealityReprojectionRate(config::MotionReprojectionRate::Off);
-                } else {
-                    utilities::UpdateWindowsMixedRealityReprojectionRate(rate);
-                }
-            }
-
-            // Adjust mip map biasing.
-            if (m_configManager->hasChanged(config::SettingMipMapBias) ||
-                m_configManager->hasChanged(config::SettingScalingType)) {
-                const auto biasing = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType) !=
-                                             config::ScalingType::None
-                                         ? m_configManager->getEnumValue<config::MipMapBias>(config::SettingMipMapBias)
-                                         : config::MipMapBias::Off;
-                m_graphicsDevice->setMipMapBias(biasing, m_mipMapBiasForUpscaling);
-            }
-
-            // Check to reload shaders.
-            bool reloadShaders = false;
-            if (m_configManager->hasChanged(config::SettingReloadShaders)) {
-                if (m_configManager->getValue(config::SettingReloadShaders)) {
-                    m_configManager->setValue(config::SettingReloadShaders, 0, true);
-                    reloadShaders = true;
-                }
-            }
-
-            // Update eye tracking and vrs first
-            if (m_eyeTracker)
-                m_eyeTracker->update();
-
-            if (m_variableRateShader)
-                m_variableRateShader->update();
-
-            // Update image processors and prepare the Shaders for rendering.
-            for (auto& processor : m_imageProcessors) {
-                if (processor) {
-                    if (reloadShaders)
-                        processor->reload();
-                    processor->update();
-                }
-            }
-        }
-
         XrResult xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo) override {
             if (!isVrSession(session) || !m_graphicsDevice) {
                 return OpenXrApi::xrEndFrame(session, frameEndInfo);
@@ -1997,6 +1882,121 @@ namespace {
                 return true;
             }
             return false;
+        }
+
+        void updateStatisticsForFrame() {
+            const auto now = std::chrono::steady_clock::now();
+            const auto numFrames = ++m_performanceCounters.numFrames;
+
+            if (m_graphicsDevice) {
+                m_stats.numBiasedSamplers = m_graphicsDevice->getNumBiasedSamplersThisFrame();
+            }
+
+            if (m_performanceCounters.updateTimer.restart(std::chrono::seconds(1))) {
+                m_performanceCounters.numFrames = 0;
+
+                // TODO: no need to compute these if no menu handler
+                // or if menu isn't displaying any stats.
+
+                // Push the last averaged statistics.
+                m_stats.appCpuTimeUs /= numFrames;
+                m_stats.appGpuTimeUs /= numFrames;
+                m_stats.waitCpuTimeUs /= numFrames;
+                m_stats.endFrameCpuTimeUs /= numFrames;
+                m_stats.processorGpuTimeUs[0] /= numFrames;
+                m_stats.processorGpuTimeUs[1] /= numFrames;
+                m_stats.processorGpuTimeUs[2] /= numFrames;
+                m_stats.overlayCpuTimeUs /= numFrames;
+                m_stats.overlayGpuTimeUs /= numFrames;
+                m_stats.handTrackingCpuTimeUs /= numFrames;
+                m_stats.predictionTimeUs /= numFrames;
+                m_stats.fps = static_cast<float>(numFrames);
+
+                // When CPU-bound, do not bother giving a (false) GPU time for D3D12
+                if (m_graphicsDevice->getAs<graphics::D3D12>()) {
+                    if (m_stats.appGpuTimeUs < (m_stats.appCpuTimeUs + 500))
+                        m_stats.appGpuTimeUs = 0;
+                }
+
+                if (m_menuHandler) {
+                    // convert to degrees for display (1Hz)
+                    StoreXrFov(&m_stats.fov[0], ConvertToDegrees(m_posesForFrame[0].fov));
+                    StoreXrFov(&m_stats.fov[1], ConvertToDegrees(m_posesForFrame[1].fov));
+                    m_menuHandler->updateStatistics(m_stats);
+                }
+
+                // Start from fresh!
+                memset(&m_stats, 0, sizeof(m_stats));
+            }
+
+            if (m_handTracker && m_menuHandler) {
+                m_menuHandler->updateGesturesState(m_handTracker->getGesturesState());
+            }
+            if (m_eyeTracker && m_menuHandler) {
+                m_menuHandler->updateEyeGazeState(m_eyeTracker->getEyeGazeState());
+            }
+
+            std::fill_n(m_stats.hasColorBuffer, std::size(m_stats.hasColorBuffer), false);
+            std::fill_n(m_stats.hasDepthBuffer, std::size(m_stats.hasDepthBuffer), false);
+            m_stats.numRenderTargetsWithVRS = 0;
+        }
+
+        void updateConfiguration() {
+            // Make sure config gets written if needed.
+            m_configManager->tick();
+
+            // Forward the motion reprojection locking values to WMR.
+            if (m_supportMotionReprojectionLock &&
+                (m_configManager->hasChanged(config::SettingMotionReprojection) ||
+                 m_configManager->hasChanged(config::SettingMotionReprojectionRate))) {
+                const auto motionReprojection =
+                    m_configManager->getEnumValue<config::MotionReprojection>(config::SettingMotionReprojection);
+                const auto rate = m_configManager->getEnumValue<config::MotionReprojectionRate>(
+                    config::SettingMotionReprojectionRate);
+
+                // If motion reprojection is not controlled by us, then make sure the reprojection rate is left to
+                // default.
+                if (motionReprojection != config::MotionReprojection::On) {
+                    utilities::UpdateWindowsMixedRealityReprojectionRate(config::MotionReprojectionRate::Off);
+                } else {
+                    utilities::UpdateWindowsMixedRealityReprojectionRate(rate);
+                }
+            }
+
+            // Adjust mip map biasing.
+            if (m_configManager->hasChanged(config::SettingMipMapBias) ||
+                m_configManager->hasChanged(config::SettingScalingType)) {
+                const auto biasing = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType) !=
+                                             config::ScalingType::None
+                                         ? m_configManager->getEnumValue<config::MipMapBias>(config::SettingMipMapBias)
+                                         : config::MipMapBias::Off;
+                m_graphicsDevice->setMipMapBias(biasing, m_mipMapBiasForUpscaling);
+            }
+
+            // Check to reload shaders.
+            bool reloadShaders = false;
+            if (m_configManager->hasChanged(config::SettingReloadShaders)) {
+                if (m_configManager->getValue(config::SettingReloadShaders)) {
+                    m_configManager->setValue(config::SettingReloadShaders, 0, true);
+                    reloadShaders = true;
+                }
+            }
+
+            // Update eye tracking and vrs first
+            if (m_eyeTracker)
+                m_eyeTracker->update();
+
+            if (m_variableRateShader)
+                m_variableRateShader->update();
+
+            // Update image processors and prepare the Shaders for rendering.
+            for (auto& processor : m_imageProcessors) {
+                if (processor) {
+                    if (reloadShaders)
+                        processor->reload();
+                    processor->update();
+                }
+            }
         }
 
         void takeScreenshot(const graphics::ITexture* texture, std::string_view suffix) const {
