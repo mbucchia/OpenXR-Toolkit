@@ -1227,10 +1227,6 @@ namespace {
                     fov_r *= (XMLoadSInt4(&scale_r) * 0.01f);
                 }
 
-                // Store new User FOV in radians now, convert to degrees for display later.
-                StoreXrFov(&m_stats.fov[0], fov_l);
-                StoreXrFov(&m_stats.fov[1], fov_r);
-
                 // Save new Render FOV for xrEndFrame.
                 StoreXrFov(&m_posesForFrame[0].fov, fov_l);
                 StoreXrFov(&m_posesForFrame[1].fov, fov_r);
@@ -1489,8 +1485,8 @@ namespace {
 
                 if (m_menuHandler) {
                     // convert to degrees for display (1Hz)
-                    StoreXrFov(&m_stats.fov[0], ConvertToDegrees(m_stats.fov[0]));
-                    StoreXrFov(&m_stats.fov[1], ConvertToDegrees(m_stats.fov[1]));
+                    StoreXrFov(&m_stats.fov[0], ConvertToDegrees(m_posesForFrame[0].fov));
+                    StoreXrFov(&m_stats.fov[1], ConvertToDegrees(m_posesForFrame[1].fov));
                     m_menuHandler->updateStatistics(m_stats);
                 }
 
