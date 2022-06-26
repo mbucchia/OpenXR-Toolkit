@@ -1261,7 +1261,7 @@ namespace {
         }
 
         void setRenderTargets(size_t numRenderTargets,
-                              std::shared_ptr<ITexture>* renderTargets,
+                              const std::shared_ptr<ITexture>* renderTargets,
                               int32_t* renderSlices = nullptr,
                               std::shared_ptr<ITexture> depthBuffer = nullptr,
                               int32_t depthSlice = -1) override {

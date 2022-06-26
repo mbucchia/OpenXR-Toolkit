@@ -614,8 +614,7 @@ namespace {
 
         void render(const XrPosef& pose,
                     XrSpace baseSpace,
-                    XrTime now,
-                    std::shared_ptr<graphics::ITexture> renderTarget) const override {
+                    XrTime now) const override {
             const int meshIndex = m_configManager->getValue(SettingHandVisibilityAndSkinTone) - 1;
             if (meshIndex < 0) {
                 return;

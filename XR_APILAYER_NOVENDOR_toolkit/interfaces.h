@@ -573,7 +573,7 @@ namespace toolkit {
             virtual void dispatchShader(bool doNotClear = false) const = 0;
 
             virtual void setRenderTargets(size_t numRenderTargets,
-                                          std::shared_ptr<ITexture>* renderTargets,
+                                          const std::shared_ptr<ITexture>* renderTargets,
                                           int32_t* renderSlices = nullptr,
                                           std::shared_ptr<ITexture> depthBuffer = nullptr,
                                           int32_t depthSlice = -1) = 0;
@@ -772,8 +772,7 @@ namespace toolkit {
             locate(XrSpace space, XrSpace baseSpace, XrTime time, XrTime now, XrSpaceLocation& location) const = 0;
             virtual void render(const XrPosef& pose,
                                 XrSpace baseSpace,
-                                XrTime time,
-                                std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
+                                XrTime time) const = 0;
 
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateBoolean& state) const = 0;
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateFloat& state) const = 0;

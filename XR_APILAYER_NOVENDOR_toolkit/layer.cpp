@@ -1229,7 +1229,6 @@ namespace {
                 StoreXrFov(&m_posesForFrame[1].fov, fov_r);
 
                 // Apply zoom if requested.
-                // TODO: wrapp all FOV calculations into a single scale factor.
                 const auto zoom = m_configManager->getValue(config::SettingZoom);
                 if (zoom != 10) {
                     fov_l *= (10.f / zoom);
@@ -1248,6 +1247,7 @@ namespace {
                     if (m_configManager->getValue(config::SettingPimaxFOVHack))
                         std::swap(views[0], views[1]);
                 }
+
             }
 
             return result;
@@ -1521,11 +1521,11 @@ namespace {
             gLayerProjectionsViews.reserve(gLayerHeaders.size() * utilities::ViewCount);
 
             struct {
-                std::shared_ptr<graphics::ITexture> color;
-                std::shared_ptr<graphics::ITexture> depth;
-                ViewProjection vproj;
-                XrSpace space;
-            } overlayData[utilities::ViewCount] = {{}};
+                const std::shared_ptr<graphics::ITexture>* color{nullptr};
+                const std::shared_ptr<graphics::ITexture>* depth{nullptr};
+                ViewProjection vproj{};
+                XrSpace space{XR_NULL_HANDLE};
+            } overlayData[utilities::ViewCount];
 
             // Apply the processing chain to all the (supported) layers.
             for (auto& baselayer : gLayerHeaders) {
@@ -1580,7 +1580,7 @@ namespace {
 
                                 assert(swapchainImages.chain.size() == 1u);
 
-                                overlayData[eye].depth = swapchainImages.chain[0];
+                                overlayData[eye].depth = std::addressof(swapchainImages.chain[0]);
                                 overlayData[eye].vproj.NearFar = {depthInfo->nearZ, depthInfo->farZ};
 
                                 m_stats.hasDepthBuffer[eye] = true;
@@ -1618,7 +1618,7 @@ namespace {
                         // - Advanced to the right source and/or destination image;
 
                         auto& swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
-                        overlayData[eye].color = swapchainImages.chain.back();
+                        overlayData[eye].color = std::addressof(swapchainImages.chain.back());
 
                         uint32_t nextImage = 0;
                         uint32_t lastImage = 0;
@@ -1697,31 +1697,33 @@ namespace {
                 }
 
                 // Render the hands or eye gaze helper.
-                if ((drawHands || drawEyeGaze) && overlayData[0].color) {
-                    const auto useVPRT = overlayData[0].color == overlayData[1].color;
+                if (drawHands || drawEyeGaze) {
+                    const auto useVPRT = overlayData[0].color && overlayData[1].color &&
+                                         overlayData[0].color->get() == overlayData[1].color->get();
 
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                        auto& overlay = overlayData[eye];
+                        const auto& overlay = overlayData[eye];
+                        if (overlay.color) {
+                            m_graphicsDevice->setRenderTargets(1,
+                                                               overlay.color,
+                                                               useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr,
+                                                               overlay.depth ? *overlay.depth : nullptr,
+                                                               useVPRT ? eye : -1);
 
-                        m_graphicsDevice->setRenderTargets(1,
-                                                           &overlay.color,
-                                                           useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr,
-                                                           overlay.depth,
-                                                           useVPRT ? eye : -1);
+                            m_graphicsDevice->setViewProjection(overlay.vproj);
 
-                        m_graphicsDevice->setViewProjection(overlay.vproj);
+                            if (drawHands) {
+                                m_handTracker->render(overlay.vproj.Pose, overlay.space, getXrTimeNow());
+                            }
 
-                        if (drawHands) {
-                            m_handTracker->render(overlay.vproj.Pose, overlay.space, getXrTimeNow(), overlay.color);
-                        }
-
-                        if (drawEyeGaze) {
-                            const auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze);
-                            const XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
-                            auto pos = utilities::NdcToScreen(m_eyeGaze[eye]);
-                            pos.x *= overlay.color->getInfo().width;
-                            pos.y *= overlay.color->getInfo().height;
-                            m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
+                            if (drawEyeGaze) {
+                                const auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze);
+                                const XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
+                                auto pos = utilities::NdcToScreen(m_eyeGaze[eye]);
+                                pos.x *= (*overlay.color)->getInfo().width;
+                                pos.y *= (*overlay.color)->getInfo().height;
+                                m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
+                            }
                         }
                     }
                 }
@@ -1792,20 +1794,19 @@ namespace {
                 utilities::UpdateKeyState(m_requestScreenShotKeyState, m_keyModifiers, m_keyScreenshot, false) &&
                 m_configManager->getValue(config::SettingScreenshotEnabled);
 
-            if (requestScreenshot && overlayData[0].color) {
+            if (requestScreenshot) {
                 // TODO: this is capturing frame N-3
                 // review the command queues/lists and context flush
-                if (m_configManager->getValue(config::SettingScreenshotEye) != 2 /* Right only */) {
-                    takeScreenshot(overlayData[0].color.get(), "L");
-                }
-                if (overlayData[1].color &&
-                    m_configManager->getValue(config::SettingScreenshotEye) != 1 /* Left only */) {
-                    takeScreenshot(overlayData[1].color.get(), "R");
-                }
+                const auto shotEye = m_configManager->getValue(config::SettingScreenshotEye);
 
-                if (m_variableRateShader && m_configManager->getValue("vrs_capture")) {
+                if (overlayData[0].color && shotEye != 2 /* Right only */)
+                    takeScreenshot(overlayData[0].color->get(), "L");
+                
+                if (overlayData[1].color && shotEye != 1 /* Left only */)
+                    takeScreenshot(overlayData[1].color->get(), "R");
+
+                if (m_variableRateShader && m_configManager->getValue("vrs_capture"))
                     m_variableRateShader->startCapture();
-                }
             }
 
             m_graphicsDevice->restoreContext();
