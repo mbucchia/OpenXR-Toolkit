@@ -77,11 +77,11 @@ namespace {
         }
 
         void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
-            const auto gazeIdx = slice >= 0 ? slice : 2;
-
             // TODO: check whether we can use a single buffer instead.
+
+            const auto gazeIdx = slice >= 0 ? slice : 2;
             if (m_configUpdated) {
-                m_configUpdated = slice == 0; // re-arm for the 2nd view
+                m_configUpdated = gazeIdx == 0; // re-arm for the 2nd view
                 m_config.Params4.x = m_vrsState.gazeXY[gazeIdx].x;
                 m_config.Params4.y = m_vrsState.gazeXY[gazeIdx].y;
                 m_cbParams[gazeIdx]->uploadData(&m_config, sizeof(m_config));
