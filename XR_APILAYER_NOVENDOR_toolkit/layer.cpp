@@ -1862,15 +1862,12 @@ namespace {
         }
 
         std::string getXrPath(XrPath path) {
-            std::string str;
-            if (path != XR_NULL_PATH) {
-                // TODO: I can't find in the spec if max path includes the trailing 0?
-                str.resize(XR_MAX_PATH_LENGTH + 1);
-                auto count = static_cast<uint32_t>(str.size());
-                CHECK_XRCMD(xrPathToString(GetXrInstance(), path, count, &count, &*str.begin())); // safe idiom
-                str.resize(size_t(count) - (count != 0));
-            }
-            return str;
+            uint32_t count;
+            CHECK_XRCMD(xrPathToString(GetXrInstance(), path, 0, &count, nullptr));
+            std::string s;
+            s.resize(count);
+            CHECK_XRCMD(xrPathToString(GetXrInstance(), path, count, &count, s.data()));
+            return s;
         }
 
         // Find the current time. Fallback to the frame time if we cannot query the actual time.
