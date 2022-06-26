@@ -696,7 +696,8 @@ namespace {
 
         ShadingConstants makeShadingConstants(size_t eye, uint32_t texW, uint32_t texH) {
             ShadingConstants constants;
-            constants.GazeXY = m_gazeLocation[eye ^ (eye != 2 && m_swapViews)];
+            eye ^= (m_swapViews && eye != 2);
+            constants.GazeXY = m_gazeLocation[eye];
             constants.InvDim = {1.f / texW, 1.f / texH};
             for (size_t i = 0; i < std::size(m_Rings); i++) {
                 constants.Rings[i] = m_Rings[i];
