@@ -77,17 +77,27 @@ namespace {
         }
 
         void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
-            // TODO: check whether we can use a single buffer instead.
+            // TODO: check whether we can use a structured array buffer for left/right/both instead.
 
-            const auto gazeIdx = slice >= 0 ? slice : 2;
-            if (m_configUpdated) {
-                m_configUpdated = gazeIdx == 0; // re-arm for the 2nd view
-                m_config.Params4.x = m_vrsState.gazeXY[gazeIdx].x;
-                m_config.Params4.y = m_vrsState.gazeXY[gazeIdx].y;
-                m_cbParams[gazeIdx]->uploadData(&m_config, sizeof(m_config));
+            // TODO: Evaluate whether using 2 distinct buffers.
+            // For now use both and share all constants in a single buffer.
+
+            if (m_configUpdated || m_configVrsUpdated) {
+                for (size_t i = 0; i < std::size(m_cbParams); i++) {
+                    m_config.Params4.x = m_vrsState.gazeXY[i].x;
+                    m_config.Params4.y = m_vrsState.gazeXY[i].y;
+                    m_cbParams[i]->uploadData(&m_config, sizeof(m_config));
+                }
+                m_configUpdated = false;
+                m_configVrsUpdated = false;
             }
 
+            // NB: xrEndFrame calls with:
+            //   slice == useVPRT ? eye : -int32_t(eye + 1)
+
             const auto usePostProcess = m_mode != PostProcessType::Off;
+            const auto gazeIdx = abs(slice) - (slice < 0); // slice < 0 ? -(slice + 1) : slice;
+
             m_device->setShader(m_shaders[input->isArray()][usePostProcess], SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_cbParams[gazeIdx]);
             m_device->setShaderInput(0, input, slice);
@@ -242,7 +252,7 @@ namespace {
                 std::fill_n(m_config.Rings, ARRAYSIZE(m_config.Rings), XrVector2f{0, 0});
             }
 
-            m_configUpdated = true;
+            m_configVrsUpdated = true;
         }
 
         static std::array<DirectX::XMINT4, 3> GetParams(const IConfigManager* configManager, size_t index) {

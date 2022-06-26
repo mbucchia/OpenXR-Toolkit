@@ -197,7 +197,7 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
 
   if (!any(color)) {
     //discard;
-    return float4(1,0,0,1);
+    return float4(0,0,0,1);
   }
 
 #ifdef POST_PROCESS_SRC_SRGB
@@ -251,7 +251,7 @@ float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TE
 
   if (!any(color)) {
     //discard;
-    return float4(1,0,0,1);
+    return float4(0,0,0,1);
   }
 
 #ifdef PASS_THROUGH_USE_GAINS

@@ -759,7 +759,7 @@ namespace {
                               TLArg(createInfo->sampleCount, "SampleCount"),
                               TLArg(createInfo->format, "Format"),
                               TLArg(createInfo->usageFlags, "Usage"));
-            Log("Creating swapchain with dimensions=%ux%u, arraySize=%u, mipCount=%u, sampleCount=%u, format=%d, "
+            Log("Creating swapchain(app) with dimensions=%ux%u, arraySize=%u, mipCount=%u, sampleCount=%u, format=%d, "
                 "usage=0x%x\n",
                 createInfo->width,
                 createInfo->height,
@@ -831,6 +831,16 @@ namespace {
                                       TLArg(desc.BindFlags, "BindFlags"),
                                       TLArg(desc.CPUAccessFlags, "CPUAccessFlags"),
                                       TLArg(desc.MiscFlags, "MiscFlags"));
+                    DebugLog("Creating swapchain(own) with dimensions=%ux%u, arraySize=%u, mipCount=%u, sampleCount=%u, "
+                        "format=%d, "
+                        "usage=0x%x\n",
+                        desc.Width,
+                        desc.Height,
+                        desc.ArraySize,
+                        desc.MipLevels,
+                        desc.SampleDesc.Count,
+                        desc.Format,
+                        desc.Usage);
                 } else if (auto texture = swapchainState.images[0].chain[0]->getAs<graphics::D3D12>()) {
                     const auto& desc = texture->GetDesc();
                     TraceLoggingWrite(g_traceProvider,
@@ -842,6 +852,17 @@ namespace {
                                       TLArg(desc.SampleDesc.Count, "SampleCount"),
                                       TLArg((int)desc.Format, "Format"),
                                       TLArg((int)desc.Flags, "Flags"));
+                    DebugLog(
+                        "Creating swapchain(own) with dimensions=%ux%u, arraySize=%u, mipCount=%u, sampleCount=%u, "
+                        "format=%d, "
+                        "flags=0x%x\n",
+                        desc.Width,
+                        desc.Height,
+                        desc.DepthOrArraySize,
+                        desc.MipLevels,
+                        desc.SampleDesc.Count,
+                        desc.Format,
+                        desc.Flags);
                 } else {
                     throw std::runtime_error("Unsupported graphics runtime"); // unlikely
                 }
