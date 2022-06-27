@@ -1894,15 +1894,15 @@ namespace {
             if (Pose::IsPoseValid(viewsState)) {
                 // This code is based on vrperfkit by Frydrych Holger.
                 // https://github.com/fholger/vrperfkit/blob/master/src/openvr/openvr_manager.cpp
-
+                
                 using namespace DirectX;
 
-                // get angle between the two view planes
-                const auto viewsDotAngle = XMVectorGetX(
-                    XMVector3Dot(LoadXrPose(eyeInViewSpace[0].pose).r[2], LoadXrPose(eyeInViewSpace[1].pose).r[2]));
+                // get angle between the two views normals
+                const auto angleBetweenViewsNormals = XMVectorGetX(XMVector3AngleBetweenNormals(
+                    LoadXrPose(eyeInViewSpace[0].pose).r[2], LoadXrPose(eyeInViewSpace[1].pose).r[2]));
 
                 // get the diff angle tangent around the center
-                auto canted = std::tanf(std::abs(std::acosf(viewsDotAngle)) / 2) * 2;
+                auto canted = std::tanf(angleBetweenViewsNormals / 2) * 2;
 
                 // In normalized screen coordinates.
                 for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
@@ -1913,8 +1913,9 @@ namespace {
                     canted = -canted; // for next eye
                 }
 
-                // Example with G2:
-                // [OXRTK] Projection calibration : 0.05228, 0.00091 | -0.05176, -0.00091
+                // Examples with G2:
+                // G2:   Projection calibration: 0.05228, 0.00091 | -0.05176, -0.00091
+                // AERO: Projection calibration: 0.23823, 0.10415 | -0.23107, 0.10425
 
                 Log("Projection calibration: %.5f, %.5f | %.5f, %.5f\n",
                     m_projCenters[0].x,
