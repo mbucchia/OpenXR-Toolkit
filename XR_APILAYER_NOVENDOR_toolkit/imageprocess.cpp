@@ -78,7 +78,6 @@ namespace {
 
         void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
             // TODO: check whether we can use a structured array buffer for left/right/both instead.
-
             // TODO: Evaluate whether using 2 distinct buffers.
             // For now use both and share all constants in a single buffer.
 
@@ -206,6 +205,7 @@ namespace {
 
         void updateConfigVrs() {
 #if 0
+            // TODO: automatic mode highlights changing rings/rates.
             VariableRateShaderState vrsState;
             if (m_vrs && m_vrsCurrentGen) {
                 m_vrs->getShaderState(vrsState, Eye::Both);
@@ -233,6 +233,10 @@ namespace {
             if (m_vrs && m_vrsCurrentGen) {
                 // Get gazes and rings but ignore L/R rate bias.
                 m_vrs->getShaderState(m_vrsState, Eye::Both);
+                if (m_vrsState.mode < 0) {
+                    std::swap(m_vrsState.gazeXY[0], m_vrsState.gazeXY[1]);
+                    m_vrsState.mode = -m_vrsState.mode;
+                }
 
                 // Reduce flickering for rings with a rate above 2x2.
                 constexpr auto kLowResRate = to_integral(VariableShadingRateVal::R_2x2);

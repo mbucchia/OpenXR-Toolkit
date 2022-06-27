@@ -691,7 +691,7 @@ namespace toolkit {
             XrVector2f gazeXY[3]; // ndc
             XrVector2f rings[4];  // 1/(a1^2), 1/(b1^2)
             uint8_t rates[4];     // setting rates
-            uint8_t mode;         // 0: off, 1: active 2: with eye tracking
+            int8_t mode;          // 0: off, 1: active 2: with eye tracking (swap gaze if < 0)
         };
 
         struct VariableRateShaderConstants {

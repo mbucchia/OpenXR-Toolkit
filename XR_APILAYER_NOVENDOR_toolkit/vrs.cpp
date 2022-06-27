@@ -309,7 +309,8 @@ namespace {
                 state.rates[i] = shadingRateToSettingsRate(m_Rates[to_integral(eye)][i]);
             }
 
-            state.mode = m_usingEyeTracking ? 2 : m_mode != VariableShadingRateType::None;
+            const auto state_mode = (m_usingEyeTracking ? 2 : m_mode != VariableShadingRateType::None);
+            state.mode = static_cast<int8_t>(m_swapViews ? -state_mode : state_mode);
         }
 
         void startCapture() override {

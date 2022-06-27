@@ -1265,10 +1265,11 @@ namespace {
                     if (m_configManager->hasChanged(config::SettingPimaxFOVHack))
                         m_visibilityMaskEventIndex = 0; // Send the necessary events to the app.
 
-                    if (m_configManager->getValue(config::SettingPimaxFOVHack))
+                    if (m_configManager->getValue(config::SettingPimaxFOVHack)) {
                         std::swap(views[0], views[1]);
+                        std::swap(m_posesForFrame[0], m_posesForFrame[1]);
+                    }
                 }
-
             }
 
             return result;
@@ -1822,7 +1823,7 @@ namespace {
 
                 if (overlayData[0].color && shotEye != 2 /* Right only */)
                     takeScreenshot(overlayData[0].color->get(), "L");
-                
+
                 if (overlayData[1].color && shotEye != 1 /* Left only */)
                     takeScreenshot(overlayData[1].color->get(), "R");
 
