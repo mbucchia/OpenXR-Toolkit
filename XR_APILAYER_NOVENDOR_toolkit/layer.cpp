@@ -1915,29 +1915,36 @@ namespace {
                 session, &viewLocateInfo, &viewsState, viewsCount, &viewsCount, eyeInViewSpace));
 
             if (Pose::IsPoseValid(viewsState)) {
-                // This code is based on vrperfkit by Frydrych Holger.
-                // https://github.com/fholger/vrperfkit/blob/master/src/openvr/openvr_manager.cpp
-
                 using namespace DirectX;
 
-                // get angle between the two views normals
-                const auto angleBetweenViewsNormals = XMVectorGetX(XMVector3AngleBetweenNormals(
-                    LoadXrPose(eyeInViewSpace[0].pose).r[2], LoadXrPose(eyeInViewSpace[1].pose).r[2]));
+                // This code is based on vrperfkit by Frydrych Holger.
+                // https://github.com/fholger/vrperfkit/blob/master/src/openvr/openvr_manager.cpp
+                // float canted = std::tanf(cantedAngle);
+                // ctr[eye].x = 0.5f * (1.f + (right + left - 2 * canted) / (left - right));
+                // ctr[eye].y = 0.5f * (1.f + (bottom + top) / (top - bottom));
 
-                // get the diff angle tangent around the center
-                auto canted = std::tanf(angleBetweenViewsNormals / 2) * 2;
+                // Get angle between the two views normals
+                const auto angleBetweenViewsNormals =
+                    XMVectorGetX(XMVectorACos(XMQuaternionDot(LoadXrQuaternion(eyeInViewSpace[0].pose.orientation),
+                                                              LoadXrQuaternion(eyeInViewSpace[1].pose.orientation))));
 
-                // In normalized screen coordinates.
-                for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                    const auto& fov = eyeInViewSpace[eye].fov;
-                    m_projCenters[eye].x = (fov.angleLeft + fov.angleRight - canted) / (fov.angleLeft - fov.angleRight);
-                    m_projCenters[eye].y = (fov.angleDown + fov.angleUp) / (fov.angleDown - fov.angleUp);
-                    m_eyeGaze[eye] = m_projCenters[eye];
-                    canted = -canted; // for next eye
-                }
+                Log("Views canted angle: %.1f\n", XMConvertToDegrees(angleBetweenViewsNormals));
+
+                // XrFovF layout is: L,R,U,D
+                const auto tanfovl = XMVectorTan(LoadXrFov(eyeInViewSpace[0].fov));
+                const auto tanfovr = XMVectorTan(LoadXrFov(eyeInViewSpace[1].fov));
+                const auto ruru = XMVectorPermute<1, 2, 5, 6>(tanfovl, tanfovr);
+                const auto ldld = XMVectorPermute<0, 3, 4, 7>(tanfovl, tanfovr);
+
+                // Get the diff angle tangent around the center (NDC) and find center of projections.
+                const auto canted = std::tanf(std::abs(angleBetweenViewsNormals) / 2) * 2;
+                const auto xyxy = ((ldld + ruru) - XMVectorSet(canted, -canted, 0.f, 0.f)) / (ldld - ruru);
+
+                // Store both centers at once.
+                XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(m_projCenters), xyxy);
 
                 // Examples with G2:
-                // G2:   Projection calibration: 0.05228, 0.00091 | -0.05176, -0.00091
+                // G2:   Projection calibration: 0.08315, 0.00039 | -0.08130, -0.00148
                 // AERO: Projection calibration: 0.23823, 0.10415 | -0.23107, 0.10425
 
                 Log("Projection calibration: %.5f, %.5f | %.5f, %.5f\n",
