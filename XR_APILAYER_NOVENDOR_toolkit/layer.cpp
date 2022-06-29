@@ -1253,30 +1253,10 @@ namespace {
                 // Apply zoom if requested.
                 const auto zoom = m_configManager->getValue(config::SettingZoom);
                 if (zoom != 10) {
-                    fov_l *= (10.f / zoom);
-                    fov_r *= (10.f / zoom);
-#if 0
-                    // TODO:
-                    // review some of these transforms for other effects, see:
-                    // https://forum.unity.com/threads/fit-object-exactly-into-perspective-cameras-field-of-view-focus-the-object.496472/
-
-                    static constexpr XMVECTORF32 kSigns = {{{-1, +1, +1, -1}}};
-
-                    const auto scale = 10.f / std::clamp(zoom, 10, 1500);
-
-                    // XMVECTORF32 diff = {views[0].fov.angleRight - views[0].fov.angleLeft,
-                    //                     views[0].fov.angleUp    - views[0].fov.angleDown,
-                    //                     views[1].fov.angleRight - views[1].fov.angleLeft,
-                    //                     views[1].fov.angleUp    - views[1].fov.angleDown};
-
-                    const auto ruru = XMVectorPermute<1, 2, 5, 6>(fov_l, fov_r);
-                    const auto ldld = XMVectorPermute<0, 3, 4, 7>(fov_l, fov_r);
-                    const auto diff = XMVectorSubtractAngles(ruru, ldld);
-                    const auto dfov = XMVectorATan(XMVectorTan(diff * 0.5f) * scale) - diff;
-
-                    fov_l = (XMVectorSwizzle<0, 0, 1, 1>(dfov) * kSigns) + fov_l;
-                    fov_r = (XMVectorSwizzle<2, 2, 3, 3>(dfov) * kSigns) + fov_r;
-#endif
+                    // XrFovF layout is: L,R,U,D
+                    const auto scale = 10.f / std::clamp(zoom, 5, 100);
+                    fov_l = XMVectorATan(XMVectorTan(fov_l) * scale);
+                    fov_r = XMVectorATan(XMVectorTan(fov_r) * scale);
                 }
 
                 // And return new Render FOV to the application.
