@@ -44,7 +44,8 @@ namespace toolkit {
 
         template <typename Container, typename Other>
         inline constexpr bool contains(Container&& container, Other&& other) {
-            return std::end(container) != std::find(std::begin(container), std::end(container), other);
+            return std::find(std::begin(container), std::end(container), std::forward<Other>(other)) !=
+                   std::end(container);
         }
 
         template <typename String, typename Other>
@@ -694,12 +695,6 @@ namespace toolkit {
             int8_t mode;          // 0: off, 1: active 2: with eye tracking (swap gaze if < 0)
         };
 
-        struct VariableRateShaderConstants {
-            XrVector2f gazeXY;   // ndc
-            XrVector2f rings[4]; // 1/(a1^2), 1/(b1^2)
-            uint32_t rates[4];   // setting rates
-        };
-
         struct IVariableRateShader {
             virtual ~IVariableRateShader() = default;
 
@@ -770,9 +765,7 @@ namespace toolkit {
             virtual void sync(XrTime frameTime, XrTime now, const XrActionsSyncInfo& syncInfo) = 0;
             virtual bool
             locate(XrSpace space, XrSpace baseSpace, XrTime time, XrTime now, XrSpaceLocation& location) const = 0;
-            virtual void render(const XrPosef& pose,
-                                XrSpace baseSpace,
-                                XrTime time) const = 0;
+            virtual void render(const XrPosef& pose, XrSpace baseSpace, XrTime time) const = 0;
 
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateBoolean& state) const = 0;
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateFloat& state) const = 0;
