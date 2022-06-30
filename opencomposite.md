@@ -91,7 +91,7 @@ This can be done in two ways:
 
 2) System-wide. You use the OpenComposite launcher application to change where all games looks for the `openvr_api.dll` file and make them use the copy supplied by OpenComposite.
 
-### Be sure to grab the OpenXR of OpenComposite
+### Be sure to grab the OpenXR version of OpenComposite
 
 OpenComposite was originally developed for Oculus. When looking up OpenComposite, you may end up on the GitLab page for the project, which defaults to the "main" branch, which is for Oculus only. Be sure to pick the "openxr" branch.
 
