@@ -1908,23 +1908,23 @@ namespace {
                     XMVectorGetX(XMVectorACos(XMQuaternionDot(LoadXrQuaternion(eyeInViewSpace[0].pose.orientation),
                                                               LoadXrQuaternion(eyeInViewSpace[1].pose.orientation))));
 
-                Log("Views canted angle: %.1f\n", XMConvertToDegrees(angleBetweenViewsNormals));
+                Log("Views canted angle: %.5f\n", XMConvertToDegrees(angleBetweenViewsNormals));
+
+                // Get the diff angle tangent around the center (NDC) and find center of projections.
 
                 // XrFovF layout is: L,R,U,D
+                const auto canted = std::tanf(std::abs(angleBetweenViewsNormals) / 2) * 2;
                 const auto tanfovl = XMVectorTan(LoadXrFov(eyeInViewSpace[0].fov));
                 const auto tanfovr = XMVectorTan(LoadXrFov(eyeInViewSpace[1].fov));
                 const auto ruru = XMVectorPermute<1, 2, 5, 6>(tanfovl, tanfovr);
                 const auto ldld = XMVectorPermute<0, 3, 4, 7>(tanfovl, tanfovr);
-
-                // Get the diff angle tangent around the center (NDC) and find center of projections.
-                const auto canted = std::tanf(std::abs(angleBetweenViewsNormals) / 2) * 2;
-                const auto xyxy = ((ldld + ruru) - XMVectorSet(canted, -canted, 0.f, 0.f)) / (ldld - ruru);
+                const auto xyxy = ((ldld + ruru) + XMVectorSet(-canted, 0.f, +canted, 0.f)) / (ldld - ruru);
 
                 // Store both centers at once.
                 XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(m_projCenters), xyxy);
 
                 // Examples with G2:
-                // G2:   Projection calibration: 0.08315, 0.00039 | -0.08130, -0.00148
+                // G2:   Projection calibration: 0.08315, 0.00147 | -0.08236, -0.00148
                 // AERO: Projection calibration: 0.23823, 0.10415 | -0.23107, 0.10425
 
                 Log("Projection calibration: %.5f, %.5f | %.5f, %.5f\n",
