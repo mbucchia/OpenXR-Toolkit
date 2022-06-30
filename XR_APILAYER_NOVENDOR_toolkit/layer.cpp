@@ -1208,17 +1208,16 @@ namespace {
 
                 // Override the canting angle if requested.
                 if (const auto cantingOverride = m_configManager->getValue("canting")) {
-                    // rotate each views around the vertical axis of the requested reference space.
-                    // ideally we would rotate in view space, but this feature is for dev/debug only.
+                    // rotate each views around the vertical axis of the view space.
                     static constexpr XMVECTORF32 kLocalYawAxis = {{{0, 1, 0, 0}}};
                     const auto semiAngle = static_cast<float>(cantingOverride * (M_PI / 360));
 
                     StoreXrQuaternion(&views[0].pose.orientation,
-                                      XMQuaternionMultiply(LoadXrQuaternion(views[0].pose.orientation),
-                                                           XMQuaternionRotationNormal(kLocalYawAxis, -semiAngle)));
+                                      XMQuaternionMultiply(XMQuaternionRotationNormal(kLocalYawAxis, -semiAngle),
+                                                           LoadXrQuaternion(views[0].pose.orientation)));
                     StoreXrQuaternion(&views[1].pose.orientation,
-                                      XMQuaternionMultiply(LoadXrQuaternion(views[1].pose.orientation),
-                                                           XMQuaternionRotationNormal(kLocalYawAxis, +semiAngle)));
+                                      XMQuaternionMultiply(XMQuaternionRotationNormal(kLocalYawAxis, +semiAngle),
+                                                           LoadXrQuaternion(views[1].pose.orientation)));
                 }
 
                 // Override the FOV if requested.
