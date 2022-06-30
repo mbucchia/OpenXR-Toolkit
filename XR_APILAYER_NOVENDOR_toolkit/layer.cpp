@@ -2155,25 +2155,18 @@ namespace {
             uint32_t gpuTimersId{0};
 
             uint64_t startGpuTimer(uint8_t& id) {
+                static_assert(isPow2(ARRAYSIZE(gpuTimers)));
                 const auto lap = gpuTimers[id]->query();
-                id = getNextGpuTimerId();
-                gpuTimers[id]->start();
+                gpuTimers[id = static_cast<uint8_t>((++gpuTimersId) & (std::size(gpuTimers) - 1))]->start();
                 return lap;
             }
             void stopGpuTimer(uint8_t id) {
                 gpuTimers[id]->stop();
             }
-
-            uint8_t getNextGpuTimerId() {
-                static_assert(isPow2(ARRAYSIZE(gpuTimers)));
-                return static_cast<uint8_t>((++gpuTimersId) % std::size(gpuTimers));
-            }
-
             void createGpuTimers(graphics::IDevice* device) {
                 for (auto& it : gpuTimers)
                     it = device->createTimer();
             }
-
             void destroyGpuTimers() {
                 std::fill_n(gpuTimers, std::size(gpuTimers), nullptr);
             }
