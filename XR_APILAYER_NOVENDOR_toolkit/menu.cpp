@@ -257,22 +257,22 @@ namespace {
                     break;
 
                 case MenuEntryType::RestoreDefaults:
-                    if (m_resetArmed) {
+                    if (m_resetArmed && moveRight) {
                         m_resetArmed = false;
                         m_configManager->resetToDefaults();
                         m_needRestart = checkNeedRestartCondition();
                         m_resetTextLayout = m_resetBackgroundLayout = true;
                     } else {
-                        m_resetArmed = true;
+                        m_resetArmed = moveRight;
                     }
                     break;
 
                 case MenuEntryType::ReloadShaders:
-                    if (m_resetArmed) {
+                    if (m_resetArmed && moveRight) {
                         m_resetArmed = false;
                         m_configManager->setValue(config::SettingReloadShaders, 1, false);
                     } else {
-                        m_resetArmed = true;
+                        m_resetArmed = moveRight;
                     }
                     break;
 
