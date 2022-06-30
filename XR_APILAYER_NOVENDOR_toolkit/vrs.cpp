@@ -130,11 +130,9 @@ namespace {
               m_renderWidth(renderWidth), m_renderHeight(renderHeight),
               m_renderRatio(float(renderWidth) / renderHeight), m_tileSize(tileSize), m_tileRateMax(tileRateMax),
               m_supportFOVHack(isPimaxFovHackSupported) {
+            // Setup initial state
             createRenderResources(m_renderWidth, m_renderHeight);
-
-            // Set initial projection center
-            std::fill_n(m_gazeOffset, std::size(m_gazeOffset), XrVector2f{0.f, 0.f});
-            std::fill_n(m_gazeLocation, std::size(m_gazeLocation), XrVector2f{0.f, 0.f});
+            setupRenderConstants();
 
             // Request update.
             m_currentGen++;
@@ -161,7 +159,6 @@ namespace {
             if (m_usingEyeTracking) {
                 // TODO: What do we do upon (permanent) loss of tracking?
                 updateGaze();
-
                 m_currentGen++;
             }
 
@@ -287,6 +284,11 @@ namespace {
         void setViewProjectionCenters(XrVector2f left, XrVector2f right) override {
             m_gazeOffset[0] = left;
             m_gazeOffset[1] = right;
+
+            updateRates(m_mode);
+            updateRings(m_mode);
+            updateGaze();
+            m_currentGen++;
         }
 
         uint8_t getMaxRate() const override {
@@ -392,8 +394,14 @@ namespace {
                 m_Dx12ShadingRateResources.initialize();
                 resetShadingRates(Api::D3D12);
             }
+        }
 
-            // Setup shader constants
+        void setupRenderConstants() {
+            // Clear projection center
+            std::fill_n(m_gazeOffset, std::size(m_gazeOffset), XrVector2f{0.f, 0.f});
+            std::fill_n(m_gazeLocation, std::size(m_gazeLocation), XrVector2f{0.f, 0.f});
+
+            m_mode = m_configManager->getEnumValue<VariableShadingRateType>(config::SettingVRS);
             updateRates(m_mode);
             updateRings(m_mode);
             updateGaze();
@@ -534,6 +542,10 @@ namespace {
             m_gazeOffset[2].x = m_configManager->getValue(SettingVRSXOffset) * 0.01f;
             m_gazeOffset[2].y = m_configManager->getValue(SettingVRSYOffset) * 0.01f;
 
+            // These depend only on VRS X/Y offsets so we update here only.
+            m_gazeLocation[2].x = 0; // The generic mask only supports vertical offsets.
+            m_gazeLocation[2].y = m_gazeOffset[2].y;
+
             TraceLoggingWrite(
                 g_traceProvider, "VariableRateShading_Rings", TLArg(radius[0], "Ring1"), TLArg(radius[1], "Ring2"));
         }
@@ -548,10 +560,6 @@ namespace {
             // location = view center + view offset (L/R)
             m_gazeLocation[0] = gaze[0] + m_gazeOffset[2];
             m_gazeLocation[1] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
-
-            // The generic mask only supports vertical offsets.
-            m_gazeLocation[2].x = 0;
-            m_gazeLocation[2].y = m_gazeOffset[2].y;
         }
 
         ShadingRateMask& getOrCreateMaskResources(uint32_t width, uint32_t height, size_t* index = nullptr) {
