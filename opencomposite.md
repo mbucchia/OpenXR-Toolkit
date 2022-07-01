@@ -135,7 +135,7 @@ A lot of mods don't play well together. Before installing OpenComposite, be sure
 
 ### The game will not start with error "unknown config option"
 
-Don't use stale a `opencomposite.ini` configuration file.
+Don't use a stale `opencomposite.ini` configuration file (from an older version of OpenComposite for example).
 
 ![OpenComposite unknown config option](site/oc-mirror.png)
 
