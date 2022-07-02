@@ -1183,8 +1183,13 @@ namespace {
                 if (m_needCalibrateEyeProjections) {
                     // TODO: since we call our own xrLocateViews, is this still necessary to assert this?
                     assert(*viewCountOutput == utilities::ViewCount);
-                    if (calibrateEyeProjection(session, *viewLocateInfo))
+                    if (calibrateEyeProjection(session, *viewLocateInfo)) {
+                        // this also prevents re-entry from vrs calling eyetracker calling locateview
                         m_needCalibrateEyeProjections = false;
+                        if (m_variableRateShader) {
+                            m_variableRateShader->setViewProjectionCenters(m_projCenters[0], m_projCenters[1]);
+                        }
+                    }
                 }
 
                 // Save the original views poses and orientations for xrEndFrame.
@@ -1924,17 +1929,13 @@ namespace {
 
                 // Examples with G2:
                 // G2:   Projection calibration: 0.08315, 0.00147 | -0.08236, -0.00148
-                // AERO: Projection calibration: 0.23823, 0.10415 | -0.23107, 0.10425
+                // AERO: Projection calibration: 0.37302, 0.15337 | -0.36150, 0.15336
 
                 Log("Projection calibration: %.5f, %.5f | %.5f, %.5f\n",
                     m_projCenters[0].x,
                     m_projCenters[0].y,
                     m_projCenters[1].x,
                     m_projCenters[1].y);
-
-                if (m_variableRateShader) {
-                    m_variableRateShader->setViewProjectionCenters(m_projCenters[0], m_projCenters[1]);
-                }
 
                 return true;
             }

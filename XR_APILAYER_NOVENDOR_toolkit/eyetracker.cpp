@@ -95,7 +95,7 @@ namespace {
         bool getProjectedGaze(XrVector2f gaze[ViewCount]) const {
             assert(m_session != XR_NULL_HANDLE);
 
-            if (!m_frameTime) {
+            if (!m_frameTime || m_viewSpace == XR_NULL_HANDLE) {
                 return false;
             }
 
@@ -269,7 +269,8 @@ namespace {
         }
 
         bool getEyeGaze(XrVector3f& projectedPoint) const override {
-            XrSpaceLocation location{XR_TYPE_SPACE_LOCATION, nullptr};
+            if (m_gazeAction == XR_NULL_HANDLE || m_gazeActionSpace == XR_NULL_HANDLE)
+                return false;
 
             // Query the latest eye gaze pose.
             {
