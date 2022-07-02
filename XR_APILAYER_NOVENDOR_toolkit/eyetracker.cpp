@@ -50,15 +50,12 @@ namespace {
         }
 
         void beginSession(XrSession session) override {
-            m_session = session;
-
             // Create a reference space.
-            {
-                XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO, nullptr};
-                referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
-                referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
-                CHECK_XRCMD(m_openXR.xrCreateReferenceSpace(session, &referenceSpaceCreateInfo, &m_viewSpace));
-            }
+            XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO, nullptr};
+            referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
+            referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
+            CHECK_XRCMD(m_openXR.xrCreateReferenceSpace(session, &referenceSpaceCreateInfo, &m_viewSpace));
+            m_session = session;
         }
 
         void endSession() override {
@@ -70,7 +67,6 @@ namespace {
                 m_openXR.xrDestroySpace(m_viewSpace);
                 m_viewSpace = XR_NULL_HANDLE;
             }
-
             m_session = XR_NULL_HANDLE;
         }
 
@@ -101,17 +97,17 @@ namespace {
 
             if (!m_valid) {
                 // We need the FOVs so we can create a projection matrix.
-                XrView eyeInViewSpace[2] = {{XR_TYPE_VIEW, nullptr}, {XR_TYPE_VIEW, nullptr}};
+                XrView eyeInViewSpace[ViewCount] = {{XR_TYPE_VIEW, nullptr}, {XR_TYPE_VIEW, nullptr}};
                 {
                     XrViewLocateInfo locateInfo{XR_TYPE_VIEW_LOCATE_INFO, nullptr};
                     locateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
-                    locateInfo.space = m_viewSpace;
                     locateInfo.displayTime = m_frameTime;
-
-                    XrViewState state{XR_TYPE_VIEW_STATE, nullptr};
-                    uint32_t viewCountOutput;
-                    CHECK_HRCMD(
-                        m_openXR.xrLocateViews(m_session, &locateInfo, &state, 2, &viewCountOutput, eyeInViewSpace));
+                    locateInfo.space = m_viewSpace;
+                    
+                    auto state = XrViewState{XR_TYPE_VIEW_STATE, nullptr};
+                    auto viewCountOutput = ViewCount;
+                    CHECK_HRCMD(m_openXR.xrLocateViews(
+                        m_session, &locateInfo, &state, viewCountOutput, &viewCountOutput, eyeInViewSpace));
 
                     if (!Pose::IsPoseValid(state)) {
                         return false;
@@ -206,6 +202,7 @@ namespace {
 
             // Create the resources for the eye tracker space.
             {
+                // Create action set
                 XrActionSetCreateInfo actionSetCreateInfo{XR_TYPE_ACTION_SET_CREATE_INFO, nullptr};
                 strcpy_s(actionSetCreateInfo.actionSetName, "eye_tracker");
                 strcpy_s(actionSetCreateInfo.localizedActionSetName, "Eye Tracker");
@@ -214,16 +211,18 @@ namespace {
                     m_openXR.xrCreateActionSet(m_openXR.GetXrInstance(), &actionSetCreateInfo, &m_eyeTrackerActionSet));
             }
             {
+                // Create user intent action
                 XrActionCreateInfo actionCreateInfo{XR_TYPE_ACTION_CREATE_INFO, nullptr};
                 strcpy_s(actionCreateInfo.actionName, "eye_tracker");
                 strcpy_s(actionCreateInfo.localizedActionName, "Eye Tracker");
                 actionCreateInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
                 actionCreateInfo.countSubactionPaths = 0;
-                CHECK_XRCMD(m_openXR.xrCreateAction(m_eyeTrackerActionSet, &actionCreateInfo, &m_eyeGazeAction));
+                CHECK_XRCMD(m_openXR.xrCreateAction(m_eyeTrackerActionSet, &actionCreateInfo, &m_gazeAction));
             }
             {
+                // Create suggested bindings
                 XrActionSuggestedBinding binding;
-                binding.action = m_eyeGazeAction;
+                binding.action = m_gazeAction;
 
                 XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING,
                                                                        nullptr};
@@ -248,21 +247,21 @@ namespace {
             }
             {
                 XrActionSpaceCreateInfo actionSpaceCreateInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO, nullptr};
-                actionSpaceCreateInfo.action = m_eyeGazeAction;
+                actionSpaceCreateInfo.action = m_gazeAction;
                 actionSpaceCreateInfo.subactionPath = XR_NULL_PATH;
                 actionSpaceCreateInfo.poseInActionSpace = Pose::Identity();
-                CHECK_XRCMD(m_openXR.xrCreateActionSpace(m_session, &actionSpaceCreateInfo, &m_eyeSpace));
+                CHECK_XRCMD(m_openXR.xrCreateActionSpace(m_session, &actionSpaceCreateInfo, &m_gazeActionSpace));
             }
         }
 
         void endSession() override {
-            if (m_eyeSpace != XR_NULL_HANDLE) {
-                m_openXR.xrDestroySpace(m_eyeSpace);
-                m_eyeSpace = XR_NULL_HANDLE;
+            if (m_gazeActionSpace != XR_NULL_HANDLE) {
+                m_openXR.xrDestroySpace(m_gazeActionSpace);
+                m_gazeActionSpace = XR_NULL_HANDLE;
             }
-            if (m_eyeGazeAction != XR_NULL_HANDLE) {
-                m_openXR.xrDestroyAction(m_eyeGazeAction);
-                m_eyeGazeAction = XR_NULL_HANDLE;
+            if (m_gazeAction != XR_NULL_HANDLE) {
+                m_openXR.xrDestroyAction(m_gazeAction);
+                m_gazeAction = XR_NULL_HANDLE;
             }
 
             EyeTrackerBase::endSession();
@@ -286,7 +285,7 @@ namespace {
             {
                 XrActionStatePose actionStatePose{XR_TYPE_ACTION_STATE_POSE, nullptr};
                 XrActionStateGetInfo getActionStateInfo{XR_TYPE_ACTION_STATE_GET_INFO, nullptr};
-                getActionStateInfo.action = m_eyeGazeAction;
+                getActionStateInfo.action = m_gazeAction;
                 CHECK_XRCMD(m_openXR.xrGetActionStatePose(m_session, &getActionStateInfo, &actionStatePose));
 
                 if (!actionStatePose.isActive) {
@@ -294,17 +293,19 @@ namespace {
                 }
             }
 
-            CHECK_XRCMD(m_openXR.xrLocateSpace(m_eyeSpace, m_viewSpace, m_frameTime, &location));
+            XrSpaceLocation gazeLocation{XR_TYPE_SPACE_LOCATION, nullptr};
+            CHECK_XRCMD(m_openXR.xrLocateSpace(m_gazeActionSpace, m_viewSpace, m_frameTime, &gazeLocation));
 
-            if (!Pose::IsPoseValid(location)) {
+            if (!Pose::IsPoseTracked(gazeLocation)) {
                 return false;
             }
 
             if (!m_debugWithController) {
                 static constexpr DirectX::XMVECTORF32 kGazeForward = {{{0, 0, 2, 1}}}; /* 2m forward */
-                StoreXrVector3(&projectedPoint, DirectX::XMVector3Transform(kGazeForward, LoadXrPose(location.pose)));
+                StoreXrVector3(&projectedPoint,
+                               DirectX::XMVector3Transform(kGazeForward, LoadXrPose(gazeLocation.pose)));
             } else {
-                projectedPoint = location.pose.position;
+                projectedPoint = gazeLocation.pose.position;
             }
 
             return true;
@@ -316,8 +317,8 @@ namespace {
 
       private:
         bool m_debugWithController{false};
-        XrAction m_eyeGazeAction{XR_NULL_HANDLE};
-        XrSpace m_eyeSpace{XR_NULL_HANDLE};
+        XrAction m_gazeAction{XR_NULL_HANDLE};
+        XrSpace m_gazeActionSpace{XR_NULL_HANDLE};
     };
 
     class OmniceptEyeTracker : public EyeTrackerBase {
