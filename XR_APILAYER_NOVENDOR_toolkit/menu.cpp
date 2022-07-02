@@ -1423,8 +1423,9 @@ namespace {
                                          MenuEntry::FmtEnum<OffOnType>});
             }
 
+            const auto minZoom = m_configManager->getValue(SettingDeveloper) ? 5 : 10;
             m_menuEntries.push_back(
-                {MenuIndent::OptionIndent, "Zoom", MenuEntryType::Slider, SettingZoom, 5, 100, [](int value) {
+                {MenuIndent::OptionIndent, "Zoom", MenuEntryType::Slider, SettingZoom, minZoom, 100, [](int value) {
                      return fmt::format("{:.1f}x", value / 10.f);
                  }});
             m_menuEntries.back().acceleration = 1;
