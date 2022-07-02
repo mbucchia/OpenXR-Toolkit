@@ -628,7 +628,7 @@ namespace {
                             m_variableRateShader ? m_variableRateShader->getMaxRate() : 0;
                         menuInfo.isEyeTrackingSupported = m_supportEyeTracking;
                         menuInfo.isEyeTrackingProjectionDistanceSupported =
-                            m_eyeTracker ? m_eyeTracker->isProjectionDistanceSupported() : false;
+                            m_eyeTracker && m_eyeTracker->isProjectionDistanceSupported();
                         menuInfo.isPimaxFovHackSupported = m_supportFOVHack;
 
                         m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice, menuInfo);
@@ -1794,9 +1794,17 @@ namespace {
                     const auto menuEyeVisibility =
                         static_cast<XrEyeVisibility>(m_configManager->getValue(config::SettingMenuEyeVisibility));
 
+                    // TODO: check we're not oversubmitting beyong layer limit count.
+                    // https://www.khronos.org/registry/OpenXR/specs/1.0/html/xrspec.html#frame-submission
+                    //
+                    // layerCount is the number of composition layers in this frame.The maximum supported layer count is
+                    // identified by XrSystemGraphicsProperties::maxLayerCount.If layerCount is greater than the maximum
+                    // supported layer count then XR_ERROR_LAYER_LIMIT_EXCEEDED must be returned
+
                     gLayerQuadForMenu.type = XR_TYPE_COMPOSITION_LAYER_QUAD;
                     gLayerQuadForMenu.next = nullptr;
-                    gLayerQuadForMenu.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+                    gLayerQuadForMenu.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT |
+                                                   XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT;
                     gLayerQuadForMenu.space = m_viewSpace;
                     gLayerQuadForMenu.eyeVisibility =
                         std::clamp(menuEyeVisibility, XR_EYE_VISIBILITY_BOTH, XR_EYE_VISIBILITY_RIGHT);
