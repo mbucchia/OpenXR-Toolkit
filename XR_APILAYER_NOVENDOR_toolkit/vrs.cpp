@@ -128,12 +128,12 @@ namespace {
                            bool isPimaxFovHackSupported)
             : m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
               m_renderWidth(renderWidth), m_renderHeight(renderHeight),
-              m_renderRatio(float(renderWidth) / renderHeight), m_tileSize(tileSize), m_tileRateMax(tileRateMax),
-              m_supportFOVHack(isPimaxFovHackSupported) {
+              m_renderRatio(float(renderWidth) / renderHeight), m_zoomRatio(1), m_tileSize(tileSize),
+              m_tileRateMax(tileRateMax), m_supportFOVHack(isPimaxFovHackSupported) {
             // Setup initial state
             createRenderResources(m_renderWidth, m_renderHeight);
             setupRenderConstants();
-
+            
             // Request update.
             m_currentGen++;
         }
@@ -156,8 +156,8 @@ namespace {
 
         void beginFrame(XrTime frameTime) override {
             // When using eye tracking we must render the views every frame.
+            // TODO: What do we do upon (permanent) loss of tracking?
             if (m_usingEyeTracking) {
-                // TODO: What do we do upon (permanent) loss of tracking?
                 updateGaze();
                 m_currentGen++;
             }
@@ -196,22 +196,26 @@ namespace {
             if (mode != VariableShadingRateType::None) {
                 m_usingEyeTracking = m_eyeTracker && m_configManager->getValue(SettingEyeTrackingEnabled);
 
-                const auto hasPatternChanged = hasModeChanged || checkUpdateRings(mode);
+                if (m_configManager->hasChanged(config::SettingZoom)) {
+                    const auto zoom = m_configManager->getValue(config::SettingZoom);
+                    m_zoomRatio = zoom != 10 ? 10.f / std::clamp(zoom, 5, 100) : 1.f;
+                }
+
                 const auto hasQualityChanged = hasModeChanged || checkUpdateRates(mode);
+                const auto hasPatternChanged = hasModeChanged || checkUpdateRings(mode);
+
+                if (hasQualityChanged)
+                    updateRates(mode);
 
                 if (hasPatternChanged) {
                     updateRings(mode);
                     updateGaze();
                 }
 
-                if (hasQualityChanged)
-                    updateRates(mode);
-
                 // Only update the texture when necessary.
                 if (hasQualityChanged || hasPatternChanged) {
                     m_currentGen++;
                 }
-
             } else if (m_usingEyeTracking) {
                 m_usingEyeTracking = false;
             }
@@ -401,7 +405,11 @@ namespace {
             std::fill_n(m_gazeOffset, std::size(m_gazeOffset), XrVector2f{0.f, 0.f});
             std::fill_n(m_gazeLocation, std::size(m_gazeLocation), XrVector2f{0.f, 0.f});
 
+            // Setup initial state
+            const auto zoom = m_configManager->getValue(config::SettingZoom);
+            m_zoomRatio = zoom != 10 ? 10.f / std::clamp(zoom, 5, 100) : 1.f;
             m_mode = m_configManager->getEnumValue<VariableShadingRateType>(config::SettingVRS);
+
             updateRates(m_mode);
             updateRings(m_mode);
             updateGaze();
@@ -558,8 +566,8 @@ namespace {
                 gaze[1] = m_gazeOffset[1];
             }
             // location = view center + view offset (L/R)
-            m_gazeLocation[0] = gaze[0] + m_gazeOffset[2];
-            m_gazeLocation[1] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
+            m_gazeLocation[0] = (gaze[0] * m_zoomRatio) + m_gazeOffset[2];
+            m_gazeLocation[1] = (gaze[1] * m_zoomRatio) + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
         }
 
         ShadingRateMask& getOrCreateMaskResources(uint32_t width, uint32_t height, size_t* index = nullptr) {
@@ -812,6 +820,7 @@ namespace {
         const uint32_t m_tileSize;
         const uint32_t m_tileRateMax;
         const float m_renderRatio;
+        float m_zoomRatio;
 
         const bool m_supportFOVHack;
         bool m_usingEyeTracking{false};
