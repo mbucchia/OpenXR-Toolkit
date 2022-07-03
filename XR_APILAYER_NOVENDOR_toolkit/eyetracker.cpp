@@ -296,7 +296,7 @@ namespace {
             XrSpaceLocation gazeLocation{XR_TYPE_SPACE_LOCATION, nullptr};
             CHECK_XRCMD(m_openXR.xrLocateSpace(m_gazeActionSpace, m_viewSpace, m_frameTime, &gazeLocation));
 
-            if (!Pose::IsPoseTracked(gazeLocation)) {
+            if (!Pose::IsPoseValid(gazeLocation)) {
                 return false;
             }
 
