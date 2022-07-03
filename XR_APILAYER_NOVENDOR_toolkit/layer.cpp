@@ -283,9 +283,16 @@ namespace {
                 m_sendInterationProfileEvent = true;
             }
 
+            // Ceate an eye tracker and advertise its availability.
+            m_eyeTracker = input::CreateEyeTracker(*this, m_configManager, input::EyeTrackerType::Any);
+            m_eyeTrackerAvail = m_eyeTracker ? m_eyeTracker->getEyeTrackerType() : input::EyeTrackerType::None;
+
             // TODO: If Foveated Rendering is disabled, maybe do not initialize the eye tracker?
             if (m_configManager->getValue(config::SettingEyeTrackingEnabled)) {
-                m_eyeTracker = input::CreateEyeTracker(*this, m_configManager, input::EyeTrackerType::Any);
+                if (m_eyeTracker && !m_eyeTracker->initialize()) {
+                    DebugLog("Failed to initialize eye tracker\n");
+                    m_eyeTracker = nullptr;
+                }
             }
 
             return XR_SUCCESS;
@@ -367,29 +374,31 @@ namespace {
                 m_supportMotionReprojectionLock = isRuntimeWMR;
                 m_supportFOVHack = isDeveloper || (m_applicationName == "FS2020" && isSystemPimax);
 
-                m_supportHandTracking = handTrackingProps.supportsHandTracking;
-                m_supportEyeTracking = eyeTrackingProps.supportsEyeGazeInteraction ||
-                                       (m_eyeTracker && !m_eyeTracker->isTrackingThroughRuntime()) ||
-                                       m_configManager->getValue(config::SettingEyeDebugWithController);
-
                 // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
                 // will (falsely) advertise hand tracking support. Check for the Ultraleap layer in this case.
-                if (m_supportHandTracking && isRuntimeWMR && !isDeveloper) {
+                auto supportHandTracking = handTrackingProps.supportsHandTracking;
+                if (supportHandTracking && isRuntimeWMR && !isDeveloper) {
                     if (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck)) {
                         if (!contains(GetUpstreamLayers(), "XR_APILAYER_ULTRALEAP_hand_tracking")) {
                             Log("Ignoring XR_MSFT_hand_interaction for %s\n", m_runtimeName.c_str());
-                            m_supportHandTracking = false;
+                            supportHandTracking = false;
                         }
                     }
                 }
+                m_handTrackingAvail = supportHandTracking;
+
+                auto supportGazeTracking = eyeTrackingProps.supportsEyeGazeInteraction ||
+                                           m_eyeTrackerAvail == input::EyeTrackerType::Omnicept ||
+                                           m_eyeTrackerAvail == input::EyeTrackerType::Pimax ||
+                                           m_configManager->getValue(config::SettingEyeDebugWithController);
 
                 // Workaround: the WMR runtime supports emulating eye tracking for development through
                 // XR_EXT_eye_gaze_interaction, which will (falsely) advertise eye tracking support. Disable it.
-                if (m_supportEyeTracking && isRuntimeWMR && !isDeveloper) {
+                if (supportGazeTracking && isRuntimeWMR && !isDeveloper) {
                     if (!m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck)) {
-                        if (m_eyeTracker && m_eyeTracker->isTrackingThroughRuntime()) {
+                        if (m_eyeTrackerAvail == input::EyeTrackerType::OpenXR) {
                             Log("Ignoring XR_EXT_eye_gaze_interaction for %s\n", m_runtimeName.c_str());
-                            m_supportEyeTracking = false;
+                            supportGazeTracking = false;
                         }
                     }
                 }
@@ -397,11 +406,14 @@ namespace {
                 // We had to initialize the hand and eye trackers early on. If we find out now that they are not
                 // supported, then destroy them. This could happen if the option was set while a hand tracking device
                 // was connected, but later the hand tracking device was disconnected.
-                if (!m_supportHandTracking)
+                if (!supportHandTracking) {
                     m_handTracker.reset();
+                }
 
-                if (!m_supportEyeTracking)
+                if (!supportGazeTracking) {
+                    m_eyeTrackerAvail = input::EyeTrackerType::None;
                     m_eyeTracker.reset();
+                }
             }
 
             return result;
@@ -605,7 +617,7 @@ namespace {
                         swapchainInfo.faceCount = 1;
                         swapchainInfo.mipCount = 1;
                         CHECK_XRCMD(OpenXrApi::xrCreateSwapchain(*session, &swapchainInfo, &m_menuSwapchain));
-                        
+
                         m_menuSwapchainImages = graphics::WrapXrSwapchainImages(
                             m_graphicsDevice, swapchainInfo, m_menuSwapchain, "Menu swapchain {} TEX2D");
                     }
@@ -616,7 +628,7 @@ namespace {
                         menuInfo.displayWidth = m_displayWidth;
                         menuInfo.displayHeight = m_displayHeight;
                         menuInfo.keyModifiers = m_keyModifiers;
-                        menuInfo.isHandTrackingSupported = m_supportHandTracking;
+                        menuInfo.isHandTrackingSupported = m_handTrackingAvail;
                         menuInfo.isPredictionDampeningSupported = xrConvertWin32PerformanceCounterToTimeKHR != nullptr;
                         menuInfo.maxDisplayWidth = m_maxDisplayWidth;
                         menuInfo.resolutionHeightRatio = m_resolutionHeightRatio;
@@ -631,7 +643,7 @@ namespace {
                                 : 90u;
                         menuInfo.variableRateShaderMaxRate =
                             m_variableRateShader ? m_variableRateShader->getMaxRate() : 0;
-                        menuInfo.isEyeTrackingSupported = m_supportEyeTracking;
+                        menuInfo.isEyeTrackingSupported = m_eyeTrackerAvail != input::EyeTrackerType::None;
                         menuInfo.isEyeTrackingProjectionDistanceSupported =
                             m_eyeTracker && m_eyeTracker->isProjectionDistanceSupported();
                         menuInfo.isPimaxFovHackSupported = m_supportFOVHack;
@@ -1732,15 +1744,18 @@ namespace {
 
                 // Render the hands or eye gaze helper.
                 if (drawHands || drawEyeGaze) {
+                    XrVector2f eyeGazes[utilities::ViewCount];
+
+                    const auto isEyeGazeValid = drawEyeGaze && m_eyeTracker->getProjectedGaze(eyeGazes);
                     const auto useVPRT = overlayData[0].color && overlayData[1].color &&
                                          overlayData[0].color->get() == overlayData[1].color->get();
 
-                    for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
+                    for (int32_t eye = 0; eye != utilities::ViewCount; eye++) {
                         const auto& overlay = overlayData[eye];
                         if (overlay.color) {
                             m_graphicsDevice->setRenderTargets(1,
                                                                overlay.color,
-                                                               useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr,
+                                                               useVPRT ? &eye : nullptr,
                                                                overlay.depth ? *overlay.depth : nullptr,
                                                                useVPRT ? eye : -1);
 
@@ -1751,9 +1766,8 @@ namespace {
                             }
 
                             if (drawEyeGaze) {
-                                const auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze);
                                 const XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
-                                auto pos = utilities::NdcToScreen(m_eyeGaze[eye]);
+                                auto pos = utilities::NdcToScreen(eyeGazes[eye]);
                                 pos.x *= (*overlay.color)->getInfo().width;
                                 pos.y *= (*overlay.color)->getInfo().height;
                                 m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
@@ -1774,14 +1788,14 @@ namespace {
                     {
                         XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
                         CHECK_XRCMD(OpenXrApi::xrAcquireSwapchainImage(m_menuSwapchain, &acquireInfo, &menuImageIndex));
-                    
+
                         XrSwapchainImageWaitInfo waitInfo{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
                         waitInfo.timeout = 100000000000; // 100ms
                         CHECK_XRCMD(OpenXrApi::xrWaitSwapchainImage(m_menuSwapchain, &waitInfo));
                     }
-                    
+
                     const auto& textureInfo = m_menuSwapchainImages[menuImageIndex]->getInfo();
-                    
+
                     m_graphicsDevice->setRenderTargets(1, &m_menuSwapchainImages[menuImageIndex]);
                     m_graphicsDevice->clearColor(
                         0, 0, (float)textureInfo.height, (float)textureInfo.width, XrColor4f{0, 0, 0, 0});
@@ -2113,8 +2127,9 @@ namespace {
         uint32_t m_displayHeight{0};
         float m_resolutionHeightRatio{1.f};
         uint32_t m_maxDisplayWidth{0};
-        bool m_supportHandTracking{false};
-        bool m_supportEyeTracking{false};
+
+        input::EyeTrackerType m_eyeTrackerAvail{input::EyeTrackerType::None};
+        bool m_handTrackingAvail{false};
         bool m_supportFOVHack{false};
         bool m_supportMotionReprojectionLock{false};
 
@@ -2126,23 +2141,20 @@ namespace {
         XrSpace m_viewSpace{XR_NULL_HANDLE};
         bool m_needCalibrateEyeProjections{true};
         XrVector2f m_projCenters[utilities::ViewCount];
-        XrVector2f m_eyeGaze[utilities::ViewCount];
         XrView m_posesForFrame[utilities::ViewCount];
 
         std::shared_ptr<config::IConfigManager> m_configManager;
-
         std::shared_ptr<graphics::IDevice> m_graphicsDevice;
         std::map<XrSwapchain, SwapchainState> m_swapchains;
+        std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;
 
         config::ScalingType m_upscaleMode{config::ScalingType::None};
         float m_mipMapBiasForUpscaling{0.f};
 
-        std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;
         std::shared_ptr<input::IEyeTracker> m_eyeTracker;
         std::shared_ptr<input::IHandTracker> m_handTracker;
-
-        std::array<std::shared_ptr<graphics::IImageProcessor>, ImgProc::MaxValue> m_imageProcessors;
         std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;
+        std::array<std::shared_ptr<graphics::IImageProcessor>, ImgProc::MaxValue> m_imageProcessors;
 
         std::vector<int> m_keyModifiers;
         int m_keyScreenshot;

@@ -785,6 +785,7 @@ namespace toolkit {
         struct IEyeTracker {
             virtual ~IEyeTracker() = default;
 
+            virtual bool initialize() = 0;
             virtual void beginSession(XrSession session) = 0;
             virtual void endSession() = 0;
 
@@ -792,13 +793,13 @@ namespace toolkit {
             virtual void endFrame() = 0;
             virtual void update() = 0;
 
-            virtual XrActionSet getActionSet() const = 0;
-            virtual bool getProjectedGaze(XrVector2f gaze[utilities::ViewCount]) const = 0;
-
-            virtual bool isTrackingThroughRuntime() const = 0;
             virtual bool isProjectionDistanceSupported() const = 0;
 
+            virtual XrActionSet getActionSet() const = 0;
+            virtual input::EyeTrackerType getEyeTrackerType() const = 0;
+
             virtual const EyeGazeState& getEyeGazeState() const = 0;
+            virtual bool getProjectedGaze(XrVector2f gaze[utilities::ViewCount]) const = 0;
         };
 
     } // namespace input
