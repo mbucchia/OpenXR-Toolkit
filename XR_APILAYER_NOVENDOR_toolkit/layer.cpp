@@ -576,8 +576,13 @@ namespace {
                         });
                     }
 
-                    m_imageProcessors[ImgProc::Post] =
-                        graphics::CreateImageProcessor(m_configManager, m_graphicsDevice, m_variableRateShader);
+                    m_imageProcessors[ImgProc::Post] = graphics::CreateImageProcessor(m_configManager,
+                                                                                      m_graphicsDevice,
+                                                                                      m_variableRateShader,
+                                                                                      renderWidth,
+                                                                                      renderHeight,
+                                                                                      m_displayWidth,
+                                                                                      m_displayHeight);
 
                     m_performanceCounters.createGpuTimers(m_graphicsDevice.get());
                     m_performanceCounters.updateTimer.start();
@@ -600,7 +605,7 @@ namespace {
                         swapchainInfo.faceCount = 1;
                         swapchainInfo.mipCount = 1;
                         CHECK_XRCMD(OpenXrApi::xrCreateSwapchain(*session, &swapchainInfo, &m_menuSwapchain));
-
+                        
                         m_menuSwapchainImages = graphics::WrapXrSwapchainImages(
                             m_graphicsDevice, swapchainInfo, m_menuSwapchain, "Menu swapchain {} TEX2D");
                     }
@@ -1769,14 +1774,14 @@ namespace {
                     {
                         XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
                         CHECK_XRCMD(OpenXrApi::xrAcquireSwapchainImage(m_menuSwapchain, &acquireInfo, &menuImageIndex));
-
+                    
                         XrSwapchainImageWaitInfo waitInfo{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
                         waitInfo.timeout = 100000000000; // 100ms
                         CHECK_XRCMD(OpenXrApi::xrWaitSwapchainImage(m_menuSwapchain, &waitInfo));
                     }
-
+                    
                     const auto& textureInfo = m_menuSwapchainImages[menuImageIndex]->getInfo();
-
+                    
                     m_graphicsDevice->setRenderTargets(1, &m_menuSwapchainImages[menuImageIndex]);
                     m_graphicsDevice->clearColor(
                         0, 0, (float)textureInfo.height, (float)textureInfo.width, XrColor4f{0, 0, 0, 0});

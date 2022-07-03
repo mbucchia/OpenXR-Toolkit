@@ -49,9 +49,15 @@ namespace {
       public:
         ImageProcessor(std::shared_ptr<IConfigManager> configManager,
                        std::shared_ptr<IDevice> graphicsDevice,
-                       std::shared_ptr<IVariableRateShader> variableRateShader)
+                       std::shared_ptr<IVariableRateShader> variableRateShader,
+                       uint32_t renderWidth,
+                       uint32_t renderHeight,
+                       uint32_t displayWidth,
+                       uint32_t displayHeight)
             : m_configManager(configManager), m_device(graphicsDevice), m_vrs(variableRateShader),
-              m_userParams(GetParams(configManager.get(), 1)) {
+              m_renderWidth(renderWidth), m_renderHeight(renderHeight),
+              m_userParams(GetParams(configManager.get(), 1)), m_invRenderDims{1.f / std::max(renderWidth, 1u),
+                                                                               1.f / std::max(renderHeight, 1u)} {
             createRenderResources();
         }
 
@@ -77,14 +83,18 @@ namespace {
         }
 
         void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
+            using namespace xr::math;
+            
             // TODO: check whether we can use a structured array buffer for left/right/both instead.
             // TODO: Evaluate whether using 2 distinct buffers.
             // For now use both and share all constants in a single buffer.
 
             if (m_configUpdated || m_configVrsUpdated) {
+                // adjust gaze to the center of the VRS blocks.
+                const auto center = m_invRenderDims * (m_vrsState.tileSize / 2u);
                 for (size_t i = 0; i < std::size(m_cbParams); i++) {
-                    m_config.Params4.x = m_vrsState.gazeXY[i].x;
-                    m_config.Params4.y = m_vrsState.gazeXY[i].y;
+                    m_config.Params4.x = m_vrsState.gazeXY[i].x + center.x;
+                    m_config.Params4.y = m_vrsState.gazeXY[i].y - center.y;
                     m_cbParams[i]->uploadData(&m_config, sizeof(m_config));
                 }
                 m_configUpdated = false;
@@ -311,6 +321,9 @@ namespace {
         const std::shared_ptr<IDevice> m_device;
         const std::shared_ptr<IVariableRateShader> m_vrs;
 
+        const uint32_t m_renderWidth;
+        const uint32_t m_renderHeight;
+        const XrVector2f m_invRenderDims;
         const std::array<DirectX::XMINT4, 3> m_userParams;
 
         std::shared_ptr<IQuadShader> m_shaders[2][2]; // off, on, vprt
@@ -381,8 +394,13 @@ namespace toolkit::graphics {
 
     std::shared_ptr<IImageProcessor> CreateImageProcessor(std::shared_ptr<IConfigManager> configManager,
                                                           std::shared_ptr<IDevice> graphicsDevice,
-                                                          std::shared_ptr<IVariableRateShader> variableRateShader) {
-        return std::make_shared<ImageProcessor>(configManager, graphicsDevice, variableRateShader);
+                                                          std::shared_ptr<IVariableRateShader> variableRateShader,
+                                                          uint32_t renderWidth,
+                                                          uint32_t renderHeight,
+                                                          uint32_t displayWidth,
+                                                          uint32_t displayHeight) {
+        return std::make_shared<ImageProcessor>(
+            configManager, graphicsDevice, variableRateShader, renderWidth, renderHeight, displayWidth, displayHeight);
     }
 
 } // namespace toolkit::graphics

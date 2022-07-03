@@ -693,6 +693,7 @@ namespace toolkit {
             XrVector2f rings[4];  // 1/(a1^2), 1/(b1^2)
             uint8_t rates[4];     // setting rates
             int8_t mode;          // 0: off, 1: active 2: with eye tracking (swap gaze if < 0)
+            uint8_t tileSize;     // VRS tile size
         };
 
         struct IVariableRateShader {

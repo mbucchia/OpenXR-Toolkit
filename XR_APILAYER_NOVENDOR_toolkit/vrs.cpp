@@ -317,6 +317,7 @@ namespace {
 
             const auto state_mode = (m_usingEyeTracking ? 2 : m_mode != VariableShadingRateType::None);
             state.mode = static_cast<int8_t>(m_swapViews ? -state_mode : state_mode);
+            state.tileSize = static_cast<uint8_t>(m_tileSize);
         }
 
         void startCapture() override {
