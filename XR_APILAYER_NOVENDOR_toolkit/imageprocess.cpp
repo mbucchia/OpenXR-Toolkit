@@ -91,7 +91,7 @@ namespace {
 
             if (m_configUpdated || m_configVrsUpdated) {
                 // adjust gaze to the center of the VRS blocks.
-                const auto center = m_invRenderDims * (m_vrsState.tileSize / 2u);
+                const auto center = m_invRenderDims * uint8_t(m_vrsState.tileSize / 2u);
                 for (size_t i = 0; i < std::size(m_cbParams); i++) {
                     m_config.Params4.x = m_vrsState.gazeXY[i].x + center.x;
                     m_config.Params4.y = m_vrsState.gazeXY[i].y - center.y;
