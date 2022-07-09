@@ -27,7 +27,6 @@ nav_order: 6
 | Pimax culling workaround             | [Experimental](){: .btn .btn-purple}    | Released        |
 | Improved desktop companion app       | [Implementation](){: .btn .btn-blue }   |                 |
 | Field of view override v2 / zoom     | [Investigation](){: .btn .btn-blue }    |                 |
-| Motion compensation                  | [Investigation](){: .btn .btn-blue }    |                 |
 | Quality of life improvements         | [Implementation](){: .btn .btn-blue }   | Periodic        |
 
 Want to see something up there that is not already listed? Join our [Discord server](https://discord.gg/WXFshwMnke) and discuss it on the #features channel.
