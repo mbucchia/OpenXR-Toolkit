@@ -352,9 +352,12 @@ namespace {
                 return {};
             }
 
-            const auto& subActionIt = actionIt->second.subActions.find(subActionPath);
+            auto subActionIt = actionIt->second.subActions.find(subActionPath);
             if (subActionIt == actionIt->second.subActions.cend()) {
-                return {};
+                if (actionIt->second.subActions.empty()) {
+                    return {};
+                }
+                subActionIt = actionIt->second.subActions.begin();
             }
 
             return subActionIt->second.path;
@@ -537,9 +540,16 @@ namespace {
                 if (m_trackedRecently[side] && !tracked) {
                     const XrPath subactionPath = side == 0 ? m_leftHandSubaction : m_rightHandSubaction;
                     for (auto& action : m_actions) {
-                        const auto& subActionIt = action.second.subActions.find(subactionPath);
+                        auto subActionIt = action.second.subActions.find(subactionPath);
                         if (subActionIt == action.second.subActions.cend()) {
-                            continue;
+                            if (action.second.subActions.empty()) {
+                                continue;
+                            }
+                            const auto& fullPath = action.second.subActions.begin()->second.path;
+                            if ((side == 0 && fullPath.find("/user/hand/left") != 0) ||
+                                (side == 1 && fullPath.find("/user/hand/right") != 0)) {
+                                continue;
+                            }
                         }
                         auto& subAction = subActionIt->second;
                         // We must only set changed if the value is actually different.
@@ -643,9 +653,12 @@ namespace {
             }
             const auto& action = actionIt->second;
 
-            const auto& subActionIt = action.subActions.find(getInfo.subactionPath);
-            if (subActionIt == action.subActions.cend()) {
-                return false;
+            auto subActionIt = action.subActions.find(getInfo.subactionPath);
+            if (subActionIt == actionIt->second.subActions.cend()) {
+                if (actionIt->second.subActions.empty()) {
+                    return false;
+                }
+                subActionIt = actionIt->second.subActions.begin();
             }
             const auto& subAction = subActionIt->second;
 
@@ -664,9 +677,12 @@ namespace {
             }
             const auto& action = actionIt->second;
 
-            const auto& subActionIt = action.subActions.find(getInfo.subactionPath);
-            if (subActionIt == action.subActions.cend()) {
-                return false;
+            auto subActionIt = action.subActions.find(getInfo.subactionPath);
+            if (subActionIt == actionIt->second.subActions.cend()) {
+                if (actionIt->second.subActions.empty()) {
+                    return false;
+                }
+                subActionIt = actionIt->second.subActions.begin();
             }
             const auto& subAction = subActionIt->second;
 
