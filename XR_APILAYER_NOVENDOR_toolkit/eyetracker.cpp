@@ -273,16 +273,6 @@ namespace {
 
             // Query the latest eye gaze pose.
             {
-                XrActiveActionSet activeActionSets;
-                activeActionSets.actionSet = m_eyeTrackerActionSet;
-                activeActionSets.subactionPath = XR_NULL_PATH;
-
-                XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO, nullptr};
-                syncInfo.activeActionSets = &activeActionSets;
-                syncInfo.countActiveActionSets = 1;
-                CHECK_XRCMD(m_openXR.xrSyncActions(m_session, &syncInfo));
-            }
-            {
                 XrActionStatePose actionStatePose{XR_TYPE_ACTION_STATE_POSE, nullptr};
                 XrActionStateGetInfo getActionStateInfo{XR_TYPE_ACTION_STATE_GET_INFO, nullptr};
                 getActionStateInfo.action = m_eyeGazeAction;
