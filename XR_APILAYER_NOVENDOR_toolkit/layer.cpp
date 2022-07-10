@@ -196,9 +196,9 @@ namespace {
             );
             // We disable the API interceptor with certain games where it seems to cause issues. As a result, foveated
             // rendering will not be offered.
-            m_configManager->setDefault(
-                config::SettingDisableInterceptor,
-                (m_applicationName == "OpenComposite_AC2-Win64-Shipping" || m_applicationName == "OpenComposite_Il-2"));
+            m_configManager->setDefault(config::SettingDisableInterceptor,
+                                        (m_applicationName == "OpenComposite_AC2-Win64-Shipping" ||
+                                         m_applicationName == "OpenComposite_Il-2" || m_applicationName == "re2"));
             // We disable the frame analyzer when using OpenComposite, because the app does not see the OpenXR
             // textures anyways.
             m_configManager->setDefault("disable_frame_analyzer", m_isOpenComposite);
