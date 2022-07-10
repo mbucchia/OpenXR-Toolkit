@@ -1150,7 +1150,7 @@ namespace {
                     newActionSets[nextActionSetSlot++] = eyeTrackerActionSet;
 
                     chainAttachInfo.actionSets = newActionSets.data();
-                    chainAttachInfo.countActionSets++;
+                    chainAttachInfo.countActionSets = nextActionSetSlot;
                 }
             }
 
@@ -1485,6 +1485,25 @@ namespace {
         }
 
         XrResult xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo) override {
+            XrActionsSyncInfo chainSyncInfo = *syncInfo;
+            std::vector<XrActiveActionSet> newActiveActionSets;
+            if (m_eyeTracker) {
+                const auto eyeTrackerActionSet = m_eyeTracker->getActionSet();
+                if (eyeTrackerActionSet != XR_NULL_HANDLE) {
+                    newActiveActionSets.resize(chainSyncInfo.countActiveActionSets + 1);
+                    memcpy(newActiveActionSets.data(),
+                           chainSyncInfo.activeActionSets,
+                           chainSyncInfo.countActiveActionSets * sizeof(XrActionSet));
+                    uint32_t nextActionSetSlot = chainSyncInfo.countActiveActionSets;
+
+                    newActiveActionSets[nextActionSetSlot].actionSet = eyeTrackerActionSet;
+                    newActiveActionSets[nextActionSetSlot++].subactionPath = XR_NULL_PATH;
+
+                    chainSyncInfo.activeActionSets = newActiveActionSets.data();
+                    chainSyncInfo.countActiveActionSets = nextActionSetSlot;
+                }
+            }
+
             const XrResult result = OpenXrApi::xrSyncActions(session, syncInfo);
             if (XR_SUCCEEDED(result) && m_handTracker && isVrSession(session)) {
                 m_performanceCounters.handTrackingTimer->start();
