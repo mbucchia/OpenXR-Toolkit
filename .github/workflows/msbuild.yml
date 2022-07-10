@@ -10,6 +10,7 @@ on:
   pull_request:
     branches:
     - release/*
+  workflow_dispatch:
 
 env:
   SOLUTION_FILE_PATH: OpenXR-Toolkit.sln
