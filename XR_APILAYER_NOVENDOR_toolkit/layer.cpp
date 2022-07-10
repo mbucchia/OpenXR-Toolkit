@@ -183,7 +183,7 @@ namespace {
             // We disable the API interceptor with certain games where it seems to cause issues. As a result, foveated
             // rendering will not be offered.
             m_configManager->setDefault(
-                "disable_interceptor",
+                config::SettingDisableInterceptor,
                 !(m_applicationName == "OpenComposite_AC2-Win64-Shipping" || m_applicationName == "OpenComposite_Il-2")
                     ? 0
                     : 1);
