@@ -184,7 +184,8 @@ namespace {
             // rendering will not be offered.
             m_configManager->setDefault(
                 config::SettingDisableInterceptor,
-                !(m_applicationName == "OpenComposite_AC2-Win64-Shipping" || m_applicationName == "OpenComposite_Il-2")
+                                        !(m_applicationName == "OpenComposite_AC2-Win64-Shipping" ||
+                                          m_applicationName == "OpenComposite_Il-2" || m_applicationName == "re2")
                     ? 0
                     : 1);
             // We disable the frame analyzer when using OpenComposite, because the app does not see the OpenXR
