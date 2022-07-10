@@ -205,6 +205,11 @@ namespace {
             m_menuEntries.push_back(
                 {MenuIndent::NoIndent, "Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
             m_menuEntries.back().visible = true; /* Always visible. */
+
+            // We want to display a warning if HAGS is on.
+            const auto hwSchMode =
+                RegGetDword(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers", L"HwSchMode");
+            m_hagsWarning = hwSchMode && hwSchMode.value() == 2;
         }
 
         void handleInput() override {
@@ -650,6 +655,19 @@ namespace {
 
                 {
                     float left = leftAlign;
+                    if (m_hagsWarning) {
+                        top += fontSize;
+
+                        left += m_device->drawString(L"\x26A0  HAGS is on, performance might be degraded  \x26A0",
+                                                     TextStyle::Bold,
+                                                     fontSize,
+                                                     leftAlign,
+                                                     top,
+                                                     textColorWarning,
+                                                     measureBackgroundWidth);
+
+                        top += 1.05f * fontSize;
+                    }
                     if (m_configManager->isSafeMode()) {
                         top += fontSize;
 
@@ -1729,6 +1747,7 @@ namespace {
         const bool m_isMotionReprojectionRateSupported;
         const uint8_t m_displayRefreshRate;
         const bool m_supportFOVHack;
+        bool m_hagsWarning;
         MenuStatistics m_stats{};
         GesturesState m_gesturesState{};
         EyeGazeState m_eyeGazeState{};
