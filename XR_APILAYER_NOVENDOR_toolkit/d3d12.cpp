@@ -463,10 +463,10 @@ namespace {
         }
 
         void copyTo(std::shared_ptr<ITexture> destination) const override {
-            D3D12_TEXTURE_COPY_LOCATION destLoc{destination->getAs<D3D12>(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
+            D3D12_TEXTURE_COPY_LOCATION destLoc{
+                destination->getAs<D3D12>(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
             D3D12_TEXTURE_COPY_LOCATION srcLoc{m_texture.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
             m_device->getContextAs<D3D12>()->CopyTextureRegion(&destLoc, 0, 0, 0, &srcLoc, nullptr);
-
         }
 
         void saveToFile(const std::filesystem::path& path) const override {
@@ -829,7 +829,8 @@ namespace {
                     ID3D12CommandQueue* queue,
                     std::shared_ptr<config::IConfigManager> configManager)
             : m_device(device), m_queue(queue), m_gpuArchitecture(GpuArchitecture::Unknown),
-              m_allowInterceptor(!configManager->getValue("disable_interceptor")) {
+              m_allowInterceptor(!configManager->isSafeMode() &&
+                                 !configManager->getValue(config::SettingDisableInterceptor)) {
             {
                 // store a reference to the command queue for easier retrieval
                 m_device->SetPrivateDataInterface(IID_ID3D12CommandQueue, get(m_queue));

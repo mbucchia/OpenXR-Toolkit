@@ -819,7 +819,8 @@ namespace {
                     bool textOnly = false,
                     bool enableOculusQuirk = false)
             : m_device(device), m_gpuArchitecture(GpuArchitecture::Unknown),
-              m_allowInterceptor(!configManager->getValue("disable_interceptor")),
+              m_allowInterceptor(!configManager->isSafeMode() &&
+                                 !configManager->getValue(config::SettingDisableInterceptor)),
               m_lateInitCountdown(enableOculusQuirk ? 10 : 0) {
             m_device->GetImmediateContext(set(m_context));
             {
