@@ -1858,6 +1858,12 @@ namespace {
             auto chainFrameEndInfo = *frameEndInfo;
             chainFrameEndInfo.layerCount = static_cast<uint32_t>(gLayerHeaders.size());
             chainFrameEndInfo.layers = gLayerHeaders.data();
+            
+            // When using prediction dampening, we want to restore the display time in order to avoid confusing motion
+            // reprojection.
+            if (m_hasPerformanceCounterKHR && m_configManager->getValue(config::SettingPredictionDampen) != 100) {
+                chainFrameEndInfo.displayTime = m_begunFrameTime;
+            }
 
             const auto result = OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
             m_graphicsDevice->unblockCallbacks();
