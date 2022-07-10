@@ -285,10 +285,12 @@ namespace {
                     break;
 
                 default:
+                    const bool isTabs = menuEntry.type == MenuEntryType::Tabs;
                     const auto previousValue = peekEntryValue(menuEntry);
                     setEntryValue(menuEntry,
                                   previousValue +
-                                      (moveLeft ? -1 : 1) * (!m_isAccelerating ? 1 : menuEntry.acceleration));
+                                      (moveLeft ? -1 : 1) * (!m_isAccelerating ? 1 : menuEntry.acceleration),
+                                  isTabs /* wraparound */);
 
                     // When changing anamorphic setting, toggle the config value sign.
                     if (menuEntry.pValue == &m_useAnamorphic) {
@@ -1335,7 +1337,7 @@ namespace {
                 {MenuIndent::OptionIndent, "World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
                      return fmt::format("{:.1f}% ({:.1f}mm)", value / 10.f, m_stats.icd * 1000);
                  }});
-            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.back().acceleration = 2;
 
             // Must be kept last.
             appearanceTab.finalize();
@@ -1605,7 +1607,6 @@ namespace {
                                      0,
                                      100,
                                      MenuEntry::FmtPercent});
-            m_menuEntries.back().acceleration = 10;
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Overlay horizontal offset",
                                      MenuEntryType::Slider,
@@ -1671,8 +1672,16 @@ namespace {
             return menuEntry.pValue ? *menuEntry.pValue : m_configManager->peekValue(menuEntry.configName);
         }
 
-        void setEntryValue(MenuEntry& menuEntry, int newValue) {
-            newValue = std::clamp(newValue, menuEntry.minValue, menuEntry.maxValue);
+        void setEntryValue(MenuEntry& menuEntry, int newValue, bool wraparound = false) {
+            if (!wraparound) {
+                newValue = std::clamp(newValue, menuEntry.minValue, menuEntry.maxValue);
+            } else {
+                if (newValue < menuEntry.minValue) {
+                    newValue = menuEntry.maxValue;
+                } else if (newValue > menuEntry.maxValue) {
+                    newValue = menuEntry.minValue;
+                }
+            }
             if (!menuEntry.pValue) {
                 m_configManager->setValue(menuEntry.configName, newValue, menuEntry.noCommitDelay);
             } else {
