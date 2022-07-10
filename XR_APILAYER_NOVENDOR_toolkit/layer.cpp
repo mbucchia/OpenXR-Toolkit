@@ -74,11 +74,13 @@ namespace {
             m_configManager->setDefault(config::SettingMenuKeyUp, 0);
             m_configManager->setDefault(config::SettingScreenshotKey, VK_F12);
             m_configManager->setDefault(config::SettingMenuEyeVisibility, 0); // Both
-            m_configManager->setDefault(config::SettingMenuDistance, 100);    // 1m
+            m_configManager->setDefault(config::SettingMenuEyeOffset, 0);
+            m_configManager->setDefault(config::SettingMenuDistance, 100); // 1m
             m_configManager->setDefault(config::SettingMenuOpacity, 85);
             m_configManager->setDefault(config::SettingMenuFontSize, 44); // pt
             m_configManager->setEnumDefault(config::SettingMenuTimeout, config::MenuTimeout::Medium);
             m_configManager->setDefault(config::SettingMenuExpert, m_configManager->getValue(config::SettingDeveloper));
+            m_configManager->setDefault(config::SettingMenuLegacyMode, 0);
             m_configManager->setEnumDefault(config::SettingOverlayType, config::OverlayType::None);
             // Legacy setting is 1/3rd from top and 2/3rd from left.
             {
@@ -1390,6 +1392,10 @@ namespace {
                             m_projCenters[1].x,
                             m_projCenters[1].y);
 
+                        if (m_menuHandler) {
+                            m_menuHandler->setViewProjectionCenters(m_projCenters[0], m_projCenters[1]);
+                        }
+
                         if (m_variableRateShader) {
                             m_variableRateShader->setViewProjectionCenters(m_projCenters[0], m_projCenters[1]);
                         }
@@ -2112,61 +2118,85 @@ namespace {
                                 m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
                             }
                         }
+
+                        m_graphicsDevice->unsetRenderTargets();
                     }
                 }
 
                 // Render the menu.
-                if (m_menuHandler && (m_menuHandler->isVisible() || m_menuLingering)) {
-                    // Workaround: there is a bug in the WMR runtime that causes a past quad layer content to linger on
-                    // the next projection layer. We make sure to submit a completely blank quad layer for 3 frames
-                    // after its disappearance. The number 3 comes from the number of depth buffers cached inside the
-                    // precompositor of the WMR runtime.
-                    m_menuLingering = m_menuHandler->isVisible() ? 3 : m_menuLingering - 1;
+                if (m_menuHandler) {
+                    if (!m_configManager->getValue(config::SettingMenuLegacyMode) && !m_configManager->isSafeMode()) {
+                        if (m_menuHandler->isVisible() || m_menuLingering) {
+                            // Workaround: there is a bug in the WMR runtime that causes a past quad layer content
+                            // to linger on the next projection layer. We make sure to submit a completely blank
+                            // quad layer for 3 frames after its disappearance. The number 3 comes from the number
+                            // of depth buffers cached inside the precompositor of the WMR runtime.
+                            m_menuLingering = m_menuHandler->isVisible() ? 3 : m_menuLingering - 1;
 
-                    uint32_t menuImageIndex;
-                    {
-                        XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
-                        CHECK_XRCMD(OpenXrApi::xrAcquireSwapchainImage(m_menuSwapchain, &acquireInfo, &menuImageIndex));
+                            uint32_t menuImageIndex;
+                            {
+                                XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+                                CHECK_XRCMD(
+                                    OpenXrApi::xrAcquireSwapchainImage(m_menuSwapchain, &acquireInfo, &menuImageIndex));
 
-                        XrSwapchainImageWaitInfo waitInfo{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
-                        waitInfo.timeout = 100000000000; // 100ms
-                        CHECK_XRCMD(OpenXrApi::xrWaitSwapchainImage(m_menuSwapchain, &waitInfo));
+                                XrSwapchainImageWaitInfo waitInfo{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
+                                waitInfo.timeout = 100000000000; // 100ms
+                                CHECK_XRCMD(OpenXrApi::xrWaitSwapchainImage(m_menuSwapchain, &waitInfo));
+                            }
+
+                            const auto& textureInfo = m_menuSwapchainImages[menuImageIndex]->getInfo();
+
+                            m_graphicsDevice->setRenderTargets(1, &m_menuSwapchainImages[menuImageIndex]);
+                            m_graphicsDevice->clearColor(
+                                0, 0, (float)textureInfo.height, (float)textureInfo.width, XrColor4f{0, 0, 0, 0});
+                            m_graphicsDevice->beginText();
+                            m_menuHandler->render(m_menuSwapchainImages[menuImageIndex]);
+                            m_graphicsDevice->flushText();
+
+                            m_graphicsDevice->unsetRenderTargets();
+
+                            {
+                                XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+                                CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(m_menuSwapchain, &releaseInfo));
+                            }
+
+                            // Add the quad layer to the frame.
+                            layerQuadForMenu.space = m_viewSpace;
+                            StoreXrPose(&layerQuadForMenu.pose,
+                                        DirectX::XMMatrixMultiply(
+                                            DirectX::XMMatrixTranslation(
+                                                0, 0, -m_configManager->getValue(config::SettingMenuDistance) / 100.f),
+                                            LoadXrPose(Pose::Identity())));
+                            layerQuadForMenu.size.width = layerQuadForMenu.size.height = 1; // 1m x 1m
+                            static const XrEyeVisibility visibility[] = {
+                                XR_EYE_VISIBILITY_BOTH, XR_EYE_VISIBILITY_LEFT, XR_EYE_VISIBILITY_RIGHT};
+                            layerQuadForMenu.eyeVisibility =
+                                visibility[std::min(m_configManager->getValue(config::SettingMenuEyeVisibility),
+                                                    (int)std::size(visibility))];
+                            layerQuadForMenu.subImage.swapchain = m_menuSwapchain;
+                            layerQuadForMenu.subImage.imageRect.extent.width = textureInfo.width;
+                            layerQuadForMenu.subImage.imageRect.extent.height = textureInfo.height;
+                            layerQuadForMenu.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+
+                            correctedLayers.push_back(
+                                reinterpret_cast<XrCompositionLayerBaseHeader*>(&layerQuadForMenu));
+                        }
+                    } else {
+                        // Legacy menu mode, for people having problems.
+                        if (textureForOverlay[0]) {
+                            const bool useVPRT = textureForOverlay[1] == textureForOverlay[0];
+
+                            for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
+                                m_graphicsDevice->setRenderTargets(
+                                    1, &textureForOverlay[eye], useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr);
+                                m_graphicsDevice->beginText();
+                                m_menuHandler->render(textureForOverlay[eye], (utilities::Eye)eye);
+                                m_graphicsDevice->flushText();
+                            }
+
+                            m_graphicsDevice->unsetRenderTargets();
+                        }
                     }
-
-                    const auto& textureInfo = m_menuSwapchainImages[menuImageIndex]->getInfo();
-
-                    m_graphicsDevice->setRenderTargets(1, &m_menuSwapchainImages[menuImageIndex]);
-                    m_graphicsDevice->clearColor(
-                        0, 0, (float)textureInfo.height, (float)textureInfo.width, XrColor4f{0, 0, 0, 0});
-                    m_graphicsDevice->beginText();
-                    m_menuHandler->render(m_menuSwapchainImages[menuImageIndex]);
-                    m_graphicsDevice->flushText();
-
-                    m_graphicsDevice->unsetRenderTargets();
-
-                    {
-                        XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-                        CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(m_menuSwapchain, &releaseInfo));
-                    }
-
-                    // Add the quad layer to the frame.
-                    layerQuadForMenu.space = m_viewSpace;
-                    StoreXrPose(&layerQuadForMenu.pose,
-                                DirectX::XMMatrixMultiply(
-                                    DirectX::XMMatrixTranslation(
-                                        0, 0, -m_configManager->getValue(config::SettingMenuDistance) / 100.f),
-                                    LoadXrPose(Pose::Identity())));
-                    layerQuadForMenu.size.width = layerQuadForMenu.size.height = 1; // 1m x 1m
-                    static const XrEyeVisibility visibility[] = {
-                        XR_EYE_VISIBILITY_BOTH, XR_EYE_VISIBILITY_LEFT, XR_EYE_VISIBILITY_RIGHT};
-                    layerQuadForMenu.eyeVisibility = visibility[std::min(
-                        m_configManager->getValue(config::SettingMenuEyeVisibility), (int)std::size(visibility))];
-                    layerQuadForMenu.subImage.swapchain = m_menuSwapchain;
-                    layerQuadForMenu.subImage.imageRect.extent.width = textureInfo.width;
-                    layerQuadForMenu.subImage.imageRect.extent.height = textureInfo.height;
-                    layerQuadForMenu.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-
-                    correctedLayers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&layerQuadForMenu));
                 }
 
                 if (drawOverlays) {

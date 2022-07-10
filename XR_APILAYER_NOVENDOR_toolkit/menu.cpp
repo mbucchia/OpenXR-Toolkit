@@ -342,12 +342,17 @@ namespace {
             }
         }
 
-        void render(std::shared_ptr<ITexture> renderTarget) const override {
+        void render(std::shared_ptr<ITexture> renderTarget, std::optional<utilities::Eye> eye) const override {
             const auto& renderTargetInfo = renderTarget->getInfo();
 
-            const float leftAlign = (renderTargetInfo.width - m_menuBackgroundWidth) / 2;
-            const float centerAlign = leftAlign + m_menuBackgroundWidth / 2;
-            const float rightAlign = leftAlign + m_menuBackgroundWidth;
+            // Legacy menu support.
+            float rightEyeOffset = 2.f * (m_projCenter[1].x - m_projCenter[0].x) * renderTargetInfo.width +
+                                   -m_configManager->getValue(SettingMenuEyeOffset);
+            const float eyeOffset = (eye && eye == Eye::Right) ? rightEyeOffset : 0.f;
+
+            const float leftAlign = (renderTargetInfo.width - m_menuBackgroundWidth) / 2 + eyeOffset;
+            const float centerAlign = leftAlign + m_menuBackgroundWidth / 2 + eyeOffset;
+            const float rightAlign = leftAlign + m_menuBackgroundWidth + eyeOffset;
             const float topAlign = (renderTargetInfo.height - m_menuBackgroundHeight) / 2;
 
             const float fontSize = m_configManager->getValue(SettingMenuFontSize) * 0.75f; // pt -> px
@@ -497,11 +502,15 @@ namespace {
                 // Measurements must be done in 2 steps: first mesure the necessary spacing for alignment of the values,
                 // then measure the background area.
                 const bool measureEntriesTitleWidth = m_resetTextLayout;
-                const bool measureBackgroundWidth = !measureEntriesTitleWidth && m_resetBackgroundLayout;
+                const bool measureBackgroundWidth =
+                    !measureEntriesTitleWidth && m_resetBackgroundLayout && (!eye || eye == Eye::Left);
 
                 // Draw the background.
                 if (!measureEntriesTitleWidth && !measureBackgroundWidth) {
-                    const auto bgAlpha = std::min(m_configManager->getValue(SettingMenuOpacity) / 100.f, alphaValue);
+                    const auto bgAlpha =
+                        !m_configManager->getValue(SettingMenuLegacyMode)
+                            ? std::min(m_configManager->getValue(SettingMenuOpacity) / 100.f, alphaValue)
+                            : 1.0f;
 
                     m_device->clearColor(topAlign - BorderVerticalSpacing,
                                          leftAlign - BorderHorizontalSpacing,
@@ -647,7 +656,7 @@ namespace {
                     top += 1.5f * fontSize;
 
                     if (measureBackgroundWidth) {
-                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign);
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - eyeOffset);
                     }
 
                     if (menuEntry.type == MenuEntryType::Tabs) {
@@ -697,7 +706,7 @@ namespace {
                     }
 
                     if (measureBackgroundWidth) {
-                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign);
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - eyeOffset);
                     }
                 }
 
@@ -731,7 +740,7 @@ namespace {
                     top += 0.8f * fontSize;
 
                     if (measureBackgroundWidth) {
-                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign);
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - eyeOffset);
                     }
                 }
                 m_menuBackgroundHeight = (top + fontSize * 0.2f) - topAlign;
@@ -746,7 +755,7 @@ namespace {
                 const auto screenOffset = NdcToScreen({m_configManager->getValue(SettingOverlayXOffset) / 100.f,
                                                        m_configManager->getValue(SettingOverlayYOffset) / 100.f});
 
-                const float overlayAlign = screenOffset.x * renderTargetInfo.width;
+                const float overlayAlign = screenOffset.x * renderTargetInfo.width + eyeOffset;
                 float top = screenOffset.y * renderTargetInfo.height;
 
                 // FPS display.
@@ -954,6 +963,15 @@ namespace {
 
         void updateEyeGazeState(const input::EyeGazeState& state) override {
             m_eyeGazeState = state;
+        }
+
+        void setViewProjectionCenters(XrVector2f left, XrVector2f right) override {
+            left = utilities::NdcToScreen(left);
+            m_projCenter[0].x = left.x;
+            m_projCenter[0].y = left.y;
+            right = utilities::NdcToScreen(right);
+            m_projCenter[1].x = right.x;
+            m_projCenter[1].y = right.y;
         }
 
         bool isVisible() const {
@@ -1569,6 +1587,8 @@ namespace {
                                      0,
                                      MenuEntry::LastVal<MenuTimeout>(),
                                      MenuEntry::FmtEnum<MenuTimeout>});
+
+            MenuGroup newMenuGroup(this, [&] { return !m_configManager->peekValue(SettingMenuLegacyMode); });
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Menu distance",
                                      MenuEntryType::Slider,
@@ -1583,6 +1603,18 @@ namespace {
                                      0,
                                      100,
                                      MenuEntry::FmtPercent});
+            newMenuGroup.finalize();
+
+            MenuGroup legacyMenuGroup(this, [&] { return m_configManager->peekValue(SettingMenuLegacyMode); });
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Menu eye offset",
+                                     MenuEntryType::Slider,
+                                     SettingMenuEyeOffset,
+                                     -3000,
+                                     3000,
+                                     [](int value) { return fmt::format("{} pixels", value); }});
+            legacyMenuGroup.finalize();
+
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Overlay horizontal offset",
                                      MenuEntryType::Slider,
@@ -1599,6 +1631,14 @@ namespace {
                                      100,
                                      MenuEntry::FmtPercent});
             m_menuEntries.back().expert = true;
+
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Use legacy menu",
+                                     MenuEntryType::Choice,
+                                     SettingMenuLegacyMode,
+                                     0,
+                                     MenuEntry::LastVal<NoYesType>(),
+                                     MenuEntry::FmtEnum<NoYesType>});
 
             m_menuEntries.push_back(
                 {MenuIndent::OptionIndent, "Restore defaults", MenuEntryType::RestoreDefaults, BUTTON_OR_SEPARATOR});
@@ -1758,6 +1798,8 @@ namespace {
         std::wstring m_keyMenuLabel;
         int m_keyUp;
         std::wstring m_keyUpLabel;
+
+        XrVector2f m_projCenter[ViewCount]{{0.5f, 0.5f}, {0.5f, 0.5f}};
 
         std::vector<MenuEntry> m_menuEntries;
         std::vector<MenuGroup> m_menuGroups;
