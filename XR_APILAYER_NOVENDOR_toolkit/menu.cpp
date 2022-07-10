@@ -1237,6 +1237,17 @@ namespace {
                 variableRateShaderCustomGroup.finalize();
             }
 
+            // In safe mode, advertise the killswitch for API interceptor.
+            if (m_configManager->isSafeMode()) {
+                m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                         "Foveated Rendering kill switch",
+                                         MenuEntryType::Choice,
+                                         SettingDisableInterceptor,
+                                         0,
+                                         MenuEntry::LastVal<OffOnType>(),
+                                         MenuEntry::FmtEnum<OffOnType>});
+            }
+
             // Must be kept last.
             performanceTab.finalize();
         }
