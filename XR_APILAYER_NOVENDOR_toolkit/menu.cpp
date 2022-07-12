@@ -990,14 +990,8 @@ namespace {
                         m_menuEntries.back().acceleration = 5;
                     }
                     variableRateShaderEyeTrackingSettingsGroup.finalize();
-                }
-                variableRateShaderCommonGroup.finalize();
+                } // m_isEyeTrackingSupported
 
-                // Preset sub-group.
-                MenuGroup variableRateShaderPresetGroup(this, [&] {
-                    return m_configManager->peekEnumValue<VariableShadingRateType>(SettingVRS) ==
-                           VariableShadingRateType::Preset;
-                });
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Show rings",
                                          MenuEntryType::Choice,
@@ -1005,6 +999,28 @@ namespace {
                                          0,
                                          MenuEntry::LastVal<NoYesType>(),
                                          MenuEntry::FmtEnum<NoYesType>});
+                // TODO: place holders
+                //m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                //                         "Anti Shimmer",
+                //                         MenuEntryType::Choice,
+                //                         SettingPostShimmer,
+                //                         0,
+                //                         MenuEntry::LastVal<NoYesType>(),
+                //                         MenuEntry::FmtEnum<NoYesType>});
+                //m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                //                         "Anti Flicker",
+                //                         MenuEntryType::Choice,
+                //                         SettingPostFlicker,
+                //                         0,
+                //                         MenuEntry::LastVal<NoYesType>(),
+                //                         MenuEntry::FmtEnum<NoYesType>});
+                variableRateShaderCommonGroup.finalize();
+
+                // Preset sub-group.
+                MenuGroup variableRateShaderPresetGroup(this, [&] {
+                    return m_configManager->peekEnumValue<VariableShadingRateType>(SettingVRS) ==
+                           VariableShadingRateType::Preset;
+                });
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Mode",
                                          MenuEntryType::Slider,
@@ -1030,13 +1046,6 @@ namespace {
                     const auto maxVRSLeftRightBias =
                         std::min(int(menuInfo.variableRateShaderMaxRate), to_integral(VariableShadingRateVal::R_4x4));
 
-                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                             "Show rings",
-                                             MenuEntryType::Choice,
-                                             SettingVRSShowRings,
-                                             0,
-                                             MenuEntry::LastVal<NoYesType>(),
-                                             MenuEntry::FmtEnum<NoYesType>});
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Inner resolution",
                                              MenuEntryType::Slider,

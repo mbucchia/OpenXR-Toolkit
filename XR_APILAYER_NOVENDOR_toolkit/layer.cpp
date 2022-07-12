@@ -153,6 +153,8 @@ namespace {
             m_configManager->setDefault(config::SettingPostVibrance, 0);
             m_configManager->setDefault(config::SettingPostHighlights, 1000);
             m_configManager->setDefault(config::SettingPostShadows, 0);
+            m_configManager->setDefault(config::SettingPostShimmer, 0);
+            m_configManager->setDefault(config::SettingPostFlicker, 0);
 
             // TODO: Appearance (User)
 #if 0

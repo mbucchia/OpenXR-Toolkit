@@ -171,6 +171,8 @@ namespace toolkit {
         const std::string SettingPostColorGainB = "post_gain_b";
         const std::string SettingPostHighlights = "post_highlights";
         const std::string SettingPostShadows = "post_shadows";
+        const std::string SettingPostShimmer = "post_shimmer";
+        const std::string SettingPostFlicker = "post_flicker";
         const std::string SettingEyeTrackingEnabled = "eye_tracking";
         const std::string SettingEyeProjectionDistance = "eye_projection";
         const std::string SettingEyeDebug = "eye_debug";
@@ -193,7 +195,7 @@ namespace toolkit {
         enum class VariableShadingRateQuality { Performance = 0, Quality, MaxValue };
         enum class VariableShadingRatePattern { Wide = 0, Balanced, Narrow, MaxValue };
         enum class VariableShadingRateDir { Vertical, Horizontal, MaxValue };
-        enum class VariableShadingRateVal { R_x1, R_2x1, R_2x2, R_4x2, R_4x4, R_Cull, MaxValue };
+        enum class VariableShadingRateVal { R_1x1, R_2x1, R_2x2, R_4x2, R_4x4, R_Cull, MaxValue };
         enum class PostProcessType { Off = 0, On, MaxValue };
         enum class PostSunGlassesType { None = 0, Light, Dark, Night, MaxValue };
         enum class FovModeType { Simple, Advanced, MaxValue };
@@ -692,8 +694,8 @@ namespace toolkit {
             XrVector2f gazeXY[3]; // ndc
             XrVector2f rings[4];  // 1/(a1^2), 1/(b1^2)
             uint8_t rates[4];     // setting rates
+            int8_t tile;          // VRS tile size (prefer Vertical if < 0)
             int8_t mode;          // 0: off, 1: active 2: with eye tracking (swap gaze if < 0)
-            uint8_t tileSize;     // VRS tile size
         };
 
         struct IVariableRateShader {

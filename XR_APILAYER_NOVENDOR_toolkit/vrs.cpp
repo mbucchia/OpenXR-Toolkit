@@ -133,7 +133,7 @@ namespace {
             // Setup initial state
             createRenderResources(m_renderWidth, m_renderHeight);
             setupRenderConstants();
-            
+
             // Request update.
             m_currentGen++;
         }
@@ -312,12 +312,15 @@ namespace {
             std::copy_n(m_Rings, std::size(m_Rings), state.rings);
 
             for (size_t i = 0; i < std::size(m_Rates); i++) {
-                state.rates[i] = shadingRateToSettingsRate(m_Rates[to_integral(eye)][i]);
+                const auto shadingRate = m_Rates[to_integral(eye)][i];
+                state.rates[i] = shadingRateToSettingsRate(shadingRate);
             }
 
             const auto state_mode = (m_usingEyeTracking ? 2 : m_mode != VariableShadingRateType::None);
             state.mode = static_cast<int8_t>(m_swapViews ? -state_mode : state_mode);
-            state.tileSize = static_cast<uint8_t>(m_tileSize);
+
+            const auto state_tile = static_cast<int8_t>(m_tileSize);
+            state.tile = m_rateDir == VariableShadingRateDir::Vertical ? -state_tile : state_tile;
         }
 
         void startCapture() override {
@@ -458,6 +461,8 @@ namespace {
         }
 
         void updateRates(VariableShadingRateType mode) {
+            m_rateDir = m_configManager->getEnumValue<VariableShadingRateDir>(SettingVRSPreferHorizontal);
+
             if (mode == VariableShadingRateType::Preset) {
                 const auto quality = m_configManager->getEnumValue<VariableShadingRateQuality>(SettingVRSQuality);
                 for (size_t i = 0; i < 3; i++) {
@@ -468,7 +473,7 @@ namespace {
 
             } else if (mode == VariableShadingRateType::Custom) {
                 const auto leftRightBias = m_configManager->getValue(SettingVRSLeftRightBias);
-                const auto preferHorizontal = m_configManager->getValue(SettingVRSPreferHorizontal) != 0;
+                const auto preferHorizontal = m_rateDir == VariableShadingRateDir::Horizontal;
 
                 const int rates[3] = {m_configManager->getValue(SettingVRSInner),
                                       m_configManager->getValue(SettingVRSMiddle),
@@ -481,6 +486,12 @@ namespace {
                     m_Rates[eye][1] = settingsRateToShadingRate(rates[1], rateBias[eye], preferHorizontal);
                     m_Rates[eye][2] = settingsRateToShadingRate(rates[2], rateBias[eye], preferHorizontal);
                     m_Rates[eye][3] = SHADING_RATE_CULL;
+                    DebugLog("UpdateRates %02u: %02u %02u %02u %02u\n",
+                             eye,
+                             m_Rates[eye][0],
+                             m_Rates[eye][1],
+                             m_Rates[eye][2],
+                             m_Rates[eye][3]);
                 }
             }
 
@@ -727,7 +738,7 @@ namespace {
         uint8_t settingsRateToShadingRate(size_t settingsRate, int rateBias = 0, bool preferHorizontal = false) const {
             static const uint8_t lut[to_integral(VariableShadingRateVal::MaxValue) - 1] = {
                 SHADING_RATE_x1, SHADING_RATE_2x1, SHADING_RATE_2x2, SHADING_RATE_4x2, SHADING_RATE_4x4};
-
+            
             static_assert(SHADING_RATE_1x2 == (SHADING_RATE_2x1 + 1), "preferHorizonal arithmetic");
             static_assert(SHADING_RATE_2x4 == (SHADING_RATE_4x2 + 1), "preferHorizonal arithmetic");
 
@@ -832,6 +843,7 @@ namespace {
         uint64_t m_currentGen{0};
 
         VariableShadingRateType m_mode{VariableShadingRateType::None};
+        VariableShadingRateDir m_rateDir{VariableShadingRateDir::Horizontal};
 
         // ShadingConstants
         XrVector2f m_gazeOffset[ViewCount + 1];

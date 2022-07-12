@@ -38,11 +38,13 @@ namespace {
     using namespace toolkit::log;
 
     struct alignas(16) ImageProcessorConfig {
+        XrVector4f Dims;     // display w, h, 1/w, 1/h
         XrVector4f Params1;  // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
         XrVector4f Params2;  // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
         XrVector4f Params3;  // Highlights, Shadows, Vibrance (0..1 params)
         XrVector4f Params4;  // Gaze, Ring (anti-flicker)
         XrVector2f Rings[4]; // 1/(a1^2), 1/(b1^2)
+        XrVector4f Dims2;
     };
 
     class ImageProcessor : public IImageProcessor {
@@ -55,9 +57,10 @@ namespace {
                        uint32_t displayWidth,
                        uint32_t displayHeight)
             : m_configManager(configManager), m_device(graphicsDevice), m_vrs(variableRateShader),
-              m_renderWidth(renderWidth), m_renderHeight(renderHeight),
-              m_userParams(GetParams(configManager.get(), 1)), m_invRenderDims{1.f / std::max(renderWidth, 1u),
-                                                                               1.f / std::max(renderHeight, 1u)} {
+              m_userParams(GetParams(configManager.get(), 1)),
+              m_displayDims{static_cast<float>(std::max(displayWidth, 1u)),
+                            static_cast<float>(std::max(displayHeight, 1u))},
+              m_invRenderDims{1.f / std::max(renderWidth, 1u), 1.f / std::max(renderHeight, 1u)} {
             createRenderResources();
         }
 
@@ -84,14 +87,14 @@ namespace {
 
         void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
             using namespace xr::math;
-            
+
             // TODO: check whether we can use a structured array buffer for left/right/both instead.
             // TODO: Evaluate whether using 2 distinct buffers.
             // For now use both and share all constants in a single buffer.
 
             if (m_configUpdated || m_configVrsUpdated) {
                 // adjust gaze to the center of the VRS blocks.
-                const auto center = m_invRenderDims * uint8_t(m_vrsState.tileSize / 2u);
+                const auto center = m_invRenderDims * static_cast<float>(abs(m_vrsState.tile) / 2u);
                 for (size_t i = 0; i < std::size(m_cbParams); i++) {
                     m_config.Params4.x = m_vrsState.gazeXY[i].x + center.x;
                     m_config.Params4.y = m_vrsState.gazeXY[i].y - center.y;
@@ -140,11 +143,6 @@ namespace {
             for (auto& it : m_cbParams) {
                 it = m_device->createBuffer(sizeof(ImageProcessorConfig), "Postprocess CB");
             }
-
-            // Initialize gaze and ring large enough.
-            m_config.Params4.x = m_config.Params4.y = 0;
-            m_config.Params4.z = m_config.Params4.w = 0.00001f;
-            std::fill_n(m_config.Rings, std ::size(m_config.Rings), XrVector2f{0.00001f, 0.00001f});
 
             updateConfig();
             updateConfigVrs();
@@ -202,15 +200,13 @@ namespace {
 
         bool checkUpdateConfigVrs() {
             const auto currentGen = m_vrs ? m_vrs->getCurrentGen() : 0;
-            const auto showRings =
-                currentGen && m_configManager->getEnumValue<NoYesType>(config::SettingVRSShowRings) != NoYesType::No;
-
-            if (m_vrsCurrentGen != currentGen || m_vrsShowRings != showRings) {
+            if (m_vrsCurrentGen != currentGen) {
                 m_vrsCurrentGen = currentGen;
-                m_vrsShowRings = showRings;
                 return true;
             }
-            return false;
+
+            return m_configManager->hasChanged(SettingVRSShowRings) ||
+                   m_configManager->hasChanged(SettingPostShimmer) || m_configManager->hasChanged(SettingPostFlicker);
         }
 
         void updateConfigVrs() {
@@ -238,7 +234,24 @@ namespace {
                 m_vrsState = vrsState;
             }
 #endif
-            m_config.Params4.z = m_config.Params4.w = 0;
+
+            m_vrsShowRings = m_configManager->getEnumValue<NoYesType>(config::SettingVRSShowRings) != NoYesType::No;
+            m_vrsShimmer = m_configManager->getValue(config::SettingPostShimmer) != 0;
+            m_vrsFlicker = m_configManager->getValue(config::SettingPostFlicker) != 0;
+
+            // Initialize dimensions.
+            m_config.Dims.x = m_displayDims.x; // can't be 0
+            m_config.Dims.y = m_displayDims.y; // can't be 0
+            m_config.Dims.z = 1.f / m_displayDims.x;
+            m_config.Dims.w = 1.f / m_displayDims.y;
+
+            m_config.Dims2.x = m_vrsShimmer ? 1.f : 0.f;
+            m_config.Dims2.y = m_vrsFlicker ? 1.f : 0.f;
+            m_config.Dims2.z = m_config.Dims.z;
+            m_config.Dims2.w = m_config.Dims.w;
+
+            // Initialize gaze and anti-flicker ring.
+            m_config.Params4.x = m_config.Params4.y = m_config.Params4.z = m_config.Params4.w = 0;
 
             if (m_vrs && m_vrsCurrentGen) {
                 // Get gazes and rings but ignore L/R rate bias.
@@ -248,22 +261,26 @@ namespace {
                     m_vrsState.mode = -m_vrsState.mode;
                 }
 
-                // Reduce flickering for rings with a rate above 2x2.
-                constexpr auto kLowResRate = to_integral(VariableShadingRateVal::R_2x2);
-                const auto ringIdx = m_vrsState.rates[1] > kLowResRate   ? 0
-                                     : m_vrsState.rates[2] > kLowResRate ? 1
-                                     : m_vrsState.rates[3] > kLowResRate ? 2
-                                                                         : -1;
-                if (ringIdx >= 0) {
-                    m_config.Params4.z = m_vrsState.rings[ringIdx].x;
-                    m_config.Params4.w = m_vrsState.rings[ringIdx].y;
+                // Reduce flickering for rings with a rate above 1x1 (AdjustRingFlicker if zw != 0)
+                for (size_t i = 1; i < std::size(m_vrsState.rates); i++) {
+                    const auto rate = m_vrsState.rates[i];
+                    if (rate != to_integral(config::VariableShadingRateVal::R_1x1) &&
+                        rate != to_integral(config::VariableShadingRateVal::R_Cull)) {
+                        m_config.Params4.z = m_vrsState.rings[i - 1].x;
+                        m_config.Params4.w = m_vrsState.rings[i - 1].y;
+                        break;
+                    }
                 }
+
+                m_config.Dims2.z = m_vrsState.tile < 0 ? m_config.Dims.z : 0.f;
+                m_config.Dims2.w = m_vrsState.tile < 0 ? 0.f : m_config.Dims.w;
             }
 
-            if (m_vrsShowRings) {
-                std::copy_n(m_vrsState.rings, ARRAYSIZE(m_vrsState.rings), m_config.Rings);
+            // AdjustRingColor if zw != 0
+            if (m_vrsCurrentGen && m_vrsShowRings) {
+                std::copy_n(m_vrsState.rings, std::size(m_vrsState.rings), m_config.Rings);
             } else {
-                std::fill_n(m_config.Rings, ARRAYSIZE(m_config.Rings), XrVector2f{0, 0});
+                std::fill_n(m_config.Rings, std::size(m_config.Rings), XrVector2f{0, 0});
             }
 
             m_configVrsUpdated = true;
@@ -321,8 +338,7 @@ namespace {
         const std::shared_ptr<IDevice> m_device;
         const std::shared_ptr<IVariableRateShader> m_vrs;
 
-        const uint32_t m_renderWidth;
-        const uint32_t m_renderHeight;
+        const XrVector2f m_displayDims;
         const XrVector2f m_invRenderDims;
         const std::array<DirectX::XMINT4, 3> m_userParams;
 
@@ -332,6 +348,8 @@ namespace {
         bool m_configUpdated{false};
         bool m_configVrsUpdated{false};
         bool m_vrsShowRings{false};
+        bool m_vrsShimmer{false};
+        bool m_vrsFlicker{false};
 
         uint64_t m_vrsCurrentGen{0};
         VariableRateShaderState m_vrsState{};
