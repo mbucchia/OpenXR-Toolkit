@@ -546,6 +546,10 @@ namespace {
             return get(m_texture);
         }
 
+        uint64_t getNativeFormat() const override {
+            return static_cast<uint64_t>(m_textureDesc.Format);
+        }
+
       private:
         std::shared_ptr<D3D11ShaderResourceView> makeShaderInputViewInternal(uint32_t slice) const {
             if (!(m_textureDesc.BindFlags & D3D11_BIND_SHADER_RESOURCE)) {
@@ -759,7 +763,7 @@ namespace {
             }
         }
 
-        uint64_t query(bool reset) const override {
+        uint64_t query() const override {
             uint64_t duration = 0;
             auto context = m_device->getContextAs<D3D11>();
             if (context && m_valid) {
@@ -773,7 +777,7 @@ namespace {
                     !disData.Disjoint) {
                     duration = static_cast<uint64_t>(((endtime - startime) * 1e6) / disData.Frequency);
                 }
-                m_valid = !reset;
+                m_valid = false;
             }
             return duration;
         }
@@ -817,11 +821,11 @@ namespace {
         D3D11Device(ID3D11Device* device,
                     std::shared_ptr<config::IConfigManager> configManager,
                     bool textOnly = false,
-                    bool enableOculusQuirk = false)
+                    bool delayHook = false)
             : m_device(device), m_gpuArchitecture(GpuArchitecture::Unknown),
               m_allowInterceptor(!configManager->isSafeMode() &&
                                  !configManager->getValue(config::SettingDisableInterceptor)),
-              m_lateInitCountdown(enableOculusQuirk ? 10 : 0) {
+              m_lateInitCountdown(delayHook ? 10 : 0) {
             m_device->GetImmediateContext(set(m_context));
             {
                 ComPtr<IDXGIDevice> dxgiDevice;
@@ -859,9 +863,7 @@ namespace {
 
             // Create common resources.
             if (!textOnly) {
-                // Workaround: the Oculus OpenXR Runtime for DX11 seems to intercept some of the D3D calls as well.
-                // It breaks our use of Detours. Delay the call to initializeInterceptor() by a few frames (see
-                // flushContext()).
+                // Whether to delay calling initializeInterceptor() by a few frames (see flushContext()).
                 if (!m_lateInitCountdown) {
                     Log("Early initializeInterceptor() call\n");
                     initializeInterceptor();
@@ -1260,7 +1262,7 @@ namespace {
         }
 
         void setRenderTargets(size_t numRenderTargets,
-                              std::shared_ptr<ITexture>* renderTargets,
+                              const std::shared_ptr<ITexture>* renderTargets,
                               int32_t* renderSlices = nullptr,
                               std::shared_ptr<ITexture> depthBuffer = nullptr,
                               int32_t depthSlice = -1) override {
@@ -2181,8 +2183,8 @@ namespace toolkit::graphics {
 
     std::shared_ptr<IDevice> WrapD3D11Device(ID3D11Device* device,
                                              std::shared_ptr<config::IConfigManager> configManager,
-                                             bool enableOculusQuirk) {
-        return std::make_shared<D3D11Device>(device, configManager, false /* textOnly */, enableOculusQuirk);
+                                             bool delayHook /* = false */) {
+        return std::make_shared<D3D11Device>(device, configManager, false /* textOnly */, delayHook);
     }
 
     std::shared_ptr<IDevice> WrapD3D11TextDevice(ID3D11Device* device,

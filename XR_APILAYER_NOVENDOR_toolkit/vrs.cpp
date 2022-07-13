@@ -128,13 +128,11 @@ namespace {
                            bool isPimaxFovHackSupported)
             : m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
               m_renderWidth(renderWidth), m_renderHeight(renderHeight),
-              m_renderRatio(float(renderWidth) / renderHeight), m_tileSize(tileSize), m_tileRateMax(tileRateMax),
-              m_supportFOVHack(isPimaxFovHackSupported) {
+              m_renderRatio(float(renderWidth) / renderHeight), m_zoomRatio(1), m_tileSize(tileSize),
+              m_tileRateMax(tileRateMax), m_supportFOVHack(isPimaxFovHackSupported) {
+            // Setup initial state
             createRenderResources(m_renderWidth, m_renderHeight);
-
-            // Set initial projection center
-            std::fill_n(m_gazeOffset, std::size(m_gazeOffset), XrVector2f{0.f, 0.f});
-            updateGazeLocation({0.f, 0.f}, Eye::Both);
+            setupRenderConstants();
 
             // Request update.
             m_currentGen++;
@@ -158,10 +156,9 @@ namespace {
 
         void beginFrame(XrTime frameTime) override {
             // When using eye tracking we must render the views every frame.
+            // TODO: What do we do upon (permanent) loss of tracking?
             if (m_usingEyeTracking) {
-                // TODO: What do we do upon (permanent) loss of tracking?
                 updateGaze();
-
                 m_currentGen++;
             }
 
@@ -199,22 +196,26 @@ namespace {
             if (mode != VariableShadingRateType::None) {
                 m_usingEyeTracking = m_eyeTracker && m_configManager->getValue(SettingEyeTrackingEnabled);
 
-                const auto hasPatternChanged = hasModeChanged || checkUpdateRings(mode);
+                if (m_configManager->hasChanged(config::SettingZoom)) {
+                    const auto zoom = m_configManager->getValue(config::SettingZoom);
+                    m_zoomRatio = zoom != 10 ? 10.f / std::clamp(zoom, 5, 100) : 1.f;
+                }
+
                 const auto hasQualityChanged = hasModeChanged || checkUpdateRates(mode);
+                const auto hasPatternChanged = hasModeChanged || checkUpdateRings(mode);
+
+                if (hasQualityChanged)
+                    updateRates(mode);
 
                 if (hasPatternChanged) {
                     updateRings(mode);
                     updateGaze();
                 }
 
-                if (hasQualityChanged)
-                    updateRates(mode);
-
                 // Only update the texture when necessary.
                 if (hasQualityChanged || hasPatternChanged) {
                     m_currentGen++;
                 }
-
             } else if (m_usingEyeTracking) {
                 m_usingEyeTracking = false;
             }
@@ -222,7 +223,7 @@ namespace {
 
         bool onSetRenderTarget(std::shared_ptr<graphics::IContext> context,
                                std::shared_ptr<ITexture> renderTarget,
-                               std::optional<Eye> eyeHint) override {
+                               Eye eyeHint) override {
             const auto& info = renderTarget->getInfo();
 
             if (m_mode == VariableShadingRateType::None || !isVariableRateShadingCandidate(info)) {
@@ -230,11 +231,11 @@ namespace {
                 return false;
             }
 
-            TraceLoggingWrite(
-                g_traceProvider, "EnableVariableRateShading", TLArg((int)eyeHint.value_or(Eye::Both), "Eye"));
+            TraceLoggingWrite(g_traceProvider, "EnableVariableRateShading", TLArg(to_integral(eyeHint), "Eye"));
+
             if (auto context11 = context->getAs<D3D11>()) {
                 // TODO: for now redraw all the views until we implement better logic
-                // const auto updateSingleRTV = eyeHint.has_value() && info.arraySize == 1;
+                // const auto updateSingleRTV = eyeHint != Eye::Both && info.arraySize == 1;
                 // const auto updateArrayRTV = info.arraySize > 1;
                 // updateViews(updateSingleRTV, updateArrayRTV, false);
                 size_t maskIndex;
@@ -248,14 +249,14 @@ namespace {
                 desc.pViewports = m_nvRates;
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context11, &desc));
 
-                auto idx = static_cast<size_t>(eyeHint.value_or(Eye::Both));
                 auto& mask = info.arraySize == 2 ? m_NvShadingRateResources.viewsVPRT[maskIndex]
-                                                 : m_NvShadingRateResources.views[maskIndex][idx];
+                                                 : m_NvShadingRateResources.views[maskIndex][to_integral(eyeHint)];
 
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context11, get(mask)));
 
                 doCapture(context /* post */);
                 doCapture(context, renderTarget, eyeHint);
+
             } else if (auto context12 = context->getAs<D3D12>()) {
                 ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
                 if (FAILED(context12->QueryInterface(set(vrsCommandList)))) {
@@ -270,10 +271,8 @@ namespace {
                 // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
 
                 // Use the special SHADING_RATE_SOURCE resource state for barriers on the VRS surface
-                auto idx = static_cast<size_t>(eyeHint.value_or(Eye::Both));
-                auto mask = maskForSize.mask[idx]->getAs<D3D12>();
-
-                m_Dx12ShadingRateResources.RSSetShadingRateImage(get(vrsCommandList), mask, idx);
+                auto mask = maskForSize.mask[to_integral(eyeHint)]->getAs<D3D12>();
+                m_Dx12ShadingRateResources.RSSetShadingRateImage(get(vrsCommandList), mask, to_integral(eyeHint));
 
             } else {
                 throw std::runtime_error("Unsupported graphics runtime");
@@ -286,23 +285,42 @@ namespace {
             disable(context);
         }
 
-        void updateGazeLocation(XrVector2f gaze, Eye eye) override {
-            // works with left, right and both
-            if (eye != Eye::Right)
-                m_gazeLocation[0] = gaze;
-            if (eye != Eye::Left)
-                m_gazeLocation[1] = gaze;
-            if (eye == Eye::Both)
-                m_gazeLocation[2] = gaze;
-        }
-
         void setViewProjectionCenters(XrVector2f left, XrVector2f right) override {
             m_gazeOffset[0] = left;
             m_gazeOffset[1] = right;
+
+            updateRates(m_mode);
+            updateRings(m_mode);
+            updateGaze();
+            m_currentGen++;
         }
 
         uint8_t getMaxRate() const override {
             return static_cast<uint8_t>(m_tileRateMax);
+        }
+
+        uint64_t getCurrentGen() const override {
+            return m_mode != VariableShadingRateType::None ? m_currentGen : 0;
+        }
+
+        void getShaderState(VariableRateShaderState& state, utilities::Eye eye) const override {
+            static_assert(ARRAYSIZE(VariableRateShaderState::gazeXY) == ARRAYSIZE(m_gazeLocation));
+            static_assert(ARRAYSIZE(VariableRateShaderState::rings) == ARRAYSIZE(m_Rings));
+            static_assert(ARRAYSIZE(VariableRateShaderState::rates) == ARRAYSIZE(m_Rates[0]));
+
+            std::copy_n(m_gazeLocation, std::size(m_gazeLocation), state.gazeXY);
+            std::copy_n(m_Rings, std::size(m_Rings), state.rings);
+
+            for (size_t i = 0; i < std::size(m_Rates); i++) {
+                const auto shadingRate = m_Rates[to_integral(eye)][i];
+                state.rates[i] = shadingRateToSettingsRate(shadingRate);
+            }
+
+            const auto state_mode = (m_usingEyeTracking ? 2 : m_mode != VariableShadingRateType::None);
+            state.mode = static_cast<int8_t>(m_swapViews ? -state_mode : state_mode);
+
+            const auto state_tile = static_cast<int8_t>(m_tileSize);
+            state.tile = m_rateDir == VariableShadingRateDir::Vertical ? -state_tile : state_tile;
         }
 
         void startCapture() override {
@@ -323,44 +341,36 @@ namespace {
 
         void doCapture(std::shared_ptr<graphics::IContext> context,
                        std::shared_ptr<ITexture> renderTarget = nullptr,
-                       std::optional<Eye> eyeHint = std::nullopt) {
-            if (m_isCapturing) {
-                if (renderTarget) {
-                    const auto& info = renderTarget->getInfo();
+                       Eye eyeHint = Eye::Both) {
+            if (!m_isCapturing)
+                return;
 
-                    TraceLoggingWrite(g_traceProvider,
-                                      "VariableRateShadingCapture",
-                                      TLArg(m_captureID, "CaptureID"),
-                                      TLArg(m_captureFileIndex, "CaptureFileIndex"));
+            const auto is_post = !renderTarget;
+            if (!is_post) {
+                TraceLoggingWrite(g_traceProvider,
+                                  "VariableRateShadingCapture",
+                                  TLArg(m_captureID, "CaptureID"),
+                                  TLArg(m_captureFileIndex, "CaptureFileIndex"));
 
-                    renderTarget->saveToFile(
-                        (localAppData / "screenshots" /
-                         fmt::format("vrs_{}_{}_{}_pre.dds",
-                                     m_captureID,
-                                     m_captureFileIndex,
-                                     info.arraySize == 2   ? "dual"
-                                     : eyeHint.has_value() ? eyeHint.value() == Eye::Left ? "left" : "right"
-                                                           : "generic"))
-                            .string());
+                m_captureRT = std::move(renderTarget);
+                m_captureEye = eyeHint;
+            }
 
-                    m_currentRenderTarget = renderTarget;
-                    m_currentEyeHint = eyeHint;
-                } else if (m_currentRenderTarget) {
-                    const auto& info = m_currentRenderTarget->getInfo();
+            if (m_captureRT) {
+                constexpr const char* eyeHintLabels[] = {"left", "rite", "gene"};
+                const auto& info = m_captureRT->getInfo();
+                m_captureRT->saveToFile(
+                    (localAppData / "screenshots" /
+                     fmt::format("vrs_{}_{}_{}_{}.dds",
+                                 m_captureID,
+                                 m_captureFileIndex,
+                                 is_post ? "pst" : "pre",
+                                 info.arraySize == 2 ? "dual" : eyeHintLabels[to_integral(m_captureEye)]))
+                        .string());
+            }
 
-                    m_currentRenderTarget->saveToFile(
-                        (localAppData / "screenshots" /
-                         fmt::format("vrs_{}_{}_{}_post.dds",
-                                     m_captureID,
-                                     m_captureFileIndex++,
-                                     info.arraySize == 2 ? "dual"
-                                     : m_currentEyeHint.has_value()
-                                         ? m_currentEyeHint.value() == Eye::Left ? "left" : "right"
-                                         : "generic"))
-                            .string());
-
-                    m_currentRenderTarget = nullptr;
-                }
+            if (is_post) {
+                m_captureRT = nullptr;
             }
         }
 
@@ -375,6 +385,7 @@ namespace {
                 defines.add("VRS_TILE_X", m_tileSize);
                 defines.add("VRS_TILE_Y", m_tileSize);
                 defines.add("VRS_NUM_RATES", 3);
+                defines.add("VRS_USE_DIM_RATIO", true);
 
                 // Dispatch 64 threads per group.
                 defines.add("VRS_NUM_THREADS_X", 8);
@@ -392,8 +403,18 @@ namespace {
                 m_Dx12ShadingRateResources.initialize();
                 resetShadingRates(Api::D3D12);
             }
+        }
 
-            // Setup shader constants
+        void setupRenderConstants() {
+            // Clear projection center
+            std::fill_n(m_gazeOffset, std::size(m_gazeOffset), XrVector2f{0.f, 0.f});
+            std::fill_n(m_gazeLocation, std::size(m_gazeLocation), XrVector2f{0.f, 0.f});
+
+            // Setup initial state
+            const auto zoom = m_configManager->getValue(config::SettingZoom);
+            m_zoomRatio = zoom != 10 ? 10.f / std::clamp(zoom, 5, 100) : 1.f;
+            m_mode = m_configManager->getEnumValue<VariableShadingRateType>(config::SettingVRS);
+
             updateRates(m_mode);
             updateRings(m_mode);
             updateGaze();
@@ -441,17 +462,19 @@ namespace {
         }
 
         void updateRates(VariableShadingRateType mode) {
+            m_rateDir = m_configManager->getEnumValue<VariableShadingRateDir>(SettingVRSPreferHorizontal);
+
             if (mode == VariableShadingRateType::Preset) {
                 const auto quality = m_configManager->getEnumValue<VariableShadingRateQuality>(SettingVRSQuality);
                 for (size_t i = 0; i < 3; i++) {
                     const auto rate = i + (quality != VariableShadingRateQuality::Quality ? i : 0);
                     m_Rates[2][i] = m_Rates[1][i] = m_Rates[0][i] = settingsRateToShadingRate(rate);
-                    m_Rates[i][3] = m_shadingRates[SHADING_RATE_CULL];
+                    m_Rates[i][3] = SHADING_RATE_CULL;
                 }
 
             } else if (mode == VariableShadingRateType::Custom) {
                 const auto leftRightBias = m_configManager->getValue(SettingVRSLeftRightBias);
-                const auto preferHorizontal = m_configManager->getValue(SettingVRSPreferHorizontal) != 0;
+                const auto preferHorizontal = m_rateDir == VariableShadingRateDir::Horizontal;
 
                 const int rates[3] = {m_configManager->getValue(SettingVRSInner),
                                       m_configManager->getValue(SettingVRSMiddle),
@@ -463,16 +486,22 @@ namespace {
                     m_Rates[eye][0] = settingsRateToShadingRate(rates[0], rateBias[eye], preferHorizontal);
                     m_Rates[eye][1] = settingsRateToShadingRate(rates[1], rateBias[eye], preferHorizontal);
                     m_Rates[eye][2] = settingsRateToShadingRate(rates[2], rateBias[eye], preferHorizontal);
-                    m_Rates[eye][3] = m_shadingRates[SHADING_RATE_CULL];
+                    m_Rates[eye][3] = SHADING_RATE_CULL;
+                    DebugLog("UpdateRates %02u: %02u %02u %02u %02u\n",
+                             eye,
+                             m_Rates[eye][0],
+                             m_Rates[eye][1],
+                             m_Rates[eye][2],
+                             m_Rates[eye][3]);
                 }
             }
 
             TraceLoggingWrite(g_traceProvider,
                               "VariableRateShading_Rates",
-                              TLArg(m_Rates[2][0], "Rate1"),
-                              TLArg(m_Rates[2][1], "Rate2"),
-                              TLArg(m_Rates[2][2], "Rate3"),
-                              TLArg(m_Rates[2][3], "Rate4"));
+                              TLArg(m_shadingRates[m_Rates[2][0]], "Rate1"),
+                              TLArg(m_shadingRates[m_Rates[2][1]], "Rate2"),
+                              TLArg(m_shadingRates[m_Rates[2][2]], "Rate3"),
+                              TLArg(m_shadingRates[m_Rates[2][3]], "Rate4"));
         }
 
         bool checkUpdateRings(VariableShadingRateType mode) const {
@@ -534,6 +563,10 @@ namespace {
             m_gazeOffset[2].x = m_configManager->getValue(SettingVRSXOffset) * 0.01f;
             m_gazeOffset[2].y = m_configManager->getValue(SettingVRSYOffset) * 0.01f;
 
+            // These depend only on VRS X/Y offsets so we update here only.
+            m_gazeLocation[2].x = 0; // The generic mask only supports vertical offsets.
+            m_gazeLocation[2].y = m_gazeOffset[2].y;
+
             TraceLoggingWrite(
                 g_traceProvider, "VariableRateShading_Rings", TLArg(radius[0], "Ring1"), TLArg(radius[1], "Ring2"));
         }
@@ -546,12 +579,8 @@ namespace {
                 gaze[1] = m_gazeOffset[1];
             }
             // location = view center + view offset (L/R)
-            m_gazeLocation[m_swapViews] = gaze[0] + m_gazeOffset[2];
-            m_gazeLocation[!m_swapViews] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
-
-            // The generic mask only supports vertical offsets.
-            m_gazeLocation[2].x = 0;
-            m_gazeLocation[2].y = m_gazeOffset[2].y;
+            m_gazeLocation[0] = (gaze[0] * m_zoomRatio) + m_gazeOffset[2];
+            m_gazeLocation[1] = (gaze[1] * m_zoomRatio) + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
         }
 
         ShadingRateMask& getOrCreateMaskResources(uint32_t width, uint32_t height, size_t* index = nullptr) {
@@ -697,19 +726,20 @@ namespace {
 
         ShadingConstants makeShadingConstants(size_t eye, uint32_t texW, uint32_t texH) {
             ShadingConstants constants;
+            eye ^= (m_swapViews && eye != 2);
             constants.GazeXY = m_gazeLocation[eye];
             constants.InvDim = {1.f / texW, 1.f / texH};
             for (size_t i = 0; i < std::size(m_Rings); i++) {
                 constants.Rings[i] = m_Rings[i];
-                constants.Rates[i] = m_Rates[eye][i];
+                constants.Rates[i] = m_shadingRates[m_Rates[eye][i]];
             }
             return constants;
         }
 
         uint8_t settingsRateToShadingRate(size_t settingsRate, int rateBias = 0, bool preferHorizontal = false) const {
-            static const uint8_t lut[] = {
+            static const uint8_t lut[to_integral(VariableShadingRateVal::MaxValue) - 1] = {
                 SHADING_RATE_x1, SHADING_RATE_2x1, SHADING_RATE_2x2, SHADING_RATE_4x2, SHADING_RATE_4x4};
-
+            
             static_assert(SHADING_RATE_1x2 == (SHADING_RATE_2x1 + 1), "preferHorizonal arithmetic");
             static_assert(SHADING_RATE_2x4 == (SHADING_RATE_4x2 + 1), "preferHorizonal arithmetic");
 
@@ -718,9 +748,15 @@ namespace {
                 if (preferHorizontal) {
                     rate += (rate == SHADING_RATE_2x1 || rate == SHADING_RATE_4x2);
                 }
-                return m_shadingRates[rate];
+                return rate;
             }
-            return m_shadingRates[SHADING_RATE_CULL];
+            return SHADING_RATE_CULL;
+        }
+
+        uint8_t shadingRateToSettingsRate(uint8_t shadingRate) const {
+            // VariableShadingRateVal::R_x1 to VariableShadingRateVal::R_Cull
+            static const uint8_t lut[ARRAYSIZE(m_shadingRates)] = {5, 0, 0, 0, 0, 0, 1, 1, 2, 3, 3, 4};
+            return lut[shadingRate < std::size(lut) ? shadingRate : 0];
         }
 
         void resetShadingRates(Api api) {
@@ -773,8 +809,8 @@ namespace {
                               TLArg(info.format, "Format"));
 
             // Check for proportionality with the size of our render target.
-            // Also check that the texture is not under 50% of the render scale. We expect that no one should use in-app
-            // render scale that is so small.
+            // Also check that the texture is not under 50% of the render scale. We expect that no one should use
+            // in-app render scale that is so small.
             if (info.width < (m_renderWidth * 0.51f))
                 return false;
 
@@ -797,15 +833,18 @@ namespace {
         const uint32_t m_tileSize;
         const uint32_t m_tileRateMax;
         const float m_renderRatio;
+        float m_zoomRatio;
 
         const bool m_supportFOVHack;
         bool m_usingEyeTracking{false};
         bool m_swapViews{false};
+        bool m_isCapturing{false};
 
         // The current "generation" of the mask parameters.
         uint64_t m_currentGen{0};
 
         VariableShadingRateType m_mode{VariableShadingRateType::None};
+        VariableShadingRateDir m_rateDir{VariableShadingRateDir::Horizontal};
 
         // ShadingConstants
         XrVector2f m_gazeOffset[ViewCount + 1];
@@ -867,8 +906,8 @@ namespace {
                     ResourceBarrier(pCommandList, pResource, D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE, idx);
 
                     // RSSetShadingRate() function sets both the combiners and the per-drawcall shading rate.
-                    // We set to 1X1 for all sources and all combiners to MAX, so that the coarsest wins (per-drawcall,
-                    // per-primitive, VRS surface).
+                    // We set to 1X1 for all sources and all combiners to MAX, so that the coarsest wins
+                    // (per-drawcall, per-primitive, VRS surface).
 
                     static const D3D12_SHADING_RATE_COMBINER combiners[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT] = {
                         D3D12_SHADING_RATE_COMBINER_MAX, D3D12_SHADING_RATE_COMBINER_MAX};
@@ -895,16 +934,13 @@ namespace {
         // We use a constant table and a varying shading rate texture filled with a compute shader.
         inline static NV_D3D11_VIEWPORT_SHADING_RATE_DESC m_nvRates[2] = {};
 
-        bool m_isCapturing{false};
+        std::shared_ptr<ITexture> m_captureRT;
         uint32_t m_captureID{0};
         uint32_t m_captureFileIndex;
-
-        std::shared_ptr<ITexture> m_currentRenderTarget;
-        std::optional<Eye> m_currentEyeHint;
+        Eye m_captureEye{Eye::Both};
     }; // namespace
 
 } // namespace
-
 #ifdef _DEBUG
 #include <dxgi1_3.h> // DXGIGetDebugInterface1
 #endif

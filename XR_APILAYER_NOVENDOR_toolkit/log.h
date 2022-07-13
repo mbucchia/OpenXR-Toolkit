@@ -42,6 +42,10 @@ namespace toolkit::log {
     void Log(const char* fmt, ...);
 
     // Debug logging function. Can make things very slow (only enabled on Debug builds).
+#ifdef _DEBUG
     void DebugLog(const char* fmt, ...);
+#else
+#define DebugLog(...)
+#endif
 
 } // namespace toolkit::log

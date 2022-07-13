@@ -99,6 +99,10 @@ constexpr inline T roundDown(T value, uint32_t pad) noexcept {
     return (value / pad) * pad;
 }
 
+constexpr bool isPow2(const size_t value) noexcept {
+    return value && !(value & (value - 1));
+}
+
 // ETL tracing
 #include <traceloggingactivity.h>
 #include <traceloggingprovider.h>
@@ -124,6 +128,7 @@ constexpr inline T roundDown(T value, uint32_t pad) noexcept {
 // OpenXR utilities.
 #include <XrError.h>
 #include <XrMath.h>
+#include <XrStruct.h>
 
 // FW1FontWrapper.
 #include <FW1FontWrapper.h>

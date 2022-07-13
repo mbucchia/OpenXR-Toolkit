@@ -33,16 +33,6 @@ namespace toolkit {
 
     namespace {
 
-        // A generic timer.
-        struct ITimer {
-            virtual ~ITimer() = default;
-
-            virtual void start() = 0;
-            virtual void stop() = 0;
-
-            virtual uint64_t query(bool reset = true) const = 0;
-        };
-
         // Quick and dirty API helper
         template <class T, class... Types>
         inline constexpr bool is_any_of_v = std::disjunction_v<std::is_same<T, Types>...>;
@@ -50,6 +40,17 @@ namespace toolkit {
         template <typename E>
         inline constexpr auto to_integral(E e) -> typename std::underlying_type_t<E> {
             return static_cast<std::underlying_type_t<E>>(e);
+        }
+
+        template <typename Container, typename Other>
+        inline constexpr bool contains(Container&& container, Other&& other) {
+            return std::find(std::begin(container), std::end(container), std::forward<Other>(other)) !=
+                   std::end(container);
+        }
+
+        template <typename String, typename Other>
+        inline constexpr bool contains_string(const String& string, Other&& other) {
+            return string.find(std::forward<Other>(other)) != String::npos;
         }
 
     } // namespace
@@ -84,9 +85,6 @@ namespace toolkit {
         // 2 views to process, one per eye.
         constexpr uint32_t ViewCount = 2;
         enum class Eye : uint32_t { Left, Right, Both };
-
-        // A CPU synchronous timer.
-        struct ICpuTimer : public ITimer {};
 
         // [-1,+1] (+up) -> [0..1] (+dn)
         inline constexpr XrVector2f NdcToScreen(XrVector2f v) {
@@ -153,6 +151,7 @@ namespace toolkit {
         const std::string SettingVRS = "vrs";
         const std::string SettingVRSQuality = "vrs_quality";
         const std::string SettingVRSPattern = "vrs_pattern";
+        const std::string SettingVRSShowRings = "vrs_show_rings";
         const std::string SettingVRSOuter = "vrs_outer";
         const std::string SettingVRSOuterRadius = "vrs_outer_radius";
         const std::string SettingVRSMiddle = "vrs_middle";
@@ -175,6 +174,8 @@ namespace toolkit {
         const std::string SettingPostColorGainB = "post_gain_b";
         const std::string SettingPostHighlights = "post_highlights";
         const std::string SettingPostShadows = "post_shadows";
+        const std::string SettingPostShimmer = "post_shimmer";
+        const std::string SettingPostFlicker = "post_flicker";
         const std::string SettingEyeTrackingEnabled = "eye_tracking";
         const std::string SettingEyeProjectionDistance = "eye_projection";
         const std::string SettingEyeDebug = "eye_debug";
@@ -198,7 +199,7 @@ namespace toolkit {
         enum class VariableShadingRateQuality { Performance = 0, Quality, MaxValue };
         enum class VariableShadingRatePattern { Wide = 0, Balanced, Narrow, MaxValue };
         enum class VariableShadingRateDir { Vertical, Horizontal, MaxValue };
-        enum class VariableShadingRateVal { R_x1, R_2x1, R_2x2, R_4x2, R_4x4, R_Cull, MaxValue };
+        enum class VariableShadingRateVal { R_1x1, R_2x1, R_2x2, R_4x2, R_4x4, R_Cull, MaxValue };
         enum class PostProcessType { Off = 0, On, MaxValue };
         enum class PostSunGlassesType { None = 0, Light, Dark, Night, MaxValue };
         enum class FovModeType { Simple, Advanced, MaxValue };
@@ -335,6 +336,18 @@ namespace toolkit {
         struct IDevice;
         struct ITexture;
 
+        // A GPU asynchronous timer.
+        struct IGpuTimer {
+            virtual ~IGpuTimer() = default;
+
+            virtual Api getApi() const = 0;
+            virtual std::shared_ptr<IDevice> getDevice() const = 0;
+
+            virtual void start() = 0;
+            virtual void stop() = 0;
+            virtual uint64_t query() const = 0;
+        };
+
         // A shader that will be rendered on a quad wrapping the entire target.
         struct IQuadShader {
             virtual ~IQuadShader() = default;
@@ -447,6 +460,7 @@ namespace toolkit {
             virtual void saveToFile(const std::filesystem::path& path) const = 0;
 
             virtual void* getNativePtr() const = 0;
+            virtual uint64_t getNativeFormat() const = 0;
 
             template <typename ApiTraits>
             auto getAs() const {
@@ -489,12 +503,6 @@ namespace toolkit {
             auto getAs() const {
                 return GetAs<typename ApiTraits::Mesh>(this);
             }
-        };
-
-        // A GPU asynchronous timer.
-        struct IGpuTimer : public ITimer {
-            virtual Api getApi() const = 0;
-            virtual std::shared_ptr<IDevice> getDevice() const = 0;
         };
 
         // A graphics execution context (eg: command list).
@@ -565,14 +573,14 @@ namespace toolkit {
             // Must be invoked prior to setting the input/output.
             virtual void setShader(std::shared_ptr<IComputeShader> shader, SamplerType sampler) = 0;
 
-            virtual void setShaderInput(uint32_t slot, std::shared_ptr<ITexture> input, int32_t slice = -1) = 0;
             virtual void setShaderInput(uint32_t slot, std::shared_ptr<IShaderBuffer> input) = 0;
+            virtual void setShaderInput(uint32_t slot, std::shared_ptr<ITexture> input, int32_t slice = -1) = 0;
             virtual void setShaderOutput(uint32_t slot, std::shared_ptr<ITexture> output, int32_t slice = -1) = 0;
 
             virtual void dispatchShader(bool doNotClear = false) const = 0;
 
             virtual void setRenderTargets(size_t numRenderTargets,
-                                          std::shared_ptr<ITexture>* renderTargets,
+                                          const std::shared_ptr<ITexture>* renderTargets,
                                           int32_t* renderSlices = nullptr,
                                           std::shared_ptr<ITexture> depthBuffer = nullptr,
                                           int32_t depthSlice = -1) = 0;
@@ -582,6 +590,7 @@ namespace toolkit {
             virtual void clearDepth(float value) = 0;
 
             virtual void setViewProjection(const xr::math::ViewProjection& view) = 0;
+
             virtual void draw(std::shared_ptr<ISimpleMesh> mesh,
                               const XrPosef& pose,
                               XrVector3f scaling = {1.0f, 1.0f, 1.0f}) = 0;
@@ -602,8 +611,10 @@ namespace toolkit {
                                      uint32_t color,
                                      bool measure = false,
                                      int alignment = FW1_LEFT) = 0;
+
             virtual float measureString(std::wstring_view string, TextStyle style, float size) const = 0;
             virtual float measureString(std::string_view string, TextStyle style, float size) const = 0;
+
             virtual void beginText() = 0;
             virtual void flushText() = 0;
 
@@ -618,8 +629,10 @@ namespace toolkit {
             using SetRenderTargetEvent =
                 std::function<void(std::shared_ptr<IContext>, std::shared_ptr<ITexture> renderTarget)>;
             virtual void registerSetRenderTargetEvent(SetRenderTargetEvent event) = 0;
+
             using UnsetRenderTargetEvent = std::function<void(std::shared_ptr<IContext>)>;
             virtual void registerUnsetRenderTargetEvent(UnsetRenderTargetEvent event) = 0;
+
             using CopyTextureEvent = std::function<void(std::shared_ptr<IContext> /* context */,
                                                         std::shared_ptr<ITexture> /* source */,
                                                         std::shared_ptr<ITexture> /* destination */,
@@ -677,10 +690,18 @@ namespace toolkit {
                                        int sourceSlice = -1,
                                        int destinationSlice = -1) = 0;
 
-            virtual std::optional<utilities::Eye> getEyeHint() const = 0;
+            virtual utilities::Eye getEyeHint() const = 0;
         };
 
         // A Variable Rate Shader (VRS) control implementation.
+        struct VariableRateShaderState {
+            XrVector2f gazeXY[3]; // ndc
+            XrVector2f rings[4];  // 1/(a1^2), 1/(b1^2)
+            uint8_t rates[4];     // setting rates
+            int8_t tile;          // VRS tile size (prefer Vertical if < 0)
+            int8_t mode;          // 0: off, 1: active 2: with eye tracking (swap gaze if < 0)
+        };
+
         struct IVariableRateShader {
             virtual ~IVariableRateShader() = default;
 
@@ -690,13 +711,14 @@ namespace toolkit {
 
             virtual bool onSetRenderTarget(std::shared_ptr<IContext> context,
                                            std::shared_ptr<ITexture> renderTarget,
-                                           std::optional<utilities::Eye> eyeHint) = 0;
+                                           utilities::Eye eyeHint) = 0;
             virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
 
-            virtual void updateGazeLocation(XrVector2f gaze, utilities::Eye eye) = 0;
             virtual void setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
 
             virtual uint8_t getMaxRate() const = 0;
+            virtual uint64_t getCurrentGen() const = 0;
+            virtual void getShaderState(VariableRateShaderState&, utilities::Eye) const = 0;
 
             virtual void startCapture() = 0;
             virtual void stopCapture() = 0;
@@ -706,6 +728,8 @@ namespace toolkit {
 
     namespace input {
         enum class Hand : uint32_t { Left, Right };
+
+        enum class EyeTrackerType { None, OpenXR, Pimax, Omnicept, Any };
 
         struct GesturesState {
             float pinchValue[2]{NAN, NAN};
@@ -748,10 +772,7 @@ namespace toolkit {
             virtual void sync(XrTime frameTime, XrTime now, const XrActionsSyncInfo& syncInfo) = 0;
             virtual bool
             locate(XrSpace space, XrSpace baseSpace, XrTime time, XrTime now, XrSpaceLocation& location) const = 0;
-            virtual void render(const XrPosef& pose,
-                                XrSpace baseSpace,
-                                XrTime time,
-                                std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
+            virtual void render(const XrPosef& pose, XrSpace baseSpace, XrTime time) const = 0;
 
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateBoolean& state) const = 0;
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateFloat& state) const = 0;
@@ -764,13 +785,13 @@ namespace toolkit {
 
         struct EyeGazeState {
             XrVector3f gazeRay{};
-            XrVector2f leftPoint{};
-            XrVector2f rightPoint{};
+            XrVector2f gazeNdc[2];
         };
 
         struct IEyeTracker {
             virtual ~IEyeTracker() = default;
 
+            virtual bool initialize() = 0;
             virtual void beginSession(XrSession session) = 0;
             virtual void endSession() = 0;
 
@@ -778,12 +799,13 @@ namespace toolkit {
             virtual void endFrame() = 0;
             virtual void update() = 0;
 
-            virtual XrActionSet getActionSet() const = 0;
-            virtual bool getProjectedGaze(XrVector2f gaze[utilities::ViewCount]) const = 0;
-
             virtual bool isProjectionDistanceSupported() const = 0;
 
+            virtual XrActionSet getActionSet() const = 0;
+            virtual input::EyeTrackerType getEyeTrackerType() const = 0;
+
             virtual const EyeGazeState& getEyeGazeState() const = 0;
+            virtual bool getProjectedGaze(XrVector2f gaze[utilities::ViewCount]) const = 0;
         };
 
     } // namespace input
@@ -807,8 +829,8 @@ namespace toolkit {
             uint32_t numBiasedSamplers{0};
             uint32_t numRenderTargetsWithVRS{0};
 
-            bool hasColorBuffer[utilities::ViewCount]{false, false};
-            bool hasDepthBuffer[utilities::ViewCount]{false, false};
+            bool hasColorBuffer[utilities::ViewCount + 1]{false, false, false};
+            bool hasDepthBuffer[utilities::ViewCount + 1]{false, false, false};
         };
 
         // A menu handler.
@@ -816,13 +838,11 @@ namespace toolkit {
             virtual ~IMenuHandler() = default;
 
             virtual void handleInput() = 0;
-            virtual void render(std::shared_ptr<graphics::ITexture> renderTarget,
-                                std::optional<utilities::Eye> eye = std::nullopt) const = 0;
+            virtual void render(uint32_t width, uint32_t height, utilities::Eye, XrVector2f, bool noalpha) const = 0;
             virtual void updateStatistics(const MenuStatistics& stats) = 0;
             virtual void updateGesturesState(const input::GesturesState& state) = 0;
             virtual void updateEyeGazeState(const input::EyeGazeState& state) = 0;
 
-            virtual void setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
             virtual bool isVisible() const = 0;
         };
 

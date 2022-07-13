@@ -80,15 +80,15 @@ namespace {
         void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) override {
         }
 
-        void onCopyTexture(std::shared_ptr<ITexture> source,
-                           std::shared_ptr<ITexture> destination,
-                           int sourceSlice = -1,
-                           int destinationSlice = -1) override {
-            if (destination->getInfo().arraySize != 1) {
+        void onCopyTexture(std::shared_ptr<ITexture> src,
+                           std::shared_ptr<ITexture> dst,
+                           int srcSlice = -1,
+                           int dstSlice = -1) override {
+            if (dst->getInfo().arraySize != 1) {
                 return;
             }
 
-            const void* const nativePtr = destination->getNativePtr();
+            const void* const nativePtr = dst->getNativePtr();
 
             // Handle when the application copies the texture to the swapchain image mid-pass. Assumes left eye is
             // always first (hence we only detect changes to switch to right eye). This is what FS2020 does.
@@ -108,11 +108,8 @@ namespace {
 #endif
         }
 
-        std::optional<Eye> getEyeHint() const override {
-            if (!m_isPredictionValid) {
-                return std::nullopt;
-            }
-            return m_eyePrediction;
+        Eye getEyeHint() const override {
+            return m_isPredictionValid ? m_eyePrediction : Eye::Both;
         }
 
       private:

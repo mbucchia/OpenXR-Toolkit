@@ -51,10 +51,12 @@ namespace {
       public:
         FSRUpscaler(std::shared_ptr<IConfigManager> configManager,
                     std::shared_ptr<IDevice> graphicsDevice,
-                    uint32_t outputWidth,
-                    uint32_t outputHeight)
-            : m_configManager(configManager), m_device(graphicsDevice), m_outputWidth(outputWidth),
-              m_outputHeight(outputHeight) {
+                    uint32_t renderWidth,
+                    uint32_t renderHeight,
+                    uint32_t displayWidth,
+                    uint32_t displayHeight)
+            : m_configManager(configManager), m_device(graphicsDevice), m_inputWidth(renderWidth),
+              m_inputHeight(renderHeight), m_outputWidth(displayWidth), m_outputHeight(displayHeight) {
             // The upscaling factor is only read upon initialization of the session. It cannot be changed after.
             std::tie(m_inputWidth, m_inputHeight) =
                 config::GetScaledDimensions(m_configManager.get(), m_outputWidth, m_outputHeight, 2);
@@ -209,9 +211,12 @@ namespace toolkit::graphics {
 
     std::shared_ptr<IImageProcessor> CreateFSRUpscaler(std::shared_ptr<IConfigManager> configManager,
                                                        std::shared_ptr<IDevice> graphicsDevice,
-                                                       uint32_t outputWidth,
-                                                       uint32_t outputHeight) {
-        return std::make_shared<FSRUpscaler>(configManager, graphicsDevice, outputWidth, outputHeight);
+                                                       uint32_t renderWidth,
+                                                       uint32_t renderHeight,
+                                                       uint32_t displayWidth,
+                                                       uint32_t displayHeight) {
+        return std::make_shared<FSRUpscaler>(
+            configManager, graphicsDevice, renderWidth, renderHeight, displayWidth, displayHeight);
     }
 
 } // namespace toolkit::graphics

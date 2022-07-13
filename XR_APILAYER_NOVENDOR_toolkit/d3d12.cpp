@@ -506,6 +506,10 @@ namespace {
             return get(m_texture);
         }
 
+        uint64_t getNativeFormat() const override {
+            return static_cast<uint64_t>(m_textureDesc.Format);
+        }
+
       private:
         std::shared_ptr<D3D12ResourceView> makeShaderInputViewInternal(uint32_t slice) const {
             if (m_textureDesc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) {
@@ -781,7 +785,7 @@ namespace {
             m_device->getContextAs<D3D12>()->EndQuery(get(m_queryHeap), D3D12_QUERY_TYPE_TIMESTAMP, m_stopIndex);
         }
 
-        uint64_t query(bool reset) const override {
+        uint64_t query() const override {
             return m_queryTimestampDelta(m_startIndex, m_stopIndex);
         }
 
@@ -1462,7 +1466,7 @@ namespace {
         }
 
         void setRenderTargets(size_t numRenderTargets,
-                              std::shared_ptr<ITexture>* renderTargets,
+                              const std::shared_ptr<ITexture>* renderTargets,
                               int32_t* renderSlices = nullptr,
                               std::shared_ptr<ITexture> depthBuffer = nullptr,
                               int32_t depthSlice = -1) override {
@@ -1758,16 +1762,14 @@ namespace {
         }
 
         void resolveQueries() override {
-            if (m_nextGpuTimestampIndex == 0) {
-                return;
+            if (m_nextGpuTimestampIndex) {
+                // Readback the previous set of timers. The queries are resolved in flushContext().
+                uint64_t* mappedBuffer;
+                D3D12_RANGE range{0, sizeof(uint64_t) * m_nextGpuTimestampIndex};
+                CHECK_HRCMD(m_queryReadbackBuffer->Map(0, &range, reinterpret_cast<void**>(&mappedBuffer)));
+                memcpy(m_queryBuffer, mappedBuffer, range.End);
+                m_queryReadbackBuffer->Unmap(0, nullptr);
             }
-
-            // Readback the previous set of timers. The queries are resolved in flushContext().
-            uint64_t* mappedBuffer;
-            D3D12_RANGE range{0, sizeof(uint64_t) * m_nextGpuTimestampIndex};
-            CHECK_HRCMD(m_queryReadbackBuffer->Map(0, &range, reinterpret_cast<void**>(&mappedBuffer)));
-            memcpy(m_queryBuffer, mappedBuffer, range.End);
-            m_queryReadbackBuffer->Unmap(0, nullptr);
         }
 
         void blockCallbacks() override {

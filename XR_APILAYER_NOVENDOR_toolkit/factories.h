@@ -32,13 +32,10 @@ namespace toolkit {
     namespace utilities {
 
         std::optional<int> RegGetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value);
-        void RegSetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value, DWORD dwordValue);
-        void
-        RegSetString(HKEY hKey, const std::wstring& subKey, const std::wstring& value, const std::string& stringValue);
+        void RegSetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value, DWORD data);
+        void RegSetString(HKEY hKey, const std::wstring& subKey, const std::wstring& value, const std::string& data);
         void RegDeleteValue(HKEY hKey, const std::wstring& subKey, const std::wstring& value);
         void RegDeleteKey(HKEY hKey, const std::wstring& subKey);
-
-        std::shared_ptr<ICpuTimer> CreateCpuTimer();
 
         uint32_t GetScaledInputSize(uint32_t outputSize, int scalePercent, uint32_t blockSize);
 
@@ -48,6 +45,17 @@ namespace toolkit {
         void UpdateWindowsMixedRealityReprojectionRate(config::MotionReprojectionRate rate);
 
         bool IsServiceRunning(const std::string& name);
+
+        // A CPU synchronous timer.
+        struct CpuTimer {
+          public:
+            void start();
+            bool restart(const std::chrono::high_resolution_clock::duration& lap);
+            uint64_t stop();
+
+          private:
+            std::chrono::high_resolution_clock::time_point m_timeStart;
+        };
 
     } // namespace utilities
 
@@ -65,42 +73,62 @@ namespace toolkit {
 
         void HookForD3D11DebugLayer();
         void UnhookForD3D11DebugLayer();
+
         std::shared_ptr<IDevice> WrapD3D11Device(ID3D11Device* device,
                                                  std::shared_ptr<config::IConfigManager> configManager,
-                                                 bool enableOculusQuirk = false);
+                                                 bool delayHook = false);
+
         std::shared_ptr<IDevice> WrapD3D11TextDevice(ID3D11Device* device,
                                                      std::shared_ptr<config::IConfigManager> configManager);
+
         std::shared_ptr<ITexture> WrapD3D11Texture(std::shared_ptr<IDevice> device,
                                                    const XrSwapchainCreateInfo& info,
                                                    ID3D11Texture2D* texture,
                                                    std::string_view debugName);
 
         void EnableD3D12DebugLayer();
+
         std::shared_ptr<IDevice> WrapD3D12Device(ID3D12Device* device,
                                                  ID3D12CommandQueue* queue,
                                                  std::shared_ptr<config::IConfigManager> configManager);
+
         std::shared_ptr<ITexture> WrapD3D12Texture(std::shared_ptr<IDevice> device,
                                                    const XrSwapchainCreateInfo& info,
                                                    ID3D12Resource* texture,
                                                    std::string_view debugName);
 
-        std::shared_ptr<IImageProcessor> CreateImageProcessor(
-            std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
+        std::vector<std::shared_ptr<ITexture>> WrapXrSwapchainImages(std::shared_ptr<IDevice> device,
+                                                                     const XrSwapchainCreateInfo& info,
+                                                                     XrSwapchain swapchain,
+                                                                     std::string_view debugName);
 
         std::shared_ptr<IFrameAnalyzer> CreateFrameAnalyzer(
             std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
 
         std::shared_ptr<IImageProcessor>
+        CreateImageProcessor(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+                             std::shared_ptr<IDevice> graphicsDevice,
+                             std::shared_ptr<IVariableRateShader> variableRateShader,
+                             uint32_t renderWidth,
+                             uint32_t renderHeight,
+                             uint32_t displayWidth,
+                             uint32_t displayHeight);
+
+        std::shared_ptr<IImageProcessor>
         CreateNISUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                           std::shared_ptr<IDevice> graphicsDevice,
-                          uint32_t outputWidth,
-                          uint32_t outputHeight);
+                          uint32_t renderWidth,
+                          uint32_t renderHeight,
+                          uint32_t displayWidth,
+                          uint32_t displayHeight);
 
         std::shared_ptr<IImageProcessor>
         CreateFSRUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                           std::shared_ptr<IDevice> graphicsDevice,
-                          uint32_t outputWidth,
-                          uint32_t outputHeight);
+                          uint32_t renderWidth,
+                          uint32_t renderHeight,
+                          uint32_t displayWidth,
+                          uint32_t displayHeight);
 
         std::shared_ptr<IVariableRateShader>
         CreateVariableRateShader(std::shared_ptr<toolkit::config::IConfigManager> configManager,
@@ -124,14 +152,9 @@ namespace toolkit {
         std::shared_ptr<input::IHandTracker>
         CreateHandTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
 
-        std::shared_ptr<input::IEyeTracker>
-        CreateEyeTracker(toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
-        std::shared_ptr<input::IEyeTracker>
-        CreateOmniceptEyeTracker(toolkit::OpenXrApi& openXR,
-                                 std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                                 std::unique_ptr<HP::Omnicept::Client> omniceptClient);
-        std::shared_ptr<input::IEyeTracker> CreatePimaxEyeTracker(
-            toolkit::OpenXrApi& openXR, std::shared_ptr<toolkit::config::IConfigManager> configManager);
+        std::shared_ptr<input::IEyeTracker> CreateEyeTracker(toolkit::OpenXrApi& openXR,
+                                                             std::shared_ptr<config::IConfigManager> configManager,
+                                                             EyeTrackerType trackerType = EyeTrackerType::Any);
 
     } // namespace input
 
