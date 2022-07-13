@@ -85,11 +85,13 @@ namespace {
             m_configManager->setDefault(config::SettingMenuKeyUp, 0);
             m_configManager->setDefault(config::SettingScreenshotKey, VK_F12);
             m_configManager->setDefault(config::SettingMenuEyeVisibility, XR_EYE_VISIBILITY_BOTH); // Both
-            m_configManager->setDefault(config::SettingMenuDistance, 100);                         // 1m
+            m_configManager->setDefault(config::SettingMenuEyeOffset, 0);
+            m_configManager->setDefault(config::SettingMenuDistance, 100); // 1m
             m_configManager->setDefault(config::SettingMenuOpacity, 85);
             m_configManager->setDefault(config::SettingMenuFontSize, 44); // pt
             m_configManager->setEnumDefault(config::SettingMenuTimeout, config::MenuTimeout::Medium);
             m_configManager->setDefault(config::SettingMenuExpert, m_configManager->getValue(config::SettingDeveloper));
+            m_configManager->setDefault(config::SettingMenuLegacyMode, 0);
             m_configManager->setEnumDefault(config::SettingOverlayType, config::OverlayType::None);
             // Legacy setting is 1/3rd from top and 2/3rd from left.
             {
@@ -1713,49 +1715,70 @@ namespace {
                                                             config::SettingHandVisibilityAndSkinTone) !=
                                                             config::HandTrackingVisibility::Hidden;
                 const bool drawEyeGaze = m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug);
-                const bool drawOverlays = m_menuHandler || drawHands || drawEyeGaze;
 
-                if (drawOverlays) {
+                const bool drawMenuTex = m_menuHandler && (m_configManager->getValue(config::SettingMenuLegacyMode) ||
+                                                           m_configManager->isSafeMode());
+
+                const bool drawOverlays = drawHands || drawEyeGaze || drawMenuTex;
+
+                if (drawOverlays || m_menuHandler) {
                     m_performanceCounters.overlayCpuTimer.start();
                     m_stats.overlayGpuTimeUs += m_performanceCounters.startGpuTimer(m_gpuTimerOvr);
                 }
 
                 // Render the hands or eye gaze helper.
-                if (drawHands || drawEyeGaze) {
+                if (drawOverlays) {
                     XrVector2f eyeGazes[utilities::ViewCount];
-
                     const auto isEyeGazeValid = drawEyeGaze && m_eyeTracker->getProjectedGaze(eyeGazes);
+
                     const auto useVPRT = overlayData[0].color && overlayData[1].color &&
                                          overlayData[0].color->get() == overlayData[1].color->get();
 
                     for (int32_t eye = 0; eye != utilities::ViewCount; eye++) {
                         const auto& overlay = overlayData[eye];
                         if (overlay.color) {
+                            const auto& textureInfo = (*overlay.color)->getInfo();
+
                             m_graphicsDevice->setRenderTargets(1,
                                                                overlay.color,
                                                                useVPRT ? &eye : nullptr,
                                                                overlay.depth ? *overlay.depth : nullptr,
                                                                useVPRT ? eye : -1);
 
-                            m_graphicsDevice->setViewProjection(overlay.vproj);
+                            if (drawMenuTex) {
+                                const auto eyeOffsetX =
+                                    eye ? 2 * (m_projCenters[1].x - m_projCenters[0].x) * textureInfo.width +
+                                              -m_configManager->getValue(config::SettingMenuEyeOffset)
+                                        : 0;
+                                m_graphicsDevice->beginText();
+                                m_menuHandler->render(textureInfo.width,
+                                                      textureInfo.height,
+                                                      static_cast<utilities::Eye>(eye),
+                                                      {eyeOffsetX, 0.f},
+                                                      true);
+                                m_graphicsDevice->flushText();
+                            }
 
                             if (drawHands) {
+                                m_graphicsDevice->setViewProjection(overlay.vproj);
                                 m_handTracker->render(overlay.vproj.Pose, overlay.space, getXrTimeNow());
                             }
 
                             if (drawEyeGaze) {
                                 const XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
                                 auto pos = utilities::NdcToScreen(eyeGazes[eye]);
-                                pos.x *= (*overlay.color)->getInfo().width;
-                                pos.y *= (*overlay.color)->getInfo().height;
+                                pos.x *= textureInfo.width;
+                                pos.y *= textureInfo.height;
                                 m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
                             }
                         }
                     }
+
+                    m_graphicsDevice->unsetRenderTargets();
                 }
 
                 // Render the menu.
-                if (m_menuHandler && (m_menuHandler->isVisible() || m_menuLingering)) {
+                if (m_menuHandler && !drawMenuTex && (m_menuHandler->isVisible() || m_menuLingering)) {
                     // Workaround: there is a bug in the WMR runtime that causes a past quad layer content to linger
                     // on the next projection layer. We make sure to submit a completely blank quad layer for 3
                     // frames after its disappearance. The number 3 comes from the number of depth buffers cached
@@ -1778,7 +1801,8 @@ namespace {
                     m_graphicsDevice->clearColor(
                         0, 0, (float)textureInfo.height, (float)textureInfo.width, XrColor4f{0, 0, 0, 0});
                     m_graphicsDevice->beginText();
-                    m_menuHandler->render(m_menuSwapchainImages[menuImageIndex]);
+                    m_menuHandler->render(
+                        textureInfo.width, textureInfo.height, utilities::Eye::Both, {0.f, 0.f}, false);
                     m_graphicsDevice->flushText();
                     m_graphicsDevice->unsetRenderTargets();
 
@@ -1800,8 +1824,7 @@ namespace {
 
                     gLayerQuadForMenu.type = XR_TYPE_COMPOSITION_LAYER_QUAD;
                     gLayerQuadForMenu.next = nullptr;
-                    gLayerQuadForMenu.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT |
-                                                   XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT;
+                    gLayerQuadForMenu.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
                     gLayerQuadForMenu.space = m_viewSpace;
                     gLayerQuadForMenu.eyeVisibility =
                         std::clamp(menuEyeVisibility, XR_EYE_VISIBILITY_BOTH, XR_EYE_VISIBILITY_RIGHT);
@@ -1816,7 +1839,7 @@ namespace {
                         reinterpret_cast<const XrCompositionLayerBaseHeader*>(std::addressof(gLayerQuadForMenu)));
                 }
 
-                if (drawOverlays) {
+                if (drawOverlays || m_menuHandler) {
                     m_stats.overlayCpuTimeUs += m_performanceCounters.overlayCpuTimer.stop();
                     m_performanceCounters.gpuTimers[m_gpuTimerOvr]->stop();
                 }
@@ -1858,9 +1881,9 @@ namespace {
             auto chainFrameEndInfo = *frameEndInfo;
             chainFrameEndInfo.layerCount = static_cast<uint32_t>(gLayerHeaders.size());
             chainFrameEndInfo.layers = gLayerHeaders.data();
-            
-            // When using prediction dampening, we want to restore the display time in order to avoid confusing motion
-            // reprojection.
+
+            // When using prediction dampening, we want to restore the display time in order to avoid confusing
+            // motion reprojection.
             if (m_hasPerformanceCounterKHR && m_configManager->getValue(config::SettingPredictionDampen) != 100) {
                 chainFrameEndInfo.displayTime = m_begunFrameTime;
             }
@@ -1890,7 +1913,7 @@ namespace {
         }
 
         // Find the current time. Fallback to the frame time if we cannot query the actual time.
-        XrTime getXrTimeNow() const {
+        XrTime getXrTimeNow() {
             XrTime xrTimeNow = m_begunFrameTime;
             if (m_hasPerformanceCounterKHR) {
                 LARGE_INTEGER qpcTimeNow;

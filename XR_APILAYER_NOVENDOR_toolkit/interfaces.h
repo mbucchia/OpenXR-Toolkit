@@ -114,8 +114,10 @@ namespace toolkit {
         const std::string SettingMenuKeyLeft = "key_left";
         const std::string SettingMenuKeyRight = "key_right";
         const std::string SettingMenuEyeVisibility = "menu_eye";
+        const std::string SettingMenuEyeOffset = "menu_eye_offset";
         const std::string SettingMenuDistance = "menu_distance";
         const std::string SettingMenuOpacity = "menu_opacity";
+        const std::string SettingMenuLegacyMode = "menu_legacy_mode";
         const std::string SettingOverlayType = "overlay";
         const std::string SettingOverlayXOffset = "overlay_x_offset";
         const std::string SettingOverlayYOffset = "overlay_y_offset";
@@ -836,7 +838,7 @@ namespace toolkit {
             virtual ~IMenuHandler() = default;
 
             virtual void handleInput() = 0;
-            virtual void render(std::shared_ptr<graphics::ITexture> renderTarget) const = 0;
+            virtual void render(uint32_t width, uint32_t height, utilities::Eye, XrVector2f, bool noalpha) const = 0;
             virtual void updateStatistics(const MenuStatistics& stats) = 0;
             virtual void updateGesturesState(const input::GesturesState& state) = 0;
             virtual void updateEyeGazeState(const input::EyeGazeState& state) = 0;
