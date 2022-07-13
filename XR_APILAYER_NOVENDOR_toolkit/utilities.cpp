@@ -161,31 +161,33 @@ namespace toolkit::utilities {
 
     void ToggleWindowsMixedRealityReprojection(MotionReprojection enable) {
         if (enable != MotionReprojection::Default) {
-            utilities::RegSetDword(HKEY_CURRENT_USER,
-                                   L"SOFTWARE\\Microsoft\\OpenXR",
-                                   L"MotionVectorEnabled",
-                                   enable == MotionReprojection::On ? 2 /* Always on */ : 0);
+            SetEnvironmentVariable(L"MotionVectorEnabled",
+                                   enable == MotionReprojection::On ? L"2" /* Always on */ : L"0");
         } else {
-            utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MotionVectorEnabled");
+            SetEnvironmentVariable(L"MotionVectorEnabled", nullptr);
         }
     }
 
     void UpdateWindowsMixedRealityReprojectionRate(MotionReprojectionRate rate) {
         if (rate != MotionReprojectionRate::Off) {
-            utilities::RegSetDword(
-                HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval", (DWORD)rate);
-            utilities::RegSetDword(
-                HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval", (DWORD)rate);
+            const wchar_t* value = nullptr;
+            switch (rate) {
+            case MotionReprojectionRate::R_45Hz:
+                value = L"2";
+                break;
+            case MotionReprojectionRate::R_30Hz:
+                value = L"3";
+                break;
+            case MotionReprojectionRate::R_22Hz:
+                value = L"4";
+                break;
+            }
+            SetEnvironmentVariable(L"MinimumFrameInterval", value);
+            SetEnvironmentVariable(L"MaximumFrameInterval", value);
         } else {
-            utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
-            utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
+            SetEnvironmentVariable(L"MinimumFrameInterval", nullptr);
+            SetEnvironmentVariable(L"MaximumFrameInterval", nullptr);
         }
-    }
-
-    void ClearWindowsMixedRealityReprojection() {
-        utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MotionVectorEnabled");
-        utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MinimumFrameInterval");
-        utilities::RegDeleteValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\OpenXR", L"MaximumFrameInterval");
     }
 
     // https://stackoverflow.com/questions/7808085/how-to-get-the-status-of-a-service-programmatically-running-stopped

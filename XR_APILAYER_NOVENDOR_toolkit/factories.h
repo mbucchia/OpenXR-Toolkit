@@ -43,7 +43,6 @@ namespace toolkit {
 
         void ToggleWindowsMixedRealityReprojection(config::MotionReprojection enable);
         void UpdateWindowsMixedRealityReprojectionRate(config::MotionReprojectionRate rate);
-        void ClearWindowsMixedRealityReprojection();
 
         bool IsServiceRunning(const std::string& name);
 

@@ -65,9 +65,6 @@ namespace {
         OpenXrLayer() = default;
 
         ~OpenXrLayer() override {
-            // We cleanup after ourselves (again) to avoid leaving state registry entries.
-            utilities::ClearWindowsMixedRealityReprojection();
-
             if (m_configManager) {
                 m_configManager->setActiveSession("");
             }
@@ -705,9 +702,6 @@ namespace {
         XrResult xrDestroySession(XrSession session) override {
             const XrResult result = OpenXrApi::xrDestroySession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
-                // We cleanup after ourselves as soon as possible to avoid leaving state registry entries.
-                utilities::ClearWindowsMixedRealityReprojection();
-
                 if (m_configManager) {
                     m_configManager->setActiveSession("");
                 }
