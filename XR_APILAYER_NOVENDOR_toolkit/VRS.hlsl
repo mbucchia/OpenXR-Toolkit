@@ -56,27 +56,31 @@ cbuffer cb : register(b0)
 
 RWTexture2D<uint> u_Output : register(u0);
 
-[numthreads(VRS_NUM_THREADS_X, VRS_NUM_THREADS_Y, 1)]
-void mainCS(in int2 pos : SV_DispatchThreadID) {
-  // screen space (w,h) to uv (0,1)
-  float2 pos_uv = (pos + 0.5f) * Gaze.zw;
+float2 ScreenToNdc(float2 uv, float2 center) {
+  const float2 pos_ndc = uv * float2(2.0f,-2.0f) + float2(-1.0f,+1.0f); // uv to ndc (y flip)
+  return pos_ndc - center; // ndc to gaze ndc;
+}
 
-  // uv to ndc (y flip)
-  float2 pos_xy = float2(2.0f,-2.0f) * pos_uv + float2(-1.0f,+1.0f);
-
-  // ndc to gaze ndc
-  pos_xy -= Gaze.xy;
-
+float2 ScreenToGazeRing(float2 uv) {
 #if VRS_USE_DIM_RATIO
   // adjust ellipse scale with texture scale ratio
   // (w > h) ? scale x by w/h : scale y by h/w 
   // (1/w < 1/h) ? scale x by (1/h)/(1/w) : scale y by (1/w)/(1/h)
-  float2 scale = (Gaze.z < Gaze.w) ? float2(Gaze.w / Gaze.z, 1.0f) : float2(1.0f, Gaze.z / Gaze.w);
-  pos_xy *= scale;
+  const float2 scale = (Gaze.z < Gaze.w) ? float2(Gaze.w / Gaze.z, 1.0f) : float2(1.0f, Gaze.z / Gaze.w);
+  const float2 pos_xy = ScreenToNdc(uv, Gaze.xy) * scale;
+#else
+  const float2 pos_xy = ScreenToNdc(uv, Gaze.xy);
 #endif
+  return pos_xy * pos_xy;
+}
 
-  // Numerators (x^2, y^2)
-  pos_xy *= pos_xy;
+[numthreads(VRS_NUM_THREADS_X, VRS_NUM_THREADS_Y, 1)]
+void mainCS(in int2 pos : SV_DispatchThreadID) {
+  // screen space (w,h) to uv (0,1)
+  const float2 pos_uv = (pos + 0.5f) * Gaze.zw;
+
+  // uv to ring ndc (xy^2)
+  const float2 pos_xy = ScreenToGazeRing(pos_uv);
 
   uint rate;
   if      (dot(pos_xy, Rings12.xy) <= 1.0f) rate = Rates.x;

@@ -385,6 +385,7 @@ namespace {
                 defines.add("VRS_TILE_X", m_tileSize);
                 defines.add("VRS_TILE_Y", m_tileSize);
                 defines.add("VRS_NUM_RATES", 3);
+                defines.add("VRS_USE_DIM_RATIO", true);
 
                 // Dispatch 64 threads per group.
                 defines.add("VRS_NUM_THREADS_X", 8);

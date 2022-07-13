@@ -176,14 +176,27 @@ float3 AdjustHighlightsShadows(float3 color, float2 amount) {
 
 #if VRS_NUM_RATES >= 1
 
-float2 ScreenToGaze(float2 pos_uv, float2 gaze_xy) {
-  const float2 ndc = pos_uv * float2(2.0f,-2.0f) + float2(-1.0f,+1.0f); // uv to ndc (y flip)
-  return ndc - gaze_xy; // ndc to gaze ndc;
+float2 ScreenToNdc(float2 uv, float2 center) {
+  const float2 pos_ndc = uv * float2(2.0f,-2.0f) + float2(-1.0f,+1.0f); // uv to ndc (y flip)
+  return pos_ndc - center; // ndc to gaze ndc;
+}
+
+float2 ScreenToGazeRing(float2 uv) {
+#if VRS_USE_DIM_RATIO
+  // adjust ellipse scale with texture scale ratio
+  // (w > h) ? scale x by w/h : scale y by h/w 
+  // (1/w < 1/h) ? scale x by (1/h)/(1/w) : scale y by (1/w)/(1/h)
+  const float2 scale = (Dims.z < Dims.w) ? float2(Dims.w / Dims.z, 1.0f) : float2(1.0f, Dims.z / Dims.w);
+  const float2 pos_xy = ScreenToNdc(uv, Params4.xy) * scale;
+#else
+  const float2 pos_xy = ScreenToNdc(uv, Params4.xy);
+#endif
+  return pos_xy * pos_xy;
 }
 
 float3 AdjustRingColor(float3 color, float2 pos_uv, float blend) {
-  const float2 ndc = ScreenToGaze(pos_uv, Params4.xy);
-  const float2 pos_xy = ndc * ndc;
+  const float2 pos_xy = ScreenToGazeRing(pos_uv);
+  
   float3 ringColor = float3(0,0,0);
   if      (dot(pos_xy, Rings12.xy) <= 1.0f) ringColor = float3(1.0f, 0.0f, 0.0f);
 #if VRS_NUM_RATES >= 2

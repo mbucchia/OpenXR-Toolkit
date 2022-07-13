@@ -128,6 +128,7 @@ namespace {
 
             defines.add("PASS_THROUGH_USE_GAINS", true);
             defines.add("VRS_NUM_RATES", 3);
+            defines.add("VRS_USE_DIM_RATIO", true);
 
             m_shaders[0][0] = m_device->createQuadShader(
                 shaderFile, "mainPassThrough", "Passthrough PS", defines.get() /*,  shadersDir*/);
