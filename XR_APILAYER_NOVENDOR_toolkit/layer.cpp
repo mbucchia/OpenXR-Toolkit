@@ -970,24 +970,19 @@ namespace {
 
         XrResult xrAttachSessionActionSets(XrSession session,
                                            const XrSessionActionSetsAttachInfo* attachInfo) override {
-            XrSessionActionSetsAttachInfo chainAttachInfo = *attachInfo;
+            const auto eyeTrackerActionSet = m_eyeTracker ? m_eyeTracker->getActionSet() : XR_NULL_HANDLE;
+
+            if (eyeTrackerActionSet == XR_NULL_HANDLE)
+                return OpenXrApi::xrAttachSessionActionSets(session, attachInfo);
+
             std::vector<XrActionSet> newActionSets;
-            if (m_eyeTracker) {
-                const auto eyeTrackerActionSet = m_eyeTracker->getActionSet();
-                if (eyeTrackerActionSet != XR_NULL_HANDLE) {
-                    newActionSets.resize(chainAttachInfo.countActionSets + 1);
-                    memcpy(newActionSets.data(),
-                           chainAttachInfo.actionSets,
-                           chainAttachInfo.countActionSets * sizeof(XrActionSet));
-                    uint32_t nextActionSetSlot = chainAttachInfo.countActionSets;
+            newActionSets.reserve(size_t(1) + attachInfo->countActionSets);
+            newActionSets.assign(attachInfo->actionSets, attachInfo->actionSets + attachInfo->countActionSets);
+            newActionSets.push_back(eyeTrackerActionSet);
 
-                    newActionSets[nextActionSetSlot++] = eyeTrackerActionSet;
-
-                    chainAttachInfo.actionSets = newActionSets.data();
-                    chainAttachInfo.countActionSets++;
-                }
-            }
-
+            auto chainAttachInfo = *attachInfo;
+            chainAttachInfo.actionSets = newActionSets.data();
+            chainAttachInfo.countActionSets = static_cast<uint32_t>(newActionSets.size());
             return OpenXrApi::xrAttachSessionActionSets(session, &chainAttachInfo);
         }
 
@@ -1295,6 +1290,27 @@ namespace {
         }
 
         XrResult xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo) override {
+            // TODO: the API spec tells once the actions are attached to the session, they are immutable.
+            // shouldn't we rather cache the actions in a member vector inside xrAttachSessionActionSets()
+            // and then just reuse the cached actions vector in xrSyncActions?
+
+            auto chainSyncInfo = *syncInfo;
+            std::vector<XrActiveActionSet> newActiveActionSets;
+
+            const auto eyeTrackerActionSet = m_eyeTracker ? m_eyeTracker->getActionSet() : XR_NULL_HANDLE;
+            if (eyeTrackerActionSet != XR_NULL_HANDLE) {
+                newActiveActionSets.reserve(size_t(1) + syncInfo->countActiveActionSets);
+                newActiveActionSets.assign(syncInfo->activeActionSets,
+                                           syncInfo->activeActionSets + syncInfo->countActiveActionSets);
+                newActiveActionSets.push_back({eyeTrackerActionSet, XR_NULL_PATH});
+
+                chainSyncInfo.activeActionSets = newActiveActionSets.data();
+                chainSyncInfo.countActiveActionSets = static_cast<uint32_t>(newActiveActionSets.size());
+            }
+
+            // TODO: shouldn't it be this instead?
+            // const XrResult result = OpenXrApi::xrSyncActions(session, &chainSyncInfo);
+
             const XrResult result = OpenXrApi::xrSyncActions(session, syncInfo);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 if (m_handTracker) {
