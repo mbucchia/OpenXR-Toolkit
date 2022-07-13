@@ -1703,10 +1703,7 @@ namespace {
                     // When doing the Pimax FOV hack, we swap left and right eyes.
                     if (m_supportFOVHack && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
                         std::swap(lastView[0], lastView[-1]);
-                        std::swap(overlayData[0].color, overlayData[1].color);
-                        std::swap(overlayData[0].depth, overlayData[1].depth);
-                        std::swap(overlayData[0].vproj, overlayData[1].vproj);
-                        std::swap(overlayData[0].space, overlayData[1].space);
+                        std::swap(overlayData[0], overlayData[1]);
                     }
 
                     // To patch the layer resolution we recreate the whole projection and views data structures.
