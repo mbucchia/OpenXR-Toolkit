@@ -356,7 +356,6 @@ namespace {
             }
         }
 
-        // void render(std::shared_ptr<ITexture> renderTarget) const override {
         void render(uint32_t renderWidth,
                     uint32_t renderHeight,
                     utilities::Eye renderEye,
@@ -365,8 +364,6 @@ namespace {
             const float leftAlign = (renderWidth - m_menuBackgroundWidth) / 2 + offsetEye.x;
             const float topAlign = (renderHeight - m_menuBackgroundHeight) / 2 + offsetEye.y;
 
-            // const float centerAlign = leftAlign + m_menuBackgroundWidth / 2;
-            // const float rightAlign = leftAlign + m_menuBackgroundWidth;
 
             const float fontSize = m_configManager->getValue(SettingMenuFontSize) * 0.75f; // pt -> px
 
@@ -519,7 +516,6 @@ namespace {
 
                 // Draw the background.
                 if (!measureEntriesTitleWidth && !measureBackgroundWidth) {
-                    // a + t*(b - a)
                     const auto bgAlpha =
                         noalpha ? 1 : (m_configManager->getValue(SettingMenuOpacity) * 0.01f) * fadeOutValue;
 
