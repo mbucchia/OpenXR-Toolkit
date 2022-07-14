@@ -299,6 +299,10 @@ namespace {
             return static_cast<uint8_t>(m_tileRateMax);
         }
 
+        float getTotalRate() const override {
+            return m_mode != VariableShadingRateType::None ? m_stats.totalRate : 0;
+        }
+
         uint64_t getCurrentGen() const override {
             return m_mode != VariableShadingRateType::None ? m_currentGen : 0;
         }
@@ -409,6 +413,7 @@ namespace {
             // Clear projection center
             std::fill_n(m_gazeOffset, std::size(m_gazeOffset), XrVector2f{0.f, 0.f});
             std::fill_n(m_gazeLocation, std::size(m_gazeLocation), XrVector2f{0.f, 0.f});
+            std::fill_n(m_stats.areas, std::size(m_stats.areas), 0.f);
 
             // Setup initial state
             const auto zoom = m_configManager->getValue(config::SettingZoom);
@@ -496,6 +501,8 @@ namespace {
                 }
             }
 
+            updateStats();
+
             TraceLoggingWrite(g_traceProvider,
                               "VariableRateShading_Rates",
                               TLArg(m_shadingRates[m_Rates[2][0]], "Rate1"),
@@ -555,8 +562,11 @@ namespace {
             m_swapViews = m_supportFOVHack && m_configManager->getValue(config::SettingPimaxFOVHack);
 
             const auto semiMajorFactor = m_configManager->getValue(SettingVRSXScale);
-            m_Rings[0] = MakeRingParam({radius[0] * semiMajorFactor * 0.0001f, radius[0] * 0.01f});
-            m_Rings[1] = MakeRingParam({radius[1] * semiMajorFactor * 0.0001f, radius[1] * 0.01f});
+            const auto r0 = XrVector2f{radius[0] * semiMajorFactor * 0.0001f, radius[0] * 0.01f};
+            const auto r1 = XrVector2f{radius[1] * semiMajorFactor * 0.0001f, radius[1] * 0.01f};
+
+            m_Rings[0] = MakeRingParam(r0);
+            m_Rings[1] = MakeRingParam(r1);
             m_Rings[2] = MakeRingParam({100.f, 100.f}); // large enough
             m_Rings[3] = MakeRingParam({100.f, 100.f}); // large enough
 
@@ -566,6 +576,11 @@ namespace {
             // These depend only on VRS X/Y offsets so we update here only.
             m_gazeLocation[2].x = 0; // The generic mask only supports vertical offsets.
             m_gazeLocation[2].y = m_gazeOffset[2].y;
+
+            m_stats.areas[0] = static_cast<float>(r0.x * r0.y * M_PI_4);  // 100% radius setting = 1/2 screen
+            m_stats.areas[1] = static_cast<float>(r1.x * r1.y * M_PI_4);  // x/2 * y/2 * PI = (x*y) * (PI/4)
+            m_stats.areas[2] = 1.f;
+            updateStats();
 
             TraceLoggingWrite(
                 g_traceProvider, "VariableRateShading_Rings", TLArg(radius[0], "Ring1"), TLArg(radius[1], "Ring2"));
@@ -581,6 +596,23 @@ namespace {
             // location = view center + view offset (L/R)
             m_gazeLocation[0] = (gaze[0] * m_zoomRatio) + m_gazeOffset[2];
             m_gazeLocation[1] = (gaze[1] * m_zoomRatio) + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
+        }
+
+        void updateStats() {
+            // 3 regions like this:
+            // m_Rate[2][0] | m_Rings[0] | m_Rate[2][1] | m_Rings[1] | m_Rate[2][2]
+
+            float rates[3];
+            float areas[3];
+
+            for (size_t i = 0; i < std::size(rates); i++) {
+                const auto rate = shadingRateToSettingsRate(m_Rates[2][i]);
+                rates[i] = rate != to_integral(VariableShadingRateVal::R_Cull) ? 1.f / (1u << rate) : 0;
+            }
+
+            std::adjacent_difference(std::begin(m_stats.areas), std::end(m_stats.areas), std::begin(areas));
+            auto totalRate = std::inner_product(std::begin(areas), std::end(areas), std::begin(rates), 0.f);
+            m_stats.totalRate = std::clamp(totalRate, 0.f, 1.f);
         }
 
         ShadingRateMask& getOrCreateMaskResources(uint32_t width, uint32_t height, size_t* index = nullptr) {
@@ -739,7 +771,7 @@ namespace {
         uint8_t settingsRateToShadingRate(size_t settingsRate, int rateBias = 0, bool preferHorizontal = false) const {
             static const uint8_t lut[to_integral(VariableShadingRateVal::MaxValue) - 1] = {
                 SHADING_RATE_x1, SHADING_RATE_2x1, SHADING_RATE_2x2, SHADING_RATE_4x2, SHADING_RATE_4x4};
-            
+
             static_assert(SHADING_RATE_1x2 == (SHADING_RATE_2x1 + 1), "preferHorizonal arithmetic");
             static_assert(SHADING_RATE_2x4 == (SHADING_RATE_4x2 + 1), "preferHorizonal arithmetic");
 
@@ -851,6 +883,12 @@ namespace {
         XrVector2f m_gazeLocation[ViewCount + 1];
         XrVector2f m_Rings[4];
         uint8_t m_Rates[ViewCount + 1][4];
+
+        // Statistics about the shading rate savings.
+        struct {
+            float areas[3];
+            float totalRate;
+        } m_stats;
 
         // ShadingRates to Graphics API specific rates LUT.
         uint8_t m_shadingRates[SHADING_RATE_COUNT];

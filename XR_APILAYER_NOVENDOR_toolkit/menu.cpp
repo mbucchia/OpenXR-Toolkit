@@ -73,6 +73,7 @@ namespace {
 
     // Text colors
     const auto ColorNormal = sRGBToLinear(145, 141, 201);
+    const auto ColorDisabled = sRGBToLinear(108, 106, 147);
     const auto ColorOverlay = sRGBToLinear(247, 198, 20);
     const auto ColorHint = sRGBToLinear(163, 163, 163);
     const auto ColorWarning = sRGBToLinear(255, 96, 96);
@@ -364,7 +365,6 @@ namespace {
             const float leftAlign = (renderWidth - m_menuBackgroundWidth) / 2 + offsetEye.x;
             const float topAlign = (renderHeight - m_menuBackgroundHeight) / 2 + offsetEye.y;
 
-
             const float fontSize = m_configManager->getValue(SettingMenuFontSize) * 0.75f; // pt -> px
 
             const auto menuTimeout = m_state != MenuState::Splash
@@ -503,10 +503,14 @@ namespace {
                 // Apply menu fade.
                 const auto fadeOutValue = std::clamp(std::chrono::duration<float>(countdown).count(), 0.f, 1.f);
                 const auto textColorNormal = MakePRGBA(ColorNormal, fadeOutValue);
+                const auto textColorDisabled = MakePRGBA(ColorDisabled, fadeOutValue);
                 const auto textColorHighlightText = MakePRGBA(ColorHighlightText, fadeOutValue);
                 const auto textColorSelected = MakePRGBA(ColorSelected, fadeOutValue);
                 const auto textColorHint = MakePRGBA(ColorHint, fadeOutValue);
                 const auto textColorWarning = MakePRGBA(ColorWarning, fadeOutValue);
+
+                const auto bgAlpha =
+                    noalpha ? 1 : (m_configManager->getValue(SettingMenuOpacity) * 0.01f) * fadeOutValue;
 
                 // Measurements must be done in 2 steps: first mesure the necessary spacing for alignment of the values,
                 // then measure the background area.
@@ -516,9 +520,6 @@ namespace {
 
                 // Draw the background.
                 if (!measureEntriesTitleWidth && !measureBackgroundWidth) {
-                    const auto bgAlpha =
-                        noalpha ? 1 : (m_configManager->getValue(SettingMenuOpacity) * 0.01f) * fadeOutValue;
-
                     m_device->clearColor(topAlign - BorderVerticalSpacing,
                                          leftAlign - BorderHorizontalSpacing,
                                          topAlign + m_menuHeaderHeight,
@@ -577,10 +578,13 @@ namespace {
                         continue;
                     }
 
-                    const auto entryColor = i == m_selectedItem ? textColorSelected : textColorNormal;
+                    const auto entryColor = i == m_selectedItem ? textColorSelected
+                                            : menuEntry.disable ? textColorDisabled
+                                                                : textColorNormal;
 
                     if (menuEntry.type != MenuEntryType::Tabs) {
-                        m_device->drawString(title, TextStyle::Bold, fontSize, left, top, entryColor);
+                        const auto titleStyle = menuEntry.disable ? TextStyle::Normal : TextStyle::Bold;
+                        m_device->drawString(title, titleStyle, fontSize, left, top, entryColor);
                         if (measureEntriesTitleWidth) {
                             left += entryWidth;
                         } else {
@@ -613,24 +617,24 @@ namespace {
                     case MenuEntryType::Tabs:
                     case MenuEntryType::Choice:
                         for (int j = menuEntry.minValue; j <= menuEntry.maxValue; j++) {
-                            const auto style =
+                            const auto valueStyle =
                                 menuEntry.type == MenuEntryType::Tabs ? TextStyle::Bold : TextStyle::Normal;
-                            const auto valueColor = value == j ? textColorHighlightText : entryColor;
-                            const auto backgroundColor = i == m_selectedItem ? ColorSelected : ColorNormal;
 
                             const std::string label = menuEntry.valueToString(j);
-                            const auto width = m_device->measureString(label, style, fontSize);
+                            const auto width = m_device->measureString(label, valueStyle, fontSize);
 
                             if (j == value) {
+                                const auto& backgroundColor = i == m_selectedItem ? ColorSelected : ColorNormal;
                                 m_device->clearColor(
                                     top + SelectionVerticalSpacing,
                                     left - SelectionHorizontalSpacing,
                                     top + SelectionVerticalSpacing + 1.33f * fontSize - 1,
                                     left + width + SelectionHorizontalSpacing + 2,
-                                    XrColor4f{backgroundColor.r, backgroundColor.g, backgroundColor.b, fadeOutValue});
+                                    XrColor4f{backgroundColor.r, backgroundColor.g, backgroundColor.b, bgAlpha});
                             }
 
-                            m_device->drawString(label, style, fontSize, left, top, valueColor);
+                            const auto valueColor = value == j ? textColorHighlightText : entryColor;
+                            m_device->drawString(label, valueStyle, fontSize, left, top, valueColor);
                             left += width + ValueSpacing;
                         }
                         break;
@@ -1253,6 +1257,16 @@ namespace {
                                              maxVRSLeftRightBias,
                                              MenuEntry::FmtVrsRate});
                     m_menuEntries.back().expert = true;
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "shading cost reduced by",
+                                             MenuEntryType::Slider,
+                                             "",
+                                             0,
+                                             0,
+                                             MenuEntry::FmtPercent});
+                    m_menuEntries.back().pValue = reinterpret_cast<int*>(&m_stats.pctShadingVRS);
+                    m_menuEntries.back().expert = true;
+                    m_menuEntries.back().disable = true;
                 }
                 variableRateShaderCustomGroup.finalize();
             }

@@ -2027,6 +2027,10 @@ namespace {
                 }
 
                 if (m_menuHandler) {
+                    // retrieve total shading rate
+                    if (m_variableRateShader) {
+                        m_stats.pctShadingVRS = 100 - static_cast<int>(m_variableRateShader->getTotalRate() * 100.f + 0.5f);
+                    }
                     // convert to degrees for display (1Hz)
                     StoreXrFov(&m_stats.fov[0], ConvertToDegrees(m_posesForFrame[0].fov));
                     StoreXrFov(&m_stats.fov[1], ConvertToDegrees(m_posesForFrame[1].fov));
