@@ -717,6 +717,7 @@ namespace toolkit {
             virtual void setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
 
             virtual uint8_t getMaxRate() const = 0;
+            virtual float getTotalRate() const = 0;
             virtual uint64_t getCurrentGen() const = 0;
             virtual void getShaderState(VariableRateShaderState&, utilities::Eye) const = 0;
 
@@ -828,6 +829,7 @@ namespace toolkit {
             XrFovf fov[2]{{0}};
             uint32_t numBiasedSamplers{0};
             uint32_t numRenderTargetsWithVRS{0};
+            int pctShadingVRS{0};
 
             bool hasColorBuffer[utilities::ViewCount + 1]{false, false, false};
             bool hasDepthBuffer[utilities::ViewCount + 1]{false, false, false};
