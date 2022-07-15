@@ -362,8 +362,8 @@ namespace {
                     utilities::Eye renderEye,
                     XrVector2f offsetEye,
                     bool noalpha) const override {
-            const float leftAlign = (renderWidth - m_menuBackgroundWidth) / 2 + offsetEye.x;
-            const float topAlign = (renderHeight - m_menuBackgroundHeight) / 2 + offsetEye.y;
+            const float leftAlign = (static_cast<float>(renderWidth) - m_menuBackgroundWidth) * 0.5f + offsetEye.x;
+            const float topAlign = (static_cast<float>(renderHeight) - m_menuBackgroundHeight) * 0.5f + offsetEye.y;
 
             const float fontSize = m_configManager->getValue(SettingMenuFontSize) * 0.75f; // pt -> px
 
@@ -378,8 +378,9 @@ namespace {
             const auto countdown =
                 timeout.count() ? timeout - (std::chrono::steady_clock::now() - m_lastInput) : std::chrono::seconds(1);
 
-            if (countdown.count() < 0) {
+            if (m_state != MenuState::NotVisible && countdown.count() < 0) {
                 m_state = MenuState::NotVisible;
+                return; // next time, we'll display the overlay if any.
             }
 
             if (m_state == MenuState::Splash) {
@@ -668,7 +669,7 @@ namespace {
                     top += 1.5f * fontSize;
 
                     if (measureBackgroundWidth) {
-                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - offsetEye.x);
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign);
                     }
 
                     if (menuEntry.type == MenuEntryType::Tabs) {
@@ -718,7 +719,7 @@ namespace {
                     }
 
                     if (measureBackgroundWidth) {
-                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - offsetEye.x);
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign);
                     }
                 }
 
@@ -752,7 +753,7 @@ namespace {
                     top += 0.8f * fontSize;
 
                     if (measureBackgroundWidth) {
-                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - offsetEye.x);
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign);
                     }
                 }
                 m_menuBackgroundHeight = (top + fontSize * 0.2f) - topAlign;
@@ -760,14 +761,15 @@ namespace {
             } // if (m_state == MenuState::Visible)
 
             auto overlayType = m_configManager->getEnumValue<OverlayType>(SettingOverlayType);
+
             if (m_state != MenuState::Splash && overlayType != OverlayType::None) {
                 const auto textColorOverlayNoFade = MakePRGBA(ColorOverlay);
                 const auto textColorRedNoFade = MakePRGBA(ColorWarning);
-
                 const auto textOverlayOffset = NdcToScreen({m_configManager->getValue(SettingOverlayXOffset) / 100.f,
                                                             m_configManager->getValue(SettingOverlayYOffset) / 100.f});
-                const auto overlayAlign = textOverlayOffset.x * renderWidth + offsetEye.x;
-                const auto overlayAlignRight = leftAlign + m_menuBackgroundWidth + offsetEye.x;
+
+                const auto overlayAlign = textOverlayOffset.x * renderWidth;
+                const auto overlayAlignRight = leftAlign + m_menuBackgroundWidth;
 
                 float top = textOverlayOffset.y * renderHeight;
 
