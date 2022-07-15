@@ -1762,15 +1762,15 @@ namespace {
                                                                useVPRT ? eye : -1);
 
                             if (drawMenuTex) {
-                                const auto eyeOffsetX =
-                                    eye ? 2 * (m_projCenters[1].x - m_projCenters[0].x) * textureInfo.width +
-                                              -m_configManager->getValue(config::SettingMenuEyeOffset)
-                                        : 0;
+                                const auto offsetx = eye ? m_configManager->getValue(config::SettingMenuEyeOffset) : 0;
+                                const auto centerx =
+                                    m_projCenters[eye].x * static_cast<float>(textureInfo.width) * 0.5f;
+
                                 m_graphicsDevice->beginText();
                                 m_menuHandler->render(textureInfo.width,
                                                       textureInfo.height,
                                                       static_cast<utilities::Eye>(eye),
-                                                      {eyeOffsetX, 0.f},
+                                                      {centerx - static_cast<float>(offsetx), 0.f},
                                                       true);
                                 m_graphicsDevice->flushText();
                             }
@@ -1787,10 +1787,10 @@ namespace {
                                 pos.y *= textureInfo.height;
                                 m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
                             }
+
+                            m_graphicsDevice->unsetRenderTargets();
                         }
                     }
-
-                    m_graphicsDevice->unsetRenderTargets();
                 }
 
                 // Render the menu.
@@ -2029,7 +2029,8 @@ namespace {
                 if (m_menuHandler) {
                     // retrieve total shading rate
                     if (m_variableRateShader) {
-                        m_stats.pctShadingVRS = 100 - static_cast<int>(m_variableRateShader->getTotalRate() * 100.f + 0.5f);
+                        m_stats.pctShadingVRS =
+                            100 - static_cast<int>(m_variableRateShader->getTotalRate() * 100.f + 0.5f);
                     }
                     // convert to degrees for display (1Hz)
                     StoreXrFov(&m_stats.fov[0], ConvertToDegrees(m_posesForFrame[0].fov));
