@@ -103,10 +103,24 @@ namespace {
         // The number of frames since the mask was last used during a rendering pass.
         uint16_t age;
 
+        // Barrier state for D3D12
+        D3D12_RESOURCE_STATES state[ViewCount + 1];
+
         std::shared_ptr<IShaderBuffer> cbShading[ViewCount + 1];
         std::shared_ptr<ITexture> mask[ViewCount + 1];
         std::shared_ptr<ITexture> maskVPRT;
     };
+
+    inline void TransitionResource(ID3D12GraphicsCommandList* commandList,
+                                   ID3D12Resource* resource,
+                                   D3D12_RESOURCE_STATES* stateBefore,
+                                   D3D12_RESOURCE_STATES stateAfter) {
+        if (stateBefore && *stateBefore != stateAfter) {
+            auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(resource, *stateBefore, stateAfter);
+            commandList->ResourceBarrier(1, &barrier);
+            *stateBefore = stateAfter;
+        }
+    }
 
     inline XrVector2f MakeRingParam(XrVector2f size) {
         size.x = std::max(size.x, FLT_EPSILON);
@@ -269,10 +283,8 @@ namespace {
                 updateViews(get(vrsCommandList), maskForSize);
 
                 // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
-
-                // Use the special SHADING_RATE_SOURCE resource state for barriers on the VRS surface
-                auto mask = maskForSize.mask[to_integral(eyeHint)]->getAs<D3D12>();
-                m_Dx12ShadingRateResources.RSSetShadingRateImage(get(vrsCommandList), mask, to_integral(eyeHint));
+                m_Dx12ShadingRateResources.RSSetShadingRateImage(
+                    get(vrsCommandList), maskForSize, to_integral(eyeHint));
 
             } else {
                 throw std::runtime_error("Unsupported graphics runtime");
@@ -577,8 +589,8 @@ namespace {
             m_gazeLocation[2].x = 0; // The generic mask only supports vertical offsets.
             m_gazeLocation[2].y = m_gazeOffset[2].y;
 
-            m_stats.areas[0] = static_cast<float>(r0.x * r0.y * M_PI_4);  // 100% radius setting = 1/2 screen
-            m_stats.areas[1] = static_cast<float>(r1.x * r1.y * M_PI_4);  // x/2 * y/2 * PI = (x*y) * (PI/4)
+            m_stats.areas[0] = static_cast<float>(r0.x * r0.y * M_PI_4); // 100% radius setting = 1/2 screen
+            m_stats.areas[1] = static_cast<float>(r1.x * r1.y * M_PI_4); // x/2 * y/2 * PI = (x*y) * (PI/4)
             m_stats.areas[2] = 1.f;
             updateStats();
 
@@ -648,14 +660,21 @@ namespace {
             info.sampleCount = 1;
             info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
 
-            for (auto& it : newMask.mask) {
-                it = m_device->createTexture(info, "VRS TEX2D");
+            for (size_t i = 0; i < std::size(newMask.mask); i++) {
+                // it = m_device->createTexture(info, "VRS TEX2D");
+                char texDebugName[] = "VRS TEX2D 0";
+                texDebugName[10] += static_cast<char>(i);
+                newMask.mask[i] = m_device->createTexture(info, texDebugName);
+                newMask.state[i] = D3D12_RESOURCE_STATE_COMMON;
             }
+
             info.arraySize = 2;
             newMask.maskVPRT = m_device->createTexture(info, "VRS VPRT TEX2D");
 
-            for (auto& it : newMask.cbShading) {
-                it = m_device->createBuffer(sizeof(ShadingConstants), "VRS CB");
+            for (size_t i = 0; i < std::size(newMask.cbShading); i++) {
+                char bufDebugName[] = "VRS CB 0";
+                bufDebugName[7] += static_cast<char>(i);
+                newMask.cbShading[i] = m_device->createBuffer(sizeof(ShadingConstants), bufDebugName);
             }
 
             m_shadingRateMask.push_back(newMask);
@@ -744,8 +763,8 @@ namespace {
                 const auto constants = makeShadingConstants(i, mask.widthInTiles, mask.heightInTiles);
                 mask.cbShading[i]->uploadData(&constants, sizeof(constants));
 
-                m_Dx12ShadingRateResources.ResourceBarrier(
-                    pCommandList, mask.mask[i]->getAs<D3D12>(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, i);
+                auto pResource = mask.mask[i]->getAs<D3D12>();
+                TransitionResource(pCommandList, pResource, &mask.state[i], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                 m_csShading->updateThreadGroups({dispatchX, dispatchY, 1});
                 m_device->setShader(m_csShading, SamplerType::NearestClamp);
@@ -753,6 +772,9 @@ namespace {
                 m_device->setShaderInput(0, mask.mask[i]);
                 m_device->setShaderOutput(0, mask.mask[i]);
                 m_device->dispatchShader();
+
+                // Use the special SHADING_RATE_SOURCE resource state for barriers on the VRS surface
+                TransitionResource(pCommandList, pResource, &mask.state[i], D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE);
             }
         }
 
@@ -920,28 +942,16 @@ namespace {
 
         struct {
             void initialize() {
-                // Make sure we got a valid initial state
-                state[2] = state[1] = state[0] = D3D12_RESOURCE_STATE_COMMON;
-                boundState = 0;
+                std::fill_n(textures, std::size(textures), nullptr);
             }
 
-            void ResourceBarrier(ID3D12GraphicsCommandList5* pCommandList,
-                                 ID3D12Resource* pResource,
-                                 D3D12_RESOURCE_STATES newState,
-                                 size_t idx) {
-                if (state[idx] != newState) {
-                    auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(pResource, state[idx], newState);
-                    pCommandList->ResourceBarrier(1, &barrier);
-                    state[idx] = newState;
-                }
-            }
+            void RSSetShadingRateImage(ID3D12GraphicsCommandList5* pCommandList, ShadingRateMask& mask, size_t idx) {
+                auto pResource = mask.mask[idx]->getAs<D3D12>();
+                if (textures[idx] != pResource) {
+                    TransitionResource(
+                        pCommandList, pResource, &mask.state[idx], D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE);
 
-            void RSSetShadingRateImage(ID3D12GraphicsCommandList5* pCommandList,
-                                       ID3D12Resource* pResource,
-                                       size_t idx) {
-                const uint32_t boundMask = 1u << idx;
-                if (!(boundState & boundMask)) {
-                    ResourceBarrier(pCommandList, pResource, D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE, idx);
+                    pCommandList->RSSetShadingRateImage(pResource);
 
                     // RSSetShadingRate() function sets both the combiners and the per-drawcall shading rate.
                     // We set to 1X1 for all sources and all combiners to MAX, so that the coarsest wins
@@ -951,9 +961,7 @@ namespace {
                         D3D12_SHADING_RATE_COMBINER_MAX, D3D12_SHADING_RATE_COMBINER_MAX};
 
                     pCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiners);
-                    pCommandList->RSSetShadingRateImage(pResource);
-
-                    boundState = boundMask;
+                    textures[idx] = pResource;
                 }
             }
 
@@ -961,11 +969,10 @@ namespace {
                 // To disable VRS, set shading rate to 1X1 with no combiners, and no RSSetShadingRateImage()
                 pCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, nullptr);
                 pCommandList->RSSetShadingRateImage(nullptr);
-                boundState = 0;
+                std::fill_n(textures, std::size(textures), nullptr);
             }
 
-            D3D12_RESOURCE_STATES state[ViewCount + 1];
-            uint32_t boundState;
+            ID3D12Resource* textures[ViewCount + 1];
 
         } m_Dx12ShadingRateResources;
 
