@@ -883,6 +883,9 @@ namespace {
                     filter.DenyList.NumIDs = ARRAYSIZE(messages);
                     filter.DenyList.pIDList = messages;
                     m_infoQueue->AddStorageFilterEntries(&filter);
+                    //m_infoQueue->SetBreakOnCategory(D3D12_MESSAGE_CATEGORY_EXECUTION, 1);
+                    //m_infoQueue->SetBreakOnCategory(D3D12_MESSAGE_CATEGORY_STATE_CREATION, 1);
+                    //m_infoQueue->SetBreakOnCategory(D3D12_MESSAGE_CATEGORY_RESOURCE_MANIPULATION, 1);
                 } else {
                     Log("Failed to enable debug layer - please check that the 'Graphics Tools' feature of Windows is "
                         "installed\n");
@@ -2201,7 +2204,16 @@ namespace {
                     auto message_data = std::make_unique<char[]>(size);
                     auto message = reinterpret_cast<D3D12_MESSAGE*>(message_data.get());
                     CHECK_HRCMD(infoQueue->GetMessage(i, message, &size));
-                    Log("D3D12: %.*s\n", message->DescriptionByteLength, message->pDescription);
+                    // Log("D3D12: %.*s\n", message->DescriptionByteLength, message->pDescription);
+
+                    static const char* kSeverities[] = {"CRPT", "ERR ", "WARN", "INFO", "MSG "};
+                    static const char* kCategories[] = {
+                        "APP ", "MISC", "INIT", "CLNP", "COMP", "CREA", "SET ", "GET ", "MANI", "EXEC", "SHAD"};
+                    Log("D3D12 %s %s: %.*s\n",
+                        kSeverities[message->Severity],
+                        kCategories[message->Category],
+                        message->DescriptionByteLength,
+                        message->pDescription);
                 }
             }
         }
