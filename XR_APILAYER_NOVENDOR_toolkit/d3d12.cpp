@@ -883,6 +883,9 @@ namespace {
                     filter.DenyList.NumIDs = ARRAYSIZE(messages);
                     filter.DenyList.pIDList = messages;
                     m_infoQueue->AddStorageFilterEntries(&filter);
+                    //m_infoQueue->SetBreakOnCategory(D3D12_MESSAGE_CATEGORY_EXECUTION, 1);
+                    //m_infoQueue->SetBreakOnCategory(D3D12_MESSAGE_CATEGORY_STATE_CREATION, 1);
+                    //m_infoQueue->SetBreakOnCategory(D3D12_MESSAGE_CATEGORY_RESOURCE_MANIPULATION, 1);
                 } else {
                     Log("Failed to enable debug layer - please check that the 'Graphics Tools' feature of Windows is "
                         "installed\n");
@@ -1082,7 +1085,8 @@ namespace {
                 }
             }
 
-            if (++m_currentContext == NumInflightContexts) {
+            m_currentContext++;
+            if (m_currentContext == NumInflightContexts) {
                 m_currentContext = 0;
             }
             CHECK_HRCMD(m_commandAllocator[m_currentContext]->Reset());
@@ -1090,7 +1094,7 @@ namespace {
             m_context = m_commandList[m_currentContext];
 
             // Log any messages from the Debug layer.
-            if (auto count = m_infoQueue ? m_infoQueue->GetNumStoredMessages() : 0) {
+            if (auto count = (m_infoQueue ? m_infoQueue->GetNumStoredMessages() : 0)) {
                 LogInfoQueueMessage(get(m_infoQueue), count);
                 m_infoQueue->ClearStoredMessages();
             }
@@ -1307,7 +1311,7 @@ namespace {
                 stopGpuTimestampIndex);
         }
 
-        void setShader(std::shared_ptr<IQuadShader> shader, SamplerType sampler) override {
+        void setShader(std::shared_ptr<IQuadShader> shader, SamplerType /* sampler */) override {
             m_currentQuadShader.reset();
             m_currentComputeShader.reset();
             m_currentRootSlot = 0;
@@ -1329,16 +1333,18 @@ namespace {
                 m_context->IASetVertexBuffers(0, 0, nullptr);
                 m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
                 // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
-                m_context->SetGraphicsRootDescriptorTable(m_currentRootSlot++,
-                                                          m_samplerHeap.getGPUHandle(m_samplers[to_integral(sampler)]));
+                m_context->SetGraphicsRootDescriptorTable(
+                    m_currentRootSlot++,
+                    m_samplerHeap.getGPUHandle(m_linearClampSamplerPS /* m_samplers[to_integral(sampler)] */));
             } else {
-                d3d12Shader->registerSamplerParameter(0, m_samplerHeap.getGPUHandle(m_samplers[to_integral(sampler)]));
+                d3d12Shader->registerSamplerParameter(
+                    0, m_samplerHeap.getGPUHandle(m_linearClampSamplerPS /* m_samplers[to_integral(sampler)] */));
             }
 
             m_currentQuadShader = shader;
         }
 
-        void setShader(std::shared_ptr<IComputeShader> shader, SamplerType sampler) override {
+        void setShader(std::shared_ptr<IComputeShader> shader, SamplerType /* sampler */) override {
             m_currentQuadShader.reset();
             m_currentComputeShader.reset();
             m_currentRootSlot = 0;
@@ -1355,10 +1361,12 @@ namespace {
                 m_context->SetComputeRootSignature(shaderData->rootSignature);
                 m_context->SetPipelineState(shaderData->pipelineState);
                 // TODO: This is somewhat restrictive, but for now we only support a linear sampler in slot 0.
-                m_context->SetComputeRootDescriptorTable(m_currentRootSlot++,
-                                                         m_samplerHeap.getGPUHandle(m_samplers[to_integral(sampler)]));
+                m_context->SetComputeRootDescriptorTable(
+                    m_currentRootSlot++,
+                    m_samplerHeap.getGPUHandle(m_linearClampSamplerCS /* m_samplers[to_integral(sampler)] */));
             } else {
-                d3d12Shader->registerSamplerParameter(0, m_samplerHeap.getGPUHandle(m_samplers[to_integral(sampler)]));
+                d3d12Shader->registerSamplerParameter(
+                    0, m_samplerHeap.getGPUHandle(m_linearClampSamplerCS /* m_samplers[to_integral(sampler)] */));
             }
 
             m_currentComputeShader = shader;
@@ -1869,16 +1877,22 @@ namespace {
                 desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                 desc.MaxAnisotropy = 1;
                 desc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-                desc.BorderColor[3] = 1.0f;
-                m_samplerHeap.allocate(m_samplers[to_integral(SamplerType::NearestClamp)]);
-                m_device->CreateSampler(&desc, m_samplers[to_integral(SamplerType::NearestClamp)]);
-
+                m_samplerHeap.allocate(m_linearClampSamplerPS); // m_samplers[to_integral(SamplerType::NearestClamp)]
+                m_device->CreateSampler(&desc, m_linearClampSamplerPS);
+            }
+            {
+                D3D12_SAMPLER_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
                 desc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                desc.MaxAnisotropy = 1;
                 desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
                 desc.MinLOD = D3D12_MIP_LOD_BIAS_MIN;
                 desc.MaxLOD = D3D12_MIP_LOD_BIAS_MAX;
-                m_samplerHeap.allocate(m_samplers[to_integral(SamplerType::LinearClamp)]);
-                m_device->CreateSampler(&desc, m_samplers[to_integral(SamplerType::LinearClamp)]);
+                m_samplerHeap.allocate(m_linearClampSamplerCS); // m_samplers[to_integral(SamplerType::LinearClamp)]
+                m_device->CreateSampler(&desc, m_linearClampSamplerCS);
             }
             {
                 ComPtr<ID3DBlob> errors;
@@ -2106,7 +2120,9 @@ namespace {
         ComPtr<ID3D12QueryHeap> m_queryHeap;
         ComPtr<ID3D12Resource> m_queryReadbackBuffer;
         ComPtr<ID3DBlob> m_quadVertexShaderBytes;
-        D3D12_CPU_DESCRIPTOR_HANDLE m_samplers[2];
+        // D3D12_CPU_DESCRIPTOR_HANDLE m_samplers[2];
+        D3D12_CPU_DESCRIPTOR_HANDLE m_linearClampSamplerPS;
+        D3D12_CPU_DESCRIPTOR_HANDLE m_linearClampSamplerCS;
         std::shared_ptr<IShaderBuffer> m_meshViewProjectionBuffer[4];
         uint32_t m_currentMeshViewProjectionBuffer{0};
         std::shared_ptr<IShaderBuffer> m_meshModelBuffer[MaxModelBuffers];
@@ -2129,10 +2145,10 @@ namespace {
 
         std::shared_ptr<ITexture> m_currentTextRenderTarget;
         std::shared_ptr<ITexture> m_currentDrawRenderTarget;
-        int32_t m_currentDrawRenderTargetSlice;
+        int32_t m_currentDrawRenderTargetSlice{-1};
         std::shared_ptr<ITexture> m_currentDrawDepthBuffer;
-        int32_t m_currentDrawDepthBufferSlice;
-        bool m_currentDrawDepthBufferIsInverted;
+        int32_t m_currentDrawDepthBufferSlice{-1};
+        bool m_currentDrawDepthBufferIsInverted{false};
 
         std::shared_ptr<ISimpleMesh> m_currentMesh;
         mutable std::shared_ptr<IQuadShader> m_currentQuadShader;
@@ -2188,7 +2204,16 @@ namespace {
                     auto message_data = std::make_unique<char[]>(size);
                     auto message = reinterpret_cast<D3D12_MESSAGE*>(message_data.get());
                     CHECK_HRCMD(infoQueue->GetMessage(i, message, &size));
-                    Log("D3D12: %.*s\n", message->DescriptionByteLength, message->pDescription);
+                    // Log("D3D12: %.*s\n", message->DescriptionByteLength, message->pDescription);
+
+                    static const char* kSeverities[] = {"CRPT", "ERR ", "WARN", "INFO", "MSG "};
+                    static const char* kCategories[] = {
+                        "APP ", "MISC", "INIT", "CLNP", "COMP", "CREA", "SET ", "GET ", "MANI", "EXEC", "SHAD"};
+                    Log("D3D12 %s %s: %.*s\n",
+                        kSeverities[message->Severity],
+                        kCategories[message->Category],
+                        message->DescriptionByteLength,
+                        message->pDescription);
                 }
             }
         }

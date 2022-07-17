@@ -1744,7 +1744,7 @@ namespace {
 
                 // Render the hands or eye gaze helper.
                 if (drawOverlays) {
-                    XrVector2f eyeGazes[utilities::ViewCount];
+                    XrVector2f eyeGazes[utilities::ViewCount] = {};
                     const auto isEyeGazeValid = drawEyeGaze && m_eyeTracker->getProjectedGaze(eyeGazes);
 
                     const auto useVPRT = overlayData[0].color && overlayData[1].color &&
