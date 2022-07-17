@@ -968,7 +968,7 @@ namespace {
             }
 
             // Log any messages from the Debug layer.
-            if (auto count = m_infoQueue ? m_infoQueue->GetNumStoredMessages() : 0) {
+            if (auto count = (m_infoQueue ? m_infoQueue->GetNumStoredMessages() : 0)) {
                 LogInfoQueueMessage(get(m_infoQueue), count);
                 m_infoQueue->ClearStoredMessages();
             }
@@ -1896,9 +1896,9 @@ namespace {
         std::wstring m_fontFamily{FontFamily};
 
         std::shared_ptr<ITexture> m_currentDrawRenderTarget;
-        int32_t m_currentDrawRenderTargetSlice;
+        int32_t m_currentDrawRenderTargetSlice{-1};
         std::shared_ptr<ITexture> m_currentDrawDepthBuffer;
-        int32_t m_currentDrawDepthBufferSlice;
+        int32_t m_currentDrawDepthBufferSlice{-1};
         std::shared_ptr<ISimpleMesh> m_currentMesh;
 
         ComPtr<ID3D11InfoQueue> m_infoQueue;

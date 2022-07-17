@@ -1082,7 +1082,8 @@ namespace {
                 }
             }
 
-            if (++m_currentContext == NumInflightContexts) {
+            m_currentContext++;
+            if (m_currentContext == NumInflightContexts) {
                 m_currentContext = 0;
             }
             CHECK_HRCMD(m_commandAllocator[m_currentContext]->Reset());
@@ -1090,7 +1091,7 @@ namespace {
             m_context = m_commandList[m_currentContext];
 
             // Log any messages from the Debug layer.
-            if (auto count = m_infoQueue ? m_infoQueue->GetNumStoredMessages() : 0) {
+            if (auto count = (m_infoQueue ? m_infoQueue->GetNumStoredMessages() : 0)) {
                 LogInfoQueueMessage(get(m_infoQueue), count);
                 m_infoQueue->ClearStoredMessages();
             }
@@ -2141,10 +2142,10 @@ namespace {
 
         std::shared_ptr<ITexture> m_currentTextRenderTarget;
         std::shared_ptr<ITexture> m_currentDrawRenderTarget;
-        int32_t m_currentDrawRenderTargetSlice;
+        int32_t m_currentDrawRenderTargetSlice{-1};
         std::shared_ptr<ITexture> m_currentDrawDepthBuffer;
-        int32_t m_currentDrawDepthBufferSlice;
-        bool m_currentDrawDepthBufferIsInverted;
+        int32_t m_currentDrawDepthBufferSlice{-1};
+        bool m_currentDrawDepthBufferIsInverted{false};
 
         std::shared_ptr<ISimpleMesh> m_currentMesh;
         mutable std::shared_ptr<IQuadShader> m_currentQuadShader;
