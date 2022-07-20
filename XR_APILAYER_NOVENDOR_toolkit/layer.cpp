@@ -1922,9 +1922,14 @@ namespace {
         std::string getXrPath(XrPath path) {
             uint32_t count;
             CHECK_XRCMD(xrPathToString(GetXrInstance(), path, 0, &count, nullptr));
+            // OpenXR returns the number of chars including trailling 0.
+            // C++ guarantees string memory is linear and ends with a trailing 0.
             std::string s;
-            s.resize(count);
-            CHECK_XRCMD(xrPathToString(GetXrInstance(), path, count, &count, s.data()));
+            if (count > 1u) {
+                s.reserve(count);
+                s.resize(count-1);
+                CHECK_XRCMD(xrPathToString(GetXrInstance(), path, count, &count, s.data()));
+            }
             return s;
         }
 
