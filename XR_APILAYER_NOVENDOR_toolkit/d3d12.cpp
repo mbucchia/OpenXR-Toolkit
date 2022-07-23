@@ -42,6 +42,19 @@ namespace {
     constexpr size_t MaxGpuTimers = 32;
     constexpr size_t MaxModelBuffers = 128;
 
+    // If the application uses the Streamline SDK, some D3D12 objects are shimmed, and this will confuse our Detours
+    // logic. Luckily, the Streamline SDK has a secret UUID that can be used to query the underlying interface. From
+    // https://github.com/NVIDIAGameWorks/Streamline/blob/main/source/core/sl.api/internal.h.
+    struct DECLSPEC_UUID("ADEC44E2-61F0-45C3-AD9F-1B37379284FF") StreamlineRetreiveBaseInterface : IUnknown {};
+
+    template<class T>
+    inline void GetRealD3D12Object(T* shimmedObject, T** realObject) {
+        if (FAILED(shimmedObject->QueryInterface(__uuidof(StreamlineRetreiveBaseInterface), (void**)realObject))) {
+            shimmedObject->AddRef();
+            *realObject = shimmedObject;
+        }
+    }
+
     inline void SetDebugName(ID3D12Object* resource, std::string_view name) {
         if (resource && !name.empty())
             resource->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(name.size()), name.data());
@@ -831,6 +844,11 @@ namespace {
             : m_device(device), m_queue(queue), m_gpuArchitecture(GpuArchitecture::Unknown),
               m_allowInterceptor(!configManager->isSafeMode() &&
                                  !configManager->getValue(config::SettingDisableInterceptor)) {
+            GetRealD3D12Object(get(m_device), set(m_realDevice));
+            if (get(m_realDevice) != get(m_device)) {
+                Log("Detected Streamline SDK\n");
+            }
+
             {
                 // store a reference to the command queue for easier retrieval
                 m_device->SetPrivateDataInterface(IID_ID3D12CommandQueue, get(m_queue));
@@ -1818,18 +1836,21 @@ namespace {
 
             g_instance = this;
 
+            ComPtr<ID3D12GraphicsCommandList> realContext;
+            GetRealD3D12Object(get(m_context), set(realContext));
+
             // Hook to the Direct3D device and command list  to intercept preparation for the rendering.
-            DetourMethodAttach(get(m_context),
+            DetourMethodAttach(get(realContext),
                                // Method offset is 10 + method index (0-based) for ID3D12GraphicsCommandList.
                                46,
                                hooked_ID3D12GraphicsCommandList_OMSetRenderTargets,
                                g_original_ID3D12GraphicsCommandList_OMSetRenderTargets);
-            DetourMethodAttach(get(m_device),
+            DetourMethodAttach(get(m_realDevice),
                                // Method offset is 7 + method index (0-based) for ID3D12Device.
                                20,
                                hooked_ID3D12Device_CreateRenderTargetView,
                                g_original_ID3D12Device_CreateRenderTargetView);
-            DetourMethodAttach(get(m_context),
+            DetourMethodAttach(get(realContext),
                                // Method offset is 10 + method index (0-based) for ID3D12GraphicsCommandList.
                                16,
                                hooked_ID3D12GraphicsCommandList_CopyTextureRegion,
@@ -1837,17 +1858,20 @@ namespace {
         }
 
         void uninitializeInterceptor() {
-            DetourMethodDetach(get(m_context),
+            ComPtr<ID3D12GraphicsCommandList> realContext;
+            GetRealD3D12Object(get(m_context), set(realContext));
+
+            DetourMethodDetach(get(realContext),
                                // Method offset is 10 + method index (0-based) for ID3D12GraphicsCommandList.
                                46,
                                hooked_ID3D12GraphicsCommandList_OMSetRenderTargets,
                                g_original_ID3D12GraphicsCommandList_OMSetRenderTargets);
-            DetourMethodDetach(get(m_device),
+            DetourMethodDetach(get(m_realDevice),
                                // Method offset is 7 + method index (0-based) for ID3D12Device.
                                20,
                                hooked_ID3D12Device_CreateRenderTargetView,
                                g_original_ID3D12Device_CreateRenderTargetView);
-            DetourMethodDetach(get(m_context),
+            DetourMethodDetach(get(realContext),
                                // Method offset is 10 + method index (0-based) for ID3D12GraphicsCommandList.
                                16,
                                hooked_ID3D12GraphicsCommandList_CopyTextureRegion,
@@ -1992,7 +2016,7 @@ namespace {
 
             ComPtr<ID3D12Device> device;
             CHECK_HRCMD(resource->GetDevice(IID_PPV_ARGS(set(device))));
-            if (device != m_device) {
+            if (device != m_realDevice) {
                 return;
             }
 
@@ -2020,7 +2044,7 @@ namespace {
                                 const D3D12_CPU_DESCRIPTOR_HANDLE* depthStencilHandle) {
             ComPtr<ID3D12Device> device;
             CHECK_HRCMD(context->GetDevice(IID_PPV_ARGS(set(device))));
-            if (device != m_device) {
+            if (device != m_realDevice) {
                 return;
             }
 
@@ -2057,7 +2081,7 @@ namespace {
                            UINT DstSubresource = 0) {
             ComPtr<ID3D12Device> device;
             CHECK_HRCMD(context->GetDevice(IID_PPV_ARGS(set(device))));
-            if (device != m_device) {
+            if (device != m_realDevice) {
                 return;
             }
 
@@ -2087,6 +2111,7 @@ namespace {
 #undef INVOKE_EVENT
 
         const ComPtr<ID3D12Device> m_device;
+        ComPtr<ID3D12Device> m_realDevice;
         ComPtr<ID3D12CommandQueue> m_queue;
         std::string m_deviceName;
         GpuArchitecture m_gpuArchitecture;
