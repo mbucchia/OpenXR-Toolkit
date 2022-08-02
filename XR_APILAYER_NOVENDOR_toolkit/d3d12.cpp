@@ -47,7 +47,7 @@ namespace {
     // https://github.com/NVIDIAGameWorks/Streamline/blob/main/source/core/sl.api/internal.h.
     struct DECLSPEC_UUID("ADEC44E2-61F0-45C3-AD9F-1B37379284FF") StreamlineRetreiveBaseInterface : IUnknown {};
 
-    template<class T>
+    template <class T>
     inline void GetRealD3D12Object(T* shimmedObject, T** realObject) {
         if (FAILED(shimmedObject->QueryInterface(__uuidof(StreamlineRetreiveBaseInterface), (void**)realObject))) {
             shimmedObject->AddRef();
@@ -610,12 +610,18 @@ namespace {
             return nullptr;
         }
 
-        void setInteropTexture(std::shared_ptr<ITexture> interopTexture) {
+        void setInteropTexture(std::shared_ptr<ITexture> interopTexture,
+                               std::shared_ptr<ITexture> copyTexture = nullptr) {
             m_interopTexture = interopTexture;
+            m_interopCopyTexture = copyTexture;
         }
 
         std::shared_ptr<ITexture> getInteropTexture() {
             return m_interopTexture;
+        }
+
+        std::shared_ptr<ITexture> getInteropCopyTexture() {
+            return m_interopCopyTexture;
         }
 
         const std::shared_ptr<IDevice> m_device;
@@ -626,6 +632,7 @@ namespace {
         ComPtr<ID3D12Resource> m_uploadBuffer;
         UINT m_uploadSize{0};
         std::shared_ptr<ITexture> m_interopTexture;
+        std::shared_ptr<ITexture> m_interopCopyTexture;
 
         D3D12Heap& m_rtvHeap;
         D3D12Heap& m_dsvHeap;
@@ -840,10 +847,12 @@ namespace {
       public:
         D3D12Device(ID3D12Device* device,
                     ID3D12CommandQueue* queue,
-                    std::shared_ptr<config::IConfigManager> configManager)
+                    std::shared_ptr<config::IConfigManager> configManager,
+                    bool enableVarjoQuirk = false)
             : m_device(device), m_queue(queue), m_gpuArchitecture(GpuArchitecture::Unknown),
               m_allowInterceptor(!configManager->isSafeMode() &&
-                                 !configManager->getValue(config::SettingDisableInterceptor)) {
+                                 !configManager->getValue(config::SettingDisableInterceptor)),
+              m_needInteropCopy(enableVarjoQuirk) {
             GetRealD3D12Object(get(m_device), set(m_realDevice));
             if (get(m_realDevice) != get(m_device)) {
                 Log("Detected Streamline SDK\n");
@@ -1726,18 +1735,28 @@ namespace {
                 D3D11_RESOURCE_FLAGS flags;
                 ZeroMemory(&flags, sizeof(flags));
                 flags.BindFlags = D3D11_BIND_RENDER_TARGET;
-                CHECK_HRCMD(m_textInteropDevice->CreateWrappedResource(m_currentDrawRenderTarget->getAs<D3D12>(),
-                                                                       &flags,
-                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                                                       IID_PPV_ARGS(set(interopTexture))));
 
-                m_currentTextRenderTarget = WrapD3D11Texture(m_textDevice,
-                                                             m_currentDrawRenderTarget->getInfo(),
-                                                             get(interopTexture),
-                                                             "Render Target Interop TEX2D");
+                std::shared_ptr<ITexture> copyTexture;
+                auto copyInfo = m_currentDrawRenderTarget->getInfo();
 
-                d3d12DrawRenderTarget->setInteropTexture(m_currentTextRenderTarget);
+                // On certain runtimes, we cannot use the swapchain images directly with D3D11on12. Use an intermediate
+                // copy.
+                if (m_needInteropCopy) {
+                    copyInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+                    copyTexture = createTexture(copyInfo, "Render Target Interop Copy TEX2D");
+                }
+
+                CHECK_HRCMD(m_textInteropDevice->CreateWrappedResource(
+                    copyTexture ? copyTexture->getAs<D3D12>() : m_currentDrawRenderTarget->getAs<D3D12>(),
+                    &flags,
+                    D3D12_RESOURCE_STATE_RENDER_TARGET,
+                    D3D12_RESOURCE_STATE_RENDER_TARGET,
+                    IID_PPV_ARGS(set(interopTexture))));
+
+                m_currentTextRenderTarget =
+                    WrapD3D11Texture(m_textDevice, copyInfo, get(interopTexture), "Render Target Interop TEX2D");
+
+                d3d12DrawRenderTarget->setInteropTexture(m_currentTextRenderTarget, copyTexture);
             }
             {
                 ID3D11Resource* const resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
@@ -1761,6 +1780,32 @@ namespace {
             {
                 ID3D11Resource* const resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
                 m_textInteropDevice->ReleaseWrappedResources(resources, ARRAYSIZE(resources));
+            }
+            // If a copy to the real render target is needed, do it now.
+            auto d3d12DrawRenderTarget = dynamic_cast<D3D12Texture*>(m_currentDrawRenderTarget.get());
+            auto copyTexture = d3d12DrawRenderTarget->getInteropCopyTexture();
+            if (copyTexture) {
+                {
+                    std::vector<D3D12_RESOURCE_BARRIER> barriers;
+                    barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(copyTexture->getAs<D3D12>(),
+                                                                            D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                                                            D3D12_RESOURCE_STATE_GENERIC_READ));
+                    barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(m_currentDrawRenderTarget->getAs<D3D12>(),
+                                                                            D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                                                            D3D12_RESOURCE_STATE_COPY_DEST));
+                    m_context->ResourceBarrier((UINT)barriers.size(), barriers.data());
+                }
+                copyTexture->copyTo(m_currentDrawRenderTarget);
+                {
+                    std::vector<D3D12_RESOURCE_BARRIER> barriers;
+                    barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(copyTexture->getAs<D3D12>(),
+                                                                            D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                                            D3D12_RESOURCE_STATE_RENDER_TARGET));
+                    barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(m_currentDrawRenderTarget->getAs<D3D12>(),
+                                                                            D3D12_RESOURCE_STATE_COPY_DEST,
+                                                                            D3D12_RESOURCE_STATE_RENDER_TARGET));
+                    m_context->ResourceBarrier((UINT)barriers.size(), barriers.data());
+                }
             }
             m_currentTextRenderTarget.reset();
             m_isRenderingText = false;
@@ -2116,6 +2161,7 @@ namespace {
         std::string m_deviceName;
         GpuArchitecture m_gpuArchitecture;
         const bool m_allowInterceptor;
+        const bool m_needInteropCopy;
 
         ComPtr<ID3D12CommandAllocator> m_commandAllocator[NumInflightContexts];
         ComPtr<ID3D12GraphicsCommandList> m_commandList[NumInflightContexts];
@@ -2308,8 +2354,9 @@ namespace toolkit::graphics {
 
     std::shared_ptr<IDevice> WrapD3D12Device(ID3D12Device* device,
                                              ID3D12CommandQueue* queue,
-                                             std::shared_ptr<config::IConfigManager> configManager) {
-        return std::make_shared<D3D12Device>(device, queue, configManager);
+                                             std::shared_ptr<config::IConfigManager> configManager,
+                                             bool enableVarjoQuirk) {
+        return std::make_shared<D3D12Device>(device, queue, configManager, enableVarjoQuirk);
     }
 
     std::shared_ptr<ITexture> WrapD3D12Texture(std::shared_ptr<IDevice> device,

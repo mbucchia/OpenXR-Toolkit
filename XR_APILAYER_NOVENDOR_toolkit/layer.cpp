@@ -544,8 +544,10 @@ namespace {
                     } else if (entry->type == XR_TYPE_GRAPHICS_BINDING_D3D12_KHR) {
                         const XrGraphicsBindingD3D12KHR* d3dBindings =
                             reinterpret_cast<const XrGraphicsBindingD3D12KHR*>(entry);
-                        m_graphicsDevice =
-                            graphics::WrapD3D12Device(d3dBindings->device, d3dBindings->queue, m_configManager);
+                        // Workaround: On Varjo, we must use intermediate textures with D3D11on12.
+                        const bool enableVarjoQuirk = m_runtimeName.find("Varjo") != std::string::npos;
+                        m_graphicsDevice = graphics::WrapD3D12Device(
+                            d3dBindings->device, d3dBindings->queue, m_configManager, enableVarjoQuirk);
                         break;
                     }
 
@@ -2092,12 +2094,13 @@ namespace {
             m_performanceCounters.endFrameCpuTimer->stop();
 
             // Render our overlays.
+            bool needMenuSwapchainDelayedRelease = false;
             {
                 const bool drawHands = m_handTracker && m_configManager->peekEnumValue<config::HandTrackingVisibility>(
                                                             config::SettingHandVisibilityAndSkinTone) !=
                                                             config::HandTrackingVisibility::Hidden;
                 const bool drawEyeGaze = m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug);
-                const bool drawOverlays = m_menuHandler || drawHands || drawEyeGaze;
+                const bool drawOverlays = drawHands || drawEyeGaze;
 
                 if (drawOverlays) {
                     m_stats.overlayCpuTimeUs += m_performanceCounters.overlayCpuTimer->query();
@@ -2166,18 +2169,15 @@ namespace {
                             const auto& textureInfo = m_menuSwapchainImages[menuImageIndex]->getInfo();
 
                             m_graphicsDevice->setRenderTargets(1, &m_menuSwapchainImages[menuImageIndex]);
+                            m_graphicsDevice->beginText();
                             m_graphicsDevice->clearColor(
                                 0, 0, (float)textureInfo.height, (float)textureInfo.width, XrColor4f{0, 0, 0, 0});
-                            m_graphicsDevice->beginText();
                             m_menuHandler->render(m_menuSwapchainImages[menuImageIndex]);
                             m_graphicsDevice->flushText();
 
                             m_graphicsDevice->unsetRenderTargets();
 
-                            {
-                                XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-                                CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(m_menuSwapchain, &releaseInfo));
-                            }
+                            needMenuSwapchainDelayedRelease = true;
 
                             // Add the quad layer to the frame.
                             layerQuadForMenu.space = m_viewSpace;
@@ -2252,10 +2252,14 @@ namespace {
             // Release the swapchain images now, as we are really done this time.
             for (auto& swapchain : m_swapchains) {
                 if (swapchain.second.delayedRelease) {
-                    XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO, nullptr};
+                    XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
                     swapchain.second.delayedRelease = false;
                     CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(swapchain.first, &releaseInfo));
                 }
+            }
+            if (needMenuSwapchainDelayedRelease) {
+                XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+                CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(m_menuSwapchain, &releaseInfo));
             }
 
             chainFrameEndInfo.layers = correctedLayers.data();
