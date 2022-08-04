@@ -1415,6 +1415,16 @@ namespace {
                  }});
             m_menuEntries.back().acceleration = 10;
 
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "No inter eye rotation workaround",
+                                     MenuEntryType::Choice,
+                                     SettingNoInterEyeRotation,
+                                     0,
+                                     MenuEntry::LastVal<NoYesType>(),
+                                     MenuEntry::FmtEnum<NoYesType>});
+
+
+
             // Must be kept last.
             systemTab.finalize();
         }
