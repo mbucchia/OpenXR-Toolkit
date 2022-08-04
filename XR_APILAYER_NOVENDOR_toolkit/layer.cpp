@@ -1366,6 +1366,14 @@ namespace {
                 m_posesForFrame[0].pose = views[0].pose;
                 m_posesForFrame[1].pose = views[1].pose;
 
+                // No inter eye rotation workaround
+                if (m_configManager->getValue(config::SettingNoInterEyeRotation)) {
+                    views[0].pose.orientation.w = views[1].pose.orientation.w;
+                    views[0].pose.orientation.x = views[1].pose.orientation.x;
+                    views[0].pose.orientation.y = views[1].pose.orientation.y;
+                    views[0].pose.orientation.z = views[1].pose.orientation.z;
+                }
+
                 // Override the canting angle if requested.
                 const int cantOverride = m_configManager->getValue("canting");
                 if (cantOverride != 0) {

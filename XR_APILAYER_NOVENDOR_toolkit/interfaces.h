@@ -178,6 +178,7 @@ namespace toolkit {
         const std::string SettingEyeDebugWithController = "eye_controller_debug";
         const std::string SettingResolutionOverride = "override_resolution";
         const std::string SettingResolutionWidth = "resolution_width";
+        const std::string SettingNoInterEyeRotation = "no_inter_eye_rotation";
 
         enum class OffOnType { Off = 0, On, MaxValue };
         enum class NoYesType { No = 0, Yes, MaxValue };
