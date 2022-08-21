@@ -140,7 +140,6 @@ namespace toolkit {
         const std::string SettingFOVLeftRight = "fov_lr";
         const std::string SettingFOVRightLeft = "fov_rl";
         const std::string SettingFOVRightRight = "fov_rr";
-        const std::string SettingPimaxFOVHack = "pimax_fov";
         const std::string SettingZoom = "zoom";
         const std::string SettingHandTrackingEnabled = "enable_hand_tracking";
         const std::string SettingHandVisibilityAndSkinTone = "hand_visibility";

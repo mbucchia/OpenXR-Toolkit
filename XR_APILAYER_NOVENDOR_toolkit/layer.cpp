@@ -165,7 +165,6 @@ namespace {
             m_configManager->setDefault(config::SettingFOVLeftRight, 100);
             m_configManager->setDefault(config::SettingFOVRightLeft, 100);
             m_configManager->setDefault(config::SettingFOVRightRight, 100);
-            m_configManager->setDefault(config::SettingPimaxFOVHack, 0);
             m_configManager->setDefault(config::SettingZoom, 10);
             m_configManager->setDefault(config::SettingPredictionDampen, 100);
             m_configManager->setDefault(config::SettingResolutionOverride, 0);
@@ -396,10 +395,6 @@ namespace {
                     TLArg(eyeTrackingSystemProperties.supportsEyeGazeInteraction, "SupportsEyeGazeInteraction"));
                 Log("Using OpenXR system %s\n", m_systemName.c_str());
 
-                // Detect when the Pimax FOV hack is applicable.
-                m_supportFOVHack =
-                    isDeveloper || (m_applicationName == "FS2020" && m_systemName.find("aapvr") != std::string::npos);
-
                 const auto isWMR = m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
                 m_supportMotionReprojectionLock = isWMR;
 
@@ -605,8 +600,7 @@ namespace {
                                                                                   renderWidth,
                                                                                   renderHeight,
                                                                                   m_displayWidth,
-                                                                                  m_displayHeight,
-                                                                                  m_supportFOVHack);
+                                                                                  m_displayHeight);
 
                         // Register intercepted events.
                         m_graphicsDevice->registerSetRenderTargetEvent(
@@ -755,7 +749,6 @@ namespace {
                         menuInfo.isEyeTrackingSupported = m_supportEyeTracking;
                         menuInfo.isEyeTrackingProjectionDistanceSupported =
                             m_eyeTracker ? m_eyeTracker->isProjectionDistanceSupported() : false;
-                        menuInfo.isPimaxFovHackSupported = m_supportFOVHack;
 
                         m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice, menuInfo);
                     }
@@ -1318,10 +1311,7 @@ namespace {
                                         uint32_t viewIndex,
                                         XrVisibilityMaskTypeKHR visibilityMaskType,
                                         XrVisibilityMaskKHR* visibilityMask) override {
-            // When doing the Pimax FOV hack, we swap left and right eyes.
-            if (m_supportFOVHack && isVrSession(session) && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
-                viewIndex ^= 1;
-            }
+            // TODO: Reserved for future use.
 
             return OpenXrApi::xrGetVisibilityMaskKHR(
                 session, viewConfigurationType, viewIndex, visibilityMaskType, visibilityMask);
@@ -1457,16 +1447,6 @@ namespace {
                 if (zoom != 10) {
                     StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * XMVectorReplicate(1.f / (zoom * 0.1f)));
                     StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * XMVectorReplicate(1.f / (zoom * 0.1f)));
-                }
-
-                // When doing the Pimax FOV hack, we swap left and right eyes.
-                if (m_supportFOVHack && m_configManager->hasChanged(config::SettingPimaxFOVHack)) {
-                    // Send the necessary events to the app.
-                    m_visibilityMaskEventIndex = 0;
-                }
-                if (m_supportFOVHack && m_configManager->getValue(config::SettingPimaxFOVHack)) {
-                    std::swap(views[0], views[1]);
-                    std::swap(m_posesForFrame[0], m_posesForFrame[1]);
                 }
             }
 
@@ -2057,14 +2037,6 @@ namespace {
 
                     spaceForOverlay = proj->space;
 
-                    // When doing the Pimax FOV hack, we swap left and right eyes.
-                    if (m_supportFOVHack && m_configManager->peekValue(config::SettingPimaxFOVHack)) {
-                        std::swap(correctedProjectionViews[0], correctedProjectionViews[1]);
-                        std::swap(viewsForOverlay[0], viewsForOverlay[1]);
-                        std::swap(textureForOverlay[0], textureForOverlay[1]);
-                        std::swap(depthForOverlay[0], depthForOverlay[1]);
-                    }
-
                     correctedProjectionLayer->views = correctedProjectionViews;
                     correctedLayers.push_back(
                         reinterpret_cast<const XrCompositionLayerBaseHeader*>(correctedProjectionLayer));
@@ -2323,7 +2295,6 @@ namespace {
         uint32_t m_maxDisplayWidth{0};
         bool m_supportHandTracking{false};
         bool m_supportEyeTracking{false};
-        bool m_supportFOVHack{false};
         bool m_supportMotionReprojectionLock{false};
         bool m_isOmniceptDetected{false};
         bool m_hasPimaxEyeTracker{false};

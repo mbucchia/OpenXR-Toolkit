@@ -124,12 +124,10 @@ namespace {
                            uint32_t displayWidth,
                            uint32_t displayHeight,
                            uint32_t tileSize,
-                           uint32_t tileRateMax,
-                           bool isPimaxFovHackSupported)
+                           uint32_t tileRateMax)
             : m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
               m_renderWidth(renderWidth), m_renderHeight(renderHeight),
-              m_renderRatio(float(renderWidth) / renderHeight), m_tileSize(tileSize), m_tileRateMax(tileRateMax),
-              m_supportFOVHack(isPimaxFovHackSupported) {
+              m_renderRatio(float(renderWidth) / renderHeight), m_tileSize(tileSize), m_tileRateMax(tileRateMax) {
             createRenderResources(m_renderWidth, m_renderHeight);
 
             // Set initial projection center
@@ -498,8 +496,7 @@ namespace {
                 }
                 return m_configManager->hasChanged(SettingVRSXScale) ||
                        m_configManager->hasChanged(SettingVRSXOffset) ||
-                       m_configManager->hasChanged(SettingVRSYOffset) ||
-                       (m_supportFOVHack && m_configManager->hasChanged(config::SettingPimaxFOVHack));
+                       m_configManager->hasChanged(SettingVRSYOffset);
             }
             return false;
         }
@@ -522,9 +519,6 @@ namespace {
                 radius[1] = m_configManager->getValue(SettingVRSOuterRadius);
             }
 
-            // When doing the Pimax FOV hack, we swap left and right eyes.
-            m_swapViews = m_supportFOVHack && m_configManager->getValue(config::SettingPimaxFOVHack);
-
             const auto semiMajorFactor = m_configManager->getValue(SettingVRSXScale);
             m_Rings[0] = MakeRingParam({radius[0] * semiMajorFactor * 0.0001f, radius[0] * 0.01f});
             m_Rings[1] = MakeRingParam({radius[1] * semiMajorFactor * 0.0001f, radius[1] * 0.01f});
@@ -546,8 +540,8 @@ namespace {
                 gaze[1] = m_gazeOffset[1];
             }
             // location = view center + view offset (L/R)
-            m_gazeLocation[m_swapViews] = gaze[0] + m_gazeOffset[2];
-            m_gazeLocation[!m_swapViews] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
+            m_gazeLocation[0] = gaze[0] + m_gazeOffset[2];
+            m_gazeLocation[1] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
 
             // The generic mask only supports vertical offsets.
             m_gazeLocation[2].x = 0;
@@ -798,9 +792,7 @@ namespace {
         const uint32_t m_tileRateMax;
         const float m_renderRatio;
 
-        const bool m_supportFOVHack;
         bool m_usingEyeTracking{false};
-        bool m_swapViews{false};
 
         // The current "generation" of the mask parameters.
         uint64_t m_currentGen{0};
@@ -916,8 +908,7 @@ namespace toolkit::graphics {
                                                                   uint32_t renderWidth,
                                                                   uint32_t renderHeight,
                                                                   uint32_t displayWidth,
-                                                                  uint32_t displayHeight,
-                                                                  bool isPimaxFovHackSupported) {
+                                                                  uint32_t displayHeight) {
         try {
             uint32_t tileSize = 0;
             uint32_t tileRateMax = 0;
@@ -981,8 +972,7 @@ namespace toolkit::graphics {
                                                         displayWidth,
                                                         displayHeight,
                                                         tileSize,
-                                                        tileRateMax,
-                                                        isPimaxFovHackSupported);
+                                                        tileRateMax);
 
         } catch (FeatureNotSupported&) {
             return nullptr;

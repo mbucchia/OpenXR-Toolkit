@@ -152,7 +152,7 @@ namespace {
               m_isEyeTrackingSupported(menuInfo.isEyeTrackingSupported),
               m_resolutionHeightRatio(menuInfo.resolutionHeightRatio),
               m_isMotionReprojectionRateSupported(menuInfo.isMotionReprojectionRateSupported),
-              m_displayRefreshRate(menuInfo.displayRefreshRate), m_supportFOVHack(menuInfo.isPimaxFovHackSupported) {
+              m_displayRefreshRate(menuInfo.displayRefreshRate) {
             m_lastInput = std::chrono::steady_clock::now();
 
             // We display the hint for menu hotkeys for the first few runs.
@@ -1542,16 +1542,6 @@ namespace {
                  [&](int value) { return fmt::format("{}% ({:.1f}\xB0)", value, m_stats.fov[1].angleRight); }});
             fovAdvancedGroup.finalize();
 
-            if (menuInfo.isPimaxFovHackSupported) {
-                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                         "Pimax WFOV Hack",
-                                         MenuEntryType::Choice,
-                                         SettingPimaxFOVHack,
-                                         0,
-                                         MenuEntry::LastVal<OffOnType>(),
-                                         MenuEntry::FmtEnum<OffOnType>});
-            }
-
             m_menuEntries.push_back(
                 {MenuIndent::OptionIndent, "Zoom", MenuEntryType::Slider, SettingZoom, 10, 1500, [](int value) {
                      return fmt::format("{:.1f}x", value / 10.f);
@@ -1782,7 +1772,6 @@ namespace {
         const float m_resolutionHeightRatio;
         const bool m_isMotionReprojectionRateSupported;
         const uint8_t m_displayRefreshRate;
-        const bool m_supportFOVHack;
         bool m_hagsWarning;
         MenuStatistics m_stats{};
         GesturesState m_gesturesState{};

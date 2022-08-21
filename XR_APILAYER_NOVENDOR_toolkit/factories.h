@@ -110,8 +110,7 @@ namespace toolkit {
                                  uint32_t renderWidth,
                                  uint32_t renderHeight,
                                  uint32_t displayWidth,
-                                 uint32_t displayHeight,
-                                 bool isPimaxFovHackSupported);
+                                 uint32_t displayHeight);
 
         bool IsDeviceSupportingFP16(std::shared_ptr<IDevice> device);
 
@@ -151,7 +150,6 @@ namespace toolkit {
             uint8_t variableRateShaderMaxRate;
             bool isEyeTrackingSupported;
             bool isEyeTrackingProjectionDistanceSupported;
-            bool isPimaxFovHackSupported;
         };
 
         std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
