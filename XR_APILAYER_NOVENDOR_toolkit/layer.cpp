@@ -166,6 +166,7 @@ namespace {
             m_configManager->setDefault(config::SettingFOVRightLeft, 100);
             m_configManager->setDefault(config::SettingFOVRightRight, 100);
             m_configManager->setDefault(config::SettingZoom, 10);
+            m_configManager->setDefault(config::SettingDisableHAM, 0);
             m_configManager->setDefault(config::SettingPredictionDampen, 100);
             m_configManager->setDefault(config::SettingResolutionOverride, 0);
             m_configManager->setEnumDefault(config::SettingMotionReprojection, config::MotionReprojection::Default);
@@ -1311,10 +1312,66 @@ namespace {
                                         uint32_t viewIndex,
                                         XrVisibilityMaskTypeKHR visibilityMaskType,
                                         XrVisibilityMaskKHR* visibilityMask) override {
-            // TODO: Reserved for future use.
+            bool useFullMask = false;
+            bool useEmptyMask = false;
 
-            return OpenXrApi::xrGetVisibilityMaskKHR(
-                session, viewConfigurationType, viewIndex, visibilityMaskType, visibilityMask);
+            if (m_configManager->getValue(config::SettingDisableHAM)) {
+                useEmptyMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR;
+                useFullMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_VISIBLE_TRIANGLE_MESH_KHR;
+            }
+            switch (m_configManager->getEnumValue<config::BlindEye>(config::SettingBlindEye)) {
+            case config::BlindEye::Left:
+                if (viewIndex == 0) {
+                    useEmptyMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_VISIBLE_TRIANGLE_MESH_KHR;
+                    useFullMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR;
+                }
+                break;
+            case config::BlindEye::Right:
+                if (viewIndex == 1) {
+                    useEmptyMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_VISIBLE_TRIANGLE_MESH_KHR;
+                    useFullMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR;
+                }
+                break;
+
+            case config::BlindEye::None:
+            default:
+                break;
+            }
+
+            if (useFullMask) {
+                visibilityMask->vertexCountOutput = 4;
+                visibilityMask->indexCountOutput = 6;
+                if (visibilityMask->vertexCapacityInput >= visibilityMask->vertexCountOutput &&
+                    visibilityMask->indexCapacityInput >= visibilityMask->indexCountOutput) {
+                    visibilityMask->vertices[0] = {2, 2};
+                    visibilityMask->vertices[1] = {-2, 2};
+                    visibilityMask->vertices[2] = {-2, -2};
+                    visibilityMask->vertices[3] = {2, -2};
+                    visibilityMask->indices[0] = 0;
+                    visibilityMask->indices[1] = 1;
+                    visibilityMask->indices[2] = 2;
+                    visibilityMask->indices[3] = 2;
+                    visibilityMask->indices[4] = 3;
+                    visibilityMask->indices[5] = 0;
+                }
+                return XR_SUCCESS;
+            } else if (useEmptyMask) {
+                // TODO: Not great, but we must return something apparently. No vertices/indices does not seem to work
+                // for all apps (bad two-call idiom)?
+                visibilityMask->vertexCountOutput = 1;
+                visibilityMask->indexCountOutput = 3;
+                if (visibilityMask->vertexCapacityInput >= visibilityMask->vertexCountOutput &&
+                    visibilityMask->indexCapacityInput >= visibilityMask->indexCountOutput) {
+                    visibilityMask->vertices[0] = {0, 0};
+                    visibilityMask->indices[0] = 0;
+                    visibilityMask->indices[1] = 0;
+                    visibilityMask->indices[2] = 0;
+                }
+                return XR_SUCCESS;
+            } else {
+                return OpenXrApi::xrGetVisibilityMaskKHR(
+                    session, viewConfigurationType, viewIndex, visibilityMaskType, visibilityMask);
+            }
         }
 
         XrResult xrLocateViews(XrSession session,
@@ -1771,6 +1828,17 @@ namespace {
                                          ? m_configManager->getEnumValue<config::MipMapBias>(config::SettingMipMapBias)
                                          : config::MipMapBias::Off;
                 m_graphicsDevice->setMipMapBias(biasing, m_mipMapBiasForUpscaling);
+            }
+
+            // Update HAM.
+            if (m_configManager->hasChanged(config::SettingDisableHAM) ||
+                m_configManager->hasChanged(config::SettingBlindEye)) {
+                // Kick off HAM event.
+                m_visibilityMaskEventIndex = 0;
+
+                // The app might ignore the HAM events. We acknowledge the config change regardless.
+                (void)m_configManager->getValue(config::SettingDisableHAM);
+                (void)m_configManager->getValue(config::SettingBlindEye);
             }
 
             // Check to reload shaders.

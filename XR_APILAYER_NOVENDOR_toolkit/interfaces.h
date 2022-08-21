@@ -141,6 +141,8 @@ namespace toolkit {
         const std::string SettingFOVRightLeft = "fov_rl";
         const std::string SettingFOVRightRight = "fov_rr";
         const std::string SettingZoom = "zoom";
+        const std::string SettingDisableHAM = "disable_ham";
+        const std::string SettingBlindEye = "blind_eye";
         const std::string SettingHandTrackingEnabled = "enable_hand_tracking";
         const std::string SettingHandVisibilityAndSkinTone = "hand_visibility";
         const std::string SettingHandTimeout = "hand_timeout";
@@ -202,6 +204,7 @@ namespace toolkit {
         enum class PostSunGlassesType { None = 0, Light, Dark, Night, MaxValue };
         enum class FovModeType { Simple, Advanced, MaxValue };
         enum class ScreenshotFileFormat { DDS = 0, PNG, JPG, BMP, MaxValue };
+        enum class BlindEye { None = 0, Left, Right, MaxValue };
 
         template <typename ConfigEnumType>
         extern std::string_view to_string_view(ConfigEnumType);

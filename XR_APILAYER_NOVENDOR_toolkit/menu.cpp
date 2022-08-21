@@ -1548,6 +1548,23 @@ namespace {
                  }});
             m_menuEntries.back().acceleration = 10;
 
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Blind eye",
+                                     MenuEntryType::Choice,
+                                     SettingBlindEye,
+                                     0,
+                                     MenuEntry::LastVal<BlindEye>(),
+                                     MenuEntry::FmtEnum<BlindEye>});
+
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Disable mask (HAM)",
+                                     MenuEntryType::Choice,
+                                     SettingDisableHAM,
+                                     0,
+                                     MenuEntry::LastVal<NoYesType>(),
+                                     MenuEntry::FmtEnum<NoYesType>});
+            m_menuEntries.back().expert = true;
+
             // Must be kept last.
             systemTab.finalize();
         }

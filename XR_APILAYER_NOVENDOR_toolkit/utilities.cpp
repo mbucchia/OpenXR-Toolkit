@@ -99,6 +99,7 @@ namespace toolkit::config {
     DECLARE_ENUM_TO_STRING_VIEW(PostSunGlassesType, {"Off", "Light", "Dark", "TruNite"})
     DECLARE_ENUM_TO_STRING_VIEW(FovModeType, {"Simple", "Advanced"})
     DECLARE_ENUM_TO_STRING_VIEW(ScreenshotFileFormat, {"DDS", "PNG", "JPG", "BMP"})
+    DECLARE_ENUM_TO_STRING_VIEW(BlindEye, {"None", "Left", "Right"})
 
 #undef DECLARE_ENUM_TO_STRING_VIEW
 
