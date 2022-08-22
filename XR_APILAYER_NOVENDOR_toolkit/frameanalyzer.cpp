@@ -36,26 +36,64 @@ namespace {
 
     class FrameAnalyzer : public IFrameAnalyzer {
       public:
-        FrameAnalyzer(std::shared_ptr<IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice)
-            : m_configManager(configManager), m_device(graphicsDevice) {
+        FrameAnalyzer(std::shared_ptr<IConfigManager> configManager,
+                      std::shared_ptr<IDevice> graphicsDevice,
+                      uint32_t displayWidth,
+                      uint32_t displayHeight,
+                      FrameAnalyzerHeuristic heuristic)
+            : m_configManager(configManager), m_device(graphicsDevice), m_displayWidth(displayWidth),
+              m_displayHeight(displayHeight), m_forceHeuristic(heuristic) {
         }
 
-        void registerColorSwapchainImage(std::shared_ptr<ITexture> source, Eye eye) override {
+        void registerColorSwapchainImage(XrSwapchain swapchain, std::shared_ptr<ITexture> source, Eye eye) override {
+            m_eyeSwapchain[(int)eye].insert(swapchain);
             m_eyeSwapchainImages[(int)eye].insert(source->getNativePtr());
         }
 
         void resetForFrame() override {
-            // Assumes left eye is first in case we won't be able to tell for sure.
-            m_eyePrediction = Eye::Left;
+            m_hasSeenLeftEye = m_hasSeenRightEye = false;
+            m_hasCopiedLeftEye = m_hasCopiedRightEye = false;
+
+            m_eyePrediction = m_firstEye;
             m_isPredictionValid = m_shouldPredictEye;
+
+            if (m_fallbackDelay) {
+                m_fallbackDelay--;
+            }
         }
 
         void prepareForEndFrame() override {
+            if (m_heuristic == FrameAnalyzerHeuristic::Unknown) {
+                if (m_hasSeenLeftEye && m_hasSeenRightEye &&
+                    (m_forceHeuristic == FrameAnalyzerHeuristic::ForwardRender ||
+                     m_forceHeuristic == FrameAnalyzerHeuristic::Unknown)) {
+                    Log("Detected forward rendering\n");
+                    m_heuristic = FrameAnalyzerHeuristic::ForwardRender;
+                    m_firstEye = Eye::Left;
+                } else if (m_hasCopiedLeftEye && m_hasCopiedRightEye &&
+                           (m_forceHeuristic == FrameAnalyzerHeuristic::DeferredCopy ||
+                            m_forceHeuristic == FrameAnalyzerHeuristic::Unknown)) {
+                    Log("Detected deferred rendering with copy\n");
+                    m_heuristic = FrameAnalyzerHeuristic::DeferredCopy;
+                    m_firstEye = m_firstEyeCopy;
+                } else if (!m_fallbackDelay && (m_forceHeuristic == FrameAnalyzerHeuristic::Fallback ||
+                                                m_forceHeuristic == FrameAnalyzerHeuristic::Unknown)) {
+                    Log("Fallback to swapchain acquisition\n");
+                    m_heuristic = FrameAnalyzerHeuristic::Fallback;
+                    m_firstEye = Eye::Left;
+                }
+
+                TraceLoggingWrite(
+                    g_traceProvider, "FrameAnalyzer_TrySetHeuristic", TLArg((uint32_t)m_heuristic, "Heuristic"));
+
+                m_shouldPredictEye = m_heuristic != FrameAnalyzerHeuristic::Unknown;
+            }
         }
 
         void onSetRenderTarget(std::shared_ptr<graphics::IContext> context,
                                std::shared_ptr<ITexture> renderTarget) override {
-            if (renderTarget->getInfo().arraySize != 1) {
+            const auto& info = renderTarget->getInfo();
+            if (info.arraySize != 1) {
                 return;
             }
 
@@ -63,17 +101,13 @@ namespace {
 
             // Handle when the application uses the swapchain image directly.
             if (m_eyeSwapchainImages[0].find(nativePtr) != m_eyeSwapchainImages[0].cend()) {
-                DebugLog("Detected setting RTV to left eye\n");
+                TraceLoggingWrite(g_traceProvider, "FrameAnalyzer_DetectedLeftEyeForwardRender");
                 m_eyePrediction = Eye::Left;
-
-                // We are confident our prediction is accurate.
-                m_shouldPredictEye = true;
+                m_hasSeenLeftEye = true;
             } else if (m_eyeSwapchainImages[1].find(nativePtr) != m_eyeSwapchainImages[1].cend()) {
-                DebugLog("Detected setting RTV to right eye\n");
+                TraceLoggingWrite(g_traceProvider, "FrameAnalyzer_DetectedRightEyeForwardRender");
                 m_eyePrediction = Eye::Right;
-
-                // We are confident our prediction is accurate.
-                m_shouldPredictEye = true;
+                m_hasSeenRightEye = true;
             }
         }
 
@@ -90,22 +124,59 @@ namespace {
 
             const void* const nativePtr = destination->getNativePtr();
 
-            // Handle when the application copies the texture to the swapchain image mid-pass. Assumes left eye is
-            // always first (hence we only detect changes to switch to right eye). This is what FS2020 does.
+            // Handle when the application copies the texture to the swapchain image mid-pass. This is what FS2020 does.
             if (m_eyeSwapchainImages[0].find(nativePtr) != m_eyeSwapchainImages[0].cend()) {
-                DebugLog("Detected copy-out to left eye\n");
+                TraceLoggingWrite(g_traceProvider, "FrameAnalyzer_DetectedLeftEyeCopyOut");
+
+                if (!m_hasCopiedLeftEye && !m_hasCopiedRightEye) {
+                    m_firstEyeCopy = Eye::Left;
+                }
 
                 // Switch to right eye now.
                 m_eyePrediction = Eye::Right;
+                m_hasCopiedLeftEye = true;
+            } else if (m_eyeSwapchainImages[1].find(nativePtr) != m_eyeSwapchainImages[1].cend()) {
+                TraceLoggingWrite(g_traceProvider, "FrameAnalyzer_DetectedRightEyeCopyOut");
 
-                // We are confident our prediction is accurate.
-                m_shouldPredictEye = true;
+                if (!m_hasCopiedLeftEye && !m_hasCopiedRightEye) {
+                    m_firstEyeCopy = Eye::Right;
+                }
+
+                // Switch to left eye now.
+                m_eyePrediction = Eye::Left;
+                m_hasCopiedRightEye = true;
             }
-#ifdef _DEBUG
-            else if (m_eyeSwapchainImages[1].find(nativePtr) != m_eyeSwapchainImages[1].cend()) {
-                DebugLog("Detected copy-out to right eye\n");
+        }
+
+        void onAcquireSwapchain(XrSwapchain swapchain) override {
+            // If we don't have a better heuristic, just use the swapchain acquisition order.
+            if (m_eyeSwapchain[0].find(swapchain) != m_eyeSwapchain[0].cend()) {
+                TraceLoggingWrite(g_traceProvider, "FrameAnalyzer_DetectedLeftEyeSwapchainAcquisition");
+                if (m_heuristic == FrameAnalyzerHeuristic::Fallback) {
+                    m_eyePrediction = Eye::Left;
+                }
+            } else if (m_eyeSwapchain[1].find(swapchain) != m_eyeSwapchain[1].cend()) {
+                TraceLoggingWrite(g_traceProvider, "FrameAnalyzer_DetectedRightEyeSwapchainAcquisition");
+                if (m_heuristic == FrameAnalyzerHeuristic::Fallback) {
+                    m_eyePrediction = Eye::Right;
+                }
             }
-#endif
+        }
+
+        void onReleaseSwapchain(XrSwapchain swapchain) override {
+            // If we don't have a better heuristic, just use the swapchain acquisition order.
+            // Switch eye once a swapchain is released.
+            if (m_eyeSwapchain[0].find(swapchain) != m_eyeSwapchain[0].cend()) {
+                TraceLoggingWrite(g_traceProvider, "FrameAnalyzer_DetectedLeftEyeSwapchainRelease");
+                if (m_heuristic == FrameAnalyzerHeuristic::Fallback) {
+                    m_eyePrediction = Eye::Right;
+                }
+            } else if (m_eyeSwapchain[1].find(swapchain) != m_eyeSwapchain[1].cend()) {
+                TraceLoggingWrite(g_traceProvider, "FrameAnalyzer_DetectedRightEyeSwapchainRelease");
+                if (m_heuristic == FrameAnalyzerHeuristic::Fallback) {
+                    m_eyePrediction = Eye::Left;
+                }
+            }
         }
 
         std::optional<Eye> getEyeHint() const override {
@@ -115,23 +186,44 @@ namespace {
             return m_eyePrediction;
         }
 
+        FrameAnalyzerHeuristic getCurrentHeuristic() const override {
+            return m_heuristic;
+        }
+
       private:
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
+        const uint32_t m_displayWidth;
+        const uint32_t m_displayHeight;
+        const FrameAnalyzerHeuristic m_forceHeuristic;
 
         std::set<const void*> m_eyeSwapchainImages[ViewCount];
+        std::set<XrSwapchain> m_eyeSwapchain[ViewCount];
+
+        bool m_hasSeenLeftEye{false};
+        bool m_hasSeenRightEye{false};
+        bool m_hasCopiedLeftEye{false};
+        bool m_hasCopiedRightEye{false};
+        Eye m_firstEyeCopy;
+        FrameAnalyzerHeuristic m_heuristic{FrameAnalyzerHeuristic::Unknown};
 
         bool m_shouldPredictEye{false};
         bool m_isPredictionValid{false};
         Eye m_eyePrediction;
+        Eye m_firstEye{Eye::Left};
+
+        uint32_t m_fallbackDelay{100};
     };
 
 } // namespace
 
 namespace toolkit::graphics {
     std::shared_ptr<IFrameAnalyzer> CreateFrameAnalyzer(std::shared_ptr<IConfigManager> configManager,
-                                                        std::shared_ptr<IDevice> graphicsDevice) {
-        return std::make_shared<FrameAnalyzer>(configManager, graphicsDevice);
+                                                        std::shared_ptr<IDevice> graphicsDevice,
+                                                        uint32_t displayWidth,
+                                                        uint32_t displayHeight,
+                                                        FrameAnalyzerHeuristic heuristic) {
+        return std::make_shared<FrameAnalyzer>(configManager, graphicsDevice, displayWidth, displayHeight, heuristic);
     }
 
 } // namespace toolkit::graphics

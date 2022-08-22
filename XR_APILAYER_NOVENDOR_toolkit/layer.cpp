@@ -592,7 +592,12 @@ namespace {
 
                     if (m_graphicsDevice->isEventsSupported()) {
                         if (!m_configManager->getValue("disable_frame_analyzer")) {
-                            m_frameAnalyzer = graphics::CreateFrameAnalyzer(m_configManager, m_graphicsDevice);
+                            graphics::FrameAnalyzerHeuristic heuristic = graphics::FrameAnalyzerHeuristic::Unknown;
+
+                            // TODO: Override heuristic per-app if needed.
+
+                            m_frameAnalyzer = graphics::CreateFrameAnalyzer(
+                                m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight, heuristic);
                         }
 
                         m_variableRateShader = graphics::CreateVariableRateShader(m_configManager,
@@ -1234,6 +1239,10 @@ namespace {
                                          uint32_t* index) override {
             auto swapchainIt = m_swapchains.find(swapchain);
             if (swapchainIt != m_swapchains.end()) {
+                if (m_frameAnalyzer) {
+                    m_frameAnalyzer->onAcquireSwapchain(swapchain);
+                }
+
                 // Perform the release now in case it was delayed. This could happen for a discarded frame.
                 if (swapchainIt->second.delayedRelease) {
                     XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO, nullptr};
@@ -1257,6 +1266,10 @@ namespace {
                                          const XrSwapchainImageReleaseInfo* releaseInfo) override {
             auto swapchainIt = m_swapchains.find(swapchain);
             if (swapchainIt != m_swapchains.end()) {
+                if (m_frameAnalyzer) {
+                    m_frameAnalyzer->onReleaseSwapchain(swapchain);
+                }
+
                 // Perform a delayed release: we still need to write to the swapchain in our xrEndFrame()!
                 swapchainIt->second.delayedRelease = true;
                 return XR_SUCCESS;
@@ -1750,6 +1763,10 @@ namespace {
                 m_stats.numBiasedSamplers = m_graphicsDevice->getNumBiasedSamplersThisFrame();
             }
 
+            if (m_frameAnalyzer) {
+                m_stats.frameAnalyzerHeuristic = m_frameAnalyzer->getCurrentHeuristic();
+            }
+
             if ((now - m_performanceCounters.lastWindowStart) >= std::chrono::seconds(1)) {
                 m_performanceCounters.numFrames = 0;
                 m_performanceCounters.lastWindowStart = now;
@@ -2045,7 +2062,8 @@ namespace {
                         // assume.
                         if (m_frameAnalyzer && !useVPRT && !swapchainState.registeredWithFrameAnalyzer) {
                             for (const auto& image : swapchainState.images) {
-                                m_frameAnalyzer->registerColorSwapchainImage(image.chain[0], (utilities::Eye)eye);
+                                m_frameAnalyzer->registerColorSwapchainImage(
+                                    view.subImage.swapchain, image.chain[0], (utilities::Eye)eye);
                             }
                             swapchainState.registeredWithFrameAnalyzer = true;
                         }

@@ -865,6 +865,8 @@ namespace {
                                                              m_stats.hasDepthBuffer[1] ? "D" : "_"),
                                                  OVERLAY_COMMON);
                             top += 1.05f * fontSize;
+                            m_device->drawString(fmt::format("heur: {}", m_stats.frameAnalyzerHeuristic), OVERLAY_COMMON);
+                            top += 1.05f * fontSize;
 
                             m_device->drawString(fmt::format("biased: {}", m_stats.numBiasedSamplers), OVERLAY_COMMON);
                             top += 1.05f * fontSize;

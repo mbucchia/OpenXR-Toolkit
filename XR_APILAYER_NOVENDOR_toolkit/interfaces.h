@@ -334,6 +334,8 @@ namespace toolkit {
 
         enum class TextStyle { Normal, Bold };
 
+        enum class FrameAnalyzerHeuristic { Unknown, ForwardRender, DeferredCopy, Fallback };
+
         struct IDevice;
         struct ITexture;
 
@@ -665,21 +667,27 @@ namespace toolkit {
         struct IFrameAnalyzer {
             virtual ~IFrameAnalyzer() = default;
 
-            virtual void registerColorSwapchainImage(std::shared_ptr<ITexture> source, utilities::Eye eye) = 0;
+            virtual void registerColorSwapchainImage(XrSwapchain swapchain,
+                                                     std::shared_ptr<ITexture> source,
+                                                     utilities::Eye eye) = 0;
 
             virtual void resetForFrame() = 0;
             virtual void prepareForEndFrame() = 0;
 
             virtual void onSetRenderTarget(std::shared_ptr<IContext> context,
                                            std::shared_ptr<ITexture> renderTarget) = 0;
-            virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
+            virtual void onUnsetRenderTarget(std::shared_ptr<IContext> context) = 0;
 
             virtual void onCopyTexture(std::shared_ptr<ITexture> source,
                                        std::shared_ptr<ITexture> destination,
                                        int sourceSlice = -1,
                                        int destinationSlice = -1) = 0;
 
+            virtual void onAcquireSwapchain(XrSwapchain swapchain) = 0;
+            virtual void onReleaseSwapchain(XrSwapchain swapchain) = 0;
+
             virtual std::optional<utilities::Eye> getEyeHint() const = 0;
+            virtual FrameAnalyzerHeuristic getCurrentHeuristic() const = 0;
         };
 
         // A Variable Rate Shader (VRS) control implementation.
@@ -811,6 +819,7 @@ namespace toolkit {
 
             bool hasColorBuffer[utilities::ViewCount]{false, false};
             bool hasDepthBuffer[utilities::ViewCount]{false, false};
+            graphics::FrameAnalyzerHeuristic frameAnalyzerHeuristic{graphics::FrameAnalyzerHeuristic::Unknown};
         };
 
         // A menu handler.
