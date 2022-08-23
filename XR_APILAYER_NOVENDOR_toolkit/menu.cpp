@@ -865,7 +865,8 @@ namespace {
                                                              m_stats.hasDepthBuffer[1] ? "D" : "_"),
                                                  OVERLAY_COMMON);
                             top += 1.05f * fontSize;
-                            m_device->drawString(fmt::format("heur: {}", m_stats.frameAnalyzerHeuristic), OVERLAY_COMMON);
+                            m_device->drawString(fmt::format("heur: {}", m_stats.frameAnalyzerHeuristic),
+                                                 OVERLAY_COMMON);
                             top += 1.05f * fontSize;
 
                             m_device->drawString(fmt::format("biased: {}", m_stats.numBiasedSamplers), OVERLAY_COMMON);
@@ -1246,6 +1247,14 @@ namespace {
                                          MenuEntry::LastVal<OffOnType>(),
                                          MenuEntry::FmtEnum<OffOnType>});
             }
+
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Record statistics",
+                                     MenuEntryType::Choice,
+                                     SettingRecordStats,
+                                     0,
+                                     MenuEntry::LastVal<NoYesType>(),
+                                     MenuEntry::FmtEnum<NoYesType>});
 
             // Must be kept last.
             performanceTab.finalize();

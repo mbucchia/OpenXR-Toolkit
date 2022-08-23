@@ -76,6 +76,7 @@ XrResult __declspec(dllexport) XRAPI_CALL
     localAppData = std::filesystem::path(getenv("LOCALAPPDATA")) / LayerPrettyName;
     CreateDirectoryA(localAppData.string().c_str(), nullptr);
     CreateDirectoryA((localAppData / "logs").string().c_str(), nullptr);
+    CreateDirectoryA((localAppData / "stats").string().c_str(), nullptr);
     CreateDirectoryA((localAppData / "screenshots").string().c_str(), nullptr);
     CreateDirectoryA((localAppData / "configs").string().c_str(), nullptr);
 

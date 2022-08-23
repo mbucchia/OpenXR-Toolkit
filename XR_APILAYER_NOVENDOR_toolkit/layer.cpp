@@ -173,6 +173,7 @@ namespace {
             m_configManager->setEnumDefault(config::SettingMotionReprojectionRate, config::MotionReprojectionRate::Off);
             m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
             m_configManager->setDefault(config::SettingScreenshotEye, 0); // Both
+            m_configManager->setDefault(config::SettingRecordStats, 0);
 
             // Misc debug.
             m_configManager->setDefault("debug_layer",
@@ -1767,6 +1768,21 @@ namespace {
                 m_stats.frameAnalyzerHeuristic = m_frameAnalyzer->getCurrentHeuristic();
             }
 
+            if (m_configManager->hasChanged(config::SettingRecordStats)) {
+                if (m_configManager->getValue(config::SettingRecordStats)) {
+                    const std::time_t now = std::time(nullptr);
+                    char buf[1024];
+                    std::strftime(buf, sizeof(buf), "stats_%Y%m%d_%H%M%S", std::localtime(&now));
+                    std::string logFile = (localAppData / "stats" / (std::string(buf) + ".csv")).string();
+                    m_logStats.open(logFile, std::ios_base::ate);
+
+                    // Write headers.
+                    m_logStats << "FPS,appCPU (us),appGPU (us)\n";
+                } else {
+                    m_logStats.close();
+                }
+            }
+
             if ((now - m_performanceCounters.lastWindowStart) >= std::chrono::seconds(1)) {
                 m_performanceCounters.numFrames = 0;
                 m_performanceCounters.lastWindowStart = now;
@@ -1796,6 +1812,11 @@ namespace {
 
                 if (m_menuHandler) {
                     m_menuHandler->updateStatistics(m_stats);
+                }
+
+                if (m_logStats.is_open()) {
+                    m_logStats << m_stats.fps << "," << m_stats.appCpuTimeUs << "," << m_stats.appGpuTimeUs << ","
+                               << "\n";
                 }
 
                 // Start from fresh!
@@ -2434,6 +2455,7 @@ namespace {
         } m_performanceCounters;
 
         menu::MenuStatistics m_stats{};
+        std::ofstream m_logStats;
         bool m_hasPerformanceCounterKHR{false};
     };
 

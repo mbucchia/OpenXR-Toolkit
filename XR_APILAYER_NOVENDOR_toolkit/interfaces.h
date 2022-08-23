@@ -183,6 +183,7 @@ namespace toolkit {
         const std::string SettingResolutionOverride = "override_resolution";
         const std::string SettingResolutionWidth = "resolution_width";
         const std::string SettingDisableInterceptor = "disable_interceptor";
+        const std::string SettingRecordStats = "record_stats";
 
         enum class OffOnType { Off = 0, On, MaxValue };
         enum class NoYesType { No = 0, Yes, MaxValue };
