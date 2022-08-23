@@ -1249,6 +1249,20 @@ namespace {
             }
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Frame rate throttling",
+                                     MenuEntryType::Slider,
+                                     SettingFrameThrottling,
+                                     15,
+                                     MaxFrameRate,
+                                     [&](int value) {
+                                         if (value == MaxFrameRate) {
+                                             return std::string("Off");
+                                         } else {
+                                             return fmt::format("{}", value);
+                                         }
+                                     }});
+
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Record statistics",
                                      MenuEntryType::Choice,
                                      SettingRecordStats,

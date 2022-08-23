@@ -184,6 +184,7 @@ namespace toolkit {
         const std::string SettingResolutionWidth = "resolution_width";
         const std::string SettingDisableInterceptor = "disable_interceptor";
         const std::string SettingRecordStats = "record_stats";
+        const std::string SettingFrameThrottling = "frame_throttle";
 
         enum class OffOnType { Off = 0, On, MaxValue };
         enum class NoYesType { No = 0, Yes, MaxValue };
@@ -206,6 +207,7 @@ namespace toolkit {
         enum class FovModeType { Simple, Advanced, MaxValue };
         enum class ScreenshotFileFormat { DDS = 0, PNG, JPG, BMP, MaxValue };
         enum class BlindEye { None = 0, Left, Right, MaxValue };
+        constexpr auto MaxFrameRate = 120;
 
         template <typename ConfigEnumType>
         extern std::string_view to_string_view(ConfigEnumType);

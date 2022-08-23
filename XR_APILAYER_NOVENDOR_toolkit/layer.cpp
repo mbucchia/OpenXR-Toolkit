@@ -174,6 +174,7 @@ namespace {
             m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
             m_configManager->setDefault(config::SettingScreenshotEye, 0); // Both
             m_configManager->setDefault(config::SettingRecordStats, 0);
+            m_configManager->setDefault(config::SettingFrameThrottling, 120); // Off
 
             // Misc debug.
             m_configManager->setDefault("debug_layer",
@@ -1733,6 +1734,19 @@ namespace {
         XrResult xrBeginFrame(XrSession session, const XrFrameBeginInfo* frameBeginInfo) override {
             const XrResult result = OpenXrApi::xrBeginFrame(session, frameBeginInfo);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                // Do throttling if needed.
+                const auto frameThrottling = m_configManager->getValue(config::SettingFrameThrottling);
+                if (frameThrottling < config::MaxFrameRate) {
+                    // TODO: Try to reduce latency by slowing slewing to reduce the predictedDisplayTime.
+
+                    const auto target =
+                        m_lastFrameBegunTimestamp +
+                        std::chrono::microseconds(1000000 / frameThrottling + m_frameThrottleSleepOffset) - 500us /* "running start" */;
+                    std::this_thread::sleep_until(target);
+                }
+
+                m_lastFrameBegunTimestamp = std::chrono::steady_clock::now();
+
                 // Record the predicted display time.
                 m_begunFrameTime = m_waitedFrameTime;
                 m_isInFrame = true;
@@ -2425,6 +2439,8 @@ namespace {
         XrVector2f m_projCenters[utilities::ViewCount];
         XrVector2f m_eyeGaze[utilities::ViewCount];
         XrView m_posesForFrame[utilities::ViewCount];
+        std::chrono::time_point<std::chrono::steady_clock> m_lastFrameBegunTimestamp{};
+        uint32_t m_frameThrottleSleepOffset{0};
 
         std::shared_ptr<config::IConfigManager> m_configManager;
 
