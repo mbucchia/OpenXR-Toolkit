@@ -47,6 +47,9 @@ namespace toolkit {
         void ToggleWindowsMixedRealityReprojection(config::MotionReprojection enable);
         void UpdateWindowsMixedRealityReprojectionRate(config::MotionReprojectionRate rate);
 
+        void EnableHighPrecisionTimer();
+        void RestoreTimerPrecision();
+
         bool IsServiceRunning(const std::string& name);
 
     } // namespace utilities

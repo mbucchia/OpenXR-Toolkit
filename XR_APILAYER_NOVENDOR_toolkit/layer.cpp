@@ -346,6 +346,8 @@ namespace {
                 m_configManager->setActiveSession("");
             }
 
+            utilities::RestoreTimerPrecision();
+
             graphics::UnhookForD3D11DebugLayer();
         }
 
@@ -794,6 +796,9 @@ namespace {
             const XrResult result = OpenXrApi::xrBeginSession(session, beginInfo);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 m_configManager->setActiveSession(m_applicationName);
+
+                // Bump up timer precision for this process.
+                utilities::EnableHighPrecisionTimer();
             }
 
             return result;
@@ -802,6 +807,8 @@ namespace {
         XrResult xrEndSession(XrSession session) override {
             const XrResult result = OpenXrApi::xrEndSession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                utilities::RestoreTimerPrecision();
+
                 m_configManager->setActiveSession("");
             }
 
@@ -864,6 +871,8 @@ namespace {
                 // If the order is reversed or the Device is destructed missing, then it means that we are not cleaning
                 // up the resources properly.
                 Log("Session destroyed\n");
+
+                utilities::RestoreTimerPrecision();
             }
 
             return result;

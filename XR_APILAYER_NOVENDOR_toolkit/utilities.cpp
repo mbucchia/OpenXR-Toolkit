@@ -110,6 +110,8 @@ namespace toolkit::utilities {
     using namespace toolkit::config;
     using namespace toolkit::log;
 
+    std::optional<ULONG> g_previousTimerPrecision;
+
     // https://docs.microsoft.com/en-us/archive/msdn-magazine/2017/may/c-use-modern-c-to-access-the-windows-registry
     std::optional<int> RegGetDword(HKEY hKey, const std::wstring& subKey, const std::wstring& value) {
         DWORD data{};
@@ -199,6 +201,94 @@ namespace toolkit::utilities {
         } else {
             SetEnvironmentVariable(L"MinimumFrameInterval", nullptr);
             SetEnvironmentVariable(L"MaximumFrameInterval", nullptr);
+        }
+    }
+
+    void EnableHighPrecisionTimer() {
+        HMODULE ntdllHandle = GetModuleHandle(L"ntdll.dll");
+
+        using pfNtSetTimerResolution =
+            DWORD(__stdcall*)(IN ULONG DesiredResolution, IN BOOLEAN SetResolution, OUT PULONG CurrentResolution);
+        auto NtSetTimerResolution = (pfNtSetTimerResolution)GetProcAddress(ntdllHandle, "NtSetTimerResolution");
+        using pfNtQueryTimerResolution =
+            DWORD(__stdcall*)(OUT PULONG MinimumResolution, OUT PULONG MaximumResolution, OUT PULONG CurrentResolution);
+        auto NtQueryTimerResolution = (pfNtQueryTimerResolution)GetProcAddress(ntdllHandle, "NtQueryTimerResolution");
+
+        ULONG min, max, current;
+        if (NtQueryTimerResolution(&min, &max, &current) == STATUS_SUCCESS) {
+            TraceLoggingWrite(g_traceProvider,
+                              "EnableHighPrecisionTimer_QueryTimerResolution",
+                              TLArg(min, "Min"),
+                              TLArg(max, "Max"),
+                              TLArg(current, "Current"));
+
+            // Set the timer resolution to the maximum precision.
+            ULONG currentRes;
+            if (NtSetTimerResolution(max, TRUE, &currentRes) == STATUS_SUCCESS) {
+                if (!g_previousTimerPrecision.has_value()) {
+                    g_previousTimerPrecision = currentRes;
+                }
+            } else {
+                TraceLoggingWrite(g_traceProvider, "EnableHighPrecisionTimer_SetMaxTimerResolution_Failed");
+            }
+        }
+
+        // Below doesn't seem to make any difference, but added for correctness.
+
+        // See
+        // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setprocessinformation
+        // Enable HighQoS to achieve maximum performance, and turn off power saving.
+        {
+            PROCESS_POWER_THROTTLING_STATE PowerThrottling{};
+            PowerThrottling.Version = PROCESS_POWER_THROTTLING_CURRENT_VERSION;
+            PowerThrottling.ControlMask = PROCESS_POWER_THROTTLING_EXECUTION_SPEED;
+            PowerThrottling.StateMask = 0;
+
+            if (!SetProcessInformation(
+                    GetCurrentProcess(), ProcessPowerThrottling, &PowerThrottling, sizeof(PowerThrottling))) {
+                TraceLoggingWrite(g_traceProvider,
+                                  "EnableHighPrecisionTimer_HighQoS_Failed",
+                                  TLArg(HRESULT_FROM_WIN32(::GetLastError()), "HR"));
+            }
+        }
+
+        // Always honor Timer Resolution Requests. This is to ensure that the timer resolution set-up above sticks
+        // through transitions of the main window (eg: minimization).
+        {
+            // This setting was introduced in Windows 11 and the definition is not available in older headers.
+#ifndef PROCESS_POWER_THROTTLING_IGNORE_TIMER_RESOLUTION
+            const ULONG PROCESS_POWER_THROTTLING_IGNORE_TIMER_RESOLUTION = 0x4U;
+#endif
+
+            PROCESS_POWER_THROTTLING_STATE PowerThrottling{};
+            PowerThrottling.Version = PROCESS_POWER_THROTTLING_CURRENT_VERSION;
+            PowerThrottling.ControlMask = PROCESS_POWER_THROTTLING_IGNORE_TIMER_RESOLUTION;
+            PowerThrottling.StateMask = 0;
+
+            if (!SetProcessInformation(
+                    GetCurrentProcess(), ProcessPowerThrottling, &PowerThrottling, sizeof(PowerThrottling))) {
+                TraceLoggingWrite(g_traceProvider,
+                                  "EnableHighPrecisionTimer_AlwaysHonorRequests_Failed",
+                                  TLArg(HRESULT_FROM_WIN32(::GetLastError()), "HR"));
+            }
+        }
+    }
+
+    void RestoreTimerPrecision() {
+        if (g_previousTimerPrecision.has_value()) {
+            HMODULE ntdllHandle = GetModuleHandle(L"ntdll.dll");
+
+            using pfNtSetTimerResolution =
+                DWORD(__stdcall*)(IN ULONG DesiredResolution, IN BOOLEAN SetResolution, OUT PULONG CurrentResolution);
+            auto NtSetTimerResolution = (pfNtSetTimerResolution)GetProcAddress(ntdllHandle, "NtSetTimerResolution");
+
+            TraceLoggingWrite(
+                g_traceProvider, "RestoreTimerPrecision", TLArg(g_previousTimerPrecision.value(), "Current"));
+
+            ULONG currentRes;
+            NtSetTimerResolution(g_previousTimerPrecision.value(), TRUE, &currentRes);
+
+            g_previousTimerPrecision.reset();
         }
     }
 
