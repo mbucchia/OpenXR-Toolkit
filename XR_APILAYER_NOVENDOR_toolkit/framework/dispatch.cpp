@@ -137,13 +137,16 @@ namespace LAYER_NAMESPACE {
                         info->nextCreateApiLayerInstance = info->next->nextCreateApiLayerInstance;
                         info->nextGetInstanceProcAddr = info->next->nextGetInstanceProcAddr;
                         info->next = info->next->next;
-                    } else if (layerName == "XR_APILAYER_ULTRALEAP_hand_tracking") {
-                        // Assume hand tracking extension is present.
-                        hasHandTrackingExt = true;
                     } else {
                         TraceLoggingWriteTagged(
                             local, "xrCreateApiLayerInstance_UseLayer", TLArg(info->next->layerName, "Layer"));
                         Log("Using layer: %s\n", info->next->layerName);
+
+                        if (layerName == "XR_APILAYER_ULTRALEAP_hand_tracking") {
+                            // Assume hand tracking extension is present.
+                            hasHandTrackingExt = true;
+                        }
+
                         info = info->next;
                     }
                 }
