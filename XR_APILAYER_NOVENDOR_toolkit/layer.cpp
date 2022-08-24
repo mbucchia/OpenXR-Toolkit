@@ -526,6 +526,8 @@ namespace {
             if (m_supportMotionReprojectionLock) {
                 utilities::ToggleWindowsMixedRealityReprojection(
                     m_configManager->getEnumValue<config::MotionReprojection>(config::SettingMotionReprojection));
+                m_isFrameThrottlingPossible = m_configManager->peekEnumValue<config::MotionReprojection>(
+                                                  config::SettingMotionReprojection) != config::MotionReprojection::On;
             }
 
             const XrResult result = OpenXrApi::xrCreateSession(instance, createInfo, session);
@@ -1735,14 +1737,17 @@ namespace {
             const XrResult result = OpenXrApi::xrBeginFrame(session, frameBeginInfo);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 // Do throttling if needed.
-                const auto frameThrottling = m_configManager->getValue(config::SettingFrameThrottling);
-                if (frameThrottling < config::MaxFrameRate) {
-                    // TODO: Try to reduce latency by slowing slewing to reduce the predictedDisplayTime.
+                if (m_isFrameThrottlingPossible) {
+                    const auto frameThrottling = m_configManager->getValue(config::SettingFrameThrottling);
+                    if (frameThrottling < config::MaxFrameRate) {
+                        // TODO: Try to reduce latency by slowing slewing to reduce the predictedDisplayTime.
 
-                    const auto target =
-                        m_lastFrameBegunTimestamp +
-                        std::chrono::microseconds(1000000 / frameThrottling + m_frameThrottleSleepOffset) - 500us /* "running start" */;
-                    std::this_thread::sleep_until(target);
+                        const auto target =
+                            m_lastFrameBegunTimestamp +
+                            std::chrono::microseconds(1000000 / frameThrottling + m_frameThrottleSleepOffset) -
+                            500us /* "running start" */;
+                        std::this_thread::sleep_until(target);
+                    }
                 }
 
                 m_lastFrameBegunTimestamp = std::chrono::steady_clock::now();
@@ -2428,6 +2433,7 @@ namespace {
         bool m_supportMotionReprojectionLock{false};
         bool m_isOmniceptDetected{false};
         bool m_hasPimaxEyeTracker{false};
+        bool m_isFrameThrottlingPossible{true};
 
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;

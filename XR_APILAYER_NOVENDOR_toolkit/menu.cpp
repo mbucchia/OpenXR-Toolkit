@@ -1248,6 +1248,10 @@ namespace {
                                          MenuEntry::FmtEnum<OffOnType>});
             }
 
+            MenuGroup frameThrottlingGroup(this, [&] {
+                return m_configManager->peekEnumValue<MotionReprojection>(SettingMotionReprojection) !=
+                       MotionReprojection::On;
+            });
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Frame rate throttling",
                                      MenuEntryType::Slider,
@@ -1261,6 +1265,7 @@ namespace {
                                              return fmt::format("{}", value);
                                          }
                                      }});
+            frameThrottlingGroup.finalize();
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Record statistics",
