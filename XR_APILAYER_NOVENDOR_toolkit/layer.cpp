@@ -2162,8 +2162,23 @@ namespace {
                             correctedProjectionViews[eye].pose = m_posesForFrame[eye].pose;
                         }
 
-                        // Patch the FOV.
-                        correctedProjectionViews[eye].fov = m_posesForFrame[eye].fov;
+                        // Patch the FOV if it was overriden.
+                        const auto fovOverrideMode = m_configManager->peekValue(config::SettingFOVType);
+                        if ((fovOverrideMode == 0 && m_configManager->peekValue(config::SettingFOV) != 100) ||
+                            fovOverrideMode == 1 || m_configManager->peekValue(config::SettingZoom) != 10) {
+                            const bool yflip = correctedProjectionViews[eye].fov.angleDown > 0 &&
+                                               correctedProjectionViews[eye].fov.angleUp < 0;
+
+                            correctedProjectionViews[eye].fov = m_posesForFrame[eye].fov;
+
+                            // Some apps might modify the FOV, which we don't support in this override case. We
+                            // accomodate the most common case here, which is the Y-flip case. For other (uncommon)
+                            // cases, we expect the user to not use the override.
+                            if (yflip) {
+                                std::swap(correctedProjectionViews[eye].fov.angleDown,
+                                          correctedProjectionViews[eye].fov.angleUp);
+                            }
+                        }
 
                         viewsForOverlay[eye].Pose = correctedProjectionViews[eye].pose;
                         viewsForOverlay[eye].Fov = correctedProjectionViews[eye].fov;
