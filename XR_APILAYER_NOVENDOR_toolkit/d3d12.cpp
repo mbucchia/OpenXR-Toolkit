@@ -1725,7 +1725,7 @@ namespace {
             return m_textDevice->measureString(string, style, size);
         }
 
-        void beginText() override {
+        void beginText(bool mustKeepOldContent) override {
             // Grab the interop version of the render target texture...
             auto d3d12DrawRenderTarget = dynamic_cast<D3D12Texture*>(m_currentDrawRenderTarget.get());
             m_currentTextRenderTarget = d3d12DrawRenderTarget->getInteropTexture();
@@ -1757,6 +1757,11 @@ namespace {
                     WrapD3D11Texture(m_textDevice, copyInfo, get(interopTexture), "Render Target Interop TEX2D");
 
                 d3d12DrawRenderTarget->setInteropTexture(m_currentTextRenderTarget, copyTexture);
+            }
+            // If an intermediate copy is needed, we must copy the previous content of the image first.
+            if (m_needInteropCopy && mustKeepOldContent) {
+                // TODO: Texture arrays?
+                d3d12DrawRenderTarget->copyTo(d3d12DrawRenderTarget->getInteropCopyTexture());
             }
             {
                 ID3D11Resource* const resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};

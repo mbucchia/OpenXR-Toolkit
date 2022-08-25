@@ -2331,7 +2331,7 @@ namespace {
                             for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                                 m_graphicsDevice->setRenderTargets(
                                     1, &textureForOverlay[eye], useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr);
-                                m_graphicsDevice->beginText();
+                                m_graphicsDevice->beginText(true /* mustKeepOldContent */);
                                 m_menuHandler->render(textureForOverlay[eye], (utilities::Eye)eye);
                                 m_graphicsDevice->flushText();
                             }

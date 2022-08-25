@@ -1436,7 +1436,7 @@ namespace {
             return measureString(std::wstring(src, src + string.size()), style, size);
         }
 
-        void beginText() override {
+        void beginText(bool mustKeepOldContent) override {
         }
 
         void flushText() override {

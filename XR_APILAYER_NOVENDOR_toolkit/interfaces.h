@@ -612,7 +612,7 @@ namespace toolkit {
                                      int alignment = FW1_LEFT) = 0;
             virtual float measureString(std::wstring_view string, TextStyle style, float size) const = 0;
             virtual float measureString(std::string_view string, TextStyle style, float size) const = 0;
-            virtual void beginText() = 0;
+            virtual void beginText(bool mustKeepOldContent = false) = 0;
             virtual void flushText() = 0;
 
             virtual void setMipMapBias(config::MipMapBias biasing, float bias = 0.f) = 0;
