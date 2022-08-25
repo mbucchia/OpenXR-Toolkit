@@ -82,6 +82,7 @@ namespace {
             m_configManager->setDefault(config::SettingMenuExpert, m_configManager->getValue(config::SettingDeveloper));
             m_configManager->setDefault(config::SettingMenuLegacyMode, 0);
             m_configManager->setEnumDefault(config::SettingOverlayType, config::OverlayType::None);
+            m_configManager->setDefault(config::SettingOverlayShowClock, 0);
             // Legacy setting is 1/3rd from top and 2/3rd from left.
             {
                 const auto ndcOffset = utilities::ScreenToNdc({2 / 3.f, 1 / 3.f});

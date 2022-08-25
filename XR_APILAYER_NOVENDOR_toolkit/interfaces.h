@@ -121,6 +121,7 @@ namespace toolkit {
         const std::string SettingMenuOpacity = "menu_opacity";
         const std::string SettingMenuLegacyMode = "menu_legacy_mode";
         const std::string SettingOverlayType = "overlay";
+        const std::string SettingOverlayShowClock = "overlay_show_clock";
         const std::string SettingOverlayXOffset = "overlay_x_offset";
         const std::string SettingOverlayYOffset = "overlay_y_offset";
         const std::string SettingMenuFontSize = "font_size2";
