@@ -1771,9 +1771,30 @@ namespace {
             }
         }
 
+        // https://www.setnode.com/blog/mapvirtualkey-getkeynametext-and-a-story-of-how-to/
         std::wstring keyToString(int key) const {
+            unsigned int scanCode = MapVirtualKey(key, MAPVK_VK_TO_VSC_EX);
+
+            // because MapVirtualKey strips the extended bit for some keys
+            switch (key) {
+            case VK_LEFT:
+            case VK_UP:
+            case VK_RIGHT:
+            case VK_DOWN: // arrow keys
+            case VK_PRIOR:
+            case VK_NEXT: // page up and page down
+            case VK_END:
+            case VK_HOME:
+            case VK_INSERT:
+            case VK_DELETE:
+            case VK_DIVIDE: // numpad slash
+            case VK_NUMLOCK:
+                scanCode |= 0x100; // set extended bit
+                break;
+            }
+
             wchar_t buf[16] = {};
-            GetKeyNameTextW(MAKELPARAM(0, MapVirtualKeyA(key, MAPVK_VK_TO_VSC)), buf, ARRAYSIZE(buf));
+            GetKeyNameTextW(MAKELPARAM(0, scanCode), buf, ARRAYSIZE(buf));
             return buf;
         }
 
