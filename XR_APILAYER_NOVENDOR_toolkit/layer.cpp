@@ -128,6 +128,7 @@ namespace {
             m_configManager->setDefault(config::SettingVRSYOffset, 0);
             m_configManager->setDefault(config::SettingVRSPreferHorizontal, 0);
             m_configManager->setDefault(config::SettingVRSLeftRightBias, 0);
+            m_configManager->setDefault(config::SettingVRSScaleFilter, 51);
 
             // Appearance.
             m_configManager->setDefault(config::SettingPostProcess, 0);

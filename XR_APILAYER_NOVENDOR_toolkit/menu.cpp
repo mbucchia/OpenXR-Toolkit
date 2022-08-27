@@ -1255,6 +1255,14 @@ namespace {
                                              maxVRSLeftRightBias,
                                              MenuEntry::FmtVrsRate});
                     m_menuEntries.back().expert = true;
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Scale Filter",
+                                             MenuEntryType::Slider,
+                                             SettingVRSScaleFilter,
+                                             0,
+                                             100,
+                                             MenuEntry::FmtPercent});
+                    m_menuEntries.back().expert = true;
                 }
                 variableRateShaderCustomGroup.finalize();
             }

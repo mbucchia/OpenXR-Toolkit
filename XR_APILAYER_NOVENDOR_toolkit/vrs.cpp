@@ -216,6 +216,8 @@ namespace {
             } else if (m_usingEyeTracking) {
                 m_usingEyeTracking = false;
             }
+
+            m_filterScale = m_configManager->getValue(SettingVRSScaleFilter) / 100.f;
         }
 
         bool onSetRenderTarget(std::shared_ptr<graphics::IContext> context,
@@ -767,9 +769,7 @@ namespace {
                               TLArg(info.format, "Format"));
 
             // Check for proportionality with the size of our render target.
-            // Also check that the texture is not under 50% of the render scale. We expect that no one should use in-app
-            // render scale that is so small.
-            if (info.width < (m_renderWidth * 0.51f))
+            if (info.width < (m_renderWidth * m_filterScale))
                 return false;
 
             const float aspectRatio = (float)info.width / info.height;
@@ -793,6 +793,8 @@ namespace {
         const float m_renderRatio;
 
         bool m_usingEyeTracking{false};
+
+        float m_filterScale{0.51f};
 
         // The current "generation" of the mask parameters.
         uint64_t m_currentGen{0};

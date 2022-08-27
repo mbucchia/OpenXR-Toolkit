@@ -165,6 +165,7 @@ namespace toolkit {
         const std::string SettingVRSYOffset = "vrs_y_offset";
         const std::string SettingVRSPreferHorizontal = "vrs_prefer_horizontal";
         const std::string SettingVRSLeftRightBias = "vrs_lr_bias";
+        const std::string SettingVRSScaleFilter = "vrs_scale_filter";
         const std::string SettingPostProcess = "post_process";
         const std::string SettingPostSunGlasses = "post_sunglasses";
         const std::string SettingPostContrast = "post_contrast";
