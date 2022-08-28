@@ -518,6 +518,27 @@ namespace {
                 destination->getAs<D3D11>(), 0, 0, 0, 0, m_texture.Get(), 0, nullptr);
         }
 
+        void
+        copyTo(uint32_t srcX, uint32_t srcY, int32_t srcSlice, std::shared_ptr<ITexture> destination) const override {
+            D3D11_BOX box;
+            box.left = srcX;
+            box.top = srcY;
+
+            box.right = box.left + destination->getInfo().width;
+            box.bottom = box.top + destination->getInfo().height;
+            box.front = 0;
+            box.back = 1;
+
+            m_device->getContextAs<D3D11>()->CopySubresourceRegion(
+                destination->getAs<D3D11>(), 0, 0, 0, 0, m_texture.Get(), srcSlice, &box);
+        }
+
+        void
+        copyTo(std::shared_ptr<ITexture> destination, uint32_t dstX, uint32_t dstY, int32_t dstSlice) const override {
+            m_device->getContextAs<D3D11>()->CopySubresourceRegion(
+                destination->getAs<D3D11>(), dstSlice, dstX, dstY, 0, m_texture.Get(), 0, nullptr);
+        }
+
         void saveToFile(const std::filesystem::path& path) const override {
             const auto& fileFormat = path.extension() == ".png"   ? GUID_ContainerFormatPng
                                      : path.extension() == ".bmp" ? GUID_ContainerFormatBmp
@@ -1261,6 +1282,7 @@ namespace {
         void setRenderTargets(size_t numRenderTargets,
                               std::shared_ptr<ITexture>* renderTargets,
                               int32_t* renderSlices = nullptr,
+                              XrRect2Di* viewport0 = nullptr,
                               std::shared_ptr<ITexture> depthBuffer = nullptr,
                               int32_t depthSlice = -1) override {
             assert(renderTargets || !numRenderTargets);
@@ -1289,10 +1311,21 @@ namespace {
 
                 D3D11_VIEWPORT viewport;
                 ZeroMemory(&viewport, sizeof(viewport));
-                viewport.TopLeftX = 0.0f;
-                viewport.TopLeftY = 0.0f;
-                viewport.Width = (float)m_currentDrawRenderTarget->getInfo().width;
-                viewport.Height = (float)m_currentDrawRenderTarget->getInfo().height;
+                if (viewport0) {
+                    m_currentDrawRenderTargetViewport = *viewport0;
+                    viewport.TopLeftX = (float)viewport0->offset.x;
+                    viewport.TopLeftY = (float)viewport0->offset.y;
+                    viewport.Width = (float)viewport0->extent.width;
+                    viewport.Height = (float)viewport0->extent.height;
+                } else {
+                    m_currentDrawRenderTargetViewport.offset = {0, 0};
+                    viewport.TopLeftX = 0.0f;
+                    viewport.TopLeftY = 0.0f;
+                    m_currentDrawRenderTargetViewport.extent.width = m_currentDrawRenderTarget->getInfo().width;
+                    viewport.Width = (float)m_currentDrawRenderTarget->getInfo().width;
+                    m_currentDrawRenderTargetViewport.extent.height = m_currentDrawRenderTarget->getInfo().height;
+                    viewport.Height = (float)m_currentDrawRenderTarget->getInfo().height;
+                }
                 m_context->RSSetViewports(1, &viewport);
             } else {
                 m_currentDrawRenderTarget.reset();
@@ -1301,15 +1334,20 @@ namespace {
             m_currentMesh.reset();
         }
 
+        XrExtent2Di getViewportSize() const override {
+            return m_currentDrawRenderTargetViewport.extent;
+        }
+
         void clearColor(float top, float left, float bottom, float right, const XrColor4f& color) const override {
             if (m_currentDrawRenderTarget) {
                 ComPtr<ID3D11DeviceContext1> context11;
                 if (!FAILED(m_context->QueryInterface(set(context11)))) {
                     // The app has a sufficient FEATURE_LEVEL
-                    const auto rect = CD3D11_RECT(static_cast<LONG>(left),
-                                                  static_cast<LONG>(top),
-                                                  static_cast<LONG>(right),
-                                                  static_cast<LONG>(bottom));
+                    const auto rect =
+                        CD3D11_RECT(m_currentDrawRenderTargetViewport.offset.x + static_cast<LONG>(left),
+                                    m_currentDrawRenderTargetViewport.offset.y + static_cast<LONG>(top),
+                                    m_currentDrawRenderTargetViewport.offset.x + static_cast<LONG>(right),
+                                    m_currentDrawRenderTargetViewport.offset.y + static_cast<LONG>(bottom));
                     auto pView =
                         m_currentDrawRenderTarget->getRenderTargetView(m_currentDrawRenderTargetSlice)->getAs<D3D11>();
 
@@ -1893,6 +1931,7 @@ namespace {
 
         std::shared_ptr<ITexture> m_currentDrawRenderTarget;
         int32_t m_currentDrawRenderTargetSlice;
+        XrRect2Di m_currentDrawRenderTargetViewport;
         std::shared_ptr<ITexture> m_currentDrawDepthBuffer;
         int32_t m_currentDrawDepthBufferSlice;
         std::shared_ptr<ISimpleMesh> m_currentMesh;

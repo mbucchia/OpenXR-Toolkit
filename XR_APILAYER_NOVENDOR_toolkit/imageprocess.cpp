@@ -67,12 +67,15 @@ namespace {
             }
         }
 
-        void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice) override {
+        void process(std::shared_ptr<ITexture> input,
+                     std::shared_ptr<ITexture> output,
+                     std::vector<std::shared_ptr<ITexture>>& textures,
+                     std::array<uint8_t, 1024>& blob) override {
             const auto usePostProcess = m_mode != PostProcessType::Off;
-            m_device->setShader(m_shaders[input->isArray()][usePostProcess], SamplerType::LinearClamp);
+            m_device->setShader(m_shaders[usePostProcess], SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_cbParams);
-            m_device->setShaderInput(0, input, slice);
-            m_device->setShaderOutput(0, output, slice);
+            m_device->setShaderInput(0, input);
+            m_device->setShaderOutput(0, output);
             m_device->dispatchShader();
         }
 
@@ -86,16 +89,8 @@ namespace {
             // defines.add("POST_PROCESS_DST_SRGB", true);
 
             defines.add("PASS_THROUGH_USE_GAINS", true);
-            m_shaders[0][0] = m_device->createQuadShader(
-                shaderFile, "mainPassThrough", "Passthrough PS", defines.get() /*,  shadersDir*/);
-            m_shaders[0][1] = m_device->createQuadShader(
-                shaderFile, "mainPostProcess", "Postprocess PS", defines.get() /*,  shadersDir*/);
-
-            defines.add("VPRT", true);
-            m_shaders[1][0] = m_device->createQuadShader(
-                shaderFile, "mainPassThrough", "Passthrough PS (VPRT)", defines.get() /*,  shadersDir*/);
-            m_shaders[1][1] = m_device->createQuadShader(
-                shaderFile, "mainPostProcess", "Postprocess PS (VPRT)", defines.get() /*,  shadersDir*/);
+            m_shaders[0] = m_device->createQuadShader(shaderFile, "mainPassThrough", "Passthrough PS", defines.get());
+            m_shaders[1] = m_device->createQuadShader(shaderFile, "mainPostProcess", "Postprocess PS", defines.get());
 
             // TODO: For now, we're going to require that all image processing shaders share the same configuration
             // structure.
@@ -191,7 +186,7 @@ namespace {
 
                 // sunglasses dark: +2.5 contrast, -10 bright, -10 expo, -40 high, +5 shad
                 {{{25, -100, -100, 0}, {0, 0, 0, 0}, {-400, 50, 0, 0}}},
-                
+
                 //// deep night (beta1): +0.5 contrast, -40 bright, +20 expo, -15 sat, -75 high, +15 shad, +5 vib
                 //{{{5, -400, 200, -150}, {0, 0, 0, 0}, {-750, 150, 50, 0}}},
 
@@ -206,7 +201,7 @@ namespace {
         const std::shared_ptr<IDevice> m_device;
         const std::array<DirectX::XMINT4, 3> m_userParams;
 
-        std::shared_ptr<IQuadShader> m_shaders[2][2]; // off, on, vprt
+        std::shared_ptr<IQuadShader> m_shaders[2]; // off, on
         std::shared_ptr<IShaderBuffer> m_cbParams;
 
         PostProcessType m_mode{PostProcessType::Off};

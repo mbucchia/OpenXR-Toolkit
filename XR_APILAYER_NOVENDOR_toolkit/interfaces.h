@@ -453,6 +453,10 @@ namespace toolkit {
 
             virtual void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) = 0;
             virtual void copyTo(std::shared_ptr<ITexture> destination) const = 0;
+            virtual void
+            copyTo(uint32_t srcX, uint32_t srcY, int32_t srcSlice, std::shared_ptr<ITexture> destination) const = 0;
+            virtual void
+            copyTo(std::shared_ptr<ITexture> destination, uint32_t dstX, uint32_t dstY, int32_t dstSlice) const = 0;
             virtual void saveToFile(const std::filesystem::path& path) const = 0;
 
             virtual void* getNativePtr() const = 0;
@@ -583,9 +587,12 @@ namespace toolkit {
             virtual void setRenderTargets(size_t numRenderTargets,
                                           std::shared_ptr<ITexture>* renderTargets,
                                           int32_t* renderSlices = nullptr,
+                                          XrRect2Di* viewport0 = nullptr,
                                           std::shared_ptr<ITexture> depthBuffer = nullptr,
                                           int32_t depthSlice = -1) = 0;
             virtual void unsetRenderTargets() = 0;
+
+            virtual XrExtent2Di getViewportSize() const = 0;
 
             virtual void clearColor(float top, float left, float bottom, float right, const XrColor4f& color) const = 0;
             virtual void clearDepth(float value) = 0;
@@ -668,7 +675,8 @@ namespace toolkit {
             virtual void update() = 0;
             virtual void process(std::shared_ptr<ITexture> input,
                                  std::shared_ptr<ITexture> output,
-                                 int32_t slice = -1) = 0;
+                                 std::vector<std::shared_ptr<ITexture>>& textures,
+                                 std::array<uint8_t, 1024>& blob) = 0;
         };
 
         struct IFrameAnalyzer {
@@ -812,7 +820,7 @@ namespace toolkit {
             uint64_t appGpuTimeUs{0};
             uint64_t waitCpuTimeUs{0};
             uint64_t endFrameCpuTimeUs{0};
-            uint64_t processorGpuTimeUs[3]{0};
+            uint64_t processorGpuTimeUs[2]{0};
             uint64_t overlayCpuTimeUs{0};
             uint64_t overlayGpuTimeUs{0};
             uint64_t handTrackingCpuTimeUs{0};

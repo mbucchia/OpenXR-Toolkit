@@ -51,15 +51,11 @@ namespace {
       public:
         FSRUpscaler(std::shared_ptr<IConfigManager> configManager,
                     std::shared_ptr<IDevice> graphicsDevice,
-                    uint32_t outputWidth,
-                    uint32_t outputHeight)
-            : m_configManager(configManager), m_device(graphicsDevice), m_outputWidth(outputWidth),
-              m_outputHeight(outputHeight) {
-            // The upscaling factor is only read upon initialization of the session. It cannot be changed after.
-            std::tie(m_inputWidth, m_inputHeight) =
-                config::GetScaledDimensions(m_configManager.get(), m_outputWidth, m_outputHeight, 2);
-
-            m_isSharpenOnly = m_inputWidth == m_outputWidth && m_inputHeight == m_outputHeight;
+                    int settingScaling,
+                    int settingAnamorphic)
+            : m_configManager(configManager), m_device(graphicsDevice), m_settingScaling(settingScaling),
+              m_settingAnamorphic(settingAnamorphic),
+              m_isSharpenOnly(m_settingScaling == 100 && m_settingAnamorphic <= 0) {
             initializeScaler();
         }
 
@@ -68,29 +64,85 @@ namespace {
         }
 
         void update() override {
-            if (m_configManager->hasChanged(SettingSharpness)) {
-                updateScaler(m_configManager->getValue(SettingSharpness) / 100.f);
-            }
         }
 
-        void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice = -1) override {
-            if (!m_intermediary) {
-                const auto& infos = output->getInfo();
-                initializeIntermediary(infos.width, infos.height, 0 /* infos.format */);
-            }
+        void process(std::shared_ptr<ITexture> input,
+                     std::shared_ptr<ITexture> output,
+                     std::vector<std::shared_ptr<ITexture>>& textures,
+                     std::array<uint8_t, 1024>& blob) override {
+            // We need to use a per-instance blob.
+            static_assert(sizeof(FSRConstants) <= 1024);
+            FSRConstants* const config = reinterpret_cast<FSRConstants*>(blob.data());
+
+            // Update the scaler's configuration specifically for this image.
+            const auto inputWidth = input->getInfo().width;
+            const auto inputHeight = input->getInfo().height;
+            const auto outputWidth = output->getInfo().width;
+            const auto outputHeight = output->getInfo().height;
+            const float sharpness = m_configManager->getValue(SettingSharpness) / 100.f;
 
             if (!m_isSharpenOnly) {
+                FsrEasuCon(config->Const0,
+                           config->Const1,
+                           config->Const2,
+                           config->Const3,
+                           static_cast<AF1>(inputWidth),
+                           static_cast<AF1>(inputHeight),
+                           static_cast<AF1>(inputWidth),
+                           static_cast<AF1>(inputHeight),
+                           static_cast<AF1>(outputWidth),
+                           static_cast<AF1>(outputHeight));
+            }
+
+            const auto attenuation = 1.f - AClampF1(sharpness, 0, 1);
+            FsrRcasCon(config->Const4, static_cast<AF1>(attenuation));
+
+            // TODO:
+            // The AMD FSR sample is using a value in the constant buffer to correct the output color accordingly.
+            // We're replacing the constant with a shader compilation define because the project code is not HDR
+            // aware yet, When we'll be supporting HDR, we might need to change the implementation back to something
+            // like:
+            //
+            // config.Const4[3] = hdr ? 1 : 0;
+
+            // TODO: We can use an IShaderBuffer cache per swapchain and avoid this every frame.
+            m_configBuffer->uploadData(config, sizeof(*config));
+
+            // This value is the image region dimension that each thread group of the FSR shader operates on
+            const auto threadGroupWorkRegionDim = 16u;
+            const std::array<unsigned int, 3> threadGroups = {
+                (outputWidth + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim,  // dispatchX
+                (outputHeight + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim, // dispatchY
+                1};
+
+            // Create the intermediate texture if needed.
+            if (!m_isSharpenOnly) {
+                const auto outputInfo = output->getInfo();
+                if (textures.empty() || textures[0]->getInfo().width != outputInfo.width ||
+                    textures[0]->getInfo().height != outputInfo.height) {
+                    textures.clear();
+                    auto createInfo = outputInfo;
+
+                    // Good balance between visuals and performance.
+                    createInfo.format = m_device->getTextureFormat(TextureFormat::R16G16B16A16_UNORM);
+
+                    createInfo.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+                    textures.push_back(m_device->createTexture(createInfo, "FSR Intermediate TEX2D"));
+                }
+
+                m_shaderEASU->updateThreadGroups(threadGroups);
                 m_device->setShader(m_shaderEASU, SamplerType::LinearClamp);
                 m_device->setShaderInput(0, m_configBuffer);
-                m_device->setShaderInput(0, input, slice);
-                m_device->setShaderOutput(0, m_intermediary);
+                m_device->setShaderInput(0, input);
+                m_device->setShaderOutput(0, textures[0]);
                 m_device->dispatchShader();
             }
 
+            m_shaderRCAS->updateThreadGroups(threadGroups);
             m_device->setShader(m_shaderRCAS, SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_configBuffer);
-            m_device->setShaderInput(0, m_isSharpenOnly ? input : m_intermediary);
-            m_device->setShaderOutput(0, output, slice);
+            m_device->setShaderInput(0, m_isSharpenOnly ? input : textures[0]);
+            m_device->setShaderOutput(0, output);
             m_device->dispatchShader();
         }
 
@@ -98,13 +150,6 @@ namespace {
         void initializeScaler() {
             const auto shadersDir = dllHome / "shaders";
             const auto shaderFile = shadersDir / "FSR.hlsl";
-
-            // This value is the image region dimension that each thread group of the FSR shader operates on
-            const auto threadGroupWorkRegionDim = 16u;
-            const std::array<unsigned int, 3> threadGroups = {
-                (m_outputWidth + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim,  // dispatchX
-                (m_outputHeight + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim, // dispatchY
-                1};
 
             // EASU/RCAS common
             utilities::shader::Defines defines;
@@ -116,91 +161,26 @@ namespace {
             defines.add("SAMPLE_RCAS", 0);
             defines.add("SAMPLE_EASU", 1);
             defines.add("SAMPLE_HDR_OUTPUT", 0);
-            m_shaderEASU = m_device->createComputeShader(
-                shaderFile, "mainCS", "FSR EASU CS", threadGroups, defines.get() /*,  shadersDir*/);
+            m_shaderEASU = m_device->createComputeShader(shaderFile, "mainCS", "FSR EASU CS", {}, defines.get());
 
             // RCAS specific
             defines.set("SAMPLE_EASU", 0);
             defines.set("SAMPLE_RCAS", 1);
             defines.add("SAMPLE_HDR_OUTPUT", 1);
-            m_shaderRCAS = m_device->createComputeShader(
-                shaderFile, "mainCS", "FSR RCAS CS", threadGroups, defines.get() /*,  shadersDir*/);
+            m_shaderRCAS = m_device->createComputeShader(shaderFile, "mainCS", "FSR RCAS CS", {}, defines.get());
 
-            // TODO: Consider making immutable and create a new buffer in update(). For now, our D3D12 implementation
-            // does not do heap descriptor recycling.
             m_configBuffer = m_device->createBuffer(sizeof(FSRConstants), "FSR Constants CB");
-            updateScaler(m_configManager->getValue(SettingSharpness) / 100.f);
-        }
-
-        void initializeIntermediary(uint32_t width, uint32_t height, int64_t format) {
-            if (format == 0) {
-                // good balance between visuals and perf
-                format = m_device->getTextureFormat(TextureFormat::R16G16B16A16_UNORM);
-            }
-
-            DebugLog("FSRUpscaler initializeIntermediary with %u, %u, %u\n", width, height, format);
-
-            if (m_device->isTextureFormatSRGB(format)) {
-                format = DXGI_FORMAT_R8G8B8A8_UNORM;
-                DebugLog("  sRGB output format changed to: %u\n", format);
-            }
-
-            // create the intermediary texture between upscale and sharpen pass
-            XrSwapchainCreateInfo info;
-            ZeroMemory(&info, sizeof(info));
-            info.width = width;
-            info.height = height;
-            info.format = format;
-            info.arraySize = 1;
-            info.mipCount = 1;
-            info.sampleCount = 1;
-            info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
-            m_intermediary = m_device->createTexture(info, "FSR Intermediary TEX2D");
-        }
-
-        void updateScaler(float sharpness) {
-            const auto attenuation = 1.f - AClampF1(sharpness, 0, 1);
-
-            FSRConstants config = {};
-            if (!m_isSharpenOnly) {
-                FsrEasuCon(config.Const0,
-                           config.Const1,
-                           config.Const2,
-                           config.Const3,
-                           static_cast<AF1>(m_inputWidth),
-                           static_cast<AF1>(m_inputHeight),
-                           static_cast<AF1>(m_inputWidth),
-                           static_cast<AF1>(m_inputHeight),
-                           static_cast<AF1>(m_outputWidth),
-                           static_cast<AF1>(m_outputHeight));
-            }
-
-            FsrRcasCon(config.Const4, static_cast<AF1>(attenuation));
-
-            // TODO:
-            // The AMD FSR sample is using a value in the constant buffer to correct the output color accordingly.
-            // We're replacing the constant with a shader compilation define because the project code is not HDR
-            // aware yet, When we'll be supporting HDR, we might need to change the implementation back to something
-            // like:
-            //
-            // config.Const4[3] = hdr ? 1 : 0;
-
-            m_configBuffer->uploadData(&config, sizeof(config));
         }
 
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
-        const uint32_t m_outputWidth;
-        const uint32_t m_outputHeight;
-
-        uint32_t m_inputWidth;
-        uint32_t m_inputHeight;
-        bool m_isSharpenOnly{false};
+        const int m_settingScaling;
+        const int m_settingAnamorphic;
+        const bool m_isSharpenOnly;
 
         std::shared_ptr<IComputeShader> m_shaderEASU;
         std::shared_ptr<IComputeShader> m_shaderRCAS;
         std::shared_ptr<IShaderBuffer> m_configBuffer;
-        std::shared_ptr<ITexture> m_intermediary;
     };
 
 } // namespace
@@ -209,9 +189,9 @@ namespace toolkit::graphics {
 
     std::shared_ptr<IImageProcessor> CreateFSRUpscaler(std::shared_ptr<IConfigManager> configManager,
                                                        std::shared_ptr<IDevice> graphicsDevice,
-                                                       uint32_t outputWidth,
-                                                       uint32_t outputHeight) {
-        return std::make_shared<FSRUpscaler>(configManager, graphicsDevice, outputWidth, outputHeight);
+                                                       int settingScaling,
+                                                       int settingAnamorphic) {
+        return std::make_shared<FSRUpscaler>(configManager, graphicsDevice, settingScaling, settingAnamorphic);
     }
 
 } // namespace toolkit::graphics

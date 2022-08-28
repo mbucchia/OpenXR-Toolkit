@@ -343,17 +343,17 @@ namespace {
         }
 
         void render(std::shared_ptr<ITexture> renderTarget, std::optional<utilities::Eye> eye) const override {
-            const auto& renderTargetInfo = renderTarget->getInfo();
+            const auto& viewportSize = m_device->getViewportSize();
 
             // Legacy menu support.
-            float rightEyeOffset = 2.f * (m_projCenter[1].x - m_projCenter[0].x) * renderTargetInfo.width +
+            float rightEyeOffset = 2.f * (m_projCenter[1].x - m_projCenter[0].x) * viewportSize.width +
                                    -m_configManager->getValue(SettingMenuEyeOffset);
             const float eyeOffset = (eye && eye == Eye::Right) ? rightEyeOffset : 0.f;
 
-            const float leftAlign = (renderTargetInfo.width - m_menuBackgroundWidth) / 2 + eyeOffset;
+            const float leftAlign = (viewportSize.width - m_menuBackgroundWidth) / 2 + eyeOffset;
             const float centerAlign = leftAlign + m_menuBackgroundWidth / 2 + eyeOffset;
             const float rightAlign = leftAlign + m_menuBackgroundWidth + eyeOffset;
-            const float topAlign = (renderTargetInfo.height - m_menuBackgroundHeight) / 2;
+            const float topAlign = (viewportSize.height - m_menuBackgroundHeight) / 2;
 
             const float fontSize = m_configManager->getValue(SettingMenuFontSize) * 0.75f; // pt -> px
 
@@ -381,11 +381,11 @@ namespace {
                 const auto textColorHint = MakeRGB24(ColorHint) | 0xff000000;
                 const auto textColorPressed = MakeRGB24(ColorOverlay) | 0xff000000;
 
-                float top = renderTargetInfo.height / 2.f;
+                float top = viewportSize.height / 2.f;
 
                 const float splashWidth = m_device->measureString(
                     "You may show the in-game settings menu at any time by pressing", TextStyle::Normal, fontSize);
-                const float left = (renderTargetInfo.width - splashWidth) / 2.f;
+                const float left = (viewportSize.width - splashWidth) / 2.f;
 
                 m_device->clearColor(top - BorderVerticalSpacing,
                                      left - BorderHorizontalSpacing,
@@ -756,8 +756,8 @@ namespace {
                 const auto screenOffset = NdcToScreen({m_configManager->getValue(SettingOverlayXOffset) / 100.f,
                                                        m_configManager->getValue(SettingOverlayYOffset) / 100.f});
 
-                const float overlayAlign = screenOffset.x * renderTargetInfo.width + eyeOffset;
-                float top = screenOffset.y * renderTargetInfo.height;
+                const float overlayAlign = screenOffset.x * viewportSize.width + eyeOffset;
+                float top = screenOffset.y * viewportSize.height;
 
                 // Clock display.
                 if (m_state != MenuState::Visible && m_configManager->getValue(SettingOverlayShowClock)) {
@@ -874,9 +874,8 @@ namespace {
 
                             if (overlayType == OverlayType::Developer) {
                                 TIMING_STAT("lay CPU", endFrameCpuTimeUs);
-                                TIMING_STAT("pre GPU", processorGpuTimeUs[0]);
-                                TIMING_STAT("scl GPU", processorGpuTimeUs[1]);
-                                TIMING_STAT("pst GPU", processorGpuTimeUs[2]);
+                                TIMING_STAT("scl GPU", processorGpuTimeUs[0]);
+                                TIMING_STAT("pst GPU", processorGpuTimeUs[1]);
                                 TIMING_STAT("ovl CPU", overlayCpuTimeUs);
                                 TIMING_STAT("ovl GPU", overlayGpuTimeUs);
                                 if (m_isHandTrackingSupported) {
