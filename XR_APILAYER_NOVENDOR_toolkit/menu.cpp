@@ -1742,6 +1742,13 @@ namespace {
                                      90,
                                      [](int value) { return fmt::format("{}\xB0", value); }});
             m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Force VPRT path*",
+                                     MenuEntryType::Choice,
+                                     "force_vprt_path",
+                                     0,
+                                     MenuEntry::LastVal<OffOnType>(),
+                                     MenuEntry::FmtEnum<OffOnType>});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Simulate eye tracker*",
                                      MenuEntryType::Choice,
                                      SettingEyeDebugWithController,
