@@ -2226,16 +2226,13 @@ namespace {
                                                             config::SettingHandVisibilityAndSkinTone) !=
                                                             config::HandTrackingVisibility::Hidden;
                 const bool drawEyeGaze = m_eyeTracker && m_configManager->getValue(config::SettingEyeDebug);
-                const bool drawOverlays = drawHands || drawEyeGaze;
 
-                if (drawOverlays) {
-                    m_stats.overlayCpuTimeUs += m_performanceCounters.overlayCpuTimer->query();
-                    m_stats.overlayGpuTimeUs +=
-                        m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
+                m_stats.overlayCpuTimeUs += m_performanceCounters.overlayCpuTimer->query();
+                m_stats.overlayGpuTimeUs +=
+                    m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
 
-                    m_performanceCounters.overlayCpuTimer->start();
-                    m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
-                }
+                m_performanceCounters.overlayCpuTimer->start();
+                m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
 
                 if (textureForOverlay[0]) {
                     const bool useVPRT = textureForOverlay[1] == textureForOverlay[0];
@@ -2344,10 +2341,8 @@ namespace {
                     }
                 }
 
-                if (drawOverlays) {
-                    m_performanceCounters.overlayCpuTimer->stop();
-                    m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
-                }
+                m_performanceCounters.overlayCpuTimer->stop();
+                m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
             }
 
             // Whether the menu is available or not, we can still use that top-most texture for screenshot.
