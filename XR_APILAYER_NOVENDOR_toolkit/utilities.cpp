@@ -325,6 +325,20 @@ namespace toolkit::utilities {
         return ssStatus.dwCurrentState == SERVICE_RUNNING;
     }
 
+    void GetVRAMUsage(ComPtr<IDXGIAdapter> adapter, uint64_t& usage, uint8_t& percentUsed) {
+        usage = 0;
+        percentUsed = 0;
+
+        ComPtr<IDXGIAdapter3> adapter3;
+        if (SUCCEEDED(adapter->QueryInterface(set(adapter3)))) {
+            DXGI_QUERY_VIDEO_MEMORY_INFO queryVideoMemory;
+            if (SUCCEEDED(adapter3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &queryVideoMemory))) {
+                usage = queryVideoMemory.CurrentUsage;
+                percentUsed = (uint8_t)(100 * queryVideoMemory.CurrentUsage / queryVideoMemory.Budget);
+            }
+        }
+    }
+
 } // namespace toolkit::utilities
 
 namespace toolkit::utilities::shader {

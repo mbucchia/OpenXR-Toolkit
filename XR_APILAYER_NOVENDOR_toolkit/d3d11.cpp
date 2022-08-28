@@ -825,12 +825,11 @@ namespace {
             m_device->GetImmediateContext(set(m_context));
             {
                 ComPtr<IDXGIDevice> dxgiDevice;
-                ComPtr<IDXGIAdapter> adapter;
                 DXGI_ADAPTER_DESC desc;
 
                 CHECK_HRCMD(m_device->QueryInterface(set(dxgiDevice)));
-                CHECK_HRCMD(dxgiDevice->GetAdapter(set(adapter)));
-                CHECK_HRCMD(adapter->GetDesc(&desc));
+                CHECK_HRCMD(dxgiDevice->GetAdapter(set(m_adapter)));
+                CHECK_HRCMD(m_adapter->GetDesc(&desc));
 
                 const std::wstring wadapterDescription(desc.Description);
                 std::transform(wadapterDescription.begin(),
@@ -1477,6 +1476,10 @@ namespace {
             m_copyTextureEvent = event;
         }
 
+        void getVRAMUsage(uint64_t& usage, uint8_t& percentUsed) const {
+            utilities::GetVRAMUsage(m_adapter, usage, percentUsed);
+        }
+
         bool isEventsSupported() const override {
             return m_allowInterceptor;
         }
@@ -1865,6 +1868,7 @@ namespace {
         }
 
         const ComPtr<ID3D11Device> m_device;
+        ComPtr<IDXGIAdapter> m_adapter;
         ComPtr<ID3D11DeviceContext> m_context;
         D3D11ContextState m_state;
         std::string m_deviceName;

@@ -864,6 +864,12 @@ namespace {
 
                             TIMING_STAT("app CPU", appCpuTimeUs);
                             TIMING_STAT("app GPU", appGpuTimeUs);
+                            m_device->drawString(fmt::format("VRAM: {:.1f}GB ({}%)",
+                                                             m_stats.vramUsedSize / (1024 * 1024 * 1024.f),
+                                                             m_stats.vramUsedPercent),
+                                                 OVERLAY_COMMON);
+                            top += 1.05f * fontSize;
+
                             top += 1.05f * fontSize;
 
                             if (overlayType == OverlayType::Developer) {

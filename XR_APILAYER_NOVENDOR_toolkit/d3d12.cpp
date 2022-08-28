@@ -884,6 +884,7 @@ namespace {
 
                         // Log the adapter name to help debugging customer issues.
                         Log("Using Direct3D 12 on adapter: %s\n", m_deviceName.c_str());
+                        m_adapter = dxgiAdapter;
                         break;
                     }
                 }
@@ -1858,6 +1859,10 @@ namespace {
             m_copyTextureEvent = event;
         }
 
+        void getVRAMUsage(uint64_t& usage, uint8_t& percentUsed) const {
+            utilities::GetVRAMUsage(m_adapter, usage, percentUsed);
+        }
+
         bool isEventsSupported() const override {
             return m_allowInterceptor;
         }
@@ -2161,6 +2166,7 @@ namespace {
 #undef INVOKE_EVENT
 
         const ComPtr<ID3D12Device> m_device;
+        ComPtr<IDXGIAdapter> m_adapter;
         ComPtr<ID3D12Device> m_realDevice;
         ComPtr<ID3D12CommandQueue> m_queue;
         std::string m_deviceName;
