@@ -60,16 +60,17 @@ namespace {
 
 namespace toolkit::config {
 
-    std::pair<uint32_t, uint32_t> GetScaledDimensions(const IConfigManager* configManager,
-                                                      uint32_t outputWidth,
-                                                      uint32_t outputHeight,
-                                                      uint32_t blockSize) {
-        const auto settingScaling = configManager->peekValue(SettingScaling);
-        const auto settingAnamophic = configManager->peekValue(SettingAnamorphic);
-
+    std::pair<uint32_t, uint32_t> GetScaledDimensions(
+        int settingScaling, int settingAnamophic, uint32_t outputWidth, uint32_t outputHeight, uint32_t blockSize) {
         return std::make_pair(utilities::GetScaledInputSize(outputWidth, settingScaling, blockSize),
                               utilities::GetScaledInputSize(
                                   outputHeight, settingAnamophic > 0 ? settingAnamophic : settingScaling, blockSize));
+    }
+
+    std::pair<float, float> GetScalingFactors(int settingScaling, int settingAnamophic) {
+        return std::make_pair(
+            100.f / utilities::GetScaledInputSize(100, settingScaling, 1),
+            100.f / utilities::GetScaledInputSize(100, settingAnamophic > 0 ? settingAnamophic : settingScaling, 1));
     }
 
 #define DECLARE_ENUM_TO_STRING_VIEW(E, ...)                                                                            \

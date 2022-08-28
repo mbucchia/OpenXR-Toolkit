@@ -482,6 +482,33 @@ namespace {
             m_device->getContextAs<D3D12>()->CopyTextureRegion(&destLoc, 0, 0, 0, &srcLoc, nullptr);
         }
 
+        void
+        copyTo(uint32_t srcX, uint32_t srcY, int32_t srcSlice, std::shared_ptr<ITexture> destination) const override {
+            D3D12_TEXTURE_COPY_LOCATION destLoc{
+                destination->getAs<D3D12>(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
+            D3D12_TEXTURE_COPY_LOCATION srcLoc{
+                m_texture.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, (UINT)srcSlice};
+
+            D3D12_BOX box;
+            box.left = srcX;
+            box.top = srcY;
+
+            box.right = box.left + destination->getInfo().width;
+            box.bottom = box.top + destination->getInfo().height;
+            box.front = 0;
+            box.back = 1;
+
+            m_device->getContextAs<D3D12>()->CopyTextureRegion(&destLoc, 0, 0, 0, &srcLoc, &box);
+        }
+
+        void
+        copyTo(std::shared_ptr<ITexture> destination, uint32_t dstX, uint32_t dstY, int32_t dstSlice) const override {
+            D3D12_TEXTURE_COPY_LOCATION destLoc{
+                destination->getAs<D3D12>(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, (UINT)dstSlice};
+            D3D12_TEXTURE_COPY_LOCATION srcLoc{m_texture.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
+            m_device->getContextAs<D3D12>()->CopyTextureRegion(&destLoc, dstX, dstY, 0, &srcLoc, nullptr);
+        }
+
         void saveToFile(const std::filesystem::path& path) const override {
             const auto& fileFormat = path.extension() == ".png"   ? GUID_ContainerFormatPng
                                      : path.extension() == ".bmp" ? GUID_ContainerFormatBmp
@@ -1492,6 +1519,7 @@ namespace {
         void setRenderTargets(size_t numRenderTargets,
                               std::shared_ptr<ITexture>* renderTargets,
                               int32_t* renderSlices = nullptr,
+                              XrRect2Di* viewport0 = nullptr,
                               std::shared_ptr<ITexture> depthBuffer = nullptr,
                               int32_t depthSlice = -1) override {
             assert(renderTargets || !numRenderTargets);
@@ -1534,10 +1562,18 @@ namespace {
                 m_currentDrawDepthBuffer = std::move(depthBuffer);
                 m_currentDrawDepthBufferSlice = depthSlice;
 
-                const auto viewport = CD3DX12_VIEWPORT(0.f,
-                                                       0.f,
-                                                       (float)m_currentDrawRenderTarget->getInfo().width,
-                                                       (float)m_currentDrawRenderTarget->getInfo().height);
+                if (viewport0) {
+                    m_currentDrawRenderTargetViewport = *viewport0;
+                } else {
+                    m_currentDrawRenderTargetViewport.offset = {0, 0};
+                    m_currentDrawRenderTargetViewport.extent.width = m_currentDrawRenderTarget->getInfo().width;
+                    m_currentDrawRenderTargetViewport.extent.height = m_currentDrawRenderTarget->getInfo().height;
+                }
+
+                const auto viewport = CD3DX12_VIEWPORT((float)m_currentDrawRenderTargetViewport.offset.x,
+                                                       (float)m_currentDrawRenderTargetViewport.offset.y,
+                                                       (float)m_currentDrawRenderTargetViewport.extent.width,
+                                                       (float)m_currentDrawRenderTargetViewport.extent.height);
                 m_context->RSSetViewports(1, &viewport);
 
                 const auto scissorRect = CD3DX12_RECT(
@@ -1551,14 +1587,19 @@ namespace {
             m_currentMesh.reset();
         }
 
+        XrExtent2Di getViewportSize() const override {
+            return m_currentDrawRenderTargetViewport.extent;
+        }
+
         void clearColor(float top, float left, float bottom, float right, const XrColor4f& color) const override {
             if (m_currentDrawRenderTarget) {
                 // When rendering text, we must use the corresponding device.
                 if (!m_isRenderingText) {
-                    const auto rect = CD3DX12_RECT(static_cast<LONG>(left),
-                                                   static_cast<LONG>(top),
-                                                   static_cast<LONG>(right),
-                                                   static_cast<LONG>(bottom));
+                    const auto rect =
+                        CD3DX12_RECT(m_currentDrawRenderTargetViewport.offset.x + static_cast<LONG>(left),
+                                     m_currentDrawRenderTargetViewport.offset.y + static_cast<LONG>(top),
+                                     m_currentDrawRenderTargetViewport.offset.x + static_cast<LONG>(right),
+                                     m_currentDrawRenderTargetViewport.offset.y + static_cast<LONG>(bottom));
                     auto renderTargetView =
                         m_currentDrawRenderTarget->getRenderTargetView(m_currentDrawRenderTargetSlice)->getAs<D3D12>();
 
@@ -1740,8 +1781,8 @@ namespace {
                 std::shared_ptr<ITexture> copyTexture;
                 auto copyInfo = m_currentDrawRenderTarget->getInfo();
 
-                // On certain runtimes, we cannot use the swapchain images directly with D3D11on12. Use an intermediate
-                // copy.
+                // On certain runtimes, we cannot use the swapchain images directly with D3D11on12. Use an
+                // intermediate copy.
                 if (m_needInteropCopy) {
                     copyInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
                     copyTexture = createTexture(copyInfo, "Render Target Interop Copy TEX2D");
@@ -1773,7 +1814,11 @@ namespace {
             flushContext(false, false);
 
             // Setup the interop context for rendering.
-            m_textDevice->setRenderTargets(1, &m_currentTextRenderTarget, &m_currentDrawRenderTargetSlice);
+            m_textDevice->setRenderTargets(
+                1,
+                &m_currentTextRenderTarget,
+                &m_currentDrawRenderTargetSlice,
+                &m_currentDrawRenderTargetViewport);
             m_textDevice->beginText();
             m_isRenderingText = true;
         }
@@ -2210,6 +2255,7 @@ namespace {
         std::shared_ptr<ITexture> m_currentTextRenderTarget;
         std::shared_ptr<ITexture> m_currentDrawRenderTarget;
         int32_t m_currentDrawRenderTargetSlice;
+        XrRect2Di m_currentDrawRenderTargetViewport;
         std::shared_ptr<ITexture> m_currentDrawDepthBuffer;
         int32_t m_currentDrawDepthBufferSlice;
         bool m_currentDrawDepthBufferIsInverted;
@@ -2356,7 +2402,6 @@ namespace {
 } // namespace
 
 namespace toolkit::graphics {
-
     void EnableD3D12DebugLayer() {
         ComPtr<ID3D12Debug> debug;
         CHECK_HRCMD(D3D12GetDebugInterface(__uuidof(ID3D12Debug), reinterpret_cast<void**>(set(debug))));

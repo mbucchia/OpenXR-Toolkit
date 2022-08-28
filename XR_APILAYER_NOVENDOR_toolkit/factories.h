@@ -60,10 +60,10 @@ namespace toolkit {
 
         std::shared_ptr<IConfigManager> CreateConfigManager(const std::string& appName);
 
-        std::pair<uint32_t, uint32_t> GetScaledDimensions(const IConfigManager* configManager,
-                                                          uint32_t outputWidth,
-                                                          uint32_t outputHeight,
-                                                          uint32_t blockSize);
+        std::pair<uint32_t, uint32_t> GetScaledDimensions(
+            int settingScaling, int settingAnamophic, uint32_t outputWidth, uint32_t outputHeight, uint32_t blockSize);
+        std::pair<float, float> GetScalingFactors(int settingScaling, int settingAnamophic);
+
     } // namespace config
 
     namespace graphics {
@@ -103,14 +103,14 @@ namespace toolkit {
         std::shared_ptr<IImageProcessor>
         CreateNISUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                           std::shared_ptr<IDevice> graphicsDevice,
-                          uint32_t outputWidth,
-                          uint32_t outputHeight);
+                          int settingScaling,
+                          int settingAnamorphic);
 
         std::shared_ptr<IImageProcessor>
         CreateFSRUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
                           std::shared_ptr<IDevice> graphicsDevice,
-                          uint32_t outputWidth,
-                          uint32_t outputHeight);
+                          int settingScaling,
+                          int settingAnamorphic);
 
         std::shared_ptr<IVariableRateShader>
         CreateVariableRateShader(std::shared_ptr<toolkit::config::IConfigManager> configManager,

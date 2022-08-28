@@ -46,15 +46,11 @@ namespace {
       public:
         NISUpscaler(std::shared_ptr<IConfigManager> configManager,
                     std::shared_ptr<IDevice> graphicsDevice,
-                    uint32_t outputWidth,
-                    uint32_t outputHeight)
-            : m_configManager(configManager), m_device(graphicsDevice), m_outputWidth(outputWidth),
-              m_outputHeight(outputHeight) {
-            // The upscaling factor is only read upon initialization of the session. It cannot be changed after.
-            std::tie(m_inputWidth, m_inputHeight) =
-                config::GetScaledDimensions(m_configManager.get(), m_outputWidth, m_outputHeight, 2);
-
-            m_isSharpenOnly = m_inputWidth == m_outputWidth && m_inputHeight == m_outputHeight;
+                    int settingScaling,
+                    int settingAnamorphic)
+            : m_configManager(configManager), m_device(graphicsDevice), m_settingScaling(settingScaling),
+              m_settingAnamorphic(settingAnamorphic),
+              m_isSharpenOnly(m_settingScaling == 100 && m_settingAnamorphic <= 0) {
             initializeScaler();
         }
 
@@ -63,16 +59,57 @@ namespace {
         }
 
         void update() override {
-            if (m_configManager->hasChanged(SettingSharpness)) {
-                updateScaler(m_configManager->getValue(SettingSharpness) / 100.f);
-            }
         }
 
-        void process(std::shared_ptr<ITexture> input, std::shared_ptr<ITexture> output, int32_t slice = -1) override {
-            m_device->setShader(!input->isArray() ? m_shader : m_shaderVPRT, SamplerType::LinearClamp);
+        void process(std::shared_ptr<ITexture> input,
+                     std::shared_ptr<ITexture> output,
+                     std::vector<std::shared_ptr<ITexture>>& textures,
+                     std::array<uint8_t, 1024>& blob) override {
+            // We need to use a per-instance blob.
+            static_assert(sizeof(NISConfig) <= 1024);
+            NISConfig* const config = reinterpret_cast<NISConfig*>(blob.data());
+
+            // Update the scaler's configuration specifically for this image.
+            const auto inputWidth = input->getInfo().width;
+            const auto inputHeight = input->getInfo().height;
+            const auto outputWidth = output->getInfo().width;
+            const auto outputHeight = output->getInfo().height;
+            const float sharpness = m_configManager->getValue(SettingSharpness) / 100.f;
+
+            if (!m_isSharpenOnly) {
+                NVScalerUpdateConfig(*config,
+                                     sharpness,
+                                     0,
+                                     0,
+                                     inputWidth,
+                                     inputHeight,
+                                     inputWidth,
+                                     inputHeight,
+                                     0,
+                                     0,
+                                     outputWidth,
+                                     outputHeight,
+                                     outputWidth,
+                                     outputHeight,
+                                     NISHDRMode::None);
+            } else {
+                NVSharpenUpdateConfig(
+                    *config, sharpness, 0, 0, inputWidth, inputHeight, inputWidth, inputHeight, 0, 0, NISHDRMode::None);
+            }
+
+            // TODO: We can use an IShaderBuffer cache per swapchain and avoid this every frame.
+            m_configBuffer->uploadData(config, sizeof(*config));
+
+            const std::array<unsigned int, 3> threadGroups = {
+                (unsigned int)std::ceil(outputWidth / float(m_optimalBlockWidth)),
+                (unsigned int)std::ceil(outputHeight / float(m_optimalBlockHeight)),
+                1};
+            m_shader->updateThreadGroups(threadGroups);
+
+            m_device->setShader(m_shader, SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_configBuffer);
-            m_device->setShaderInput(0, input, slice);
-            m_device->setShaderOutput(0, output, slice);
+            m_device->setShaderInput(0, input);
+            m_device->setShaderOutput(0, output);
 
             if (!m_isSharpenOnly) {
                 m_device->setShaderInput(1, m_coefScale);
@@ -95,44 +132,28 @@ namespace {
                                              : NISGPUArchitecture::NVIDIA_Generic;
             NISOptimizer opt(true, nisArchitecture);
 
-            const std::array<unsigned int, 3> threadGroups = {
-                (unsigned int)std::ceil(m_outputWidth / float(opt.GetOptimalBlockWidth())),
-                (unsigned int)std::ceil(m_outputHeight / float(opt.GetOptimalBlockHeight())),
-                1};
+            m_optimalBlockWidth = opt.GetOptimalBlockWidth();
+            m_optimalBlockHeight = opt.GetOptimalBlockHeight();
 
             // NISScaler/NISSharpen common
             utilities::shader::Defines defines;
             defines.add("NIS_SCALER", !m_isSharpenOnly);
             defines.add("NIS_HDR_MODE", (uint32_t)NISHDRMode::None);
-            defines.add("NIS_BLOCK_WIDTH", opt.GetOptimalBlockWidth());
-            defines.add("NIS_BLOCK_HEIGHT", opt.GetOptimalBlockHeight());
+            defines.add("NIS_BLOCK_WIDTH", m_optimalBlockWidth);
+            defines.add("NIS_BLOCK_HEIGHT", m_optimalBlockHeight);
             defines.add("NIS_THREAD_GROUP_SIZE", opt.GetOptimalThreadGroupSize());
 
             if (!m_isSharpenOnly) {
-                m_shader = m_device->createComputeShader(
-                    shaderFile, "main", "NISScaler CS", threadGroups, defines.get() /*,  shadersDir*/);
-
-                defines.add("VPRT", true);
-                m_shaderVPRT = m_device->createComputeShader(
-                    shaderFile, "main", "NISScaler VPRT CS", threadGroups, defines.get() /*,  shadersDir*/);
+                m_shader = m_device->createComputeShader(shaderFile, "main", "NISScaler CS", {}, defines.get());
 
                 // create coefficient inputs for NISScaler only
                 initializeCoefficients();
 
             } else {
-                m_shader = m_device->createComputeShader(
-                    shaderFile, "main", "NISSharpen CS", threadGroups, defines.get() /*,  shadersDir*/);
-
-                defines.add("VPRT", true);
-                m_shaderVPRT =
-                    m_device->createComputeShader(shaderFile, "main", "NISSharpen VPRT CS", threadGroups, defines.get()
-                                                  /*,  shadersDir*/);
+                m_shader = m_device->createComputeShader(shaderFile, "main", "NISSharpen CS", {}, defines.get());
             }
 
-            // TODO: Consider making immutable and create a new buffer in update(). For now, our D3D12 implementation
-            // does not do heap descriptor recycling.
             m_configBuffer = m_device->createBuffer(sizeof(NISConfig), "NIS Configuration CB");
-            updateScaler(m_configManager->getValue(SettingSharpness) / 100.f);
         }
 
         void initializeCoefficients() {
@@ -163,41 +184,6 @@ namespace {
             }
         }
 
-        void updateScaler(float sharpness) {
-            NISConfig config = {};
-            if (!m_isSharpenOnly) {
-                NVScalerUpdateConfig(config,
-                                     sharpness,
-                                     0,
-                                     0,
-                                     m_inputWidth,
-                                     m_inputHeight,
-                                     m_inputWidth,
-                                     m_inputHeight,
-                                     0,
-                                     0,
-                                     m_outputWidth,
-                                     m_outputHeight,
-                                     m_outputWidth,
-                                     m_outputHeight,
-                                     NISHDRMode::None);
-            } else {
-                NVSharpenUpdateConfig(config,
-                                      sharpness,
-                                      0,
-                                      0,
-                                      m_inputWidth,
-                                      m_inputHeight,
-                                      m_inputWidth,
-                                      m_inputHeight,
-                                      0,
-                                      0,
-                                      NISHDRMode::None);
-            }
-
-            m_configBuffer->uploadData(&config, sizeof(config));
-        }
-
         // Taken directly from /NVIDIAImageScaling/samples/DX12/src/NVScaler.cpp.
         template <typename T>
         void createAlignedCoefficients(const T* data, std::vector<T>& coef, uint32_t rowPitchAligned) {
@@ -213,15 +199,13 @@ namespace {
 
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
-        const uint32_t m_outputWidth;
-        const uint32_t m_outputHeight;
-
-        uint32_t m_inputWidth;
-        uint32_t m_inputHeight;
-        bool m_isSharpenOnly{false};
+        const int m_settingScaling;
+        const int m_settingAnamorphic;
+        const bool m_isSharpenOnly;
 
         std::shared_ptr<IComputeShader> m_shader;
-        std::shared_ptr<IComputeShader> m_shaderVPRT;
+        uint32_t m_optimalBlockWidth;
+        uint32_t m_optimalBlockHeight;
         std::shared_ptr<IShaderBuffer> m_configBuffer;
         std::shared_ptr<ITexture> m_coefScale;
         std::shared_ptr<ITexture> m_coefUSM;
@@ -233,9 +217,9 @@ namespace toolkit::graphics {
 
     std::shared_ptr<IImageProcessor> CreateNISUpscaler(std::shared_ptr<IConfigManager> configManager,
                                                        std::shared_ptr<IDevice> graphicsDevice,
-                                                       uint32_t outputWidth,
-                                                       uint32_t outputHeight) {
-        return std::make_shared<NISUpscaler>(configManager, graphicsDevice, outputWidth, outputHeight);
+                                                       int settingScaling,
+                                                       int settingAnamorphic) {
+        return std::make_shared<NISUpscaler>(configManager, graphicsDevice, settingScaling, settingAnamorphic);
     }
 
 } // namespace toolkit::graphics

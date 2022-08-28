@@ -41,18 +41,30 @@ namespace {
     // 2 frames.
     constexpr uint32_t GpuTimerLatency = 2;
 
-    // Up to 3 image processing stages are supported.
-    enum ImgProc { Pre, Scale, Post, MaxValue };
-
     struct SwapchainImages {
-        std::vector<std::shared_ptr<graphics::ITexture>> chain;
-        std::shared_ptr<graphics::IGpuTimer> gpuTimers[ImgProc::MaxValue][utilities::ViewCount];
+        std::shared_ptr<graphics::ITexture> appTexture;
+        std::shared_ptr<graphics::ITexture> runtimeTexture;
+        std::shared_ptr<graphics::IGpuTimer> upscalingTimers[utilities::ViewCount];
+        std::shared_ptr<graphics::IGpuTimer> postProcessingTimers[utilities::ViewCount];
     };
 
     struct SwapchainState {
         std::vector<SwapchainImages> images;
         uint32_t acquiredImageIndex{0};
         bool delayedRelease{false};
+
+        // Intermediate textures for processing.
+        std::shared_ptr<graphics::ITexture> nonVPRTInputTexture;
+        std::shared_ptr<graphics::ITexture> nonVPRTOutputTexture;
+        std::shared_ptr<graphics::ITexture> upscaledTexture;
+
+        // Intermediate textures than can be used for state in the image processors.
+        std::vector<std::shared_ptr<graphics::ITexture>> upscalerTextures;
+        std::vector<std::shared_ptr<graphics::ITexture>> postProcessorTextures;
+
+        // Opaque blobs of memory that can be used for constant buffer bouncing in the image processors.
+        std::array<uint8_t, 1024> upscalerBlob;
+        std::array<uint8_t, 1024> postProcessorBlob;
 
         bool registeredWithFrameAnalyzer{false};
     };
@@ -473,7 +485,19 @@ namespace {
                 instance, systemId, viewConfigurationType, viewCapacityInput, viewCountOutput, views);
             if (XR_SUCCEEDED(result) && isVrSystem(systemId) && views) {
                 // Determine the application resolution.
-                const auto upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
+                // If a session is active, we use the values latched at session creation. Some applications like Unreal
+                // or Unity seem to constantly poll xrEnumerateViewConfigurationViews() and we do not want to create a
+                // tear.
+                const auto upscaleMode =
+                    m_vrSession != XR_NULL_HANDLE
+                        ? m_upscaleMode
+                        : m_configManager->peekEnumValue<config::ScalingType>(config::SettingScalingType);
+                const auto settingScaling = m_vrSession != XR_NULL_HANDLE
+                                                ? m_settingScaling
+                                                : m_configManager->peekValue(config::SettingScaling);
+                const auto settingAnamophic = m_vrSession != XR_NULL_HANDLE
+                                                  ? m_settingAnamorphic
+                                                  : m_configManager->peekValue(config::SettingAnamorphic);
 
                 uint32_t inputWidth = m_displayWidth;
                 uint32_t inputHeight = m_displayHeight;
@@ -481,8 +505,8 @@ namespace {
                 switch (upscaleMode) {
                 case config::ScalingType::FSR:
                 case config::ScalingType::NIS: {
-                    std::tie(inputWidth, inputHeight) =
-                        config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
+                    std::tie(inputWidth, inputHeight) = config::GetScaledDimensions(
+                        settingScaling, settingAnamophic, m_displayWidth, m_displayHeight, 2);
                 } break;
 
                 case config::ScalingType::None:
@@ -499,15 +523,17 @@ namespace {
                     views[i].recommendedImageRectHeight = inputHeight;
                 }
 
-                if (inputWidth != m_displayWidth || inputHeight != m_displayHeight) {
-                    Log("Upscaling from %ux%u to %ux%u (%u%%)\n",
-                        inputWidth,
-                        inputHeight,
-                        m_displayWidth,
-                        m_displayHeight,
-                        (unsigned int)((((float)m_displayWidth / inputWidth) + 0.001f) * 100));
-                } else {
-                    Log("Using OpenXR resolution (no upscaling): %ux%u\n", m_displayWidth, m_displayHeight);
+                if (m_vrSession == XR_NULL_HANDLE) {
+                    if (inputWidth != m_displayWidth || inputHeight != m_displayHeight) {
+                        Log("Upscaling from %ux%u to %ux%u (%u%%)\n",
+                            inputWidth,
+                            inputHeight,
+                            m_displayWidth,
+                            m_displayHeight,
+                            (unsigned int)((((float)m_displayWidth / inputWidth) + 0.001f) * 100));
+                    } else {
+                        Log("Using OpenXR resolution (no upscaling): %ux%u\n", m_displayWidth, m_displayHeight);
+                    }
                 }
 
                 TraceLoggingWrite(g_traceProvider,
@@ -562,16 +588,18 @@ namespace {
                     // Initialize the other resources.
 
                     m_upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
+                    m_settingScaling = m_configManager->peekValue(config::SettingScaling);
+                    m_settingAnamorphic = m_configManager->peekValue(config::SettingAnamorphic);
 
                     switch (m_upscaleMode) {
                     case config::ScalingType::FSR:
-                        m_imageProcessors[ImgProc::Scale] = graphics::CreateFSRUpscaler(
-                            m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
+                        m_upscaler = graphics::CreateFSRUpscaler(
+                            m_configManager, m_graphicsDevice, m_settingScaling, m_settingAnamorphic);
                         break;
 
                     case config::ScalingType::NIS:
-                        m_imageProcessors[ImgProc::Scale] = graphics::CreateNISUpscaler(
-                            m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight);
+                        m_upscaler = graphics::CreateNISUpscaler(
+                            m_configManager, m_graphicsDevice, m_settingScaling, m_settingAnamorphic);
                         break;
 
                     case config::ScalingType::None:
@@ -586,8 +614,8 @@ namespace {
                     uint32_t renderWidth = m_displayWidth;
                     uint32_t renderHeight = m_displayHeight;
                     if (m_upscaleMode != config::ScalingType::None) {
-                        std::tie(renderWidth, renderHeight) =
-                            config::GetScaledDimensions(m_configManager.get(), m_displayWidth, m_displayHeight, 2);
+                        std::tie(renderWidth, renderHeight) = config::GetScaledDimensions(
+                            m_settingScaling, m_settingAnamorphic, m_displayWidth, m_displayHeight, 2);
 
                         // Per FSR SDK documentation.
                         m_mipMapBiasForUpscaling = -std::log2f(static_cast<float>(m_displayWidth * m_displayHeight) /
@@ -595,8 +623,7 @@ namespace {
                         Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
                     }
 
-                    m_imageProcessors[ImgProc::Post] =
-                        graphics::CreateImageProcessor(m_configManager, m_graphicsDevice);
+                    m_postProcessor = graphics::CreateImageProcessor(m_configManager, m_graphicsDevice);
 
                     if (m_graphicsDevice->isEventsSupported()) {
                         if (!m_configManager->getValue("disable_frame_analyzer")) {
@@ -841,7 +868,8 @@ namespace {
                     m_handTracker->endSession();
                 }
 
-                m_imageProcessors.fill(nullptr);
+                m_upscaler.reset();
+                m_postProcessor.reset();
 
                 m_frameAnalyzer.reset();
                 if (m_eyeTracker) {
@@ -896,6 +924,10 @@ namespace {
                 (XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                  XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT);
 
+            // We do no do any processing to depth buffer, but we like to have them for other things like occlusion when
+            // drawing.
+            const bool isDepth = createInfo->usageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
             TraceLoggingWrite(g_traceProvider,
                               "xrCreateSwapchain_AppSwapchain",
                               TLArg(createInfo->width, "ResolutionX"),
@@ -916,33 +948,21 @@ namespace {
                 createInfo->usageFlags);
 
             XrSwapchainCreateInfo chainCreateInfo = *createInfo;
-            if (useSwapchain) {
-                // Modify the swapchain to handle our processing chain (eg: change resolution and/or select usage
-                // XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT).
+            if (useSwapchain && !isDepth) {
+                // Modify the swapchain to handle our processing chain (eg: change resolution and/or usage.
 
-                // We do no processing to depth buffers.
-                if (!(createInfo->usageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-                    if (m_imageProcessors[ImgProc::Pre]) {
-                        chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
-                    }
+                if (m_upscaler) {
+                    float horizontalScaleFactor;
+                    float verticalScaleFactor;
+                    std::tie(horizontalScaleFactor, verticalScaleFactor) =
+                        config::GetScalingFactors(m_settingScaling, m_settingAnamorphic);
 
-                    if (m_imageProcessors[ImgProc::Scale]) {
-                        // When upscaling, be sure to request the full resolution with the runtime.
-                        chainCreateInfo.width = std::max(m_displayWidth, createInfo->width);
-                        chainCreateInfo.height = std::max(m_displayHeight, createInfo->height);
-
-                        // The upscaler requires to use as an unordered access view.
-                        chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
-                    }
-
-                    if (m_imageProcessors[ImgProc::Post]) {
-                        // We no longer need the runtime swapchain to have this flag since we will use an intermediate
-                        // texture.
-                        chainCreateInfo.usageFlags &= ~XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
-
-                        chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
-                    }
+                    chainCreateInfo.width = (uint32_t)std::ceil(createInfo->width * horizontalScaleFactor);
+                    chainCreateInfo.height = (uint32_t)std::ceil(createInfo->height * verticalScaleFactor);
                 }
+
+                // The post processor will draw a full-screen quad onto the final swapchain.
+                chainCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
             }
 
             const XrResult result = OpenXrApi::xrCreateSwapchain(session, &chainCreateInfo, swapchain);
@@ -977,7 +997,7 @@ namespace {
                                           TLArg(desc.CPUAccessFlags, "CPUAccessFlags"),
                                           TLArg(desc.MiscFlags, "MiscFlags"));
 
-                        // Make sure to create the underlying texture typeless.
+                        // Make sure to create the app texture typeless.
                         overrideFormat = (int64_t)desc.Format;
                     }
 
@@ -985,11 +1005,11 @@ namespace {
                         SwapchainImages images;
 
                         // Store the runtime images into the state (last entry in the processing chain).
-                        images.chain.push_back(
+                        images.runtimeTexture =
                             graphics::WrapD3D11Texture(m_graphicsDevice,
                                                        chainCreateInfo,
                                                        d3dImages[i].texture,
-                                                       fmt::format("Runtime swapchain {} TEX2D", i)));
+                                                       fmt::format("Runtime swapchain {} TEX2D", i));
 
                         swapchainState.images.push_back(std::move(images));
                     }
@@ -1014,7 +1034,7 @@ namespace {
                                           TLArg((int)desc.Format, "Format"),
                                           TLArg((int)desc.Flags, "Flags"));
 
-                        // Make sure to create the underlying texture typeless.
+                        // Make sure to create the app texture typeless.
                         overrideFormat = (int64_t)desc.Format;
                     }
 
@@ -1022,11 +1042,11 @@ namespace {
                         SwapchainImages images;
 
                         // Store the runtime images into the state (last entry in the processing chain).
-                        images.chain.push_back(
+                        images.runtimeTexture =
                             graphics::WrapD3D12Texture(m_graphicsDevice,
                                                        chainCreateInfo,
                                                        d3dImages[i].texture,
-                                                       fmt::format("Runtime swapchain {} TEX2D", i)));
+                                                       fmt::format("Runtime swapchain {} TEX2D", i));
 
                         swapchainState.images.push_back(std::move(images));
                     }
@@ -1037,82 +1057,23 @@ namespace {
                 for (uint32_t i = 0; i < imageCount; i++) {
                     SwapchainImages& images = swapchainState.images[i];
 
-                    // We do no processing to depth buffers.
-                    if (createInfo->usageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-                        continue;
-                    }
-
-                    // Create other entries in the chain based on the processing to do (scaling,
-                    // post-processing...).
-
-                    if (m_imageProcessors[ImgProc::Pre]) {
-                        // Create an intermediate texture with the same resolution as the input.
+                    if (!isDepth) {
+                        // Create an app texture with the exact specification requested (lower resolution in case of
+                        // upscaling).
                         XrSwapchainCreateInfo inputCreateInfo = *createInfo;
+
+                        // Both post-processor and upscalers need to do sampling.
                         inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                        if (m_imageProcessors[ImgProc::Scale]) {
-                            // The upscaler requires to use as a shader input.
-                            inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                        }
 
-                        auto inputTexture = m_graphicsDevice->createTexture(
-                            inputCreateInfo, fmt::format("Postprocess input swapchain {} TEX2D", i), overrideFormat);
-
-                        // We place the texture at the very front (app texture).
-                        images.chain.insert(images.chain.begin(), inputTexture);
-
-                        images.gpuTimers[ImgProc::Pre][0] = m_graphicsDevice->createTimer();
-                        if (createInfo->arraySize > 1) {
-                            images.gpuTimers[ImgProc::Pre][1] = m_graphicsDevice->createTimer();
-                        }
-                    }
-
-                    if (m_imageProcessors[ImgProc::Scale]) {
-                        // Create an app texture with the lower resolution.
-                        XrSwapchainCreateInfo inputCreateInfo = *createInfo;
-                        inputCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                        auto inputTexture = m_graphicsDevice->createTexture(
+                        images.appTexture = m_graphicsDevice->createTexture(
                             inputCreateInfo, fmt::format("App swapchain {} TEX2D", i), overrideFormat);
 
-                        // We place the texture before the runtime texture, which means at the very front (app
-                        // texture) or after the pre-processor.
-                        images.chain.insert(images.chain.end() - 1, inputTexture);
-
-                        images.gpuTimers[ImgProc::Scale][0] = m_graphicsDevice->createTimer();
-                        if (createInfo->arraySize > 1) {
-                            images.gpuTimers[ImgProc::Scale][1] = m_graphicsDevice->createTimer();
+                        for (uint32_t i = 0; i < utilities::ViewCount; i++) {
+                            images.upscalingTimers[i] = m_graphicsDevice->createTimer();
+                            images.postProcessingTimers[i] = m_graphicsDevice->createTimer();
                         }
-                    }
-
-                    if (m_imageProcessors[ImgProc::Post]) {
-                        // Create an intermediate texture with the same resolution as the output.
-                        XrSwapchainCreateInfo intermediateCreateInfo = chainCreateInfo;
-                        intermediateCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                        if (m_imageProcessors[ImgProc::Scale]) {
-                            // The upscaler requires to use as an unordered access view.
-                            intermediateCreateInfo.usageFlags |= XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
-
-                            // This also means we need a non-sRGB type.
-                            if (m_graphicsDevice->isTextureFormatSRGB(intermediateCreateInfo.format)) {
-                                // good balance between visuals and perf
-                                intermediateCreateInfo.format =
-                                    m_graphicsDevice->getTextureFormat(graphics::TextureFormat::R10G10B10A2_UNORM);
-                            }
-
-                            // Don't override. This isn't the texture the app is going to see anyway.
-                            overrideFormat = 0;
-                        }
-                        auto intermediateTexture =
-                            m_graphicsDevice->createTexture(intermediateCreateInfo,
-                                                            fmt::format("Postprocess input swapchain {} TEX2D", i),
-                                                            overrideFormat);
-
-                        // We place the texture just before the runtime texture.
-                        images.chain.insert(images.chain.end() - 1, intermediateTexture);
-
-                        images.gpuTimers[ImgProc::Post][0] = m_graphicsDevice->createTimer();
-                        if (createInfo->arraySize > 1) {
-                            images.gpuTimers[ImgProc::Post][1] = m_graphicsDevice->createTimer();
-                        }
+                    } else {
+                        images.appTexture = images.runtimeTexture;
                     }
                 }
 
@@ -1229,16 +1190,16 @@ namespace {
                 if (swapchainIt != m_swapchains.end()) {
                     auto& swapchainState = swapchainIt->second;
 
-                    // Return the application texture (first entry in the processing chain).
+                    // Return the application texture.
                     if (m_graphicsDevice->getApi() == graphics::Api::D3D11) {
                         XrSwapchainImageD3D11KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D11KHR*>(images);
                         for (uint32_t i = 0; i < *imageCountOutput; i++) {
-                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getAs<graphics::D3D11>();
+                            d3dImages[i].texture = swapchainState.images[i].appTexture->getAs<graphics::D3D11>();
                         }
                     } else if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                         XrSwapchainImageD3D12KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D12KHR*>(images);
                         for (uint32_t i = 0; i < *imageCountOutput; i++) {
-                            d3dImages[i].texture = swapchainState.images[i].chain[0]->getAs<graphics::D3D12>();
+                            d3dImages[i].texture = swapchainState.images[i].appTexture->getAs<graphics::D3D12>();
                         }
                     } else {
                         throw std::runtime_error("Unsupported graphics runtime");
@@ -1827,7 +1788,6 @@ namespace {
                 m_stats.endFrameCpuTimeUs /= numFrames;
                 m_stats.processorGpuTimeUs[0] /= numFrames;
                 m_stats.processorGpuTimeUs[1] /= numFrames;
-                m_stats.processorGpuTimeUs[2] /= numFrames;
                 m_stats.overlayCpuTimeUs /= numFrames;
                 m_stats.overlayGpuTimeUs /= numFrames;
                 m_stats.handTrackingCpuTimeUs /= numFrames;
@@ -1921,13 +1881,16 @@ namespace {
             }
 
             // Refresh the configuration.
-            for (auto& processor : m_imageProcessors) {
-                if (processor) {
-                    if (reloadShaders)
-                        processor->reload();
-                    processor->update();
+            if (m_upscaler) {
+                if (reloadShaders) {
+                    m_upscaler->reload();
                 }
+                m_upscaler->update();
             }
+            if (reloadShaders) {
+                m_postProcessor->reload();
+            }
+            m_postProcessor->update();
 
             if (m_eyeTracker) {
                 m_eyeTracker->update();
@@ -1951,7 +1914,7 @@ namespace {
                 const auto upscaleName = m_upscaleMode == config::ScalingType::NIS   ? "_NIS_"
                                          : m_upscaleMode == config::ScalingType::FSR ? "_FSR_"
                                                                                      : "_SCL_";
-                parameters << upscaleName << m_configManager->getValue(config::SettingScaling) << "_"
+                parameters << upscaleName << m_settingScaling << "_"
                            << m_configManager->getValue(config::SettingSharpness);
             }
 
@@ -2021,8 +1984,10 @@ namespace {
             m_graphicsDevice->unsetRenderTargets();
 
             std::shared_ptr<graphics::ITexture> textureForOverlay[utilities::ViewCount] = {};
+            uint32_t sliceForOverlay[utilities::ViewCount];
             std::shared_ptr<graphics::ITexture> depthForOverlay[utilities::ViewCount] = {};
-            xr::math::ViewProjection viewsForOverlay[utilities::ViewCount];
+            xr::math::ViewProjection viewForOverlay[utilities::ViewCount];
+            XrRect2Di viewportForOverlay[utilities::ViewCount];
             XrSpace spaceForOverlay = XR_NULL_HANDLE;
 
             // Because the frame info is passed const, we are going to need to reconstruct a writable version of it
@@ -2052,12 +2017,14 @@ namespace {
                                                             {proj->views[0], proj->views[1]}))
                                                         .data();
 
-                    // For VPRT, we need to handle texture arrays.
+                    // When using texture arrays, we assume both eyes are submitted from the same swapchain.
                     static_assert(utilities::ViewCount == 2);
-                    const bool useVPRT = proj->views[0].subImage.swapchain == proj->views[1].subImage.swapchain;
+                    const bool useTextureArrays =
+                        proj->views[0].subImage.swapchain == proj->views[1].subImage.swapchain &&
+                        proj->views[0].subImage.imageArrayIndex != proj->views[1].subImage.imageArrayIndex;
                     // TODO: We need to use subImage.imageArrayIndex instead of assuming 0/left and 1/right.
 
-                    if (useVPRT) {
+                    if (useTextureArrays) {
                         // Assume that we've properly distinguished left/right eyes.
                         m_stats.hasColorBuffer[(int)utilities::Eye::Left] =
                             m_stats.hasColorBuffer[(int)utilities::Eye::Right] = true;
@@ -2073,9 +2040,6 @@ namespace {
                         }
                         auto& swapchainState = swapchainIt->second;
                         auto& swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
-                        uint32_t nextImage = 0;
-                        uint32_t lastImage = 0;
-                        uint32_t gpuTimerIndex = useVPRT ? eye : 0;
 
                         // Look for the depth buffer.
                         std::shared_ptr<graphics::ITexture> depthBuffer;
@@ -2093,10 +2057,8 @@ namespace {
                                     }
                                     auto& depthSwapchainState = depthSwapchainIt->second;
 
-                                    assert(depthSwapchainState.images[depthSwapchainState.acquiredImageIndex]
-                                               .chain.size() == 1);
                                     depthBuffer =
-                                        depthSwapchainState.images[depthSwapchainState.acquiredImageIndex].chain[0];
+                                        depthSwapchainState.images[depthSwapchainState.acquiredImageIndex].appTexture;
                                     nearFar.Near = depth->nearZ;
                                     nearFar.Far = depth->farZ;
 
@@ -2110,55 +2072,180 @@ namespace {
                         const bool isDepthInverted = nearFar.Far < nearFar.Near;
 
                         // Now that we know what eye the swapchain is used for, register it.
-                        // TODO: We always assume that if VPRT is used, left eye is texture 0 and right eye is
-                        // texture 1. I'm sure this holds in like 99% of the applications, but still not very clean to
-                        // assume.
-                        if (m_frameAnalyzer && !useVPRT && !swapchainState.registeredWithFrameAnalyzer) {
+                        // TODO: We always assume that if texture arrays are used, left eye is texture 0 and right eye
+                        // is texture 1. I'm sure this holds in like 99% of the applications, but still not very clean
+                        // to assume.
+                        if (m_frameAnalyzer && !useTextureArrays && !swapchainState.registeredWithFrameAnalyzer) {
                             for (const auto& image : swapchainState.images) {
                                 m_frameAnalyzer->registerColorSwapchainImage(
-                                    view.subImage.swapchain, image.chain[0], (utilities::Eye)eye);
+                                    view.subImage.swapchain, image.appTexture, (utilities::Eye)eye);
                             }
                             swapchainState.registeredWithFrameAnalyzer = true;
                         }
 
-                        // Insert processing below.
-                        //
-                        // The pattern typically follows these steps:
-                        // - Advanced to the right source and/or destination image;
-                        // - Pull the previously measured timer value;
-                        // - Start the timer;
-                        // - Invoke the processing;
-                        // - Stop the timer;
-                        // - Advanced to the right source and/or destination image;
+                        // Detect whether the input uses a viewport (VP) or a texture array render target (RT)
+                        const bool isVPRT =
+                            view.subImage.imageArrayIndex > 0 || view.subImage.imageRect.offset.x ||
+                            view.subImage.imageRect.offset.y ||
+                            view.subImage.imageRect.extent.width != swapchainImages.appTexture->getInfo().width ||
+                            view.subImage.imageRect.extent.height != swapchainImages.appTexture->getInfo().height;
 
-                        for (size_t i = 0; i < std::size(m_imageProcessors); i++) {
-                            if (m_imageProcessors[i]) {
-                                auto timer = swapchainImages.gpuTimers[i][gpuTimerIndex].get();
-                                m_stats.processorGpuTimeUs[i] += timer->query();
+                        std::shared_ptr<graphics::ITexture> nextInput = swapchainImages.appTexture;
+                        std::shared_ptr<graphics::ITexture> finalOutput = swapchainImages.runtimeTexture;
 
-                                nextImage++;
-                                timer->start();
-                                m_imageProcessors[i]->process(swapchainImages.chain[lastImage],
-                                                              swapchainImages.chain[nextImage],
-                                                              useVPRT ? eye : -1);
-                                timer->stop();
-                                lastImage++;
+                        float horizontalScaleFactor = 1.f;
+                        float verticalScaleFactor = 1.f;
+                        if (m_upscaleMode != config::ScalingType::None) {
+                            std::tie(horizontalScaleFactor, verticalScaleFactor) =
+                                config::GetScalingFactors(m_settingScaling, m_settingAnamorphic);
+                        }
+
+                        auto scaledOutputWidth =
+                            (uint32_t)std::ceil(view.subImage.imageRect.extent.width * horizontalScaleFactor);
+                        auto scaledOutputHeight =
+                            (uint32_t)std::ceil(view.subImage.imageRect.extent.height * verticalScaleFactor);
+
+                        // Copy the VPRT app input into an intermediate buffer if needed.
+                        // TODO: This is a naive solution to uniformely support the same time of input/output for all
+                        // upscalers and post-processor.
+                        if (isVPRT) {
+                            if (!swapchainState.nonVPRTInputTexture ||
+                                view.subImage.imageRect.extent.width !=
+                                    swapchainState.nonVPRTInputTexture->getInfo().width ||
+                                view.subImage.imageRect.extent.height !=
+                                    swapchainState.nonVPRTInputTexture->getInfo().height) {
+                                auto createInfo = swapchainImages.appTexture->getInfo();
+
+                                // Single-surface, full (input) screen.
+                                createInfo.arraySize = 1;
+                                createInfo.width = view.subImage.imageRect.extent.width;
+                                createInfo.height = view.subImage.imageRect.extent.height;
+                                createInfo.mipCount = 1;
+
+                                // Will be copied to from the app swapchain. Then both upscaler or post-processor will
+                                // sample.
+                                createInfo.usageFlags =
+                                    XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+
+                                swapchainState.nonVPRTInputTexture =
+                                    m_graphicsDevice->createTexture(createInfo, "Non-VPRT Input TEX2D");
                             }
+
+                            // Patch the top-left corner offset.
+                            correctedProjectionViews[eye].subImage.imageRect.offset.x = (uint32_t)std::ceil(
+                                correctedProjectionViews[eye].subImage.imageRect.offset.x * horizontalScaleFactor);
+                            correctedProjectionViews[eye].subImage.imageRect.offset.y = (uint32_t)std::ceil(
+                                correctedProjectionViews[eye].subImage.imageRect.offset.y * verticalScaleFactor);
+
+                            // Small adjustments to avoid pixel off-texture due to rounding error.
+                            if (correctedProjectionViews[eye].subImage.imageRect.offset.x + scaledOutputWidth >
+                                swapchainImages.runtimeTexture->getInfo().width) {
+                                scaledOutputWidth = swapchainImages.runtimeTexture->getInfo().width -
+                                                    correctedProjectionViews[eye].subImage.imageRect.offset.x;
+                            }
+                            if (correctedProjectionViews[eye].subImage.imageRect.offset.y + scaledOutputHeight >
+                                swapchainImages.runtimeTexture->getInfo().height) {
+                                scaledOutputHeight = swapchainImages.runtimeTexture->getInfo().height -
+                                                     correctedProjectionViews[eye].subImage.imageRect.offset.y;
+                            }
+
+                            if (!swapchainState.nonVPRTOutputTexture ||
+                                scaledOutputWidth != swapchainState.nonVPRTOutputTexture->getInfo().width ||
+                                scaledOutputHeight != swapchainState.nonVPRTOutputTexture->getInfo().height) {
+                                auto createInfo = swapchainImages.appTexture->getInfo();
+
+                                // Single-surface, full (output) screen.
+                                createInfo.arraySize = 1;
+                                createInfo.width = scaledOutputWidth;
+                                createInfo.height = scaledOutputHeight;
+                                createInfo.mipCount = 1;
+
+                                // Post-processor will draw a full-screen quad. Then will be copied from into the
+                                // runtime swapchain.
+                                createInfo.usageFlags = XR_SWAPCHAIN_USAGE_TRANSFER_SRC_BIT |
+                                                        XR_SWAPCHAIN_USAGE_SAMPLED_BIT |
+                                                        XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+
+                                swapchainState.nonVPRTOutputTexture =
+                                    m_graphicsDevice->createTexture(createInfo, "Non-VPRT Output TEX2D");
+                            }
+
+                            swapchainImages.appTexture->copyTo(view.subImage.imageRect.offset.x,
+                                                               view.subImage.imageRect.offset.y,
+                                                               view.subImage.imageArrayIndex,
+                                                               swapchainState.nonVPRTInputTexture);
+
+                            nextInput = swapchainState.nonVPRTInputTexture;
+                            finalOutput = swapchainState.nonVPRTOutputTexture;
                         }
 
-                        // Make sure the chain was completed.
-                        if (nextImage != swapchainImages.chain.size() - 1) {
-                            throw std::runtime_error("Processing chain incomplete!");
+                        // Perform upscaling.
+                        if (m_upscaler) {
+                            if (!swapchainState.upscaledTexture ||
+                                scaledOutputWidth != swapchainState.upscaledTexture->getInfo().width ||
+                                scaledOutputHeight != swapchainState.upscaledTexture->getInfo().height) {
+                                auto createInfo = swapchainImages.appTexture->getInfo();
+
+                                // Single-surface, full (output) screen.
+                                createInfo.arraySize = 1;
+                                createInfo.width = scaledOutputWidth;
+                                createInfo.height = scaledOutputHeight;
+
+                                // Upscaler will write to as UAV. Then the post-processor will sample.
+                                createInfo.usageFlags =
+                                    XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+
+                                if (m_graphicsDevice->isTextureFormatSRGB(createInfo.format)) {
+                                    // Good balance between visuals and performance.
+                                    createInfo.format =
+                                        m_graphicsDevice->getTextureFormat(graphics::TextureFormat::R10G10B10A2_UNORM);
+                                }
+
+                                swapchainState.upscaledTexture =
+                                    m_graphicsDevice->createTexture(createInfo, "Upscaled TEX2D");
+                            }
+
+                            auto timer = swapchainImages.upscalingTimers[eye].get();
+                            m_stats.processorGpuTimeUs[0] += timer->query();
+
+                            timer->start();
+                            m_upscaler->process(nextInput,
+                                                swapchainState.upscaledTexture,
+                                                swapchainState.upscalerTextures,
+                                                swapchainState.upscalerBlob);
+                            timer->stop();
+
+                            nextInput = swapchainState.upscaledTexture;
                         }
 
-                        textureForOverlay[eye] = swapchainImages.chain.back();
-                        depthForOverlay[eye] = depthBuffer;
+                        // Do post-processing and color conversion.
+                        {
+                            auto timer = swapchainImages.postProcessingTimers[eye].get();
+                            m_stats.processorGpuTimeUs[1] += timer->query();
+
+                            timer->start();
+                            m_postProcessor->process(nextInput,
+                                                     finalOutput,
+                                                     swapchainState.postProcessorTextures,
+                                                     swapchainState.postProcessorBlob);
+                            timer->stop();
+                        }
+
+                        // Copy the output back into the VPRT runtime swapchain is needed.
+                        if (finalOutput != swapchainImages.runtimeTexture) {
+                            finalOutput->copyTo(swapchainImages.runtimeTexture,
+                                                correctedProjectionViews[eye].subImage.imageRect.offset.x,
+                                                correctedProjectionViews[eye].subImage.imageRect.offset.y,
+                                                view.subImage.imageArrayIndex);
+                        }
 
                         // Patch the resolution.
-                        if (m_imageProcessors[ImgProc::Scale]) {
-                            correctedProjectionViews[eye].subImage.imageRect.extent.width = m_displayWidth;
-                            correctedProjectionViews[eye].subImage.imageRect.extent.height = m_displayHeight;
-                        }
+                        correctedProjectionViews[eye].subImage.imageRect.extent.width = scaledOutputWidth;
+                        correctedProjectionViews[eye].subImage.imageRect.extent.height = scaledOutputHeight;
+
+                        textureForOverlay[eye] = swapchainImages.runtimeTexture;
+                        sliceForOverlay[eye] = view.subImage.imageArrayIndex;
+                        depthForOverlay[eye] = depthBuffer;
 
                         // Patch the eye poses.
                         const int cantOverride = m_configManager->getValue("canting");
@@ -2184,9 +2271,10 @@ namespace {
                             }
                         }
 
-                        viewsForOverlay[eye].Pose = correctedProjectionViews[eye].pose;
-                        viewsForOverlay[eye].Fov = correctedProjectionViews[eye].fov;
-                        viewsForOverlay[eye].NearFar = nearFar;
+                        viewForOverlay[eye].Pose = correctedProjectionViews[eye].pose;
+                        viewForOverlay[eye].Fov = correctedProjectionViews[eye].fov;
+                        viewForOverlay[eye].NearFar = nearFar;
+                        viewportForOverlay[eye] = correctedProjectionViews[eye].subImage.imageRect;
                     }
 
                     spaceForOverlay = proj->space;
@@ -2206,9 +2294,9 @@ namespace {
                     auto& swapchainState = swapchainIt->second;
                     auto& swapchainImages = swapchainState.images[swapchainState.acquiredImageIndex];
 
-                    size_t swapChainSize = std::size(swapchainImages.chain);
-                    if (swapChainSize > 1)
-                        swapchainImages.chain[0]->copyTo(swapchainImages.chain[swapChainSize - 1]);
+                    if (swapchainImages.appTexture != swapchainImages.runtimeTexture) {
+                        swapchainImages.appTexture->copyTo(swapchainImages.runtimeTexture);
+                    }
 
                     correctedLayers.push_back(chainFrameEndInfo.layers[i]);
                 } else {
@@ -2235,31 +2323,35 @@ namespace {
                 m_performanceCounters.overlayGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
 
                 if (textureForOverlay[0]) {
-                    const bool useVPRT = textureForOverlay[1] == textureForOverlay[0];
+                    const bool useTextureArrays =
+                        textureForOverlay[1] == textureForOverlay[0] && sliceForOverlay[0] != sliceForOverlay[1];
 
                     // Render the hands or eye gaze helper.
                     if (drawHands || drawEyeGaze) {
                         auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze);
 
                         for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                            m_graphicsDevice->setRenderTargets(1,
-                                                               &textureForOverlay[eye],
-                                                               useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr,
-                                                               depthForOverlay[eye],
-                                                               useVPRT ? eye : -1);
+                            m_graphicsDevice->setRenderTargets(
+                                1,
+                                &textureForOverlay[eye],
+                                useTextureArrays ? reinterpret_cast<int32_t*>(&sliceForOverlay[eye]) : nullptr,
+                                &viewportForOverlay[eye],
+                                depthForOverlay[eye],
+                                useTextureArrays ? eye : -1);
 
-                            m_graphicsDevice->setViewProjection(viewsForOverlay[eye]);
+                            m_graphicsDevice->setViewProjection(viewForOverlay[eye]);
 
                             if (drawHands) {
                                 m_handTracker->render(
-                                    viewsForOverlay[eye].Pose, spaceForOverlay, getTimeNow(), textureForOverlay[eye]);
+                                    viewForOverlay[eye].Pose, spaceForOverlay, getTimeNow(), textureForOverlay[eye]);
                             }
 
                             if (drawEyeGaze) {
                                 XrColor4f color = isEyeGazeValid ? XrColor4f{0, 1, 0, 1} : XrColor4f{1, 0, 0, 1};
                                 auto pos = utilities::NdcToScreen(m_eyeGaze[eye]);
-                                pos.x *= textureForOverlay[eye]->getInfo().width;
-                                pos.y *= textureForOverlay[eye]->getInfo().height;
+                                pos.x = viewportForOverlay[eye].offset.x + pos.x * viewportForOverlay[eye].extent.width;
+                                pos.y =
+                                    viewportForOverlay[eye].offset.y + pos.y * viewportForOverlay[eye].extent.height;
                                 m_graphicsDevice->clearColor(pos.y - 20, pos.x - 20, pos.y + 20, pos.x + 20, color);
                             }
                         }
@@ -2326,11 +2418,15 @@ namespace {
                     } else {
                         // Legacy menu mode, for people having problems.
                         if (textureForOverlay[0]) {
-                            const bool useVPRT = textureForOverlay[1] == textureForOverlay[0];
+                            const bool useTextureArrays = textureForOverlay[1] == textureForOverlay[0] &&
+                                                          sliceForOverlay[0] != sliceForOverlay[1];
 
                             for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                                 m_graphicsDevice->setRenderTargets(
-                                    1, &textureForOverlay[eye], useVPRT ? reinterpret_cast<int32_t*>(&eye) : nullptr);
+                                    1,
+                                    &textureForOverlay[eye],
+                                    useTextureArrays ? reinterpret_cast<int32_t*>(&sliceForOverlay[eye]) : nullptr,
+                                    &viewportForOverlay[eye]);
                                 m_graphicsDevice->beginText(true /* mustKeepOldContent */);
                                 m_menuHandler->render(textureForOverlay[eye], (utilities::Eye)eye);
                                 m_graphicsDevice->flushText();
@@ -2468,13 +2564,16 @@ namespace {
         std::map<XrSwapchain, SwapchainState> m_swapchains;
 
         config::ScalingType m_upscaleMode{config::ScalingType::None};
+        int m_settingScaling{100};
+        int m_settingAnamorphic{-100};
         float m_mipMapBiasForUpscaling{0.f};
 
         std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;
         std::shared_ptr<input::IEyeTracker> m_eyeTracker;
         std::shared_ptr<input::IHandTracker> m_handTracker;
 
-        std::array<std::shared_ptr<graphics::IImageProcessor>, ImgProc::MaxValue> m_imageProcessors;
+        std::shared_ptr<graphics::IImageProcessor> m_upscaler;
+        std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
         std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;
 
         std::vector<int> m_keyModifiers;
