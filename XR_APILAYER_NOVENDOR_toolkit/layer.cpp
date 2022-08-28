@@ -210,6 +210,7 @@ namespace {
             m_configManager->setDefault("disable_frame_analyzer", !m_isOpenComposite ? 0 : 1);
             m_configManager->setDefault("canting", 0);
             m_configManager->setDefault("vrs_capture", 0);
+            m_configManager->setDefault("force_vprt_path", 0);
 
             // Workaround: the first versions of the toolkit used a different representation for the world scale.
             // Migrate the value upon first run.
@@ -2089,7 +2090,8 @@ namespace {
                             view.subImage.imageArrayIndex > 0 || view.subImage.imageRect.offset.x ||
                             view.subImage.imageRect.offset.y ||
                             view.subImage.imageRect.extent.width != swapchainImages.appTexture->getInfo().width ||
-                            view.subImage.imageRect.extent.height != swapchainImages.appTexture->getInfo().height;
+                            view.subImage.imageRect.extent.height != swapchainImages.appTexture->getInfo().height ||
+                            m_configManager->getValue("force_vprt_path");
 
                         std::shared_ptr<graphics::ITexture> nextInput = swapchainImages.appTexture;
                         std::shared_ptr<graphics::ITexture> finalOutput = swapchainImages.runtimeTexture;
