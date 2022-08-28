@@ -73,8 +73,7 @@ namespace LAYER_NAMESPACE {
             const std::string_view engineName(instanceCreateInfo->applicationInfo.engineName);
 
             // Bypass the layer if it's either in the no-no list, or if the user requests it.
-            const bool bypassLayer = engineName == "Chromium" || engineName == "iRacing" ||
-                                     (engineName.find("UnrealEngine") != std::string::npos) ||
+            const bool bypassLayer = engineName == "Chromium" ||
                                      (LAYER_NAMESPACE::utilities::RegGetDword(
                                           HKEY_CURRENT_USER, std::wstring(baseKey.begin(), baseKey.end()), L"bypass")
                                           .value_or(0));
