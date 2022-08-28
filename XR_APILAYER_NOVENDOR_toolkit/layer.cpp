@@ -761,6 +761,7 @@ namespace {
                                     graphics::WrapD3D12Texture(m_graphicsDevice,
                                                                swapchainInfo,
                                                                d3dImages[i].texture,
+                                                               D3D12_RESOURCE_STATE_RENDER_TARGET,
                                                                fmt::format("Menu swapchain {} TEX2D", i)));
                             }
                         } else {
@@ -1042,11 +1043,19 @@ namespace {
                     for (uint32_t i = 0; i < imageCount; i++) {
                         SwapchainImages images;
 
+                        D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+                        if ((chainCreateInfo.usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT)) {
+                            initialState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+                        } else if ((chainCreateInfo.usageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+                            initialState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+                        }
+
                         // Store the runtime images into the state (last entry in the processing chain).
                         images.runtimeTexture =
                             graphics::WrapD3D12Texture(m_graphicsDevice,
                                                        chainCreateInfo,
                                                        d3dImages[i].texture,
+                                                       initialState,
                                                        fmt::format("Runtime swapchain {} TEX2D", i));
 
                         swapchainState.images.push_back(std::move(images));

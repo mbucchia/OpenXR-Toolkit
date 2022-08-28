@@ -364,11 +364,12 @@ namespace {
                      const XrSwapchainCreateInfo& info,
                      const D3D12_RESOURCE_DESC& textureDesc,
                      ID3D12Resource* texture,
+                     D3D12_RESOURCE_STATES initialState,
                      D3D12Heap& rtvHeap,
                      D3D12Heap& dsvHeap,
                      D3D12Heap& rvHeap)
-            : m_device(device), m_info(info), m_textureDesc(textureDesc), m_texture(texture), m_rtvHeap(rtvHeap),
-              m_dsvHeap(dsvHeap), m_rvHeap(rvHeap) {
+            : m_device(device), m_info(info), m_textureDesc(textureDesc), m_texture(texture),
+              m_currentState(initialState), m_rtvHeap(rtvHeap), m_dsvHeap(dsvHeap), m_rvHeap(rvHeap) {
             m_shaderResourceSubView.resize(info.arraySize);
             m_unorderedAccessSubView.resize(info.arraySize);
             m_renderTargetSubView.resize(info.arraySize);
@@ -450,40 +451,38 @@ namespace {
 
             // Do the upload now.
             if (auto context = m_device->getContextAs<D3D12>()) {
-                {
-                    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                        get(m_texture), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-                    context->ResourceBarrier(1, &barrier);
-                }
-                {
-                    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-                    ZeroMemory(&footprint, sizeof(footprint));
-                    footprint.Footprint.Width = (UINT)m_textureDesc.Width;
-                    footprint.Footprint.Height = m_textureDesc.Height;
-                    footprint.Footprint.Depth = 1;
-                    footprint.Footprint.RowPitch = rowPitch;
-                    footprint.Footprint.Format = m_textureDesc.Format;
-                    CD3DX12_TEXTURE_COPY_LOCATION src(get(m_uploadBuffer), footprint);
-                    CD3DX12_TEXTURE_COPY_LOCATION dst(get(m_texture), 0);
-                    context->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
-                }
-                {
-                    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                        get(m_texture), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
-                    context->ResourceBarrier(1, &barrier);
-                }
+                pushState(D3D12_RESOURCE_STATE_COPY_DEST);
+
+                D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+                ZeroMemory(&footprint, sizeof(footprint));
+                footprint.Footprint.Width = (UINT)m_textureDesc.Width;
+                footprint.Footprint.Height = m_textureDesc.Height;
+                footprint.Footprint.Depth = 1;
+                footprint.Footprint.RowPitch = rowPitch;
+                footprint.Footprint.Format = m_textureDesc.Format;
+                CD3DX12_TEXTURE_COPY_LOCATION src(get(m_uploadBuffer), footprint);
+                CD3DX12_TEXTURE_COPY_LOCATION dst(get(m_texture), 0);
+                context->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+
+                popState();
             }
         }
 
-        void copyTo(std::shared_ptr<ITexture> destination) const override {
+        void copyTo(std::shared_ptr<ITexture> destination) override {
             D3D12_TEXTURE_COPY_LOCATION destLoc{
                 destination->getAs<D3D12>(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
             D3D12_TEXTURE_COPY_LOCATION srcLoc{m_texture.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
+
+            pushState(D3D12_RESOURCE_STATE_COPY_SOURCE);
+            destination->pushState(D3D12_RESOURCE_STATE_COPY_DEST);
+
             m_device->getContextAs<D3D12>()->CopyTextureRegion(&destLoc, 0, 0, 0, &srcLoc, nullptr);
+
+            destination->popState();
+            popState();
         }
 
-        void
-        copyTo(uint32_t srcX, uint32_t srcY, int32_t srcSlice, std::shared_ptr<ITexture> destination) const override {
+        void copyTo(uint32_t srcX, uint32_t srcY, int32_t srcSlice, std::shared_ptr<ITexture> destination) override {
             D3D12_TEXTURE_COPY_LOCATION destLoc{
                 destination->getAs<D3D12>(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
             D3D12_TEXTURE_COPY_LOCATION srcLoc{
@@ -498,15 +497,27 @@ namespace {
             box.front = 0;
             box.back = 1;
 
+            pushState(D3D12_RESOURCE_STATE_COPY_SOURCE);
+            destination->pushState(D3D12_RESOURCE_STATE_COPY_DEST);
+
             m_device->getContextAs<D3D12>()->CopyTextureRegion(&destLoc, 0, 0, 0, &srcLoc, &box);
+
+            destination->popState();
+            popState();
         }
 
-        void
-        copyTo(std::shared_ptr<ITexture> destination, uint32_t dstX, uint32_t dstY, int32_t dstSlice) const override {
+        void copyTo(std::shared_ptr<ITexture> destination, uint32_t dstX, uint32_t dstY, int32_t dstSlice) override {
             D3D12_TEXTURE_COPY_LOCATION destLoc{
                 destination->getAs<D3D12>(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, (UINT)dstSlice};
             D3D12_TEXTURE_COPY_LOCATION srcLoc{m_texture.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0};
+
+            pushState(D3D12_RESOURCE_STATE_COPY_SOURCE);
+            destination->pushState(D3D12_RESOURCE_STATE_COPY_DEST);
+
             m_device->getContextAs<D3D12>()->CopyTextureRegion(&destLoc, dstX, dstY, 0, &srcLoc, nullptr);
+
+            destination->popState();
+            popState();
         }
 
         void saveToFile(const std::filesystem::path& path) const override {
@@ -540,6 +551,29 @@ namespace {
             } else {
                 Log("Failed to take screenshot: 0x%x\n", hr);
             }
+        }
+
+        void pushState(D3D12_RESOURCE_STATES newState) override {
+            m_stateStack.push_back(m_currentState);
+
+            if (newState != m_currentState) {
+                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(get(m_texture), m_currentState, newState);
+                m_device->getContextAs<D3D12>()->ResourceBarrier(1, &barrier);
+            }
+
+            m_currentState = newState;
+        }
+
+        void popState() override {
+            const auto newState = m_stateStack.back();
+            m_stateStack.pop_back();
+
+            if (newState != m_currentState) {
+                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(get(m_texture), m_currentState, newState);
+                m_device->getContextAs<D3D12>()->ResourceBarrier(1, &barrier);
+            }
+
+            m_currentState = newState;
         }
 
         void* getNativePtr() const override {
@@ -656,6 +690,9 @@ namespace {
         const D3D12_RESOURCE_DESC m_textureDesc;
         const ComPtr<ID3D12Resource> m_texture;
 
+        D3D12_RESOURCE_STATES m_currentState;
+        std::vector<D3D12_RESOURCE_STATES> m_stateStack;
+
         ComPtr<ID3D12Resource> m_uploadBuffer;
         UINT m_uploadSize{0};
         std::shared_ptr<ITexture> m_interopTexture;
@@ -682,10 +719,11 @@ namespace {
         D3D12Buffer(std::shared_ptr<IDevice> device,
                     D3D12_RESOURCE_DESC bufferDesc,
                     ID3D12Resource* buffer,
+                    D3D12_RESOURCE_STATES initialState,
                     D3D12Heap& rvHeap,
                     ID3D12Resource* uploadBuffer = nullptr)
-            : m_device(device), m_bufferDesc(bufferDesc), m_buffer(buffer), m_rvHeap(rvHeap),
-              m_uploadBuffer(uploadBuffer) {
+            : m_device(device), m_bufferDesc(bufferDesc), m_buffer(buffer), m_currentState(initialState),
+              m_rvHeap(rvHeap), m_uploadBuffer(uploadBuffer) {
         }
 
         Api getApi() const override {
@@ -702,17 +740,9 @@ namespace {
             subresourceData.RowPitch = subresourceData.SlicePitch = count;
 
             if (auto context = m_device->getContextAs<D3D12>()) {
-                {
-                    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                        get(m_buffer), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-                    context->ResourceBarrier(1, &barrier);
-                }
+                pushState(D3D12_RESOURCE_STATE_COPY_DEST);
                 UpdateSubresources<1>(context, get(m_buffer), uploadBuffer, 0, 0, 1, &subresourceData);
-                {
-                    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                        get(m_buffer), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-                    context->ResourceBarrier(1, &barrier);
-                }
+                popState();
             }
         }
 
@@ -743,6 +773,29 @@ namespace {
             return m_constantBufferView.value();
         }
 
+        void pushState(D3D12_RESOURCE_STATES newState) override {
+            m_stateStack.push_back(m_currentState);
+
+            if (newState != m_currentState) {
+                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(get(m_buffer), m_currentState, newState);
+                m_device->getContextAs<D3D12>()->ResourceBarrier(1, &barrier);
+            }
+
+            m_currentState = newState;
+        }
+
+        void popState() override {
+            const auto newState = m_stateStack.back();
+            m_stateStack.pop_back();
+
+            if (newState != m_currentState) {
+                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(get(m_buffer), m_currentState, newState);
+                m_device->getContextAs<D3D12>()->ResourceBarrier(1, &barrier);
+            }
+
+            m_currentState = newState;
+        }
+
         void* getNativePtr() const override {
             return get(m_buffer);
         }
@@ -751,6 +804,9 @@ namespace {
         const std::shared_ptr<IDevice> m_device;
         const D3D12_RESOURCE_DESC m_bufferDesc;
         const ComPtr<ID3D12Resource> m_buffer;
+
+        D3D12_RESOURCE_STATES m_currentState;
+        std::vector<D3D12_RESOURCE_STATES> m_stateStack;
 
         D3D12Heap& m_rvHeap;
 
@@ -1196,6 +1252,7 @@ namespace {
                                                                   D3D12_RESOURCE_STATE_GENERIC_READ,
                                                                   nullptr,
                                                                   IID_PPV_ARGS(set(uploadBuffer))));
+                    SetDebugName(get(uploadBuffer), std::string(debugName) + " Upload");
                 }
                 {
                     void* mappedBuffer = nullptr;
@@ -1232,7 +1289,7 @@ namespace {
             SetDebugName(get(texture), debugName);
 
             return std::make_shared<D3D12Texture>(
-                shared_from_this(), info, desc, get(texture), m_rtvHeap, m_dsvHeap, m_rvHeap);
+                shared_from_this(), info, desc, get(texture), initialState, m_rtvHeap, m_dsvHeap, m_rvHeap);
         }
 
         std::shared_ptr<IShaderBuffer>
@@ -1261,11 +1318,16 @@ namespace {
                                                               D3D12_RESOURCE_STATE_GENERIC_READ,
                                                               nullptr,
                                                               IID_PPV_ARGS(set(uploadBuffer))));
+                SetDebugName(get(uploadBuffer), std::string(debugName) + " Upload");
             }
             SetDebugName(get(buffer), debugName);
 
-            auto result = std::make_shared<D3D12Buffer>(
-                shared_from_this(), desc, get(buffer), m_rvHeap, !immutable ? get(uploadBuffer) : nullptr);
+            auto result = std::make_shared<D3D12Buffer>(shared_from_this(),
+                                                        desc,
+                                                        get(buffer),
+                                                        D3D12_RESOURCE_STATE_COMMON,
+                                                        m_rvHeap,
+                                                        !immutable ? get(uploadBuffer) : nullptr);
 
             if (initialData) {
                 result->uploadData(initialData, size, get(uploadBuffer));
@@ -1420,6 +1482,13 @@ namespace {
                                : m_currentQuadShader  ? dynamic_cast<D3D12Shader*>(m_currentQuadShader.get())
                                                       : nullptr;
             if (d3d12Shader) {
+                if (m_currentComputeShader) {
+                    input->pushState(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                } else {
+                    input->pushState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                }
+                m_currentShaderResources.push_back(input);
+
                 const auto pView = input->getShaderResourceView(slice)->getAs<D3D12>();
                 const auto descriptorHandle = m_rvHeap.getGPUHandle(*pView);
                 if (!d3d12Shader->needsResolve()) {
@@ -1441,6 +1510,9 @@ namespace {
                                : m_currentQuadShader  ? dynamic_cast<D3D12Shader*>(m_currentQuadShader.get())
                                                       : nullptr;
             if (d3d12Shader) {
+                input->pushState(D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+                m_currentShaderResources2.push_back(input);
+
                 const auto pBuffer = dynamic_cast<D3D12Buffer*>(input.get());
                 const auto descriptorHandle = m_rvHeap.getGPUHandle(pBuffer->getConstantBufferView());
                 if (!d3d12Shader->needsResolve()) {
@@ -1469,6 +1541,9 @@ namespace {
                     throw std::runtime_error("Only use slot 0 for IQuadShader");
                 }
             } else if (m_currentComputeShader) {
+                output->pushState(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                m_currentShaderResources.push_back(output);
+
                 const auto pView = output->getUnorderedAccessView(slice)->getAs<D3D12>();
                 auto descriptorHandle = m_rvHeap.getGPUHandle(*pView);
                 auto d3d12Shader = dynamic_cast<D3D12Shader*>(m_currentComputeShader.get());
@@ -1504,6 +1579,14 @@ namespace {
             }
 
             if (!doNotClear) {
+                while (!m_currentShaderResources.empty()) {
+                    m_currentShaderResources.back()->popState();
+                    m_currentShaderResources.pop_back();
+                }
+                while (!m_currentShaderResources2.empty()) {
+                    m_currentShaderResources2.back()->popState();
+                    m_currentShaderResources2.pop_back();
+                }
                 m_currentQuadShader.reset();
                 m_currentComputeShader.reset();
             }
@@ -1511,8 +1594,14 @@ namespace {
 
         void unsetRenderTargets() override {
             m_context->OMSetRenderTargets(0, nullptr, true, nullptr);
-            m_currentDrawRenderTarget.reset();
-            m_currentDrawDepthBuffer.reset();
+            if (m_currentDrawRenderTarget) {
+                m_currentDrawRenderTarget->popState();
+                m_currentDrawRenderTarget.reset();
+            }
+            if (m_currentDrawDepthBuffer) {
+                m_currentDrawDepthBuffer->popState();
+                m_currentDrawDepthBuffer.reset();
+            }
             m_currentMesh.reset();
         }
 
@@ -1533,23 +1622,7 @@ namespace {
             for (size_t i = 0; i < numRenderTargets; i++) {
                 auto slice = renderSlices ? renderSlices[i] : -1;
                 rtvs[i] = *renderTargets[i]->getRenderTargetView(slice)->getAs<D3D12>();
-
-                // We assume that the resource is always in the expected state.
-                // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(renderTargets[i]->getAs<D3D12>(),
-                //                                                         D3D12_RESOURCE_STATE_COMMON,
-                //                                                         D3D12_RESOURCE_STATE_RENDER_TARGET));
             }
-
-            // if (depthBuffer) {
-            // We assume that the resource is always in the expected state.
-            // barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(depthBuffer[0]->getAs<D3D12>(),
-            //                                                         D3D12_RESOURCE_STATE_COMMON,
-            //                                                         D3D12_RESOURCE_STATE_DEPTH_WRITE));
-            //}
-
-            // if (!barriers.empty()) {
-            //    m_context->ResourceBarrier((UINT)barriers.size(), barriers.data());
-            //}
 
             auto pDepthStencilView =
                 depthBuffer ? depthBuffer->getDepthStencilView(depthSlice)->getAs<D3D12>() : nullptr;
@@ -1561,6 +1634,13 @@ namespace {
                 m_currentDrawRenderTargetSlice = renderSlices ? renderSlices[0] : -1;
                 m_currentDrawDepthBuffer = std::move(depthBuffer);
                 m_currentDrawDepthBufferSlice = depthSlice;
+
+                if (m_currentDrawRenderTarget) {
+                    m_currentDrawRenderTarget->pushState(D3D12_RESOURCE_STATE_RENDER_TARGET);
+                }
+                if (m_currentDrawDepthBuffer) {
+                    m_currentDrawDepthBuffer->pushState(D3D12_RESOURCE_STATE_DEPTH_WRITE);
+                }
 
                 if (viewport0) {
                     m_currentDrawRenderTargetViewport = *viewport0;
@@ -1581,8 +1661,14 @@ namespace {
 
                 m_context->RSSetScissorRects(1, &scissorRect);
             } else {
-                m_currentDrawRenderTarget.reset();
-                m_currentDrawDepthBuffer.reset();
+                if (m_currentDrawRenderTarget) {
+                    m_currentDrawRenderTarget->popState();
+                    m_currentDrawRenderTarget.reset();
+                }
+                if (m_currentDrawDepthBuffer) {
+                    m_currentDrawDepthBuffer->popState();
+                    m_currentDrawDepthBuffer.reset();
+                }
             }
             m_currentMesh.reset();
         }
@@ -1836,27 +1922,7 @@ namespace {
             auto d3d12DrawRenderTarget = dynamic_cast<D3D12Texture*>(m_currentDrawRenderTarget.get());
             auto copyTexture = d3d12DrawRenderTarget->getInteropCopyTexture();
             if (copyTexture) {
-                {
-                    std::vector<D3D12_RESOURCE_BARRIER> barriers;
-                    barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(copyTexture->getAs<D3D12>(),
-                                                                            D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                                                            D3D12_RESOURCE_STATE_GENERIC_READ));
-                    barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(m_currentDrawRenderTarget->getAs<D3D12>(),
-                                                                            D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                                                            D3D12_RESOURCE_STATE_COPY_DEST));
-                    m_context->ResourceBarrier((UINT)barriers.size(), barriers.data());
-                }
                 copyTexture->copyTo(m_currentDrawRenderTarget);
-                {
-                    std::vector<D3D12_RESOURCE_BARRIER> barriers;
-                    barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(copyTexture->getAs<D3D12>(),
-                                                                            D3D12_RESOURCE_STATE_GENERIC_READ,
-                                                                            D3D12_RESOURCE_STATE_RENDER_TARGET));
-                    barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(m_currentDrawRenderTarget->getAs<D3D12>(),
-                                                                            D3D12_RESOURCE_STATE_COPY_DEST,
-                                                                            D3D12_RESOURCE_STATE_RENDER_TARGET));
-                    m_context->ResourceBarrier((UINT)barriers.size(), barriers.data());
-                }
             }
             m_currentTextRenderTarget.reset();
             m_isRenderingText = false;
@@ -2168,6 +2234,7 @@ namespace {
                                                                getTextureInfo(resourceDesc),
                                                                resourceDesc,
                                                                resource,
+                                                               D3D12_RESOURCE_STATE_COMMON, /* Conservative. */
                                                                m_rtvHeap,
                                                                m_dsvHeap,
                                                                m_rvHeap);
@@ -2192,6 +2259,7 @@ namespace {
                                                          getTextureInfo(sourceTextureDesc),
                                                          sourceTextureDesc,
                                                          pSrcResource,
+                                                         D3D12_RESOURCE_STATE_COPY_SOURCE, /* Conservative. */
                                                          m_rtvHeap,
                                                          m_dsvHeap,
                                                          m_rvHeap);
@@ -2201,6 +2269,7 @@ namespace {
                                                               getTextureInfo(destinationTextureDesc),
                                                               destinationTextureDesc,
                                                               pDstResource,
+                                                              D3D12_RESOURCE_STATE_COPY_DEST, /* Conservative. */
                                                               m_rtvHeap,
                                                               m_dsvHeap,
                                                               m_rvHeap);
@@ -2263,6 +2332,8 @@ namespace {
         std::shared_ptr<ISimpleMesh> m_currentMesh;
         mutable std::shared_ptr<IQuadShader> m_currentQuadShader;
         mutable std::shared_ptr<IComputeShader> m_currentComputeShader;
+        mutable std::vector<std::shared_ptr<ITexture>> m_currentShaderResources;
+        mutable std::vector<std::shared_ptr<IShaderBuffer>> m_currentShaderResources2;
         uint32_t m_currentRootSlot;
 
         ComPtr<ID3D12InfoQueue> m_infoQueue;
@@ -2278,6 +2349,7 @@ namespace {
         friend std::shared_ptr<ITexture> toolkit::graphics::WrapD3D12Texture(std::shared_ptr<IDevice> device,
                                                                              const XrSwapchainCreateInfo& info,
                                                                              ID3D12Resource* texture,
+                                                                             D3D12_RESOURCE_STATES initialState,
                                                                              std::string_view debugName);
 
         static XrSwapchainCreateInfo getTextureInfo(const D3D12_RESOURCE_DESC& resourceDesc) {
@@ -2418,6 +2490,7 @@ namespace toolkit::graphics {
     std::shared_ptr<ITexture> WrapD3D12Texture(std::shared_ptr<IDevice> device,
                                                const XrSwapchainCreateInfo& info,
                                                ID3D12Resource* texture,
+                                               D3D12_RESOURCE_STATES initialState,
                                                std::string_view debugName) {
         if (device->getApi() == Api::D3D12) {
             SetDebugName(texture, debugName);
@@ -2427,6 +2500,7 @@ namespace toolkit::graphics {
                                                   info,
                                                   texture->GetDesc(),
                                                   texture,
+                                                  initialState,
                                                   d3d12Device->m_rtvHeap,
                                                   d3d12Device->m_dsvHeap,
                                                   d3d12Device->m_rvHeap);

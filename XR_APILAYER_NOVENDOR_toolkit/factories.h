@@ -88,6 +88,7 @@ namespace toolkit {
         std::shared_ptr<ITexture> WrapD3D12Texture(std::shared_ptr<IDevice> device,
                                                    const XrSwapchainCreateInfo& info,
                                                    ID3D12Resource* texture,
+                                                   D3D12_RESOURCE_STATES initialState,
                                                    std::string_view debugName);
 
         std::shared_ptr<IImageProcessor> CreateImageProcessor(
