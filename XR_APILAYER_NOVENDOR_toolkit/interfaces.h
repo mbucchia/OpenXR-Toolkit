@@ -452,12 +452,15 @@ namespace toolkit {
             virtual std::shared_ptr<IDepthStencilView> getDepthStencilView(int32_t slice = -1) const = 0;
 
             virtual void uploadData(const void* buffer, uint32_t rowPitch, int32_t slice = -1) = 0;
-            virtual void copyTo(std::shared_ptr<ITexture> destination) const = 0;
+            virtual void copyTo(std::shared_ptr<ITexture> destination) = 0;
             virtual void
-            copyTo(uint32_t srcX, uint32_t srcY, int32_t srcSlice, std::shared_ptr<ITexture> destination) const = 0;
+            copyTo(uint32_t srcX, uint32_t srcY, int32_t srcSlice, std::shared_ptr<ITexture> destination) = 0;
             virtual void
-            copyTo(std::shared_ptr<ITexture> destination, uint32_t dstX, uint32_t dstY, int32_t dstSlice) const = 0;
+            copyTo(std::shared_ptr<ITexture> destination, uint32_t dstX, uint32_t dstY, int32_t dstSlice) = 0;
             virtual void saveToFile(const std::filesystem::path& path) const = 0;
+
+            virtual void pushState(D3D12_RESOURCE_STATES newState) = 0;
+            virtual void popState() = 0;
 
             virtual void* getNativePtr() const = 0;
 
@@ -475,6 +478,9 @@ namespace toolkit {
             virtual std::shared_ptr<IDevice> getDevice() const = 0;
 
             virtual void uploadData(const void* buffer, size_t count) = 0;
+
+            virtual void pushState(D3D12_RESOURCE_STATES newState) = 0;
+            virtual void popState() = 0;
 
             virtual void* getNativePtr() const = 0;
 

@@ -513,13 +513,12 @@ namespace {
                 0);
         }
 
-        void copyTo(std::shared_ptr<ITexture> destination) const override {
+        void copyTo(std::shared_ptr<ITexture> destination) override {
             m_device->getContextAs<D3D11>()->CopySubresourceRegion(
                 destination->getAs<D3D11>(), 0, 0, 0, 0, m_texture.Get(), 0, nullptr);
         }
 
-        void
-        copyTo(uint32_t srcX, uint32_t srcY, int32_t srcSlice, std::shared_ptr<ITexture> destination) const override {
+        void copyTo(uint32_t srcX, uint32_t srcY, int32_t srcSlice, std::shared_ptr<ITexture> destination) override {
             D3D11_BOX box;
             box.left = srcX;
             box.top = srcY;
@@ -533,8 +532,7 @@ namespace {
                 destination->getAs<D3D11>(), 0, 0, 0, 0, m_texture.Get(), srcSlice, &box);
         }
 
-        void
-        copyTo(std::shared_ptr<ITexture> destination, uint32_t dstX, uint32_t dstY, int32_t dstSlice) const override {
+        void copyTo(std::shared_ptr<ITexture> destination, uint32_t dstX, uint32_t dstY, int32_t dstSlice) override {
             m_device->getContextAs<D3D11>()->CopySubresourceRegion(
                 destination->getAs<D3D11>(), dstSlice, dstX, dstY, 0, m_texture.Get(), 0, nullptr);
         }
@@ -561,6 +559,11 @@ namespace {
             } else {
                 Log("Failed to take screenshot: 0x%x\n", hr);
             }
+        }
+
+        void pushState(D3D12_RESOURCE_STATES newState) override {
+        }
+        void popState() override {
         }
 
         void* getNativePtr() const override {
@@ -694,6 +697,11 @@ namespace {
             } else {
                 throw std::runtime_error("Texture is immutable");
             }
+        }
+
+        void pushState(D3D12_RESOURCE_STATES newState) override {
+        }
+        void popState() override {
         }
 
         void* getNativePtr() const override {
