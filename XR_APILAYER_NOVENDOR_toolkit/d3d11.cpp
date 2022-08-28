@@ -1763,7 +1763,7 @@ namespace {
 
             auto wrappedContext = std::make_shared<D3D11Context>(shared_from_this(), context);
 
-            if (!numViews || !renderTargetViews[0]) {
+            if (!numViews || !renderTargetViews || !renderTargetViews[0]) {
                 INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
                 return;
             }
@@ -1893,8 +1893,13 @@ namespace {
                         // Allow negative LOD.
                         desc.MinLOD -= std::ceilf(m_mipMapBias);
 
-                        CHECK_HRCMD(m_device->CreateSamplerState(&desc, set(biasedSampler)));
-                        samplers[i]->SetPrivateDataInterface(__uuidof(ID3D11SamplerState), get(biasedSampler));
+                        const auto hr = m_device->CreateSamplerState(&desc, set(biasedSampler));
+                        if (SUCCEEDED(hr)) {
+                            samplers[i]->SetPrivateDataInterface(__uuidof(ID3D11SamplerState), get(biasedSampler));
+                        } else {
+                            // TODO: We ignore the error for now.
+                            needBiasing = false;
+                        }
                     }
                 }
 

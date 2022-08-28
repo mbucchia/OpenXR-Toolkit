@@ -1372,7 +1372,8 @@ namespace {
             const XrResult result =
                 OpenXrApi::xrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
             if (XR_SUCCEEDED(result) && isVrSession(session) &&
-                viewLocateInfo->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
+                viewLocateInfo->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO &&
+                viewCapacityInput) {
                 assert(*viewCountOutput == utilities::ViewCount);
                 using namespace DirectX;
 
