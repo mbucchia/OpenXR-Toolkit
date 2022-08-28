@@ -52,6 +52,8 @@ namespace toolkit {
 
         bool IsServiceRunning(const std::string& name);
 
+        void GetVRAMUsage(ComPtr<IDXGIAdapter> adapter, uint64_t& usage, uint8_t& percentUsed);
+
     } // namespace utilities
 
     namespace config {

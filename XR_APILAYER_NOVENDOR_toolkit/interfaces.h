@@ -636,6 +636,8 @@ namespace toolkit {
                                                         int /* destinationSlice */)>;
             virtual void registerCopyTextureEvent(CopyTextureEvent event) = 0;
 
+            virtual void getVRAMUsage(uint64_t& usage, uint8_t& percentUsed) const = 0;
+
             virtual void shutdown() = 0;
 
             virtual bool isEventsSupported() const = 0;
@@ -817,6 +819,8 @@ namespace toolkit {
             uint64_t predictionTimeUs{0};
 
             float fps{0.0f};
+            uint64_t vramUsedSize;
+            uint8_t vramUsedPercent;
             float icd{0.0f};
             XrFovf fov[2]{{0}};
             uint32_t numBiasedSamplers{0};

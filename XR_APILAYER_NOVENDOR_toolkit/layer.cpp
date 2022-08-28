@@ -1807,7 +1807,7 @@ namespace {
                     m_logStats.open(logFile, std::ios_base::ate);
 
                     // Write headers.
-                    m_logStats << "FPS,appCPU (us),appGPU (us)\n";
+                    m_logStats << "FPS,appCPU (us),appGPU (us),VRAM (MB),VRAM (%)\n";
                 } else {
                     m_logStats.close();
                 }
@@ -1834,6 +1834,8 @@ namespace {
                 m_stats.predictionTimeUs /= numFrames;
                 m_stats.fps = static_cast<float>(numFrames);
 
+                m_graphicsDevice->getVRAMUsage(m_stats.vramUsedSize, m_stats.vramUsedPercent);
+
                 // When CPU-bound, do not bother giving a (false) GPU time for D3D12
                 if (m_graphicsDevice->getApi() == graphics::Api::D3D12 &&
                     m_stats.appCpuTimeUs + 500 > m_stats.appGpuTimeUs) {
@@ -1846,7 +1848,7 @@ namespace {
 
                 if (m_logStats.is_open()) {
                     m_logStats << m_stats.fps << "," << m_stats.appCpuTimeUs << "," << m_stats.appGpuTimeUs << ","
-                               << "\n";
+                               << m_stats.vramUsedSize / (1024 * 1024) << "," << (int)m_stats.vramUsedPercent << "\n";
                 }
 
                 // Start from fresh!
