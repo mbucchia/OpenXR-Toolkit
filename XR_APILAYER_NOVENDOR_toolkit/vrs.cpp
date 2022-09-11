@@ -263,17 +263,21 @@ namespace {
                     return false;
                 }
 
-                // TODO: for now redraw all the views until we implement better logic
-                auto& maskForSize = getOrCreateMaskResources(info.width, info.height);
-                updateViews(get(vrsCommandList), maskForSize);
+                {
+                    std::unique_lock lock(m_shadingRateMaskLock);
 
-                // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
+                    // TODO: for now redraw all the views until we implement better logic
+                    auto& maskForSize = getOrCreateMaskResources(info.width, info.height);
+                    updateViews(get(vrsCommandList), maskForSize);
 
-                // Use the special SHADING_RATE_SOURCE resource state for barriers on the VRS surface
-                auto idx = static_cast<size_t>(eyeHint.value_or(Eye::Both));
-                auto mask = maskForSize.mask[idx]->getAs<D3D12>();
+                    // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
 
-                m_Dx12ShadingRateResources.RSSetShadingRateImage(get(vrsCommandList), mask, idx);
+                    // Use the special SHADING_RATE_SOURCE resource state for barriers on the VRS surface
+                    auto idx = static_cast<size_t>(eyeHint.value_or(Eye::Both));
+                    auto mask = maskForSize.mask[idx]->getAs<D3D12>();
+
+                    m_Dx12ShadingRateResources.RSSetShadingRateImage(get(vrsCommandList), mask, idx);
+                }
 
             } else {
                 throw std::runtime_error("Unsupported graphics runtime");
@@ -812,6 +816,7 @@ namespace {
 
         std::shared_ptr<IComputeShader> m_csShading;
         std::vector<ShadingRateMask> m_shadingRateMask;
+        std::mutex m_shadingRateMaskLock;
 
         struct {
             // Must appear first.

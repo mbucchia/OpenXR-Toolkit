@@ -1901,10 +1901,7 @@ namespace {
 
             // Setup the interop context for rendering.
             m_textDevice->setRenderTargets(
-                1,
-                &m_currentTextRenderTarget,
-                &m_currentDrawRenderTargetSlice,
-                &m_currentDrawRenderTargetViewport);
+                1, &m_currentTextRenderTarget, &m_currentDrawRenderTargetSlice, &m_currentDrawRenderTargetViewport);
             m_textDevice->beginText();
             m_isRenderingText = true;
         }
@@ -2189,9 +2186,13 @@ namespace {
             D3D12_RESOURCE_DESC resourceDesc = resource->GetDesc();
             if (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
                 const size_t sizeBefore = m_renderTargetResourceDescriptors.size();
-                m_renderTargetResourceDescriptors.insert_or_assign(handle, resource);
-                if (sizeBefore && !(sizeBefore % 100) && m_renderTargetResourceDescriptors.size() != sizeBefore) {
-                    Log("Dictionary of render target resource descriptor now at %zu elements\n", sizeBefore + 1);
+                {
+                    std::unique_lock lock(m_renderTargetResourceDescriptorsLock);
+
+                    m_renderTargetResourceDescriptors.insert_or_assign(handle, resource);
+                    if (sizeBefore && !(sizeBefore % 100) && m_renderTargetResourceDescriptors.size() != sizeBefore) {
+                        Log("Dictionary of render target resource descriptor now at %zu elements\n", sizeBefore + 1);
+                    }
                 }
             }
         }
@@ -2221,23 +2222,29 @@ namespace {
                 return;
             }
 
-            auto it = m_renderTargetResourceDescriptors.find(renderTargetHandles[0]);
-            if (it == m_renderTargetResourceDescriptors.cend()) {
-                INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
-                return;
+            std::shared_ptr<D3D12Texture> renderTarget;
+            {
+                std::unique_lock lock(m_renderTargetResourceDescriptorsLock);
+
+                auto it = m_renderTargetResourceDescriptors.find(renderTargetHandles[0]);
+                if (it == m_renderTargetResourceDescriptors.cend()) {
+                    INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
+                    return;
+                }
+
+                ID3D12Resource* const resource = it->second;
+                const D3D12_RESOURCE_DESC& resourceDesc = resource->GetDesc();
+
+                renderTarget = std::make_shared<D3D12Texture>(shared_from_this(),
+                                                              getTextureInfo(resourceDesc),
+                                                              resourceDesc,
+                                                              resource,
+                                                              D3D12_RESOURCE_STATE_COMMON, /* Conservative. */
+                                                              m_rtvHeap,
+                                                              m_dsvHeap,
+                                                              m_rvHeap);
             }
 
-            ID3D12Resource* const resource = it->second;
-            const D3D12_RESOURCE_DESC& resourceDesc = resource->GetDesc();
-
-            auto renderTarget = std::make_shared<D3D12Texture>(shared_from_this(),
-                                                               getTextureInfo(resourceDesc),
-                                                               resourceDesc,
-                                                               resource,
-                                                               D3D12_RESOURCE_STATE_COMMON, /* Conservative. */
-                                                               m_rtvHeap,
-                                                               m_dsvHeap,
-                                                               m_rvHeap);
             INVOKE_EVENT(setRenderTargetEvent, wrappedContext, renderTarget);
         }
 
@@ -2345,6 +2352,7 @@ namespace {
 
         std::map<D3D12_CPU_DESCRIPTOR_HANDLE, ID3D12Resource*, decltype(descriptorCompare)>
             m_renderTargetResourceDescriptors{descriptorCompare};
+        std::mutex m_renderTargetResourceDescriptorsLock;
 
         friend std::shared_ptr<ITexture> toolkit::graphics::WrapD3D12Texture(std::shared_ptr<IDevice> device,
                                                                              const XrSwapchainCreateInfo& info,
