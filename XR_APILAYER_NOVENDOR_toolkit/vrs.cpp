@@ -105,7 +105,8 @@ namespace {
 
         std::shared_ptr<IShaderBuffer> cbShading[ViewCount + 1];
         std::shared_ptr<ITexture> mask[ViewCount + 1];
-        std::shared_ptr<ITexture> maskVPRT;
+        std::shared_ptr<ITexture> maskDoubleWide;
+        std::shared_ptr<ITexture> maskTextureArray;
     };
 
     inline XrVector2f MakeRingParam(XrVector2f size) {
@@ -151,7 +152,8 @@ namespace {
             for (auto& view : m_NvShadingRateResources.views[index]) {
                 view.Detach();
             }
-            m_NvShadingRateResources.viewsVPRT[index].Detach();
+            m_NvShadingRateResources.viewsDoubleWide[index].Detach();
+            m_NvShadingRateResources.viewsTextureArray[index].Detach();
         }
 
         void beginFrame(XrTime frameTime) override {
@@ -174,7 +176,10 @@ namespace {
                         // TODO: Leak NVAPI resources for now, since there is an occasional crash.
                         LeakNVAPIResource(index);
                         m_NvShadingRateResources.views.erase(m_NvShadingRateResources.views.begin() + index);
-                        m_NvShadingRateResources.viewsVPRT.erase(m_NvShadingRateResources.viewsVPRT.begin() + index);
+                        m_NvShadingRateResources.viewsDoubleWide.erase(
+                            m_NvShadingRateResources.viewsDoubleWide.begin() + index);
+                        m_NvShadingRateResources.viewsTextureArray.erase(
+                            m_NvShadingRateResources.viewsTextureArray.begin() + index);
                     }
                 } else {
                     it++;
@@ -220,25 +225,25 @@ namespace {
             m_filterScale = m_configManager->getValue(SettingVRSScaleFilter) / 100.f;
         }
 
-        bool onSetRenderTarget(std::shared_ptr<graphics::IContext> context,
-                               std::shared_ptr<ITexture> renderTarget,
-                               std::optional<Eye> eyeHint) override {
+        bool onSetRenderTarget(std::shared_ptr<ITexture> renderTarget, std::optional<Eye> eyeHint) override {
             const auto& info = renderTarget->getInfo();
 
-            if (m_mode == VariableShadingRateType::None || !isVariableRateShadingCandidate(info)) {
-                disable(context);
+            bool isDoubleWide = false;
+            if (m_mode == VariableShadingRateType::None || !isVariableRateShadingCandidate(info, isDoubleWide)) {
+                disable();
                 return false;
             }
 
-            TraceLoggingWrite(
-                g_traceProvider, "EnableVariableRateShading", TLArg((int)eyeHint.value_or(Eye::Both), "Eye"));
-            if (auto context11 = context->getAs<D3D11>()) {
-                // TODO: for now redraw all the views until we implement better logic
-                // const auto updateSingleRTV = eyeHint.has_value() && info.arraySize == 1;
-                // const auto updateArrayRTV = info.arraySize > 1;
-                // updateViews(updateSingleRTV, updateArrayRTV, false);
+            TraceLoggingWrite(g_traceProvider,
+                              "EnableVariableRateShading",
+                              TLArg(isDoubleWide, "IsDoubleWide"),
+                              TLArg((int)eyeHint.value_or(Eye::Both), "Eye"));
+            if (m_device->getApi() == Api::D3D11) {
+                auto context11 = m_device->getContextAs<D3D11>();
+
                 size_t maskIndex;
-                updateViews(context11, getOrCreateMaskResources(info.width, info.height, &maskIndex));
+                updateViews(
+                    getOrCreateMaskResources(isDoubleWide ? info.width / 2 : info.width, info.height, &maskIndex));
 
                 // We set VRS on 2 viewports in case the stereo view renders in parallel.
                 NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
@@ -249,14 +254,17 @@ namespace {
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context11, &desc));
 
                 auto idx = static_cast<size_t>(eyeHint.value_or(Eye::Both));
-                auto& mask = info.arraySize == 2 ? m_NvShadingRateResources.viewsVPRT[maskIndex]
-                                                 : m_NvShadingRateResources.views[maskIndex][idx];
+                auto& mask = isDoubleWide          ? m_NvShadingRateResources.viewsDoubleWide[maskIndex]
+                             : info.arraySize == 2 ? m_NvShadingRateResources.viewsTextureArray[maskIndex]
+                                                   : m_NvShadingRateResources.views[maskIndex][idx];
 
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context11, get(mask)));
 
-                doCapture(context /* post */);
-                doCapture(context, renderTarget, eyeHint);
-            } else if (auto context12 = context->getAs<D3D12>()) {
+                doCapture(/* post */);
+                doCapture(renderTarget, eyeHint);
+            } else if (m_device->getApi() == Api::D3D12) {
+                auto context12 = m_device->getContextAs<D3D12>();
+
                 ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
                 if (FAILED(context12->QueryInterface(set(vrsCommandList)))) {
                     DebugLog("VRS: failed to query ID3D12GraphicsCommandList5\n");
@@ -266,15 +274,16 @@ namespace {
                 {
                     std::unique_lock lock(m_shadingRateMaskLock);
 
-                    // TODO: for now redraw all the views until we implement better logic
-                    auto& maskForSize = getOrCreateMaskResources(info.width, info.height);
-                    updateViews(get(vrsCommandList), maskForSize);
+                    auto& maskForSize =
+                        getOrCreateMaskResources(isDoubleWide ? info.width / 2 : info.width, info.height);
+                    updateViews(maskForSize);
 
                     // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
 
                     // Use the special SHADING_RATE_SOURCE resource state for barriers on the VRS surface
                     auto idx = static_cast<size_t>(eyeHint.value_or(Eye::Both));
-                    auto mask = maskForSize.mask[idx]->getAs<D3D12>();
+                    auto mask = isDoubleWide ? maskForSize.maskDoubleWide->getAs<D3D12>()
+                                             : maskForSize.mask[idx]->getAs<D3D12>();
 
                     m_Dx12ShadingRateResources.RSSetShadingRateImage(get(vrsCommandList), mask, idx);
                 }
@@ -286,8 +295,8 @@ namespace {
             return true;
         }
 
-        void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) override {
-            disable(context);
+        void onUnsetRenderTarget() override {
+            disable();
         }
 
         void updateGazeLocation(XrVector2f gaze, Eye eye) override {
@@ -325,9 +334,7 @@ namespace {
             }
         }
 
-        void doCapture(std::shared_ptr<graphics::IContext> context,
-                       std::shared_ptr<ITexture> renderTarget = nullptr,
-                       std::optional<Eye> eyeHint = std::nullopt) {
+        void doCapture(std::shared_ptr<ITexture> renderTarget = nullptr, std::optional<Eye> eyeHint = std::nullopt) {
             if (m_isCapturing) {
                 if (renderTarget) {
                     const auto& info = renderTarget->getInfo();
@@ -403,10 +410,10 @@ namespace {
             updateGaze();
         }
 
-        void disable(std::shared_ptr<graphics::IContext> context = nullptr) {
+        void disable() {
             TraceLoggingWrite(g_traceProvider, "DisableVariableRateShading");
             if (m_device->getApi() == Api::D3D11) {
-                auto context11 = context ? context->getAs<D3D11>() : m_device->getContextAs<D3D11>();
+                auto context11 = m_device->getContextAs<D3D11>();
 
                 NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
@@ -414,9 +421,9 @@ namespace {
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context11, &desc));
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context11, nullptr));
 
-                doCapture(context /* post */);
+                doCapture(/* post */);
             } else if (m_device->getApi() == Api::D3D12) {
-                auto context12 = context ? context->getAs<D3D12>() : m_device->getContextAs<D3D12>();
+                auto context12 = m_device->getContextAs<D3D12>();
 
                 ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
                 if (FAILED(context12->QueryInterface(set(vrsCommandList)))) {
@@ -501,8 +508,7 @@ namespace {
                     return true;
                 }
                 return m_configManager->hasChanged(SettingVRSXScale) ||
-                       m_configManager->hasChanged(SettingVRSXOffset) ||
-                       m_configManager->hasChanged(SettingVRSYOffset);
+                       m_configManager->hasChanged(SettingVRSXOffset) || m_configManager->hasChanged(SettingVRSYOffset);
             }
             return false;
         }
@@ -590,8 +596,11 @@ namespace {
             for (auto& it : newMask.mask) {
                 it = m_device->createTexture(info, "VRS TEX2D");
             }
+            info.width *= 2;
+            newMask.maskDoubleWide = m_device->createTexture(info, "VRS DoubleWide TEX2D");
+            info.width = texW;
             info.arraySize = 2;
-            newMask.maskVPRT = m_device->createTexture(info, "VRS VPRT TEX2D");
+            newMask.maskTextureArray = m_device->createTexture(info, "VRS TextureArray TEX2D");
 
             for (auto& it : newMask.cbShading) {
                 it = m_device->createBuffer(sizeof(ShadingConstants), "VRS CB");
@@ -609,7 +618,8 @@ namespace {
 
                 const auto newIndex = m_NvShadingRateResources.views.size();
                 m_NvShadingRateResources.views.push_back({});
-                m_NvShadingRateResources.viewsVPRT.push_back({});
+                m_NvShadingRateResources.viewsDoubleWide.push_back({});
+                m_NvShadingRateResources.viewsTextureArray.push_back({});
 
                 for (size_t i = 0; i < std::size(newMask.mask); i++) {
                     CHECK_NVCMD(
@@ -619,13 +629,19 @@ namespace {
                                                                   set(m_NvShadingRateResources.views[newIndex][i])));
                 }
 
-                desc.ViewDimension = NV_SRRV_DIMENSION_TEXTURE2DARRAY;
-                desc.Texture2DArray.ArraySize = 2;
                 CHECK_NVCMD(
                     NvAPI_D3D11_CreateShadingRateResourceView(device11,
-                                                              newMask.maskVPRT->getAs<D3D11>(),
+                                                              newMask.maskDoubleWide->getAs<D3D11>(),
                                                               &desc,
-                                                              set(m_NvShadingRateResources.viewsVPRT[newIndex])));
+                                                              set(m_NvShadingRateResources.viewsDoubleWide[newIndex])));
+
+                desc.ViewDimension = NV_SRRV_DIMENSION_TEXTURE2DARRAY;
+                desc.Texture2DArray.ArraySize = 2;
+                CHECK_NVCMD(NvAPI_D3D11_CreateShadingRateResourceView(
+                    device11,
+                    newMask.maskTextureArray->getAs<D3D11>(),
+                    &desc,
+                    set(m_NvShadingRateResources.viewsTextureArray[newIndex])));
             }
 
             if (index) {
@@ -634,7 +650,7 @@ namespace {
             return m_shadingRateMask.back();
         }
 
-        void updateViews(D3D11::Context pContext, ShadingRateMask& mask) {
+        void updateViews(ShadingRateMask& mask) {
             // Reset the age to keep this mask active.
             mask.age = 0;
 
@@ -651,40 +667,12 @@ namespace {
                 const auto constants = makeShadingConstants(i, mask.widthInTiles, mask.heightInTiles);
                 mask.cbShading[i]->uploadData(&constants, sizeof(constants));
 
-                m_csShading->updateThreadGroups({dispatchX, dispatchY, 1});
-                m_device->setShader(m_csShading, SamplerType::NearestClamp);
-                m_device->setShaderInput(0, mask.cbShading[i]);
-                m_device->setShaderInput(0, mask.mask[i]);
-                m_device->setShaderOutput(0, mask.mask[i]);
-                m_device->dispatchShader();
-            }
-
-            if (pContext) {
-                auto pDstResource = mask.maskVPRT->getAs<D3D11>();
-                pContext->CopySubresourceRegion(pDstResource, 0, 0, 0, 0, mask.mask[0]->getAs<D3D11>(), 0, nullptr);
-                pContext->CopySubresourceRegion(pDstResource, 1, 0, 0, 0, mask.mask[1]->getAs<D3D11>(), 0, nullptr);
-            }
-        }
-
-        void updateViews(ID3D12GraphicsCommandList5* pCommandList, ShadingRateMask& mask) {
-            // Reset the age to keep this mask active.
-            mask.age = 0;
-
-            // Check if this mask needs to be updated.
-            if (mask.gen == m_currentGen) {
-                return;
-            }
-            mask.gen = m_currentGen;
-
-            const auto dispatchX = xr::math::DivideRoundingUp(mask.widthInTiles, 8);
-            const auto dispatchY = xr::math::DivideRoundingUp(mask.heightInTiles, 8);
-
-            for (size_t i = 0; i < std::size(mask.mask); i++) {
-                const auto constants = makeShadingConstants(i, mask.widthInTiles, mask.heightInTiles);
-                mask.cbShading[i]->uploadData(&constants, sizeof(constants));
-
-                m_Dx12ShadingRateResources.ResourceBarrier(
-                    pCommandList, mask.mask[i]->getAs<D3D12>(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, i);
+                if (m_device->getApi() == Api::D3D12) {
+                    m_Dx12ShadingRateResources.ResourceBarrier(m_device->getContextAs<D3D12>(),
+                                                               mask.mask[i]->getAs<D3D12>(),
+                                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                                                               i);
+                }
 
                 m_csShading->updateThreadGroups({dispatchX, dispatchY, 1});
                 m_device->setShader(m_csShading, SamplerType::NearestClamp);
@@ -693,6 +681,12 @@ namespace {
                 m_device->setShaderOutput(0, mask.mask[i]);
                 m_device->dispatchShader();
             }
+
+            // Copy to the double wide/texture arrays mask.
+            mask.mask[0]->copyTo(mask.maskDoubleWide, 0, 0, 0);
+            mask.mask[1]->copyTo(mask.maskDoubleWide, mask.widthInTiles, 0, 0);
+            mask.mask[0]->copyTo(mask.maskTextureArray, 0, 0, 0);
+            mask.mask[1]->copyTo(mask.maskTextureArray, 0, 0, 1);
         }
 
         ShadingConstants makeShadingConstants(size_t eye, uint32_t texW, uint32_t texH) {
@@ -764,7 +758,7 @@ namespace {
             }
         }
 
-        bool isVariableRateShadingCandidate(const XrSwapchainCreateInfo& info) const {
+        bool isVariableRateShadingCandidate(const XrSwapchainCreateInfo& info, bool& isDoubleWide) const {
             TraceLoggingWrite(g_traceProvider,
                               "IsVariableRateShadingCandidate",
                               TLArg(info.width, "Width"),
@@ -772,16 +766,29 @@ namespace {
                               TLArg(info.arraySize, "ArraySize"),
                               TLArg(info.format, "Format"));
 
-            // Check for proportionality with the size of our render target.
-            if (info.width < (m_renderWidth * m_filterScale))
-                return false;
-
             const float aspectRatio = (float)info.width / info.height;
-            if (std::abs(aspectRatio - m_renderRatio) > 0.01f)
-                return false;
+            const float aspectRatioWidthDiv2 = (float)(info.width / 2) / info.height;
+            isDoubleWide = std::abs(aspectRatioWidthDiv2 - m_renderRatio) <= 0.01f;
 
-            if (info.arraySize > 2)
-                return false;
+            if (!isDoubleWide) {
+                if (std::abs(aspectRatio - m_renderRatio) > 0.01f) {
+                    return false;
+                }
+
+                // Check for proportionality with the size of our render target.
+                if (info.width < (m_renderWidth * m_filterScale)) {
+                    return false;
+                }
+
+                if (info.arraySize > 2) {
+                    return false;
+                }
+            } else {
+                // Check for proportionality with the size of our render target.
+                if (info.width / 2 < (m_renderWidth * m_filterScale)) {
+                    return false;
+                }
+            }
 
             return true;
         }
@@ -836,7 +843,8 @@ namespace {
                 deferredUnloadNvAPI.needUnload = true;
             }
             std::vector<std::array<ComPtr<ID3D11NvShadingRateResourceView>, ViewCount + 1>> views;
-            std::vector<ComPtr<ID3D11NvShadingRateResourceView>> viewsVPRT;
+            std::vector<ComPtr<ID3D11NvShadingRateResourceView>> viewsDoubleWide;
+            std::vector<ComPtr<ID3D11NvShadingRateResourceView>> viewsTextureArray;
 
         } m_NvShadingRateResources;
 
@@ -847,7 +855,7 @@ namespace {
                 boundState = 0;
             }
 
-            void ResourceBarrier(ID3D12GraphicsCommandList5* pCommandList,
+            void ResourceBarrier(ID3D12GraphicsCommandList* pCommandList,
                                  ID3D12Resource* pResource,
                                  D3D12_RESOURCE_STATES newState,
                                  size_t idx) {

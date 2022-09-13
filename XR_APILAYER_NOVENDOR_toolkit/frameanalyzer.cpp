@@ -90,8 +90,7 @@ namespace {
             }
         }
 
-        void onSetRenderTarget(std::shared_ptr<graphics::IContext> context,
-                               std::shared_ptr<ITexture> renderTarget) override {
+        void onSetRenderTarget(std::shared_ptr<ITexture> renderTarget) override {
             const auto& info = renderTarget->getInfo();
             if (info.arraySize != 1) {
                 return;
@@ -111,7 +110,7 @@ namespace {
             }
         }
 
-        void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) override {
+        void onUnsetRenderTarget() override {
         }
 
         void onCopyTexture(std::shared_ptr<ITexture> source,

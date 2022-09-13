@@ -516,21 +516,6 @@ namespace toolkit {
             virtual std::shared_ptr<IDevice> getDevice() const = 0;
         };
 
-        // A graphics execution context (eg: command list).
-        struct IContext {
-            virtual ~IContext() = default;
-
-            virtual Api getApi() const = 0;
-            virtual std::shared_ptr<IDevice> getDevice() const = 0;
-
-            virtual void* getNativePtr() const = 0;
-
-            template <typename ApiTraits>
-            auto getAs() const {
-                return GetAs<typename ApiTraits::Context>(this);
-            }
-        };
-
         // A graphics device.
         struct IDevice {
             virtual ~IDevice() = default;
@@ -637,13 +622,11 @@ namespace toolkit {
             virtual void blockCallbacks() = 0;
             virtual void unblockCallbacks() = 0;
 
-            using SetRenderTargetEvent =
-                std::function<void(std::shared_ptr<IContext>, std::shared_ptr<ITexture> renderTarget)>;
+            using SetRenderTargetEvent = std::function<void(std::shared_ptr<ITexture> renderTarget)>;
             virtual void registerSetRenderTargetEvent(SetRenderTargetEvent event) = 0;
-            using UnsetRenderTargetEvent = std::function<void(std::shared_ptr<IContext>)>;
+            using UnsetRenderTargetEvent = std::function<void()>;
             virtual void registerUnsetRenderTargetEvent(UnsetRenderTargetEvent event) = 0;
-            using CopyTextureEvent = std::function<void(std::shared_ptr<IContext> /* context */,
-                                                        std::shared_ptr<ITexture> /* source */,
+            using CopyTextureEvent = std::function<void(std::shared_ptr<ITexture> /* source */,
                                                         std::shared_ptr<ITexture> /* destination */,
                                                         int /* sourceSlice */,
                                                         int /* destinationSlice */)>;
@@ -695,9 +678,8 @@ namespace toolkit {
             virtual void resetForFrame() = 0;
             virtual void prepareForEndFrame() = 0;
 
-            virtual void onSetRenderTarget(std::shared_ptr<IContext> context,
-                                           std::shared_ptr<ITexture> renderTarget) = 0;
-            virtual void onUnsetRenderTarget(std::shared_ptr<IContext> context) = 0;
+            virtual void onSetRenderTarget(std::shared_ptr<ITexture> renderTarget) = 0;
+            virtual void onUnsetRenderTarget() = 0;
 
             virtual void onCopyTexture(std::shared_ptr<ITexture> source,
                                        std::shared_ptr<ITexture> destination,
@@ -719,10 +701,9 @@ namespace toolkit {
             virtual void endFrame() = 0;
             virtual void update() = 0;
 
-            virtual bool onSetRenderTarget(std::shared_ptr<IContext> context,
-                                           std::shared_ptr<ITexture> renderTarget,
+            virtual bool onSetRenderTarget(std::shared_ptr<ITexture> renderTarget,
                                            std::optional<utilities::Eye> eyeHint) = 0;
-            virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
+            virtual void onUnsetRenderTarget() = 0;
 
             virtual void updateGazeLocation(XrVector2f gaze, utilities::Eye eye) = 0;
             virtual void setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;
