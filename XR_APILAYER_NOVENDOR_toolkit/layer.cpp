@@ -200,11 +200,7 @@ namespace {
             );
             // We disable the API interceptor with certain games where it seems to cause issues. As a result, foveated
             // rendering will not be offered.
-            m_configManager->setDefault(config::SettingDisableInterceptor,
-                                        !(m_applicationName == "OpenComposite_AC2-Win64-Shipping" ||
-                                          m_applicationName == "OpenComposite_Il-2" || m_applicationName == "re2")
-                                            ? 0
-                                            : 1);
+            m_configManager->setDefault(config::SettingDisableInterceptor, (m_applicationName == "re2") ? 1 : 0);
             // We disable the frame analyzer when using OpenComposite, because the app does not see the OpenXR
             // textures anyways.
             m_configManager->setDefault("disable_frame_analyzer", !m_isOpenComposite ? 0 : 1);
@@ -646,14 +642,13 @@ namespace {
 
                         // Register intercepted events.
                         m_graphicsDevice->registerSetRenderTargetEvent(
-                            [&](std::shared_ptr<graphics::IContext> context,
-                                std::shared_ptr<graphics::ITexture> renderTarget) {
+                            [&](std::shared_ptr<graphics::ITexture> renderTarget) {
                                 if (!m_isInFrame) {
                                     return;
                                 }
 
                                 if (m_frameAnalyzer) {
-                                    m_frameAnalyzer->onSetRenderTarget(context, renderTarget);
+                                    m_frameAnalyzer->onSetRenderTarget(renderTarget);
                                     const auto& eyeHint = m_frameAnalyzer->getEyeHint();
                                     if (eyeHint.has_value()) {
                                         m_stats.hasColorBuffer[(int)eyeHint.value()] = true;
@@ -661,28 +656,25 @@ namespace {
                                 }
                                 if (m_variableRateShader) {
                                     if (m_variableRateShader->onSetRenderTarget(
-                                            context,
                                             renderTarget,
                                             m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt)) {
                                         m_stats.numRenderTargetsWithVRS++;
                                     }
                                 }
                             });
-                        m_graphicsDevice->registerUnsetRenderTargetEvent(
-                            [&](std::shared_ptr<graphics::IContext> context) {
-                                if (!m_isInFrame) {
-                                    return;
-                                }
+                        m_graphicsDevice->registerUnsetRenderTargetEvent([&]() {
+                            if (!m_isInFrame) {
+                                return;
+                            }
 
-                                if (m_frameAnalyzer) {
-                                    m_frameAnalyzer->onUnsetRenderTarget(context);
-                                }
-                                if (m_variableRateShader) {
-                                    m_variableRateShader->onUnsetRenderTarget(context);
-                                }
-                            });
-                        m_graphicsDevice->registerCopyTextureEvent([&](std::shared_ptr<graphics::IContext> context,
-                                                                       std::shared_ptr<graphics::ITexture> source,
+                            if (m_frameAnalyzer) {
+                                m_frameAnalyzer->onUnsetRenderTarget();
+                            }
+                            if (m_variableRateShader) {
+                                m_variableRateShader->onUnsetRenderTarget();
+                            }
+                        });
+                        m_graphicsDevice->registerCopyTextureEvent([&](std::shared_ptr<graphics::ITexture> source,
                                                                        std::shared_ptr<graphics::ITexture> destination,
                                                                        int sourceSlice,
                                                                        int destinationSlice) {
@@ -2033,9 +2025,11 @@ namespace {
                     const bool useTextureArrays =
                         proj->views[0].subImage.swapchain == proj->views[1].subImage.swapchain &&
                         proj->views[0].subImage.imageArrayIndex != proj->views[1].subImage.imageArrayIndex;
-                    // TODO: We need to use subImage.imageArrayIndex instead of assuming 0/left and 1/right.
+                    const bool useDoubleWide = proj->views[0].subImage.swapchain == proj->views[1].subImage.swapchain &&
+                                               proj->views[1].subImage.imageRect.offset.x != 0;
+                    // TODO: Here we assume that left is always "first" (either slice 0 or "left-most" viewport).
 
-                    if (useTextureArrays) {
+                    if (useTextureArrays || useDoubleWide) {
                         // Assume that we've properly distinguished left/right eyes.
                         m_stats.hasColorBuffer[(int)utilities::Eye::Left] =
                             m_stats.hasColorBuffer[(int)utilities::Eye::Right] = true;
