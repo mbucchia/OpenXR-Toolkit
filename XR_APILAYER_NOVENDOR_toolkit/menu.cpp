@@ -1444,6 +1444,13 @@ namespace {
                                          MenuEntry::LastVal<HandTrackingVisibility>(),
                                          MenuEntry::FmtEnum<HandTrackingVisibility>});
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                         "Hand occlusion",
+                                         MenuEntryType::Choice,
+                                         SettingHandOcclusion,
+                                         0,
+                                         MenuEntry::LastVal<NoYesType>(),
+                                         MenuEntry::FmtEnum<NoYesType>});
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Controller timeout",
                                          MenuEntryType::Slider,
                                          SettingHandTimeout,

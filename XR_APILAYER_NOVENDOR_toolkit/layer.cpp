@@ -106,6 +106,7 @@ namespace {
             m_configManager->setEnumDefault(config::SettingHandTrackingEnabled, config::HandTrackingEnabled::Off);
             m_configManager->setDefault(config::SettingBypassMsftHandInteractionCheck, 0);
             m_configManager->setDefault(config::SettingHandVisibilityAndSkinTone, 2); // Visible - Medium
+            m_configManager->setDefault(config::SettingHandOcclusion, 0);
             m_configManager->setDefault(config::SettingHandTimeout, 1);
 
             // Eye tracking feature.
@@ -2350,6 +2351,7 @@ namespace {
                     // Render the hands or eye gaze helper.
                     if (drawHands || drawEyeGaze) {
                         auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze);
+                        const bool doHandOcclusion = m_configManager->getValue(config::SettingHandOcclusion);
 
                         for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                             m_graphicsDevice->setRenderTargets(
@@ -2357,8 +2359,8 @@ namespace {
                                 &textureForOverlay[eye],
                                 useTextureArrays ? reinterpret_cast<int32_t*>(&sliceForOverlay[eye]) : nullptr,
                                 &viewportForOverlay[eye],
-                                depthForOverlay[eye],
-                                useTextureArrays ? eye : -1);
+                                doHandOcclusion ? depthForOverlay[eye] : nullptr,
+                                (doHandOcclusion && useTextureArrays) ? eye : -1);
 
                             m_graphicsDevice->setViewProjection(viewForOverlay[eye]);
 

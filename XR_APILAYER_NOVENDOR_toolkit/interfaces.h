@@ -146,6 +146,7 @@ namespace toolkit {
         const std::string SettingBlindEye = "blind_eye";
         const std::string SettingHandTrackingEnabled = "enable_hand_tracking";
         const std::string SettingHandVisibilityAndSkinTone = "hand_visibility";
+        const std::string SettingHandOcclusion = "hand_occlusion";
         const std::string SettingHandTimeout = "hand_timeout";
         const std::string SettingPredictionDampen = "prediction_dampen";
         const std::string SettingBypassMsftHandInteractionCheck = "allow_msft_hand_interaction";
