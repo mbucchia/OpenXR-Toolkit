@@ -1671,6 +1671,8 @@ namespace {
                 m_performanceCounters.waitCpuTimer->stop();
                 m_stats.waitCpuTimeUs += m_performanceCounters.waitCpuTimer->query();
 
+                m_savedFrameTime1 = frameState->predictedDisplayTime;
+
                 // Apply prediction dampening if possible and if needed.
                 if (m_hasPerformanceCounterKHR) {
                     const int predictionDampen = m_configManager->getValue(config::SettingPredictionDampen);
@@ -1720,6 +1722,7 @@ namespace {
 
                 // Record the predicted display time.
                 m_begunFrameTime = m_waitedFrameTime;
+                m_savedFrameTime2 = m_savedFrameTime1;
                 m_isInFrame = true;
 
                 if (m_graphicsDevice) {
@@ -1904,7 +1907,9 @@ namespace {
             }
         }
 
-        void takeScreenshot(std::shared_ptr<graphics::ITexture> texture, const std::string& suffix, const XrRect2Di& viewport) const {
+        void takeScreenshot(std::shared_ptr<graphics::ITexture> texture,
+                            const std::string& suffix,
+                            const XrRect2Di& viewport) const {
             // Stamp the overlay/menu if it's active.
             if (m_menuHandler) {
                 m_graphicsDevice->setRenderTargets(1, &texture, nullptr, &viewport);
@@ -2501,7 +2506,7 @@ namespace {
             // When using prediction dampening, we want to restore the display time in order to avoid confusing motion
             // reprojection.
             if (m_hasPerformanceCounterKHR && m_configManager->getValue(config::SettingPredictionDampen) != 100) {
-                chainFrameEndInfo.displayTime = m_begunFrameTime;
+                chainFrameEndInfo.displayTime = m_savedFrameTime2;
             }
 
             {
@@ -2563,6 +2568,8 @@ namespace {
 
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;
+        XrTime m_savedFrameTime1;
+        XrTime m_savedFrameTime2;
         bool m_isInFrame{false};
         bool m_sendInterationProfileEvent{false};
         uint32_t m_visibilityMaskEventIndex{utilities::ViewCount};
