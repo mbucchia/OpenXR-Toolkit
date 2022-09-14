@@ -578,7 +578,7 @@ namespace toolkit {
             virtual void setRenderTargets(size_t numRenderTargets,
                                           std::shared_ptr<ITexture>* renderTargets,
                                           int32_t* renderSlices = nullptr,
-                                          XrRect2Di* viewport0 = nullptr,
+                                          const XrRect2Di* viewport0 = nullptr,
                                           std::shared_ptr<ITexture> depthBuffer = nullptr,
                                           int32_t depthSlice = -1) = 0;
             virtual void unsetRenderTargets() = 0;
