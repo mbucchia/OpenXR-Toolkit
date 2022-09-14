@@ -1365,7 +1365,7 @@ namespace {
             m_meshViewProjectionBuffer->uploadData(&staging, sizeof(staging));
 
             m_context->OMSetDepthStencilState(
-                view.NearFar.Near > view.NearFar.Far ? get(m_reversedZDepthNoStencilTest) : nullptr, 0);
+                (view.NearFar.Near > view.NearFar.Far) ? get(m_reversedZDepthNoStencilTest) : nullptr, 0);
         }
 
         void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling) override {
