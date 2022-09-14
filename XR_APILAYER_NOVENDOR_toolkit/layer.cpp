@@ -809,6 +809,9 @@ namespace {
                     // of multi-session applications, we must push those values again.
                     m_needCalibrateEyeProjections = true;
 
+                    // Re-attach action set for the eye tracker if needed.
+                    m_isActionSetAttached = false;
+
                     // Remember the XrSession to use.
                     m_vrSession = *session;
                 } else {
@@ -1132,6 +1135,7 @@ namespace {
                     chainAttachInfo.actionSets = newActionSets.data();
                     chainAttachInfo.countActionSets = nextActionSetSlot;
                 }
+                m_isActionSetUsed = attachInfo->countActionSets > 0;
             }
 
             return OpenXrApi::xrAttachSessionActionSets(session, &chainAttachInfo);
@@ -1536,7 +1540,7 @@ namespace {
                 }
             }
 
-            const XrResult result = OpenXrApi::xrSyncActions(session, syncInfo);
+            const XrResult result = OpenXrApi::xrSyncActions(session, &chainSyncInfo);
             if (XR_SUCCEEDED(result) && m_handTracker && isVrSession(session)) {
                 m_performanceCounters.handTrackingTimer->start();
 
@@ -1743,6 +1747,18 @@ namespace {
                 }
 
                 if (m_eyeTracker) {
+                    if (m_eyeTracker->getActionSet() != XR_NULL_HANDLE && !m_isActionSetUsed) {
+                        if (!m_isActionSetAttached) {
+                            XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
+                            CHECK_XRCMD(xrAttachSessionActionSets(m_vrSession, &attachInfo));
+                            m_isActionSetAttached = true;
+                        }
+
+                        // The app does not implement controller support, we must sync actions ourselves.
+                        XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
+                        CHECK_XRCMD(xrSyncActions(m_vrSession, &syncInfo));
+                    }
+
                     m_eyeTracker->beginFrame(m_begunFrameTime);
                 }
 
@@ -2595,6 +2611,8 @@ namespace {
 
         std::shared_ptr<graphics::IFrameAnalyzer> m_frameAnalyzer;
         std::shared_ptr<input::IEyeTracker> m_eyeTracker;
+        bool m_isActionSetUsed{false};
+        bool m_isActionSetAttached{false};
         std::shared_ptr<input::IHandTracker> m_handTracker;
 
         std::shared_ptr<graphics::IImageProcessor> m_upscaler;
