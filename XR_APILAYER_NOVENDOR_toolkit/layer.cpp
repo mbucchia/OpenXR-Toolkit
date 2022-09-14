@@ -1904,7 +1904,17 @@ namespace {
             }
         }
 
-        void takeScreenshot(std::shared_ptr<graphics::ITexture> texture, const std::string& suffix) const {
+        void takeScreenshot(std::shared_ptr<graphics::ITexture> texture, const std::string& suffix, const XrRect2Di& viewport) const {
+            // Stamp the overlay/menu if it's active.
+            if (m_menuHandler) {
+                m_graphicsDevice->setRenderTargets(1, &texture, nullptr, &viewport);
+                m_graphicsDevice->beginText(true /* mustKeepOldContent */);
+                m_menuHandler->render(texture);
+                m_graphicsDevice->flushText();
+
+                m_graphicsDevice->unsetRenderTargets();
+            }
+
             SYSTEMTIME st;
             ::GetLocalTime(&st);
 
@@ -2457,11 +2467,11 @@ namespace {
                 // TODO: this is capturing frame N-3
                 // review the command queues/lists and context flush
                 if (m_configManager->getValue(config::SettingScreenshotEye) != 2 /* Right only */) {
-                    takeScreenshot(textureForOverlay[0], "L");
+                    takeScreenshot(textureForOverlay[0], "L", viewportForOverlay[0]);
                 }
                 if (textureForOverlay[1] &&
                     m_configManager->getValue(config::SettingScreenshotEye) != 1 /* Left only */) {
-                    takeScreenshot(textureForOverlay[1], "R");
+                    takeScreenshot(textureForOverlay[1], "R", viewportForOverlay[0]);
                 }
 
                 if (m_variableRateShader && m_configManager->getValue("vrs_capture")) {
