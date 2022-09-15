@@ -234,8 +234,8 @@ namespace {
             }
             {
                 PFN_xrVoidFunction unused;
-                m_hasVisibilityMaskKHR = XR_SUCCEEDED(
-                    xrGetInstanceProcAddr(GetXrInstance(), "xrGetVisibilityMaskKHR", &unused));
+                m_hasVisibilityMaskKHR =
+                    XR_SUCCEEDED(xrGetInstanceProcAddr(GetXrInstance(), "xrGetVisibilityMaskKHR", &unused));
             }
             m_applicationName = createInfo->applicationInfo.applicationName;
             Log("Application name: '%s', Engine name: '%s'\n",
@@ -855,8 +855,8 @@ namespace {
         }
 
         XrResult xrDestroySession(XrSession session) override {
-            const XrResult result = OpenXrApi::xrDestroySession(session);
-            if (XR_SUCCEEDED(result) && isVrSession(session)) {
+            // Prepare for shutdown
+            if (isVrSession(session)) {
                 if (m_configManager) {
                     m_configManager->setActiveSession("");
                 }
@@ -867,6 +867,7 @@ namespace {
                     m_graphicsDevice->flushContext(true);
                 }
 
+                // Cleanup session resources.
                 if (m_viewSpace != XR_NULL_HANDLE) {
                     xrDestroySpace(m_viewSpace);
                     m_viewSpace = XR_NULL_HANDLE;
@@ -874,14 +875,22 @@ namespace {
                 if (m_handTracker) {
                     m_handTracker->endSession();
                 }
-
-                m_upscaler.reset();
-                m_postProcessor.reset();
-
-                m_frameAnalyzer.reset();
                 if (m_eyeTracker) {
                     m_eyeTracker->endSession();
                 }
+                if (m_menuSwapchain != XR_NULL_HANDLE) {
+                    xrDestroySwapchain(m_menuSwapchain);
+                    m_menuSwapchain = XR_NULL_HANDLE;
+                }
+            }
+
+            const XrResult result = OpenXrApi::xrDestroySession(session);
+
+            if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                // Cleanup our resources.
+                m_upscaler.reset();
+                m_postProcessor.reset();
+                m_frameAnalyzer.reset();
                 m_variableRateShader.reset();
                 for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
                     m_performanceCounters.appGpuTimer[i].reset();
@@ -893,16 +902,16 @@ namespace {
                 m_performanceCounters.overlayCpuTimer.reset();
                 m_swapchains.clear();
                 m_menuSwapchainImages.clear();
-                if (m_menuSwapchain != XR_NULL_HANDLE) {
-                    xrDestroySwapchain(m_menuSwapchain);
-                    m_menuSwapchain = XR_NULL_HANDLE;
-                }
                 m_menuHandler.reset();
                 if (m_graphicsDevice) {
                     m_graphicsDevice->shutdown();
                 }
                 m_graphicsDevice.reset();
+
+                // We intentionally do not reset hand/eye trackers since they are tied to the instance, not session.
+
                 m_vrSession = XR_NULL_HANDLE;
+
                 // A good check to ensure there are no resources leak is to confirm that the graphics device is
                 // destroyed _before_ we see this message.
                 // eg:
