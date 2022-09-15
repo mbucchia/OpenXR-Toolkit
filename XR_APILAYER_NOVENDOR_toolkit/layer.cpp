@@ -2289,9 +2289,21 @@ namespace {
                         depthForOverlay[eye] = depthBuffer;
 
                         // Patch the eye poses.
+                        const int icdOverride = m_configManager->getValue(config::SettingICD);
                         const int cantOverride = m_configManager->getValue("canting");
                         if (cantOverride != 0) {
                             correctedProjectionViews[eye].pose = m_posesForFrame[eye].pose;
+                        } else if (icdOverride != 1000) {
+                            // Restore the original IPD to avoid reprojection being confused.
+                            const auto vec =
+                                correctedProjectionViews[1].pose.position - correctedProjectionViews[0].pose.position;
+                            const auto ipd = Length(vec);
+                            const float icd = (ipd * std::max(icdOverride, 1)) / 1000;
+
+                            const auto center = correctedProjectionViews[0].pose.position + (vec * 0.5f);
+                            const auto offset = Normalize(vec) * (icd * 0.5f);
+                            correctedProjectionViews[0].pose.position = center - offset;
+                            correctedProjectionViews[1].pose.position = center + offset;
                         }
 
                         // Patch the FOV if it was overriden.
