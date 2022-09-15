@@ -1420,24 +1420,9 @@ namespace {
                         session, &info, &state, viewCapacityInput, viewCountOutput, eyeInViewSpace));
 
                     if (Pose::IsPoseValid(state.viewStateFlags)) {
-                        XMFLOAT4X4 leftView, rightView;
-                        XMStoreFloat4x4(&leftView, LoadXrPose(eyeInViewSpace[0].pose));
-                        XMStoreFloat4x4(&rightView, LoadXrPose(eyeInViewSpace[1].pose));
+                        utilities::GetProjectedGaze(eyeInViewSpace, XrVector3f{0, 0, -1.0f}, m_projCenters);
 
-                        // This code is based on vrperfkit by Frydrych Holger.
-                        // https://github.com/fholger/vrperfkit/blob/master/src/openvr/openvr_manager.cpp
-                        const float dotForward = leftView.m[2][0] * rightView.m[2][0] +
-                                                 leftView.m[2][1] * rightView.m[2][1] +
-                                                 leftView.m[2][2] * rightView.m[2][2];
-
-                        // In normalized screen coordinates.
                         for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
-                            const auto& fov = eyeInViewSpace[eye].fov;
-                            const float cantedAngle = std::abs(std::acosf(dotForward) / 2) * (eye ? -1 : 1);
-                            const float canted = std::tanf(cantedAngle);
-                            m_projCenters[eye].x =
-                                (fov.angleRight + fov.angleLeft - 2 * canted) / (fov.angleLeft - fov.angleRight);
-                            m_projCenters[eye].y = -(fov.angleDown + fov.angleUp) / (fov.angleUp - fov.angleDown);
                             m_eyeGaze[eye] = m_projCenters[eye];
                         }
 
