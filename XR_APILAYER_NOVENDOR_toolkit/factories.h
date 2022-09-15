@@ -160,6 +160,7 @@ namespace toolkit {
             uint8_t variableRateShaderMaxRate;
             bool isEyeTrackingSupported;
             bool isEyeTrackingProjectionDistanceSupported;
+            bool isVisibilityMaskSupported;
         };
 
         std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,

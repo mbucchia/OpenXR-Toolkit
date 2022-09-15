@@ -232,6 +232,11 @@ namespace {
                 m_hasPerformanceCounterKHR = XR_SUCCEEDED(
                     xrGetInstanceProcAddr(GetXrInstance(), "xrConvertWin32PerformanceCounterToTimeKHR", &unused));
             }
+            {
+                PFN_xrVoidFunction unused;
+                m_hasVisibilityMaskKHR = XR_SUCCEEDED(
+                    xrGetInstanceProcAddr(GetXrInstance(), "xrGetVisibilityMaskKHR", &unused));
+            }
             m_applicationName = createInfo->applicationInfo.applicationName;
             Log("Application name: '%s', Engine name: '%s'\n",
                 createInfo->applicationInfo.applicationName,
@@ -239,6 +244,9 @@ namespace {
             m_isOpenComposite = m_applicationName.find("OpenComposite_") == 0;
             if (m_isOpenComposite) {
                 Log("Detected OpenComposite\n");
+
+                // Our HAM override does not seem to work with OpenComposite.
+                m_hasVisibilityMaskKHR = false;
             }
 
             // Dump the OpenXR runtime information to help debugging customer issues.
@@ -785,6 +793,7 @@ namespace {
                         menuInfo.isEyeTrackingSupported = m_supportEyeTracking;
                         menuInfo.isEyeTrackingProjectionDistanceSupported =
                             m_eyeTracker ? m_eyeTracker->isProjectionDistanceSupported() : false;
+                        menuInfo.isVisibilityMaskSupported = m_hasVisibilityMaskKHR;
 
                         m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice, menuInfo);
                     }
@@ -2644,6 +2653,7 @@ namespace {
         menu::MenuStatistics m_stats{};
         std::ofstream m_logStats;
         bool m_hasPerformanceCounterKHR{false};
+        bool m_hasVisibilityMaskKHR{false};
     };
 
     std::unique_ptr<OpenXrLayer> g_instance = nullptr;
