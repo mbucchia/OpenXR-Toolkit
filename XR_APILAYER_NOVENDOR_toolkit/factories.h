@@ -54,6 +54,8 @@ namespace toolkit {
 
         void GetVRAMUsage(ComPtr<IDXGIAdapter> adapter, uint64_t& usage, uint8_t& percentUsed);
 
+        bool GetProjectedGaze(const XrView* eyeInViewSpace, const XrVector3f& gazeDirection, XrVector2f* gazePosition);
+
     } // namespace utilities
 
     namespace config {

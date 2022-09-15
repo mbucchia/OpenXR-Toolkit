@@ -126,34 +126,7 @@ namespace {
                 m_eyeGazeState.gazeRay = projectedPoint;
 
                 // Project the pose onto the screen.
-
-                // 1) We have a 3D point (forward) for the gaze. This point is relative to the view space.
-                const auto gazeProjectedPoint =
-                    DirectX::XMVectorSet(projectedPoint.x, projectedPoint.y, projectedPoint.z, 1.f);
-
-                for (uint32_t eye = 0; eye < ViewCount; eye++) {
-                    // 2) Compute the view space to camera transform for this eye.
-                    const auto cameraProjection = ComposeProjectionMatrix(eyeInViewSpace[eye].fov, {0.001f, 100.f});
-                    const auto cameraView = LoadXrPose(eyeInViewSpace[eye].pose);
-                    const auto viewToCamera = DirectX::XMMatrixMultiply(cameraProjection, cameraView);
-
-                    // 3) Transform the 3D point to camera space.
-                    const auto gazeProjectedInCameraSpace =
-                        DirectX::XMVector3Transform(gazeProjectedPoint, viewToCamera);
-
-                    // 4) Project the 3D point in camera space to a 2D point in normalized device coordinates.
-                    XrVector4f point;
-                    StoreXrVector4(&point, gazeProjectedInCameraSpace);
-                    if (std::abs(point.w) < FLT_EPSILON) {
-                        break;
-                    }
-                    // output NDC (-1,+1)
-                    m_gaze[eye].x = point.x / point.w;
-                    m_gaze[eye].y = point.y / point.w;
-
-                    // Mark as valid if we have both eyes.
-                    m_valid = (eye == ViewCount - 1);
-                }
+                m_valid = GetProjectedGaze(eyeInViewSpace, projectedPoint, m_gaze);
 
                 if (m_valid) {
                     m_eyeGazeState.leftPoint.x = m_gaze[0].x;
