@@ -768,6 +768,7 @@ namespace toolkit {
 
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateBoolean& state) const = 0;
             virtual bool getActionState(const XrActionStateGetInfo& getInfo, XrActionStateFloat& state) const = 0;
+            virtual bool isHandEnabled(Hand hand) const = 0;
             virtual bool isTrackedRecently(Hand hand) const = 0;
 
             virtual void handleOutput(Hand hand, float frequency, XrDuration duration) = 0;

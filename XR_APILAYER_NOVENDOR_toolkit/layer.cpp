@@ -1605,7 +1605,7 @@ namespace {
                     supportedPath = true;
                     hand = input::Hand::Right;
                 }
-                if (supportedPath) {
+                if (supportedPath && m_handTracker->isHandEnabled(hand)) {
                     state->isActive = m_handTracker->isTrackedRecently(hand);
                     m_performanceCounters.handTrackingTimer->stop();
                     m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
