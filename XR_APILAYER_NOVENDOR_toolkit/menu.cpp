@@ -1443,6 +1443,11 @@ namespace {
                                          0,
                                          MenuEntry::LastVal<HandTrackingVisibility>(),
                                          MenuEntry::FmtEnum<HandTrackingVisibility>});
+
+                MenuGroup handOcclusionGroup(this, [&] {
+                    // We only show occlusion availability if we are getting depth from the app.
+                    return m_stats.hasDepthBuffer[0] && m_stats.hasDepthBuffer[1];
+                });
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Hand occlusion",
                                          MenuEntryType::Choice,
@@ -1450,6 +1455,8 @@ namespace {
                                          0,
                                          MenuEntry::LastVal<NoYesType>(),
                                          MenuEntry::FmtEnum<NoYesType>});
+                handOcclusionGroup.finalize();
+
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Controller timeout",
                                          MenuEntryType::Slider,
