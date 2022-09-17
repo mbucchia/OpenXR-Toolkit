@@ -1318,6 +1318,7 @@ namespace {
                     m_currentDrawRenderTargetViewport.extent.height = m_currentDrawRenderTarget->getInfo().height;
                     viewport.Height = (float)m_currentDrawRenderTarget->getInfo().height;
                 }
+                viewport.MaxDepth = 1.0f;
                 m_context->RSSetViewports(1, &viewport);
             } else {
                 m_currentDrawRenderTarget.reset();
