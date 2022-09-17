@@ -718,6 +718,10 @@ namespace {
         }
 
         void handleOutput(Hand hand, float frequency, XrDuration duration) override {
+            if ((hand == Hand::Left && !m_leftHandEnabled) || (hand == Hand::Right && !m_rightHandEnabled)) {
+                return;
+            }
+
             const uint32_t side = hand == Hand::Left ? 0 : 1;
             if (isnan(frequency)) {
                 m_gesturesState.hapticsFrequency[side] = NAN;
