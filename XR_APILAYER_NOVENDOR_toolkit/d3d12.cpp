@@ -1158,10 +1158,10 @@ namespace {
             if (blocking) {
                 m_queue->Signal(get(m_fence), ++m_fenceValue);
                 if (m_fence->GetCompletedValue() < m_fenceValue) {
-                    HANDLE eventHandle = CreateEventEx(nullptr, L"flushContext Fence", 0, EVENT_ALL_ACCESS);
-                    CHECK_HRCMD(m_fence->SetEventOnCompletion(m_fenceValue, eventHandle));
-                    WaitForSingleObject(eventHandle, INFINITE);
-                    CloseHandle(eventHandle);
+                    wil::unique_handle eventHandle;
+                    *eventHandle.put() = CreateEventEx(nullptr, L"flushContext Fence", 0, EVENT_ALL_ACCESS);
+                    CHECK_HRCMD(m_fence->SetEventOnCompletion(m_fenceValue, eventHandle.get()));
+                    WaitForSingleObject(eventHandle.get(), INFINITE);
                 }
             }
 
@@ -1886,7 +1886,7 @@ namespace {
             m_textDevice->flushText();
             m_textDevice->unsetRenderTargets();
             // Commit to the D3D12 queue.
-            m_textDevice->flushContext(true);
+            m_textDevice->flushContext();
             {
                 ID3D11Resource* const resources[] = {m_currentTextRenderTarget->getAs<D3D11>()};
                 m_textInteropDevice->ReleaseWrappedResources(resources, ARRAYSIZE(resources));
@@ -2176,7 +2176,9 @@ namespace {
 #define INVOKE_EVENT(event, ...)                                                                                       \
     do {                                                                                                               \
         if (!m_blockEvents && m_##event) {                                                                             \
+            blockCallbacks();                                                                                          \
             m_##event(##__VA_ARGS__);                                                                                  \
+            unblockCallbacks();                                                                                        \
         }                                                                                                              \
     } while (0);
 
@@ -2426,18 +2428,18 @@ namespace {
                                    TLPArg(pDepthStencilDescriptor, "DSV"));
 
             assert(g_instance);
-            g_instance->onSetRenderTargets(Context,
-                                           NumRenderTargetDescriptors,
-                                           pRenderTargetDescriptors,
-                                           RTsSingleHandleToDescriptorRange,
-                                           pDepthStencilDescriptor);
-
             assert(g_original_ID3D12GraphicsCommandList_OMSetRenderTargets);
             g_original_ID3D12GraphicsCommandList_OMSetRenderTargets(Context,
                                                                     NumRenderTargetDescriptors,
                                                                     pRenderTargetDescriptors,
                                                                     RTsSingleHandleToDescriptorRange,
                                                                     pDepthStencilDescriptor);
+
+            g_instance->onSetRenderTargets(Context,
+                                           NumRenderTargetDescriptors,
+                                           pRenderTargetDescriptors,
+                                           RTsSingleHandleToDescriptorRange,
+                                           pDepthStencilDescriptor);
 
             TraceLoggingWriteStop(local, "ID3D12GraphicsCommandList_OMSetRenderTargets");
         }
