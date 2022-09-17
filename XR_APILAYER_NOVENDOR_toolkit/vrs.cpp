@@ -234,26 +234,31 @@ namespace {
                 return false;
             }
 
-            TraceLoggingWrite(g_traceProvider,
-                              "EnableVariableRateShading",
-                              TLArg(isDoubleWide, "IsDoubleWide"),
-                              TLArg((int)eyeHint.value_or(Eye::Both), "Eye"));
+            const Eye eye = eyeHint.value_or(Eye::Both);
+            TraceLoggingWrite(g_traceProvider, "EnableVariableRateShading", TLArg(isDoubleWide, "IsDoubleWide"));
+
             if (m_device->getApi() == Api::D3D11) {
+                if (m_currentState.isActive && m_currentState.width == info.width &&
+                    m_currentState.height == info.height && m_currentState.eye == eye) {
+                    TraceLoggingWrite(g_traceProvider, "SkipEnableVariableRateShading");
+                    return true;
+                }
+
                 auto context11 = m_device->getContextAs<D3D11>();
 
                 size_t maskIndex;
                 updateViews(
                     getOrCreateMaskResources(isDoubleWide ? info.width / 2 : info.width, info.height, &maskIndex));
 
-                // We set VRS on 2 viewports in case the stereo view renders in parallel.
+                // We set VRS on all viewports in case multiple views render in parallel.
                 NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
                 desc.version = NV_D3D11_VIEWPORTS_SHADING_RATE_DESC_VER;
-                desc.numViewports = 2;
+                desc.numViewports = (uint32_t)std::size(m_nvRates);
                 desc.pViewports = m_nvRates;
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context11, &desc));
 
-                auto idx = static_cast<size_t>(eyeHint.value_or(Eye::Both));
+                auto idx = static_cast<size_t>(eye);
                 auto& mask = isDoubleWide          ? m_NvShadingRateResources.viewsDoubleWide[maskIndex]
                              : info.arraySize == 2 ? m_NvShadingRateResources.viewsTextureArray[maskIndex]
                                                    : m_NvShadingRateResources.views[maskIndex][idx];
@@ -262,6 +267,11 @@ namespace {
 
                 doCapture(/* post */);
                 doCapture(renderTarget, eyeHint);
+
+                m_currentState.width = info.width;
+                m_currentState.height = info.height;
+                m_currentState.eye = eye;
+                m_currentState.isActive = true;
             } else if (m_device->getApi() == Api::D3D12) {
                 auto context12 = m_device->getContextAs<D3D12>();
 
@@ -281,7 +291,7 @@ namespace {
                     // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
 
                     // Use the special SHADING_RATE_SOURCE resource state for barriers on the VRS surface
-                    auto idx = static_cast<size_t>(eyeHint.value_or(Eye::Both));
+                    auto idx = static_cast<size_t>(eye);
                     auto mask = isDoubleWide ? maskForSize.maskDoubleWide->getAs<D3D12>()
                                              : maskForSize.mask[idx]->getAs<D3D12>();
 
@@ -413,6 +423,11 @@ namespace {
         void disable() {
             TraceLoggingWrite(g_traceProvider, "DisableVariableRateShading");
             if (m_device->getApi() == Api::D3D11) {
+                if (!m_currentState.isActive) {
+                    TraceLoggingWrite(g_traceProvider, "SkipDisableVariableRateShading");
+                    return;
+                }
+
                 auto context11 = m_device->getContextAs<D3D11>();
 
                 NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
@@ -422,6 +437,8 @@ namespace {
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context11, nullptr));
 
                 doCapture(/* post */);
+
+                m_currentState.isActive = false;
             } else if (m_device->getApi() == Api::D3D12) {
                 auto context12 = m_device->getContextAs<D3D12>();
 
@@ -738,7 +755,9 @@ namespace {
                     m_nvRates[0].shadingRateTable[i] = static_cast<NV_PIXEL_SHADING_RATE>(m_shadingRates[i]);
                 }
                 m_nvRates[0].enableVariablePixelShadingRate = true;
-                m_nvRates[1] = m_nvRates[0];
+                for (size_t i = 1; i < std::size(m_nvRates); i++) {
+                    m_nvRates[i] = m_nvRates[0];
+                }
             }
             if (api == Api::D3D12) {
                 // Implementation uses a varying shading rate texture.
@@ -806,6 +825,14 @@ namespace {
         bool m_usingEyeTracking{false};
 
         float m_filterScale{0.51f};
+
+        // This is valid for D3D11 only (single-threaded).
+        struct {
+            bool isActive{false};
+            uint32_t width;
+            uint32_t height;
+            Eye eye;
+        } m_currentState;
 
         // The current "generation" of the mask parameters.
         uint64_t m_currentGen{0};
@@ -900,7 +927,8 @@ namespace {
         } m_Dx12ShadingRateResources;
 
         // We use a constant table and a varying shading rate texture filled with a compute shader.
-        inline static NV_D3D11_VIEWPORT_SHADING_RATE_DESC m_nvRates[2] = {};
+        inline static NV_D3D11_VIEWPORT_SHADING_RATE_DESC
+            m_nvRates[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE] = {};
 
         bool m_isCapturing{false};
         uint32_t m_captureID{0};

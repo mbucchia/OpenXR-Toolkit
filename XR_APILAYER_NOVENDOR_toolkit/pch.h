@@ -105,7 +105,7 @@ constexpr inline T roundDown(T value, uint32_t pad) noexcept {
 
 // Direct3D.
 #include <dxgi1_4.h>
-#include <d3d11_1.h>
+#include <d3d11_4.h>
 #include <d3d12.h>
 #include <d3dx12.h>
 #include <d3d11on12.h>

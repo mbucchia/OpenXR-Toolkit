@@ -957,8 +957,16 @@ namespace {
             // Ensure we are not dropping an unfinished context.
             assert(!m_state.isValid());
 
-            if (blocking) {
+            if (!blocking) {
                 m_context->Flush();
+            } else {
+                ComPtr<ID3D11DeviceContext4> Context1;
+                CHECK_HRCMD(m_context->QueryInterface(IID_PPV_ARGS(Context1.ReleaseAndGetAddressOf())));
+
+                wil::unique_handle eventHandle;
+                *eventHandle.put() = CreateEventEx(nullptr, L"flushContext Fence", 0, EVENT_ALL_ACCESS);
+                Context1->Flush1(D3D11_CONTEXT_TYPE_ALL, eventHandle.get());
+                WaitForSingleObject(eventHandle.get(), INFINITE);
             }
 
             // Workaround: the Oculus OpenXR Runtime for DX11 seems to intercept some of the D3D calls as well. It
@@ -1732,7 +1740,9 @@ namespace {
 #define INVOKE_EVENT(event, ...)                                                                                       \
     do {                                                                                                               \
         if (!m_blockEvents && m_##event) {                                                                             \
+            blockCallbacks();                                                                                          \
             m_##event(##__VA_ARGS__);                                                                                  \
+            unblockCallbacks();                                                                                        \
         }                                                                                                              \
     } while (0);
 
@@ -2010,12 +2020,13 @@ namespace {
                                    TLArg(NumViews),
                                    TLPArray(ppRenderTargetViews, NumViews, "RTV"),
                                    TLPArg(pDepthStencilView, "DSV"));
-            assert(g_instance);
-            g_instance->onSetRenderTargets(Context, NumViews, ppRenderTargetViews, pDepthStencilView);
 
+            assert(g_instance);
             assert(g_original_ID3D11DeviceContext_OMSetRenderTargets);
             g_original_ID3D11DeviceContext_OMSetRenderTargets(
                 Context, NumViews, ppRenderTargetViews, pDepthStencilView);
+
+            g_instance->onSetRenderTargets(Context, NumViews, ppRenderTargetViews, pDepthStencilView);
 
             TraceLoggingWriteStop(local, "ID3D11DeviceContext_OMSetRenderTargets");
         }
@@ -2040,8 +2051,6 @@ namespace {
                                    TLPArg(pDepthStencilView, "DSV"));
 
             assert(g_instance);
-            g_instance->onSetRenderTargets(Context, NumRTVs, ppRenderTargetViews, pDepthStencilView);
-
             assert(g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews);
             g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews(Context,
                                                                                      NumRTVs,
@@ -2051,6 +2060,8 @@ namespace {
                                                                                      NumUAVs,
                                                                                      ppUnorderedAccessViews,
                                                                                      pUAVInitialCounts);
+
+            g_instance->onSetRenderTargets(Context, NumRTVs, ppRenderTargetViews, pDepthStencilView);
 
             TraceLoggingWriteStop(local, "ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews");
         }
@@ -2067,11 +2078,11 @@ namespace {
             if (pViewports) {
                 for (UINT i = 0; i < NumViewports; i++) {
                     TraceLoggingWriteTagged(local,
-                                           "ID3D11DeviceContext_RSSetViewports",
-                                           TLArg(pViewports[i].TopLeftX, "TopLeftX"),
-                                           TLArg(pViewports[i].TopLeftY, "TopLeftY"),
-                                           TLArg(pViewports[i].Width, "Width"),
-                                           TLArg(pViewports[i].Height, "Height"));
+                                            "ID3D11DeviceContext_RSSetViewports",
+                                            TLArg(pViewports[i].TopLeftX, "TopLeftX"),
+                                            TLArg(pViewports[i].TopLeftY, "TopLeftY"),
+                                            TLArg(pViewports[i].Width, "Width"),
+                                            TLArg(pViewports[i].Height, "Height"));
                 }
             }
 
