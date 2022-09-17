@@ -151,6 +151,12 @@ namespace {
         // The target XrAction path to simulate upon haptics.
         std::string hapticsAction;
 
+        // The interval for emitting keepalive actions.
+        XrTime keepaliveInterval;
+
+        // The target XrAction path to simulate keepalive.
+        std::string keepaliveAction;
+
         // The index of the 1st joint (see enum XrHandJointEXT) to use for 1st custom gesture.
         int custom1Joint1Index;
 
@@ -502,6 +508,20 @@ namespace {
 
             // For each gesture, update the action value.
             performGesturesDetection(leftHandJointsPoses, rightHandJointsPoses, ignore, now);
+
+            // Check for keepalive.
+            if (!m_config.keepaliveAction.empty() && m_config.keepaliveInterval) {
+                if (now - m_lastKeepalive > m_config.keepaliveInterval) {
+                    if (m_lastKeepalive) {
+                        for (uint32_t side = 0; side < HandCount; side++) {
+                            const Hand hand = (Hand)side;
+                            recordActionValue(hand, m_config.keepaliveAction, ignore, 1.f, now);
+                        }
+                    }
+
+                    m_lastKeepalive = now;
+                }
+            }
 
             // Special handling for Windows key.
             if (systemClick) {
@@ -1023,6 +1043,7 @@ namespace {
 
         bool m_trackedRecently[2]{false, false};
         bool m_evaluateHapticsGesture{false};
+        XrTime m_lastKeepalive{0};
 
         using CacheEntry = std::pair<XrTime, XrHandJointLocationEXT[XR_HAND_JOINT_COUNT_EXT]>;
         mutable std::map<XrSpace, std::deque<CacheEntry>[HandCount]> m_cachedHandJointsPoses;
@@ -1043,6 +1064,8 @@ namespace {
         hapticsResponseFrequency = NAN;
         hapticsResponseGesture = Gesture::FingerGun;
         hapticsAction = "";
+        keepaliveInterval = 0;
+        keepaliveAction = "";
         pinchAction[0] = pinchAction[1] = "";
         pinchNear = 0.0f;
         pinchFar = 0.05f;
@@ -1112,6 +1135,10 @@ namespace {
                     hapticsResponseGesture = (Gesture)std::stoi(value);
                 } else if (name == "haptics_action") {
                     hapticsAction = value;
+                } else if (name == "keepalive_interval") {
+                    keepaliveInterval = (XrTime)(std::stof(value) * 1e9);
+                } else if (name == "keepalive_action") {
+                    keepaliveAction = value;
                 } else if (side >= 0 && subName == "enabled") {
                     const bool boolValue = value == "1" || value == "true";
                     if (side == 0) {
@@ -1235,6 +1262,9 @@ namespace {
                 Log("Haptics filter on %.3f Hz vibration\n", hapticsResponseFrequency);
             }
             Log("Haptics translates to: %s (on gesture %u)\n", hapticsAction.c_str(), hapticsResponseGesture);
+        }
+        if (!keepaliveAction.empty() && keepaliveInterval) {
+            Log("Keepalive every %llu ns: %s\n", keepaliveInterval, keepaliveAction.c_str());
         }
         if (custom1Joint1Index >= 0 && custom1Joint2Index >= 0) {
             Log("Custom gesture uses joints: %d %d\n", custom1Joint1Index, custom1Joint2Index);

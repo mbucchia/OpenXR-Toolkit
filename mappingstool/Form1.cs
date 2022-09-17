@@ -148,6 +148,12 @@ namespace mappingtool
             hapticsFrequency.Value = 500;
             hapticsFrequency_Scroll(null, null);
 
+            keepaliveLeft.Checked = true;
+            keepaliveRight.Checked = false;
+            keepaliveAction.SelectedIndex = 0;
+            keepalivePeriod.Value = 5000;
+            keepalivePeriod_Scroll(null, null);
+
             m_initializing = false;
         }
 
@@ -641,7 +647,7 @@ namespace mappingtool
         }
         #endregion
 
-        #region Haptics tab.
+        #region Haptics/Misc tab.
 
         private void hapticsGesture_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -666,6 +672,31 @@ namespace mappingtool
             {
                 SendUpdate("haptics_frequency", (hapticsFrequency.Value / 1000.0f).ToString());
             }
+        }
+
+        private void keepaliveAction_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            var prefix = keepaliveLeft.Checked ? "/user/hand/left" : "/user/hand/right";
+            if (keepaliveAction.SelectedIndex > 0)
+            {
+                UpdateAction("keepalive_action", prefix + keepaliveAction.Text);
+            }
+        }
+
+        private void keepaliveLeft_CheckedChanged(object sender, EventArgs e)
+        {
+            keepaliveAction_SelectedIndexChanged(null, null);
+        }
+
+        private void keepaliveRight_CheckedChanged(object sender, EventArgs e)
+        {
+            keepaliveAction_SelectedIndexChanged(null, null);
+        }
+
+        private void keepalivePeriod_Scroll(object sender, EventArgs e)
+        {
+            keepalivePeriodText.Text = (keepalivePeriod.Value / 1000.0f).ToString();
+            SendUpdate("keepalive_interval", (keepalivePeriod.Value / 1000.0f).ToString());
         }
         #endregion
 
@@ -754,6 +785,8 @@ namespace mappingtool
             hapticsFrequencyFilter_CheckedChanged(null, null);
             // Not needed due to the logic in hapticsFrequencyFilter_CheckedChanged().
             // hapticsFrequency_Scroll(null, null);
+            keepaliveAction_SelectedIndexChanged(null, null);
+            keepalivePeriod_Scroll(null, null);
         }
 
         private void ParseVec(TrackBar X, TrackBar Y, TrackBar Z, string action)
@@ -806,7 +839,8 @@ namespace mappingtool
                 bool convertDecimalSeparator = false;
                 try
                 {
-                    if (Math.Abs(1.1 - Double.Parse("1.1")) > Double.Epsilon) {
+                    if (Math.Abs(1.1 - Double.Parse("1.1")) > Double.Epsilon)
+                    {
                         throw new Exception();
                     }
                 }
@@ -1013,6 +1047,22 @@ namespace mappingtool
                                 {
                                     hapticsFrequencyFilter.Checked = false;
                                 }
+                                break;
+                            case "keepalive_action":
+                                if (value.StartsWith("/user/hand/left"))
+                                {
+                                    keepaliveLeft.Checked = true;
+                                    value = value.Substring(15);
+                                }
+                                else if (value.StartsWith("/user/hand/right"))
+                                {
+                                    keepaliveRight.Checked = true;
+                                    value = value.Substring(16);
+                                }
+                                SelectActionByName(keepaliveAction, value);
+                                break;
+                            case "keepalive_interval":
+                                keepalivePeriod.Value = (int)Math.Round(Double.Parse(value) * 1000);
                                 break;
                         }
 

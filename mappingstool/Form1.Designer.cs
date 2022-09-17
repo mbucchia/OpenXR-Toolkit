@@ -246,6 +246,15 @@ namespace mappingtool
             this.pinchNear = new System.Windows.Forms.TrackBar();
             this.thumbPressNear = new System.Windows.Forms.TrackBar();
             this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.groupBox22 = new System.Windows.Forms.GroupBox();
+            this.keepaliveRight = new System.Windows.Forms.RadioButton();
+            this.keepaliveLeft = new System.Windows.Forms.RadioButton();
+            this.label85 = new System.Windows.Forms.Label();
+            this.label86 = new System.Windows.Forms.Label();
+            this.keepalivePeriodText = new System.Windows.Forms.TextBox();
+            this.keepalivePeriod = new System.Windows.Forms.TrackBar();
+            this.keepaliveAction = new System.Windows.Forms.ComboBox();
+            this.label87 = new System.Windows.Forms.Label();
             this.groupBox7 = new System.Windows.Forms.GroupBox();
             this.hapticsFrequencyFilter = new System.Windows.Forms.CheckBox();
             this.label73 = new System.Windows.Forms.Label();
@@ -321,6 +330,8 @@ namespace mappingtool
             ((System.ComponentModel.ISupportInitialize)(this.pinchNear)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.thumbPressNear)).BeginInit();
             this.tabPage4.SuspendLayout();
+            this.groupBox22.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.keepalivePeriod)).BeginInit();
             this.groupBox7.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hapticsFrequency)).BeginInit();
             this.menuStrip1.SuspendLayout();
@@ -335,7 +346,7 @@ namespace mappingtool
             this.tabControl1.Controls.Add(this.tabPage4);
             this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControl1.Location = new System.Drawing.Point(0, 24);
-            this.tabControl1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.tabControl1.Margin = new System.Windows.Forms.Padding(2);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
             this.tabControl1.Size = new System.Drawing.Size(1025, 695);
@@ -352,9 +363,9 @@ namespace mappingtool
             this.tabPage1.Controls.Add(this.groupBox4);
             this.tabPage1.Controls.Add(this.groupBox1);
             this.tabPage1.Location = new System.Drawing.Point(4, 22);
-            this.tabPage1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.tabPage1.Margin = new System.Windows.Forms.Padding(2);
             this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.tabPage1.Padding = new System.Windows.Forms.Padding(2);
             this.tabPage1.Size = new System.Drawing.Size(1017, 669);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Offsets";
@@ -480,9 +491,9 @@ namespace mappingtool
             this.groupBox4.Controls.Add(this.groupBox5);
             this.groupBox4.Controls.Add(this.groupBox6);
             this.groupBox4.Location = new System.Drawing.Point(3, 261);
-            this.groupBox4.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox4.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox4.Name = "groupBox4";
-            this.groupBox4.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox4.Padding = new System.Windows.Forms.Padding(2);
             this.groupBox4.Size = new System.Drawing.Size(1011, 248);
             this.groupBox4.TabIndex = 1;
             this.groupBox4.TabStop = false;
@@ -492,7 +503,7 @@ namespace mappingtool
             // 
             this.rightDisable.AutoSize = true;
             this.rightDisable.Location = new System.Drawing.Point(15, 221);
-            this.rightDisable.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightDisable.Margin = new System.Windows.Forms.Padding(2);
             this.rightDisable.Name = "rightDisable";
             this.rightDisable.Size = new System.Drawing.Size(61, 17);
             this.rightDisable.TabIndex = 2;
@@ -515,9 +526,9 @@ namespace mappingtool
             this.groupBox5.Controls.Add(this.rightXRotationText);
             this.groupBox5.Controls.Add(this.rightXRotation);
             this.groupBox5.Location = new System.Drawing.Point(513, 26);
-            this.groupBox5.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox5.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox5.Name = "groupBox5";
-            this.groupBox5.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox5.Padding = new System.Windows.Forms.Padding(2);
             this.groupBox5.Size = new System.Drawing.Size(483, 189);
             this.groupBox5.TabIndex = 1;
             this.groupBox5.TabStop = false;
@@ -545,9 +556,8 @@ namespace mappingtool
             // 
             // rightZRotationText
             // 
-            this.rightZRotationText.Enabled = false;
             this.rightZRotationText.Location = new System.Drawing.Point(421, 144);
-            this.rightZRotationText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightZRotationText.Margin = new System.Windows.Forms.Padding(2);
             this.rightZRotationText.Name = "rightZRotationText";
             this.rightZRotationText.Size = new System.Drawing.Size(31, 20);
             this.rightZRotationText.TabIndex = 10;
@@ -557,7 +567,7 @@ namespace mappingtool
             this.rightZRotation.BackColor = System.Drawing.SystemColors.Window;
             this.rightZRotation.LargeChange = 10;
             this.rightZRotation.Location = new System.Drawing.Point(23, 131);
-            this.rightZRotation.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightZRotation.Margin = new System.Windows.Forms.Padding(2);
             this.rightZRotation.Maximum = 180;
             this.rightZRotation.Minimum = -180;
             this.rightZRotation.Name = "rightZRotation";
@@ -588,9 +598,8 @@ namespace mappingtool
             // 
             // rightYRotationText
             // 
-            this.rightYRotationText.Enabled = false;
             this.rightYRotationText.Location = new System.Drawing.Point(421, 94);
-            this.rightYRotationText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightYRotationText.Margin = new System.Windows.Forms.Padding(2);
             this.rightYRotationText.Name = "rightYRotationText";
             this.rightYRotationText.Size = new System.Drawing.Size(31, 20);
             this.rightYRotationText.TabIndex = 6;
@@ -600,7 +609,7 @@ namespace mappingtool
             this.rightYRotation.BackColor = System.Drawing.SystemColors.Window;
             this.rightYRotation.LargeChange = 10;
             this.rightYRotation.Location = new System.Drawing.Point(23, 81);
-            this.rightYRotation.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightYRotation.Margin = new System.Windows.Forms.Padding(2);
             this.rightYRotation.Maximum = 180;
             this.rightYRotation.Minimum = -180;
             this.rightYRotation.Name = "rightYRotation";
@@ -631,9 +640,8 @@ namespace mappingtool
             // 
             // rightXRotationText
             // 
-            this.rightXRotationText.Enabled = false;
             this.rightXRotationText.Location = new System.Drawing.Point(421, 44);
-            this.rightXRotationText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightXRotationText.Margin = new System.Windows.Forms.Padding(2);
             this.rightXRotationText.Name = "rightXRotationText";
             this.rightXRotationText.Size = new System.Drawing.Size(31, 20);
             this.rightXRotationText.TabIndex = 2;
@@ -643,7 +651,7 @@ namespace mappingtool
             this.rightXRotation.BackColor = System.Drawing.SystemColors.Window;
             this.rightXRotation.LargeChange = 10;
             this.rightXRotation.Location = new System.Drawing.Point(23, 31);
-            this.rightXRotation.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightXRotation.Margin = new System.Windows.Forms.Padding(2);
             this.rightXRotation.Maximum = 180;
             this.rightXRotation.Minimum = -180;
             this.rightXRotation.Name = "rightXRotation";
@@ -667,9 +675,9 @@ namespace mappingtool
             this.groupBox6.Controls.Add(this.rightXOffsetText);
             this.groupBox6.Controls.Add(this.rightXOffset);
             this.groupBox6.Location = new System.Drawing.Point(15, 26);
-            this.groupBox6.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox6.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox6.Name = "groupBox6";
-            this.groupBox6.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox6.Padding = new System.Windows.Forms.Padding(2);
             this.groupBox6.Size = new System.Drawing.Size(483, 189);
             this.groupBox6.TabIndex = 0;
             this.groupBox6.TabStop = false;
@@ -697,9 +705,8 @@ namespace mappingtool
             // 
             // rightZOffsetText
             // 
-            this.rightZOffsetText.Enabled = false;
             this.rightZOffsetText.Location = new System.Drawing.Point(421, 144);
-            this.rightZOffsetText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightZOffsetText.Margin = new System.Windows.Forms.Padding(2);
             this.rightZOffsetText.Name = "rightZOffsetText";
             this.rightZOffsetText.Size = new System.Drawing.Size(31, 20);
             this.rightZOffsetText.TabIndex = 10;
@@ -709,7 +716,7 @@ namespace mappingtool
             this.rightZOffset.BackColor = System.Drawing.SystemColors.Window;
             this.rightZOffset.LargeChange = 10;
             this.rightZOffset.Location = new System.Drawing.Point(23, 131);
-            this.rightZOffset.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightZOffset.Margin = new System.Windows.Forms.Padding(2);
             this.rightZOffset.Maximum = 100;
             this.rightZOffset.Minimum = -100;
             this.rightZOffset.Name = "rightZOffset";
@@ -740,9 +747,8 @@ namespace mappingtool
             // 
             // rightYOffsetText
             // 
-            this.rightYOffsetText.Enabled = false;
             this.rightYOffsetText.Location = new System.Drawing.Point(421, 94);
-            this.rightYOffsetText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightYOffsetText.Margin = new System.Windows.Forms.Padding(2);
             this.rightYOffsetText.Name = "rightYOffsetText";
             this.rightYOffsetText.Size = new System.Drawing.Size(31, 20);
             this.rightYOffsetText.TabIndex = 6;
@@ -752,7 +758,7 @@ namespace mappingtool
             this.rightYOffset.BackColor = System.Drawing.SystemColors.Window;
             this.rightYOffset.LargeChange = 10;
             this.rightYOffset.Location = new System.Drawing.Point(23, 81);
-            this.rightYOffset.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightYOffset.Margin = new System.Windows.Forms.Padding(2);
             this.rightYOffset.Maximum = 100;
             this.rightYOffset.Minimum = -100;
             this.rightYOffset.Name = "rightYOffset";
@@ -783,9 +789,8 @@ namespace mappingtool
             // 
             // rightXOffsetText
             // 
-            this.rightXOffsetText.Enabled = false;
             this.rightXOffsetText.Location = new System.Drawing.Point(421, 44);
-            this.rightXOffsetText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightXOffsetText.Margin = new System.Windows.Forms.Padding(2);
             this.rightXOffsetText.Name = "rightXOffsetText";
             this.rightXOffsetText.Size = new System.Drawing.Size(31, 20);
             this.rightXOffsetText.TabIndex = 2;
@@ -795,7 +800,7 @@ namespace mappingtool
             this.rightXOffset.BackColor = System.Drawing.SystemColors.Window;
             this.rightXOffset.LargeChange = 10;
             this.rightXOffset.Location = new System.Drawing.Point(23, 31);
-            this.rightXOffset.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.rightXOffset.Margin = new System.Windows.Forms.Padding(2);
             this.rightXOffset.Maximum = 100;
             this.rightXOffset.Minimum = -100;
             this.rightXOffset.Name = "rightXOffset";
@@ -810,9 +815,9 @@ namespace mappingtool
             this.groupBox1.Controls.Add(this.groupBox3);
             this.groupBox1.Controls.Add(this.groupBox2);
             this.groupBox1.Location = new System.Drawing.Point(3, 3);
-            this.groupBox1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox1.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox1.Padding = new System.Windows.Forms.Padding(2);
             this.groupBox1.Size = new System.Drawing.Size(1011, 248);
             this.groupBox1.TabIndex = 0;
             this.groupBox1.TabStop = false;
@@ -822,7 +827,7 @@ namespace mappingtool
             // 
             this.leftDisable.AutoSize = true;
             this.leftDisable.Location = new System.Drawing.Point(15, 221);
-            this.leftDisable.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftDisable.Margin = new System.Windows.Forms.Padding(2);
             this.leftDisable.Name = "leftDisable";
             this.leftDisable.Size = new System.Drawing.Size(61, 17);
             this.leftDisable.TabIndex = 2;
@@ -845,9 +850,9 @@ namespace mappingtool
             this.groupBox3.Controls.Add(this.leftXRotationText);
             this.groupBox3.Controls.Add(this.leftXRotation);
             this.groupBox3.Location = new System.Drawing.Point(513, 26);
-            this.groupBox3.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox3.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox3.Padding = new System.Windows.Forms.Padding(2);
             this.groupBox3.Size = new System.Drawing.Size(483, 189);
             this.groupBox3.TabIndex = 1;
             this.groupBox3.TabStop = false;
@@ -875,9 +880,8 @@ namespace mappingtool
             // 
             // leftZRotationText
             // 
-            this.leftZRotationText.Enabled = false;
             this.leftZRotationText.Location = new System.Drawing.Point(421, 144);
-            this.leftZRotationText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftZRotationText.Margin = new System.Windows.Forms.Padding(2);
             this.leftZRotationText.Name = "leftZRotationText";
             this.leftZRotationText.Size = new System.Drawing.Size(31, 20);
             this.leftZRotationText.TabIndex = 10;
@@ -887,7 +891,7 @@ namespace mappingtool
             this.leftZRotation.BackColor = System.Drawing.SystemColors.Window;
             this.leftZRotation.LargeChange = 10;
             this.leftZRotation.Location = new System.Drawing.Point(23, 131);
-            this.leftZRotation.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftZRotation.Margin = new System.Windows.Forms.Padding(2);
             this.leftZRotation.Maximum = 180;
             this.leftZRotation.Minimum = -180;
             this.leftZRotation.Name = "leftZRotation";
@@ -918,9 +922,8 @@ namespace mappingtool
             // 
             // leftYRotationText
             // 
-            this.leftYRotationText.Enabled = false;
             this.leftYRotationText.Location = new System.Drawing.Point(421, 94);
-            this.leftYRotationText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftYRotationText.Margin = new System.Windows.Forms.Padding(2);
             this.leftYRotationText.Name = "leftYRotationText";
             this.leftYRotationText.Size = new System.Drawing.Size(31, 20);
             this.leftYRotationText.TabIndex = 6;
@@ -930,7 +933,7 @@ namespace mappingtool
             this.leftYRotation.BackColor = System.Drawing.SystemColors.Window;
             this.leftYRotation.LargeChange = 10;
             this.leftYRotation.Location = new System.Drawing.Point(23, 81);
-            this.leftYRotation.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftYRotation.Margin = new System.Windows.Forms.Padding(2);
             this.leftYRotation.Maximum = 180;
             this.leftYRotation.Minimum = -180;
             this.leftYRotation.Name = "leftYRotation";
@@ -961,9 +964,8 @@ namespace mappingtool
             // 
             // leftXRotationText
             // 
-            this.leftXRotationText.Enabled = false;
             this.leftXRotationText.Location = new System.Drawing.Point(421, 44);
-            this.leftXRotationText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftXRotationText.Margin = new System.Windows.Forms.Padding(2);
             this.leftXRotationText.Name = "leftXRotationText";
             this.leftXRotationText.Size = new System.Drawing.Size(31, 20);
             this.leftXRotationText.TabIndex = 2;
@@ -973,7 +975,7 @@ namespace mappingtool
             this.leftXRotation.BackColor = System.Drawing.SystemColors.Window;
             this.leftXRotation.LargeChange = 10;
             this.leftXRotation.Location = new System.Drawing.Point(23, 31);
-            this.leftXRotation.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftXRotation.Margin = new System.Windows.Forms.Padding(2);
             this.leftXRotation.Maximum = 180;
             this.leftXRotation.Minimum = -180;
             this.leftXRotation.Name = "leftXRotation";
@@ -997,9 +999,9 @@ namespace mappingtool
             this.groupBox2.Controls.Add(this.leftXOffsetText);
             this.groupBox2.Controls.Add(this.leftXOffset);
             this.groupBox2.Location = new System.Drawing.Point(15, 26);
-            this.groupBox2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox2.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox2.Padding = new System.Windows.Forms.Padding(2);
             this.groupBox2.Size = new System.Drawing.Size(483, 189);
             this.groupBox2.TabIndex = 0;
             this.groupBox2.TabStop = false;
@@ -1027,9 +1029,8 @@ namespace mappingtool
             // 
             // leftZOffsetText
             // 
-            this.leftZOffsetText.Enabled = false;
             this.leftZOffsetText.Location = new System.Drawing.Point(421, 144);
-            this.leftZOffsetText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftZOffsetText.Margin = new System.Windows.Forms.Padding(2);
             this.leftZOffsetText.Name = "leftZOffsetText";
             this.leftZOffsetText.Size = new System.Drawing.Size(31, 20);
             this.leftZOffsetText.TabIndex = 10;
@@ -1039,7 +1040,7 @@ namespace mappingtool
             this.leftZOffset.BackColor = System.Drawing.SystemColors.Window;
             this.leftZOffset.LargeChange = 10;
             this.leftZOffset.Location = new System.Drawing.Point(23, 131);
-            this.leftZOffset.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftZOffset.Margin = new System.Windows.Forms.Padding(2);
             this.leftZOffset.Maximum = 100;
             this.leftZOffset.Minimum = -100;
             this.leftZOffset.Name = "leftZOffset";
@@ -1070,9 +1071,8 @@ namespace mappingtool
             // 
             // leftYOffsetText
             // 
-            this.leftYOffsetText.Enabled = false;
             this.leftYOffsetText.Location = new System.Drawing.Point(421, 94);
-            this.leftYOffsetText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftYOffsetText.Margin = new System.Windows.Forms.Padding(2);
             this.leftYOffsetText.Name = "leftYOffsetText";
             this.leftYOffsetText.Size = new System.Drawing.Size(31, 20);
             this.leftYOffsetText.TabIndex = 6;
@@ -1082,7 +1082,7 @@ namespace mappingtool
             this.leftYOffset.BackColor = System.Drawing.SystemColors.Window;
             this.leftYOffset.LargeChange = 10;
             this.leftYOffset.Location = new System.Drawing.Point(23, 81);
-            this.leftYOffset.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftYOffset.Margin = new System.Windows.Forms.Padding(2);
             this.leftYOffset.Maximum = 100;
             this.leftYOffset.Minimum = -100;
             this.leftYOffset.Name = "leftYOffset";
@@ -1113,9 +1113,8 @@ namespace mappingtool
             // 
             // leftXOffsetText
             // 
-            this.leftXOffsetText.Enabled = false;
             this.leftXOffsetText.Location = new System.Drawing.Point(421, 44);
-            this.leftXOffsetText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftXOffsetText.Margin = new System.Windows.Forms.Padding(2);
             this.leftXOffsetText.Name = "leftXOffsetText";
             this.leftXOffsetText.Size = new System.Drawing.Size(31, 20);
             this.leftXOffsetText.TabIndex = 2;
@@ -1125,7 +1124,7 @@ namespace mappingtool
             this.leftXOffset.BackColor = System.Drawing.SystemColors.Window;
             this.leftXOffset.LargeChange = 10;
             this.leftXOffset.Location = new System.Drawing.Point(23, 31);
-            this.leftXOffset.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.leftXOffset.Margin = new System.Windows.Forms.Padding(2);
             this.leftXOffset.Maximum = 100;
             this.leftXOffset.Minimum = -100;
             this.leftXOffset.Name = "leftXOffset";
@@ -1145,10 +1144,10 @@ namespace mappingtool
             this.tabPage2.Controls.Add(this.groupBox8);
             this.tabPage2.Controls.Add(this.label28);
             this.tabPage2.Location = new System.Drawing.Point(4, 22);
-            this.tabPage2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.tabPage2.Margin = new System.Windows.Forms.Padding(2);
             this.tabPage2.Name = "tabPage2";
-            this.tabPage2.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            this.tabPage2.Size = new System.Drawing.Size(1017, 671);
+            this.tabPage2.Padding = new System.Windows.Forms.Padding(2);
+            this.tabPage2.Size = new System.Drawing.Size(1017, 669);
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "Bindings";
             this.tabPage2.UseVisualStyleBackColor = true;
@@ -1911,9 +1910,9 @@ namespace mappingtool
             this.tabPage3.Controls.Add(this.groupBox21);
             this.tabPage3.Controls.Add(this.groupBox17);
             this.tabPage3.Location = new System.Drawing.Point(4, 22);
-            this.tabPage3.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.tabPage3.Margin = new System.Windows.Forms.Padding(2);
             this.tabPage3.Name = "tabPage3";
-            this.tabPage3.Size = new System.Drawing.Size(1017, 671);
+            this.tabPage3.Size = new System.Drawing.Size(1017, 669);
             this.tabPage3.TabIndex = 2;
             this.tabPage3.Text = "Gestures";
             this.tabPage3.UseVisualStyleBackColor = true;
@@ -1932,9 +1931,9 @@ namespace mappingtool
             this.groupBox21.Controls.Add(this.label78);
             this.groupBox21.Controls.Add(this.custom1Joint1);
             this.groupBox21.Location = new System.Drawing.Point(2, 523);
-            this.groupBox21.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox21.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox21.Name = "groupBox21";
-            this.groupBox21.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox21.Padding = new System.Windows.Forms.Padding(2);
             this.groupBox21.Size = new System.Drawing.Size(1011, 124);
             this.groupBox21.TabIndex = 1;
             this.groupBox21.TabStop = false;
@@ -1961,9 +1960,8 @@ namespace mappingtool
             // 
             // custom1FarText
             // 
-            this.custom1FarText.Enabled = false;
             this.custom1FarText.Location = new System.Drawing.Point(847, 78);
-            this.custom1FarText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.custom1FarText.Margin = new System.Windows.Forms.Padding(2);
             this.custom1FarText.Name = "custom1FarText";
             this.custom1FarText.Size = new System.Drawing.Size(31, 20);
             this.custom1FarText.TabIndex = 9;
@@ -1993,9 +1991,8 @@ namespace mappingtool
             // 
             // custom1NearText
             // 
-            this.custom1NearText.Enabled = false;
             this.custom1NearText.Location = new System.Drawing.Point(441, 78);
-            this.custom1NearText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.custom1NearText.Margin = new System.Windows.Forms.Padding(2);
             this.custom1NearText.Name = "custom1NearText";
             this.custom1NearText.Size = new System.Drawing.Size(31, 20);
             this.custom1NearText.TabIndex = 6;
@@ -2197,9 +2194,8 @@ namespace mappingtool
             // 
             // fingerGunFarText
             // 
-            this.fingerGunFarText.Enabled = false;
             this.fingerGunFarText.Location = new System.Drawing.Point(848, 194);
-            this.fingerGunFarText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.fingerGunFarText.Margin = new System.Windows.Forms.Padding(2);
             this.fingerGunFarText.Name = "fingerGunFarText";
             this.fingerGunFarText.Size = new System.Drawing.Size(31, 20);
             this.fingerGunFarText.TabIndex = 60;
@@ -2229,9 +2225,8 @@ namespace mappingtool
             // 
             // fingerGunNearText
             // 
-            this.fingerGunNearText.Enabled = false;
             this.fingerGunNearText.Location = new System.Drawing.Point(441, 194);
-            this.fingerGunNearText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.fingerGunNearText.Margin = new System.Windows.Forms.Padding(2);
             this.fingerGunNearText.Name = "fingerGunNearText";
             this.fingerGunNearText.Size = new System.Drawing.Size(31, 20);
             this.fingerGunNearText.TabIndex = 57;
@@ -2277,9 +2272,8 @@ namespace mappingtool
             // 
             // squeezeFarText
             // 
-            this.squeezeFarText.Enabled = false;
             this.squeezeFarText.Location = new System.Drawing.Point(848, 247);
-            this.squeezeFarText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.squeezeFarText.Margin = new System.Windows.Forms.Padding(2);
             this.squeezeFarText.Name = "squeezeFarText";
             this.squeezeFarText.Size = new System.Drawing.Size(31, 20);
             this.squeezeFarText.TabIndex = 26;
@@ -2309,9 +2303,8 @@ namespace mappingtool
             // 
             // squeezeNearText
             // 
-            this.squeezeNearText.Enabled = false;
             this.squeezeNearText.Location = new System.Drawing.Point(441, 247);
-            this.squeezeNearText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.squeezeNearText.Margin = new System.Windows.Forms.Padding(2);
             this.squeezeNearText.Name = "squeezeNearText";
             this.squeezeNearText.Size = new System.Drawing.Size(31, 20);
             this.squeezeNearText.TabIndex = 23;
@@ -2368,9 +2361,8 @@ namespace mappingtool
             // 
             // clickThresholdText
             // 
-            this.clickThresholdText.Enabled = false;
             this.clickThresholdText.Location = new System.Drawing.Point(441, 471);
-            this.clickThresholdText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.clickThresholdText.Margin = new System.Windows.Forms.Padding(2);
             this.clickThresholdText.Name = "clickThresholdText";
             this.clickThresholdText.Size = new System.Drawing.Size(31, 20);
             this.clickThresholdText.TabIndex = 51;
@@ -2409,9 +2401,8 @@ namespace mappingtool
             // 
             // indexTipTapFarText
             // 
-            this.indexTipTapFarText.Enabled = false;
             this.indexTipTapFarText.Location = new System.Drawing.Point(848, 400);
-            this.indexTipTapFarText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.indexTipTapFarText.Margin = new System.Windows.Forms.Padding(2);
             this.indexTipTapFarText.Name = "indexTipTapFarText";
             this.indexTipTapFarText.Size = new System.Drawing.Size(31, 20);
             this.indexTipTapFarText.TabIndex = 47;
@@ -2441,9 +2432,8 @@ namespace mappingtool
             // 
             // indexTipTapNearText
             // 
-            this.indexTipTapNearText.Enabled = false;
             this.indexTipTapNearText.Location = new System.Drawing.Point(441, 400);
-            this.indexTipTapNearText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.indexTipTapNearText.Margin = new System.Windows.Forms.Padding(2);
             this.indexTipTapNearText.Name = "indexTipTapNearText";
             this.indexTipTapNearText.Size = new System.Drawing.Size(31, 20);
             this.indexTipTapNearText.TabIndex = 44;
@@ -2480,9 +2470,8 @@ namespace mappingtool
             // 
             // palmTapFarText
             // 
-            this.palmTapFarText.Enabled = false;
             this.palmTapFarText.Location = new System.Drawing.Point(848, 349);
-            this.palmTapFarText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.palmTapFarText.Margin = new System.Windows.Forms.Padding(2);
             this.palmTapFarText.Name = "palmTapFarText";
             this.palmTapFarText.Size = new System.Drawing.Size(31, 20);
             this.palmTapFarText.TabIndex = 40;
@@ -2512,9 +2501,8 @@ namespace mappingtool
             // 
             // palmTapNearText
             // 
-            this.palmTapNearText.Enabled = false;
             this.palmTapNearText.Location = new System.Drawing.Point(441, 349);
-            this.palmTapNearText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.palmTapNearText.Margin = new System.Windows.Forms.Padding(2);
             this.palmTapNearText.Name = "palmTapNearText";
             this.palmTapNearText.Size = new System.Drawing.Size(31, 20);
             this.palmTapNearText.TabIndex = 37;
@@ -2551,9 +2539,8 @@ namespace mappingtool
             // 
             // wristTapFarText
             // 
-            this.wristTapFarText.Enabled = false;
             this.wristTapFarText.Location = new System.Drawing.Point(848, 298);
-            this.wristTapFarText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.wristTapFarText.Margin = new System.Windows.Forms.Padding(2);
             this.wristTapFarText.Name = "wristTapFarText";
             this.wristTapFarText.Size = new System.Drawing.Size(31, 20);
             this.wristTapFarText.TabIndex = 33;
@@ -2583,9 +2570,8 @@ namespace mappingtool
             // 
             // wristTapNearText
             // 
-            this.wristTapNearText.Enabled = false;
             this.wristTapNearText.Location = new System.Drawing.Point(441, 298);
-            this.wristTapNearText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.wristTapNearText.Margin = new System.Windows.Forms.Padding(2);
             this.wristTapNearText.Name = "wristTapNearText";
             this.wristTapNearText.Size = new System.Drawing.Size(31, 20);
             this.wristTapNearText.TabIndex = 30;
@@ -2622,9 +2608,8 @@ namespace mappingtool
             // 
             // indexBendFarText
             // 
-            this.indexBendFarText.Enabled = false;
             this.indexBendFarText.Location = new System.Drawing.Point(847, 142);
-            this.indexBendFarText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.indexBendFarText.Margin = new System.Windows.Forms.Padding(2);
             this.indexBendFarText.Name = "indexBendFarText";
             this.indexBendFarText.Size = new System.Drawing.Size(31, 20);
             this.indexBendFarText.TabIndex = 19;
@@ -2654,9 +2639,8 @@ namespace mappingtool
             // 
             // indexBendNearText
             // 
-            this.indexBendNearText.Enabled = false;
             this.indexBendNearText.Location = new System.Drawing.Point(440, 142);
-            this.indexBendNearText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.indexBendNearText.Margin = new System.Windows.Forms.Padding(2);
             this.indexBendNearText.Name = "indexBendNearText";
             this.indexBendNearText.Size = new System.Drawing.Size(31, 20);
             this.indexBendNearText.TabIndex = 16;
@@ -2703,18 +2687,16 @@ namespace mappingtool
             // 
             // pinchFarText
             // 
-            this.pinchFarText.Enabled = false;
             this.pinchFarText.Location = new System.Drawing.Point(847, 40);
-            this.pinchFarText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.pinchFarText.Margin = new System.Windows.Forms.Padding(2);
             this.pinchFarText.Name = "pinchFarText";
             this.pinchFarText.Size = new System.Drawing.Size(31, 20);
             this.pinchFarText.TabIndex = 5;
             // 
             // thumbPressFarText
             // 
-            this.thumbPressFarText.Enabled = false;
             this.thumbPressFarText.Location = new System.Drawing.Point(847, 91);
-            this.thumbPressFarText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.thumbPressFarText.Margin = new System.Windows.Forms.Padding(2);
             this.thumbPressFarText.Name = "thumbPressFarText";
             this.thumbPressFarText.Size = new System.Drawing.Size(31, 20);
             this.thumbPressFarText.TabIndex = 12;
@@ -2767,18 +2749,16 @@ namespace mappingtool
             // 
             // pinchNearText
             // 
-            this.pinchNearText.Enabled = false;
             this.pinchNearText.Location = new System.Drawing.Point(440, 40);
-            this.pinchNearText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.pinchNearText.Margin = new System.Windows.Forms.Padding(2);
             this.pinchNearText.Name = "pinchNearText";
             this.pinchNearText.Size = new System.Drawing.Size(31, 20);
             this.pinchNearText.TabIndex = 2;
             // 
             // thumbPressNearText
             // 
-            this.thumbPressNearText.Enabled = false;
             this.thumbPressNearText.Location = new System.Drawing.Point(440, 91);
-            this.thumbPressNearText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.thumbPressNearText.Margin = new System.Windows.Forms.Padding(2);
             this.thumbPressNearText.Name = "thumbPressNearText";
             this.thumbPressNearText.Size = new System.Drawing.Size(31, 20);
             this.thumbPressNearText.TabIndex = 9;
@@ -2807,14 +2787,131 @@ namespace mappingtool
             // 
             // tabPage4
             // 
+            this.tabPage4.Controls.Add(this.groupBox22);
             this.tabPage4.Controls.Add(this.groupBox7);
             this.tabPage4.Location = new System.Drawing.Point(4, 22);
-            this.tabPage4.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.tabPage4.Margin = new System.Windows.Forms.Padding(2);
             this.tabPage4.Name = "tabPage4";
             this.tabPage4.Size = new System.Drawing.Size(1017, 669);
             this.tabPage4.TabIndex = 3;
-            this.tabPage4.Text = "Haptics";
+            this.tabPage4.Text = "Haptics/Misc";
             this.tabPage4.UseVisualStyleBackColor = true;
+            // 
+            // groupBox22
+            // 
+            this.groupBox22.Controls.Add(this.keepaliveRight);
+            this.groupBox22.Controls.Add(this.keepaliveLeft);
+            this.groupBox22.Controls.Add(this.label85);
+            this.groupBox22.Controls.Add(this.label86);
+            this.groupBox22.Controls.Add(this.keepalivePeriodText);
+            this.groupBox22.Controls.Add(this.keepalivePeriod);
+            this.groupBox22.Controls.Add(this.keepaliveAction);
+            this.groupBox22.Controls.Add(this.label87);
+            this.groupBox22.Location = new System.Drawing.Point(3, 170);
+            this.groupBox22.Name = "groupBox22";
+            this.groupBox22.Size = new System.Drawing.Size(1011, 111);
+            this.groupBox22.TabIndex = 1;
+            this.groupBox22.TabStop = false;
+            this.groupBox22.Text = "Keepalive";
+            // 
+            // keepaliveRight
+            // 
+            this.keepaliveRight.AutoSize = true;
+            this.keepaliveRight.Location = new System.Drawing.Point(512, 22);
+            this.keepaliveRight.Name = "keepaliveRight";
+            this.keepaliveRight.Size = new System.Drawing.Size(77, 17);
+            this.keepaliveRight.TabIndex = 3;
+            this.keepaliveRight.TabStop = true;
+            this.keepaliveRight.Text = "Right hand";
+            this.keepaliveRight.UseVisualStyleBackColor = true;
+            this.keepaliveRight.CheckedChanged += new System.EventHandler(this.keepaliveRight_CheckedChanged);
+            // 
+            // keepaliveLeft
+            // 
+            this.keepaliveLeft.AutoSize = true;
+            this.keepaliveLeft.Location = new System.Drawing.Point(432, 22);
+            this.keepaliveLeft.Name = "keepaliveLeft";
+            this.keepaliveLeft.Size = new System.Drawing.Size(70, 17);
+            this.keepaliveLeft.TabIndex = 2;
+            this.keepaliveLeft.TabStop = true;
+            this.keepaliveLeft.Text = "Left hand";
+            this.keepaliveLeft.UseVisualStyleBackColor = true;
+            this.keepaliveLeft.CheckedChanged += new System.EventHandler(this.keepaliveLeft_CheckedChanged);
+            // 
+            // label85
+            // 
+            this.label85.AutoSize = true;
+            this.label85.Location = new System.Drawing.Point(7, 63);
+            this.label85.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label85.Name = "label85";
+            this.label85.Size = new System.Drawing.Size(40, 13);
+            this.label85.TabIndex = 4;
+            this.label85.Text = "Period:";
+            // 
+            // label86
+            // 
+            this.label86.AutoSize = true;
+            this.label86.Location = new System.Drawing.Point(484, 62);
+            this.label86.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label86.Name = "label86";
+            this.label86.Size = new System.Drawing.Size(47, 13);
+            this.label86.TabIndex = 7;
+            this.label86.Text = "seconds";
+            // 
+            // keepalivePeriodText
+            // 
+            this.keepalivePeriodText.Location = new System.Drawing.Point(426, 58);
+            this.keepalivePeriodText.Margin = new System.Windows.Forms.Padding(2);
+            this.keepalivePeriodText.Name = "keepalivePeriodText";
+            this.keepalivePeriodText.Size = new System.Drawing.Size(55, 20);
+            this.keepalivePeriodText.TabIndex = 6;
+            // 
+            // keepalivePeriod
+            // 
+            this.keepalivePeriod.BackColor = System.Drawing.SystemColors.Window;
+            this.keepalivePeriod.LargeChange = 1000;
+            this.keepalivePeriod.Location = new System.Drawing.Point(93, 57);
+            this.keepalivePeriod.Maximum = 120000;
+            this.keepalivePeriod.Minimum = 1;
+            this.keepalivePeriod.Name = "keepalivePeriod";
+            this.keepalivePeriod.Size = new System.Drawing.Size(324, 45);
+            this.keepalivePeriod.TabIndex = 5;
+            this.keepalivePeriod.TickFrequency = 1000;
+            this.keepalivePeriod.Value = 1;
+            this.keepalivePeriod.Scroll += new System.EventHandler(this.keepalivePeriod_Scroll);
+            // 
+            // keepaliveAction
+            // 
+            this.keepaliveAction.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.keepaliveAction.FormattingEnabled = true;
+            this.keepaliveAction.Items.AddRange(new object[] {
+            "",
+            "/input/menu/click",
+            "/input/trigger/value",
+            "/input/squeeze/value (HP/Oculus only)",
+            "/input/squeeze/click",
+            "/input/a/click (HP/Oculus, left hand only)",
+            "/input/b/click (HP/Oculus, left hand only)",
+            "/input/x/click (HP/Oculus, right hand only)",
+            "/input/y/click (HP/Oculus, right hand only)",
+            "/input/thumbstick/click",
+            "/input/system/click (Windows button)",
+            "/input/trackpad/click (WMR 1st gen only)",
+            "/input/select/click (simple_controller only)"});
+            this.keepaliveAction.Location = new System.Drawing.Point(93, 19);
+            this.keepaliveAction.Name = "keepaliveAction";
+            this.keepaliveAction.Size = new System.Drawing.Size(325, 21);
+            this.keepaliveAction.TabIndex = 1;
+            this.keepaliveAction.SelectedIndexChanged += new System.EventHandler(this.keepaliveAction_SelectedIndexChanged);
+            // 
+            // label87
+            // 
+            this.label87.AutoSize = true;
+            this.label87.Location = new System.Drawing.Point(7, 23);
+            this.label87.Name = "label87";
+            this.label87.Size = new System.Drawing.Size(50, 13);
+            this.label87.TabIndex = 0;
+            this.label87.Text = "Simulate:";
             // 
             // groupBox7
             // 
@@ -2828,19 +2925,19 @@ namespace mappingtool
             this.groupBox7.Controls.Add(this.hapticsAction);
             this.groupBox7.Controls.Add(this.label43);
             this.groupBox7.Location = new System.Drawing.Point(3, 3);
-            this.groupBox7.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox7.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox7.Name = "groupBox7";
-            this.groupBox7.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox7.Padding = new System.Windows.Forms.Padding(2);
             this.groupBox7.Size = new System.Drawing.Size(1011, 161);
             this.groupBox7.TabIndex = 0;
             this.groupBox7.TabStop = false;
-            this.groupBox7.Text = "Trigger";
+            this.groupBox7.Text = "Haptics";
             // 
             // hapticsFrequencyFilter
             // 
             this.hapticsFrequencyFilter.AutoSize = true;
             this.hapticsFrequencyFilter.Location = new System.Drawing.Point(93, 84);
-            this.hapticsFrequencyFilter.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.hapticsFrequencyFilter.Margin = new System.Windows.Forms.Padding(2);
             this.hapticsFrequencyFilter.Name = "hapticsFrequencyFilter";
             this.hapticsFrequencyFilter.Size = new System.Drawing.Size(65, 17);
             this.hapticsFrequencyFilter.TabIndex = 7;
@@ -2869,9 +2966,8 @@ namespace mappingtool
             // 
             // hapticsFrequencyText
             // 
-            this.hapticsFrequencyText.Enabled = false;
             this.hapticsFrequencyText.Location = new System.Drawing.Point(426, 110);
-            this.hapticsFrequencyText.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.hapticsFrequencyText.Margin = new System.Windows.Forms.Padding(2);
             this.hapticsFrequencyText.Name = "hapticsFrequencyText";
             this.hapticsFrequencyText.Size = new System.Drawing.Size(55, 20);
             this.hapticsFrequencyText.TabIndex = 9;
@@ -3028,7 +3124,7 @@ namespace mappingtool
             this.Controls.Add(this.menuStrip1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.Margin = new System.Windows.Forms.Padding(2);
             this.MaximizeBox = false;
             this.Name = "Form1";
             this.Text = "OpenXR Toolkit Hand-to-Controller Configuration tool";
@@ -3106,6 +3202,9 @@ namespace mappingtool
             ((System.ComponentModel.ISupportInitialize)(this.pinchNear)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.thumbPressNear)).EndInit();
             this.tabPage4.ResumeLayout(false);
+            this.groupBox22.ResumeLayout(false);
+            this.groupBox22.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.keepalivePeriod)).EndInit();
             this.groupBox7.ResumeLayout(false);
             this.groupBox7.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hapticsFrequency)).EndInit();
@@ -3333,6 +3432,15 @@ namespace mappingtool
         private System.Windows.Forms.TextBox hapticsFrequencyText;
         private System.Windows.Forms.TrackBar hapticsFrequency;
         private System.Windows.Forms.CheckBox hapticsFrequencyFilter;
+        private System.Windows.Forms.GroupBox groupBox22;
+        private System.Windows.Forms.RadioButton keepaliveRight;
+        private System.Windows.Forms.RadioButton keepaliveLeft;
+        private System.Windows.Forms.Label label85;
+        private System.Windows.Forms.Label label86;
+        private System.Windows.Forms.TextBox keepalivePeriodText;
+        private System.Windows.Forms.TrackBar keepalivePeriod;
+        private System.Windows.Forms.ComboBox keepaliveAction;
+        private System.Windows.Forms.Label label87;
     }
 }
 
