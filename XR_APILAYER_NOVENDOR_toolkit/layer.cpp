@@ -356,6 +356,8 @@ namespace {
                     m_eyeTracker = input::CreatePimaxEyeTracker(*this, m_configManager);
                 } else {
                     m_eyeTracker = input::CreateEyeTracker(*this, m_configManager);
+
+                    m_needVarjoPollEventWorkaround = m_runtimeName.find("Varjo") != std::string::npos;
                 }
             }
 
@@ -1280,6 +1282,8 @@ namespace {
         }
 
         XrResult xrPollEvent(XrInstance instance, XrEventDataBuffer* eventData) override {
+            m_needVarjoPollEventWorkaround = false;
+
             if (m_sendInterationProfileEvent && m_vrSession != XR_NULL_HANDLE) {
                 XrEventDataInteractionProfileChanged* const buffer =
                     reinterpret_cast<XrEventDataInteractionProfileChanged*>(eventData);
@@ -1532,7 +1536,7 @@ namespace {
                     newActiveActionSets.resize(chainSyncInfo.countActiveActionSets + 1);
                     memcpy(newActiveActionSets.data(),
                            chainSyncInfo.activeActionSets,
-                           chainSyncInfo.countActiveActionSets * sizeof(XrActionSet));
+                           chainSyncInfo.countActiveActionSets * sizeof(XrActiveActionSet));
                     uint32_t nextActionSetSlot = chainSyncInfo.countActiveActionSets;
 
                     newActiveActionSets[nextActionSetSlot].actionSet = eyeTrackerActionSet;
@@ -1758,6 +1762,14 @@ namespace {
                         }
 
                         // The app does not implement controller support, we must sync actions ourselves.
+
+                        // Workaround: the eye tracker on Varjo does not seem to connect unless the app calls
+                        // xrPollEvent(). So we make a call here if the app does not call it. A disciplined app should
+                        // have called xrPollEvent() by now just to begin the session.
+                        if (m_needVarjoPollEventWorkaround) {
+                            XrEventDataBuffer buf{XR_TYPE_EVENT_DATA_BUFFER};
+                            OpenXrApi::xrPollEvent(GetXrInstance(), &buf);
+                        }
                         XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
                         CHECK_XRCMD(xrSyncActions(m_vrSession, &syncInfo));
                     }
@@ -2628,6 +2640,7 @@ namespace {
         std::shared_ptr<input::IEyeTracker> m_eyeTracker;
         bool m_isActionSetUsed{false};
         bool m_isActionSetAttached{false};
+        bool m_needVarjoPollEventWorkaround{false};
         std::shared_ptr<input::IHandTracker> m_handTracker;
 
         std::shared_ptr<graphics::IImageProcessor> m_upscaler;
