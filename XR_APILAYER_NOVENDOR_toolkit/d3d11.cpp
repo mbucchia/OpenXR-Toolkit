@@ -817,6 +817,30 @@ namespace {
         mutable bool m_valid{false};
     };
 
+    // Wrap a device context.
+    class D3D11Context : public graphics::IContext {
+      public:
+        D3D11Context(std::shared_ptr<IDevice> device, ID3D11DeviceContext* context)
+            : m_device(device), m_context(context) {
+        }
+
+        Api getApi() const override {
+            return Api::D3D11;
+        }
+
+        std::shared_ptr<IDevice> getDevice() const override {
+            return m_device;
+        }
+
+        void* getNativePtr() const override {
+            return get(m_context);
+        }
+
+      private:
+        const std::shared_ptr<IDevice> m_device;
+        const ComPtr<ID3D11DeviceContext> m_context;
+    };
+
     class D3D11Device : public IDevice, public std::enable_shared_from_this<D3D11Device> {
       public:
         D3D11Device(ID3D11Device* device,
@@ -1761,8 +1785,10 @@ namespace {
                 return;
             }
 
+            auto wrappedContext = std::make_shared<D3D11Context>(shared_from_this(), context);
+
             if (!numViews || !renderTargetViews || !renderTargetViews[0]) {
-                INVOKE_EVENT(unsetRenderTargetEvent);
+                INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
                 return;
             }
 
@@ -1773,7 +1799,7 @@ namespace {
                     desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2DMS &&
                     desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2DARRAY &&
                     desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY) {
-                    INVOKE_EVENT(unsetRenderTargetEvent);
+                    INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
                     return;
                 }
             }
@@ -1783,22 +1809,16 @@ namespace {
 
             ComPtr<ID3D11Texture2D> texture;
             if (FAILED(resource->QueryInterface(set(texture)))) {
-                INVOKE_EVENT(unsetRenderTargetEvent);
+                INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
                 return;
             }
 
             D3D11_TEXTURE2D_DESC textureDesc;
             texture->GetDesc(&textureDesc);
 
-            char name[128] = {};
-            UINT size = sizeof(name);
-            if (SUCCEEDED(texture->GetPrivateData(WKPDID_D3DDebugObjectName, &size, name))) {
-                TraceLoggingWrite(g_traceProvider, "D3D11_OnSetRenderTarget", TLArg(name, "Name"));
-            }
-
             auto renderTarget = std::make_shared<D3D11Texture>(
                 shared_from_this(), getTextureInfo(textureDesc), textureDesc, get(texture));
-            INVOKE_EVENT(setRenderTargetEvent, renderTarget);
+            INVOKE_EVENT(setRenderTargetEvent, wrappedContext, renderTarget);
         }
 
         void onCopyResource(ID3D11DeviceContext* context,
@@ -1826,6 +1846,8 @@ namespace {
                 return;
             }
 
+            auto wrappedContext = std::make_shared<D3D11Context>(shared_from_this(), context);
+
             D3D11_TEXTURE2D_DESC sourceTextureDesc;
             sourceTexture->GetDesc(&sourceTextureDesc);
 
@@ -1840,7 +1862,7 @@ namespace {
                                                               destinationTextureDesc,
                                                               get(destinationTexture));
 
-            INVOKE_EVENT(copyTextureEvent, source, destination, SrcSubresource, DstSubresource);
+            INVOKE_EVENT(copyTextureEvent, wrappedContext, source, destination, SrcSubresource, DstSubresource);
         }
 
 #undef INVOKE_EVENT
