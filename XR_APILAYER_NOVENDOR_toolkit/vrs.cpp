@@ -225,26 +225,26 @@ namespace {
             m_filterScale = m_configManager->getValue(SettingVRSScaleFilter) / 100.f;
         }
 
-        bool onSetRenderTarget(std::shared_ptr<ITexture> renderTarget, std::optional<Eye> eyeHint) override {
+        bool onSetRenderTarget(std::shared_ptr<graphics::IContext> context,
+                               std::shared_ptr<ITexture> renderTarget,
+                               std::optional<Eye> eyeHint) override {
             const auto& info = renderTarget->getInfo();
 
             bool isDoubleWide = false;
             if (m_mode == VariableShadingRateType::None || !isVariableRateShadingCandidate(info, isDoubleWide)) {
-                disable();
+                disable(context);
                 return false;
             }
 
             const Eye eye = eyeHint.value_or(Eye::Both);
             TraceLoggingWrite(g_traceProvider, "EnableVariableRateShading", TLArg(isDoubleWide, "IsDoubleWide"));
 
-            if (m_device->getApi() == Api::D3D11) {
+            if (auto context11 = context->getAs<D3D11>()) {
                 if (m_currentState.isActive && m_currentState.width == info.width &&
                     m_currentState.height == info.height && m_currentState.eye == eye) {
                     TraceLoggingWrite(g_traceProvider, "SkipEnableVariableRateShading");
                     return true;
                 }
-
-                auto context11 = m_device->getContextAs<D3D11>();
 
                 size_t maskIndex;
                 updateViews(
@@ -272,9 +272,7 @@ namespace {
                 m_currentState.height = info.height;
                 m_currentState.eye = eye;
                 m_currentState.isActive = true;
-            } else if (m_device->getApi() == Api::D3D12) {
-                auto context12 = m_device->getContextAs<D3D12>();
-
+            } else if (auto context12 = context->getAs<D3D12>()) {
                 ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
                 if (FAILED(context12->QueryInterface(set(vrsCommandList)))) {
                     DebugLog("VRS: failed to query ID3D12GraphicsCommandList5\n");
@@ -305,8 +303,8 @@ namespace {
             return true;
         }
 
-        void onUnsetRenderTarget() override {
-            disable();
+        void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) override {
+            disable(context);
         }
 
         void updateGazeLocation(XrVector2f gaze, Eye eye) override {
@@ -420,7 +418,7 @@ namespace {
             updateGaze();
         }
 
-        void disable() {
+        void disable(std::shared_ptr<graphics::IContext> context = nullptr) {
             TraceLoggingWrite(g_traceProvider, "DisableVariableRateShading");
             if (m_device->getApi() == Api::D3D11) {
                 if (!m_currentState.isActive) {
@@ -428,7 +426,7 @@ namespace {
                     return;
                 }
 
-                auto context11 = m_device->getContextAs<D3D11>();
+                auto context11 = context ? context->getAs<D3D11>() : m_device->getContextAs<D3D11>();
 
                 NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
@@ -440,7 +438,7 @@ namespace {
 
                 m_currentState.isActive = false;
             } else if (m_device->getApi() == Api::D3D12) {
-                auto context12 = m_device->getContextAs<D3D12>();
+                auto context12 = context ? context->getAs<D3D12>() : m_device->getContextAs<D3D12>();
 
                 ComPtr<ID3D12GraphicsCommandList5> vrsCommandList;
                 if (FAILED(context12->QueryInterface(set(vrsCommandList)))) {

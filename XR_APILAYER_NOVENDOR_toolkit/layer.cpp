@@ -653,13 +653,14 @@ namespace {
 
                         // Register intercepted events.
                         m_graphicsDevice->registerSetRenderTargetEvent(
-                            [&](std::shared_ptr<graphics::ITexture> renderTarget) {
+                            [&](std::shared_ptr<graphics::IContext> context,
+                                std::shared_ptr<graphics::ITexture> renderTarget) {
                                 if (!m_isInFrame) {
                                     return;
                                 }
 
                                 if (m_frameAnalyzer) {
-                                    m_frameAnalyzer->onSetRenderTarget(renderTarget);
+                                    m_frameAnalyzer->onSetRenderTarget(context, renderTarget);
                                     const auto& eyeHint = m_frameAnalyzer->getEyeHint();
                                     if (eyeHint.has_value()) {
                                         m_stats.hasColorBuffer[(int)eyeHint.value()] = true;
@@ -667,25 +668,28 @@ namespace {
                                 }
                                 if (m_variableRateShader) {
                                     if (m_variableRateShader->onSetRenderTarget(
+                                            context,
                                             renderTarget,
                                             m_frameAnalyzer ? m_frameAnalyzer->getEyeHint() : std::nullopt)) {
                                         m_stats.numRenderTargetsWithVRS++;
                                     }
                                 }
                             });
-                        m_graphicsDevice->registerUnsetRenderTargetEvent([&]() {
-                            if (!m_isInFrame) {
-                                return;
-                            }
+                        m_graphicsDevice->registerUnsetRenderTargetEvent(
+                            [&](std::shared_ptr<graphics::IContext> context) {
+                                if (!m_isInFrame) {
+                                    return;
+                                }
 
-                            if (m_frameAnalyzer) {
-                                m_frameAnalyzer->onUnsetRenderTarget();
-                            }
-                            if (m_variableRateShader) {
-                                m_variableRateShader->onUnsetRenderTarget();
-                            }
-                        });
-                        m_graphicsDevice->registerCopyTextureEvent([&](std::shared_ptr<graphics::ITexture> source,
+                                if (m_frameAnalyzer) {
+                                    m_frameAnalyzer->onUnsetRenderTarget(context);
+                                }
+                                if (m_variableRateShader) {
+                                    m_variableRateShader->onUnsetRenderTarget(context);
+                                }
+                            });
+                        m_graphicsDevice->registerCopyTextureEvent([&](std::shared_ptr<graphics::IContext> context,
+                                                                       std::shared_ptr<graphics::ITexture> source,
                                                                        std::shared_ptr<graphics::ITexture> destination,
                                                                        int sourceSlice,
                                                                        int destinationSlice) {

@@ -896,6 +896,30 @@ namespace {
         const UINT m_stopIndex;
     };
 
+    // Wrap a device context.
+    class D3D12Context : public graphics::IContext {
+      public:
+        D3D12Context(std::shared_ptr<IDevice> device, ID3D12GraphicsCommandList* context)
+            : m_device(device), m_context(context) {
+        }
+
+        Api getApi() const override {
+            return Api::D3D12;
+        }
+
+        std::shared_ptr<IDevice> getDevice() const override {
+            return m_device;
+        }
+
+        void* getNativePtr() const override {
+            return get(m_context);
+        }
+
+      private:
+        const std::shared_ptr<IDevice> m_device;
+        const ComPtr<ID3D12GraphicsCommandList> m_context;
+    };
+
     class D3D12Device : public IDevice, public std::enable_shared_from_this<D3D12Device> {
       private:
         // OpenXR will not allow more than 2 frames in-flight, so 2 would be sufficient, however we might split the
@@ -2193,12 +2217,10 @@ namespace {
                 return;
             }
 
-            // Override context for this call. This is needed for VRS.
-            m_context = context;
+            auto wrappedContext = std::make_shared<D3D12Context>(shared_from_this(), context);
 
             if (!numRenderTargetDescriptors) {
-                INVOKE_EVENT(unsetRenderTargetEvent);
-                m_context = m_commandList[m_currentContext];
+                INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
                 return;
             }
 
@@ -2208,19 +2230,12 @@ namespace {
 
                 auto it = m_renderTargetResourceDescriptors.find(renderTargetHandles[0]);
                 if (it == m_renderTargetResourceDescriptors.cend()) {
-                    INVOKE_EVENT(unsetRenderTargetEvent);
-                    m_context = m_commandList[m_currentContext];
+                    INVOKE_EVENT(unsetRenderTargetEvent, wrappedContext);
                     return;
                 }
 
                 ID3D12Resource* const resource = it->second;
                 const D3D12_RESOURCE_DESC& resourceDesc = resource->GetDesc();
-
-                char name[128] = {};
-                UINT size = sizeof(name);
-                if (SUCCEEDED(resource->GetPrivateData(WKPDID_D3DDebugObjectName, &size, name))) {
-                    TraceLoggingWrite(g_traceProvider, "D3D12_OnSetRenderTarget", TLArg(name, "Name"));
-                }
 
                 renderTarget = std::make_shared<D3D12Texture>(shared_from_this(),
                                                               getTextureInfo(resourceDesc),
@@ -2232,8 +2247,7 @@ namespace {
                                                               m_rvHeap);
             }
 
-            INVOKE_EVENT(setRenderTargetEvent, renderTarget);
-            m_context = m_commandList[m_currentContext];
+            INVOKE_EVENT(setRenderTargetEvent, wrappedContext, renderTarget);
         }
 
         void onCopyTexture(ID3D12GraphicsCommandList* context,
@@ -2247,8 +2261,7 @@ namespace {
                 return;
             }
 
-            // Override context for this call. This is needed for VRS.
-            m_context = context;
+            auto wrappedContext = std::make_shared<D3D12Context>(shared_from_this(), context);
 
             const D3D12_RESOURCE_DESC& sourceTextureDesc = pSrcResource->GetDesc();
             auto source = std::make_shared<D3D12Texture>(shared_from_this(),
@@ -2270,8 +2283,7 @@ namespace {
                                                               m_dsvHeap,
                                                               m_rvHeap);
 
-            INVOKE_EVENT(copyTextureEvent, source, destination, SrcSubresource, DstSubresource);
-            m_context = m_commandList[m_currentContext];
+            INVOKE_EVENT(copyTextureEvent, wrappedContext, source, destination, SrcSubresource, DstSubresource);
         }
 
 #undef INVOKE_EVENT
