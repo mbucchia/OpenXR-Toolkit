@@ -17,7 +17,7 @@ nav_order: 1
 
 Foveated Rendering (or FR) is rendering technique that reduces the workload of the GPU by reducing the resolution of the image at the periphery of your vision.
 
-![FFR digram](site/ffr-intro.png)<br>
+![FFR diagram](site/ffr-intro.png)<br>
 *The image is divided into 3 regions, with the resolution decreasing the further we get from the center region.*
 
 Fixed Foveated Rendering (or FFR) is a type of Foveated Rendering technique which assumes a fixed focal point, and does not use eye tracking. FFR is quite effective with VR headsets because 1) your eye gaze tends to always look at the center of the screen 2) the distortion created by the lenses of the headset alter your preception of the resolution near the edges of the screen.
@@ -93,6 +93,11 @@ The option to enable Eye Tracking (ET) will appear in the menu if and only if yo
 In order to use the eye tracker on your Omnicept device, you must first install the [HP Omnicept Runtime](https://developers.hp.com/omnicept/downloads/hp-omnicept-runtime).
 
 Once installed, please run the HP Omnicept eye calibration application.
+
+When using Foveated Rendering in the OpenXR Toolkit for the first time with an application, allow the application to use the eye tracker through the Omnicept configuration tool:
+
+![Allow client](site/omnicept-perms.png)<br>
+*The HP Omnicept software is used to allow incoming request to use the eye tracker. This must be done for each application upon first use.*
 
 #### Considerations for Pimax+Droolon
 

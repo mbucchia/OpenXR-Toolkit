@@ -6,7 +6,7 @@ nav_order: 1
 
 # OpenXR Toolkit
 
-This software provides a collection of useful features to customize and improve existing OpenXR applications, including render upscaling and sharpening, hand tracking to controller input simulation (on supported devices only) and other game-enhancing tweaks.
+This software provides a collection of useful features to customize and improve existing OpenXR applications, including render upscaling and sharpening, foveated rendering, image post-processing, hand tracking to controller input simulation (on supported devices only) and other game-enhancing tweaks.
 
 For more details on how it works, see the [How does it work?](how-does-it-work).
 
@@ -16,20 +16,22 @@ DISCLAIMER: This software is distributed as-is, without any warranties or condit
 
 ## Downloads
 
-Current version: **1.1.4**
+Current version: **1.2.0**
 
-[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.1.4/OpenXR-Toolkit-1.1.4.msi){: .btn .btn-blue }
+[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.2.0/OpenXR-Toolkit-1.2.0.msi){: .btn .btn-blue }
 
 ...or expore [all versions](https://github.com/mbucchia/OpenXR-Toolkit/releases).
 
 ## Requirements
 
-This software may be used with any brand of VR headset as long as the target application uses any GPU compatible with DirectX 11 and above, and is developed using OpenXR.
+This software may be used with any brand of VR headset as long as the target application uses DirectX with any GPU compatible with DirectX 11 and above. The application must use OpenXR.
+
+The following headsets have been confirmed to work: Windows Mixed Reality (eg: HP Reverb), Oculus Quest & Quest 2, Pimax 5K & 8KX, Varjo Aero, Valve Index, HTC Vive, Pico Neo.
 
 The following OpenXR ToolKit features have additional restrictions:
 
 + Fixed Foveated Rendering and Foveated Rendering are only supported with the following GPUs:
-  + NVIDIA GeForce GTX 1600 series and RTX series, both DX11 and DX12.
+  + NVIDIA GeForce GTX 1600 series and RTX series, both DX11 and DX12 applications.
   + AMD RX 6000 series, with DX12 applications only.
 
 + Foveated Rendering with eye tracking is only supported with the following headsets:
@@ -39,13 +41,11 @@ The following OpenXR ToolKit features have additional restrictions:
 
 ## Limitations
 
-+ This software was only extensively tested with Microsoft Flight Simulator 2020.
-  + It is also expected this software should work with most Steam games if they are using OpenXR (instead of Steam's OpenVR).
-  + It can be used with certain games through [OpenComposite](opencomposite).
-+ If using Windows Mixed Reality, please disable Hardware Accelerated Graphics Scheduler (HAGS).
-+ If using with an HTC Vive Pro 2 or Cosmos, please select SteamVR as your OpenXR runtime.
-+ Fixed Foveated Rendering in Microsoft Flight Simulator only works when TAA is enabled with a render scale of at least 51%.
-+ Fixed Foveated Rendering in Microsoft Flight Simulator is incorrectly applied in the main menu, resulting in blurry menu windows.
++ This software may not work with all OpenXR applications. See the [Compatibility](compat) list.
+  + It can also be used with certain OpenVR applications through [OpenComposite](opencomposite).
++ If using with an HTC Vive Cosmos, please select SteamVR as your OpenXR runtime.
++ If using with a Pimax headset, consider using [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki) as your OpenXR runtime.
++ Foveated Rendering in Microsoft Flight Simulator is incorrectly applied in the main menu, resulting in blurry menu windows.
 + The OpenXR Toolkit is incompatible with ReShade.
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
@@ -112,94 +112,10 @@ In order to navigate the menu, select options and change values:
 > 💡 **Tip:** When starting an application for the first time, use the configuration menu to adjust the _Menu eye offset_ until the text appears correctly (eg: no "double vision").
 
 > 📝 **Note:** The first few times you're using the OpenXR Toolkit with a new application, a convenient reminder message will appear in the headset and confirms whether the software is operating properly.
-
-<details>
-  <summary>On-screen indicator...</summary>
-
-  <img alt="On-screen indicator" src="site/osd-indicator.png">
-
-</details>
   
 ## Available options
 
 See [Features](features) for more details.
-
-**Performance** tab:
-- **Overlay**: Enables the FPS display or advanced timings display in the top-right corner of the view. _Please note that the overlay may reduce performance_. A fourth option - "_Developer_" - is available in experimental mode and may be used for troubleshooting with the developers.
-- **Upscaling**: Enables the use of an upscaler such as NIS or FSR to perform rendering at a lower resolution, and upscale and/or sharpen the image. Requires to restart the VR session.
-  - **Anamorphic**: When _Disabled_, the _Size_ scales both the width and the height propotionally. When _Enabled_, both sizes can be adjusted independently.
-  - **Size**: The upscaling factor (ie: the percentage of magnification of the rendering resolution). The resolution displayed next to the percentage is the effective resolution that the application sees. Requires to restart the VR session.
-  - **Width/Height**: This displays the actual in-game render width and height, that is the actual number of pixels the game is rendering per eye.
-  - **Sharpness**: The sharpness factor. Has a different scale/effect between NIS and FSR.
-  - **Mip-map bias** (_Expert_ setting): This settings changes how the game is rendering some of the textures in order to reveal a little bit more details when used with FSR/NIS upscalers.
-- **(Fixed) Foveated rendering** (on supported GPUs only): These settings adjust the [VRS](glossary#vrs) parameters in order to balance out peripheral visual details with rendering performance.
-  - **Eye tracking** (on supported headsets only): Enable the use of eye tracking to control the position of the center of the foveated region.
-  - **Eye projection distance** (only with Pimax headsets): Calibrate the sensitivy of eye gaze movements.
-
-  [_Preset_ _mode_ ](fr#preset-mode)
-  - **Mode**: Whether to prefer performance over quality.
-  - **Pattern**: The size of the foveated regions.
-  
-  [_Custom_ _mode_](fr#custom-mode)
-  - **Inner resolution** (_Expert_ _setting_): The resolution inside the inner ring of foveation. Should be left at full resolution (1x).
-  - **Inner ring size**: The size of the inner ring of foveation, in percent of the height of the image.
-  - **Middle resolution**: The resolution inside the middle ring of foveation.
-  - **Outer ring size**: The size of the outer ring of foveation, in percent of the height of the image.
-  - **Outer resolution**: The resolution inside the outer ring of foveation.
-  - **Horizontal scale** (_Expert_ _setting_): The rings for foveation can be configured as ellipses. This setting controls the scale of the horizontal radius (or semi-major axis) based on the vertical radius (or semi-minor axis). A value of 100% means that the rings are circles. A value larger than 100% will result in flattened, oval-shaped rings.
-  - **Horizontal offset** (_Expert_ _setting_): Add a horizontal offset to the center of the foveation rings. The offset is expressed relative to the left eye, and its opposite value will be applied to the right eye.
-  - **Vertical offset** (_Expert_ _setting_): Add a vertical offset to the center of the foveation rings.
-  - **Left/Right Bias** (_Expert_ _setting_): Lower the resolution of all the regions at once, either for the left or the right eye only at a time.
-
-**Appearance** tab:
-- **Post-processing**: Allows adjusting the image displaying in the headset. When _Enabled_, the following additional controls are available.
-
-  **Sun Glasses Presets**
-  
-  These are finely tuned quick-access presets, applying on top of the individual post-processing settings, effectively augmenting but not replacing them:
-  - **Light** and **Dark**: Two levels of sun glasses, adjusted to reduce exposure and low light details while preserving perceived contrast.
-  - **TruNite**: Wear these glasses exclusively when flying at night and feel the lights popping up in a sea of darkness surrounding you.
-
-  **Individual Controls**
-  
-  These are adjusting individual enhancements settings and they allow fine tuning the image displaying in the headset:
-  - **Contrast**: Adjusts the difference between bright and dark pixels _(Neutral: 50)_.
-  - **Brightness**: Adjusts those pixels that are not already extremely bright (preserves the highlights) and adjusts midtones, aka gamma _(Neutral: 50)_.
-  - **Exposure**: Adjusts the brightness or darkness of the entire image _(Neutral: 50)_.
-  - **Saturation**: Adjusts the colorfullness of the entire image. It affects all colors and pixels in the image equally, regardless of how saturated they already are _(Neutral: 50)_.
-  - **Vibrance**: Adjusts the intensity of the more muted colors while leaving the saturated colors untouched _(Neutral: 0)_.
-  - **Highlights**: Adjusts the highlight details in reducing the intensity of the brightest pixels _(Neutral: 100)_.
-  - **Shadows**: Adjusts the details that appear in shadows in brightening the darkest pixels _(Neutral: 0)_.
-  
-- **World scale**: The Inter-Camera Distance override, which can be used to alter the world scale.
-
-**Inputs** tab:
-- **Shaking reduction**, formerly **Prediction dampening** (only when supported by the system): The prediction override, which can be use to dampen the prediction for head, controllers, and hand movements.
-- **Controller emulation** (only when hand tracking is supported by the system): Enable the use of hand tracking in place of the VR controller. Requires a compatible device, such a Leap Motion controller or an Oculus Quest 2 headset. Either or both hands can be enabled at a time. Requires to restart the VR session when toggling on or off. 
-  - **Hands skeleton**: Whether the hands are displayed and what color tone to use.
-  - **Controller timeout**: The amount of time after losing track of the hands before simulator shutdown of the simulated VR controller.
-
-**System** tab:
-- **Override resolution**: Enable overriding the OpenXR target resolution (same as what the "custom render scale" in OpenXR Tools for WMR does).
-  - **Display resolution (per-eye)**: The resolution to use for each eye.
-- **Motion reprojection** (only with Windows Mixed Reality): Enable overriding the Motion Reprojection mode. _Default_ means to use the system settings (from the _OpenXR Tools for Windows Mixed Reality_).
-  - **Lock motion reprojection** (only with Windows Mixed Reality, when _Motion Reprojection_ if forced to _On_): Disable automatic motion reprojection adjustment, and lock the frame rate to the desired fraction of the refresh rate.
-- **Color Gains**: Adjusts the Red, Green and Blue channels gains individually _(Neutral: 50)_.
-- **Field of view**: Adjust the pixel density per degree. A smaller field of view is covering a smaller region of the view but with the same amount of pixels, effectively increasing the perceived resolution.
-  - **Adjustement** (in _Simple_ mode): Override all 4 angles (up/down/left/right) equally.
-  - **Up** (in _Advanced_ mode): Override the "up" angle for both eyes.
-  - **Down** (in _Advanced_ mode): Override the "down" angle for both eyes.
-  - **Left/Left** (in _Advanced_ mode): Override the "left" angle for the left eye.
-  - **Left/Right** (in _Advanced_ mode): Override the "right" angle for the left eye.
-  - **Right/Left** (in _Advanced_ mode): Override the "left" angle for the right eye.
-  - **Right/Right** (in _Advanced_ mode): Override the "right" angle for the right eye.
-- **Pimax WFOV Hack** (Flight Simulator 2020 only, with Pimax headsets): Enable the Wide FOV hack to reduce game "over-culling".
-
-**Menu** tab:
-- **Show expert settings**: Show all settings. *This can be pretty overwhelming for certain features*.
-- **Font size**: The size of the text for the menu.
-- **Menu timeout**: The duration after which the menu automatically disappears when there is no input.
-- **Menu eye offset**: Adjust rendering of the menu until the text appears clear.
 
 # Recovery
 

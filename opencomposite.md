@@ -14,11 +14,7 @@ nav_order: 4
 
 ## Introduction
 
-[OpenComposite](https://gitlab.com/znixian/OpenOVR/-/tree/openxr) is a separate software from OpenXR Toolkit, developed and maintained by a different team.
-
-The goal of OpenXR Toolkit is to add functionality to OpenXR applications. However, not all applications are written for OpenXR, and therefore OpenXR Toolkit canot be used with these applications.
-
-The goal of OpenComposite is to run applications built on the legacy OpenVR (predecessor of OpenXR), which typically require SteamVR, to use OpenXR instead.
+The goal of [OpenComposite](https://gitlab.com/znixian/OpenOVR/-/tree/openxr) is to run applications built on the legacy OpenVR (predecessor of OpenXR), which typically require SteamVR, to use OpenXR instead.
 
 The diagram below show how games developed for OpenXR and OpenVR typically operate. This is before the introduction of OpenComposite.
 
@@ -29,6 +25,10 @@ The diagram below show how OpenComposite enables applications built for OpenVR t
 
 ![Ecosystem with OpenComposite](site/ecosystem2.png)<br>
 *Ecosystem with OpenComposite*
+
+OpenComposite is a separate software from OpenXR Toolkit, developed and maintained by a different team.
+
+The goal of OpenXR Toolkit is to add functionality to OpenXR applications. However, not all applications are written for OpenXR, and therefore OpenXR Toolkit cannot be used with these applications, unless they can use OpenComposite to use OpenXR.
 
 OpenXR Toolkit is not necessary in order to take advantage of OpenComposite to bypass SteamVR. OpenXR Toolkit can be _optionally_ installed to add additional tweaks and performance-improvement features to the games using OpenXR directly or OpenComposite.
 
@@ -53,25 +53,30 @@ There is an [official compatibility for OpenComposite](https://docs.google.com/s
 
 | Game | OpenComposite | OpenXR Toolkit |
 | --- | --- | --- |
-| American Truck Simulator 2 | Yes | Yes [3] |
+| American Truck Simulator 2 | Yes | Yes |
 | Assetto Corsa | Yes | Yes |
-| Assetto Corsa Competizione | Yes | Yes [1] |
-| Automobilista 2 | Yes [2] | Yes |
+| Assetto Corsa Competizione | Yes | Yes |
+| Automobilista 2 | Yes | Yes |
 | Digital Combat Simulator | Yes | Yes |
 | Dirt Rally 2 | Yes | Yes |
-| Euro Truck Simulator 2 | Yes | Yes [3] |
+| Euro Truck Simulator 2 | Yes | Yes |
 | IL-2 Sturmovik | Yes | Yes [1] |
-| iRacing | Yes | Yes |
-| Project Cars 2 | Yes [2] | Yes |
-| Project Cars 3 | Yes [2] | Yes |
+| iRacing | Yes | No [2] |
+| F1 2022 | Yes | Yes |
+| Project Cars 2 | Yes | Yes |
+| Project Cars 3 | Yes | Yes |
 | rFactor 2 | Yes | Yes |
 | Subnautica | Yes | Yes |
+| X-Plane 11 | Yes [3] | Yes [1] [4] |
+| X-Plane 12 | Yes [3] | Yes [1] [4] |
 
-[1] Does not support Fixed Foveated Rendering
+[1] Does not support Fixed Foveated Rendering.
 
-[2] Require `admitUnknownProps=true` option (see Tips for using OpenComposite below)
+[2] iRacing now has official support for OpenXR, and OpenXR Toolkit is only compatible in that mode, and not with OpenComposite.
 
-[3] Require `invertUsingShaders=true` option (see Tips for using OpenComposite below)
+[3] On Windows Mixed Reality, X-Plane requires the use of [OpenXR-Vk-D3D12](https://github.com/mbucchia/OpenXR-Vk-D3D12).
+
+[4] X-Plane is only compatible with OpenXR Toolkit on Windows Mixed Reality.
 
 Do you have a game working but it's not in the list? Please file an [Issue](https://github.com/mbucchia/OpenXR-Toolkit/issues) to let us know!
 
@@ -149,20 +154,6 @@ Create an `opencomposite.ini` file in the folder of the game, and add the follow
 
 ```
 invertUsingShaders=true
-```
-
-Make sure that the file extension is `.ini` and not `.ini.txt`!
-
-### The game will not start with error "unknown property"
-
-Certain games require an explicit "force" option to work.
-
-![OpenComposite unknown property](site/oc-unknown-props.png)
-
-Create an `opencomposite.ini` file in the folder of the game, and add the following line to it:
-
-```
-admitUnknownProps=true
 ```
 
 Make sure that the file extension is `.ini` and not `.ini.txt`!

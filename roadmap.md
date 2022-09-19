@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Roadmap
-nav_order: 6
+nav_order: 8
 ---
 
 | Feature                              | Status                                  | Planned release |
@@ -12,7 +12,6 @@ nav_order: 6
 | NIS upscaling                        | [Stable](){: .btn .btn-green }          | Released        |
 | FSR upscaling                        | [Stable](){: .btn .btn-green }          | Released        |
 | Hand tracking                        | [Experimental](){: .btn .btn-purple }   | Released        |
-| Hand tracking haptics cues           | [Experimental](){: .btn .btn-purple }   | Released        |
 | World Scale override                 | [Stable](){: .btn .btn-green }          | Released        |
 | Prediction dampening                 | [Stable](){: .btn .btn-green }          | Released        |
 | Anamorphic upscaling                 | [Stable](){: .btn .btn-green }          | Released        |
@@ -24,9 +23,9 @@ nav_order: 6
 | Per-application disable setting      | [Stable](){: .btn .btn-green }          | Released        |
 | Per-application resolution override  | [Stable](){: .btn .btn-green }          | Released        |
 | Field of view override               | [Stable](){: .btn .btn-green}           | Released        |
-| Pimax culling workaround             | [Experimental](){: .btn .btn-purple}    | Released        |
-| Improved desktop companion app       | [Implementation](){: .btn .btn-blue }   |                 |
-| Field of view override v2 / zoom     | [Investigation](){: .btn .btn-blue }    |                 |
+| Command line tool                    | [Stable](){: .btn .btn-green}           | Released        |
+| Support for OpenComposite            | [Stable](){: .btn .btn-green}           | Released        |
+| Frame rate throttling                | [Stable](){: .btn .btn-green}           | Released        |
 | Quality of life improvements         | [Implementation](){: .btn .btn-blue }   | Periodic        |
 
 Want to see something up there that is not already listed? Join our [Discord server](https://discord.gg/WXFshwMnke) and discuss it on the #features channel.
