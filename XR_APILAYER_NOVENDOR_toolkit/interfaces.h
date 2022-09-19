@@ -460,6 +460,7 @@ namespace toolkit {
             copyTo(std::shared_ptr<ITexture> destination, uint32_t dstX, uint32_t dstY, int32_t dstSlice) = 0;
             virtual void saveToFile(const std::filesystem::path& path) const = 0;
 
+            virtual void setState(D3D12_RESOURCE_STATES newState) = 0;
             virtual void pushState(D3D12_RESOURCE_STATES newState) = 0;
             virtual void popState() = 0;
 

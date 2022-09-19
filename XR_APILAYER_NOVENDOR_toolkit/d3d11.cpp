@@ -561,6 +561,8 @@ namespace {
             }
         }
 
+        void setState(D3D12_RESOURCE_STATES newState) override {
+        }
         void pushState(D3D12_RESOURCE_STATES newState) override {
         }
         void popState() override {
