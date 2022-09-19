@@ -1551,7 +1551,8 @@ namespace {
                 }
             }
 
-            const XrResult result = OpenXrApi::xrSyncActions(session, &chainSyncInfo);
+            const XrResult result =
+                chainSyncInfo.countActiveActionSets ? OpenXrApi::xrSyncActions(session, &chainSyncInfo) : XR_SUCCESS;
             if (XR_SUCCEEDED(result) && m_handTracker && isVrSession(session)) {
                 m_performanceCounters.handTrackingTimer->start();
 
@@ -1757,28 +1758,34 @@ namespace {
                     }
                 }
 
-                if (m_eyeTracker) {
-                    if (m_eyeTracker->getActionSet() != XR_NULL_HANDLE && !m_isActionSetUsed) {
-                        if (!m_isActionSetAttached) {
-                            XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
-                            CHECK_XRCMD(xrAttachSessionActionSets(m_vrSession, &attachInfo));
-                            m_isActionSetAttached = true;
+                if (m_eyeTracker || m_handTracker) {
+                    // Force artifical syncing of actions if the app doesn't seem to use actions.
+                    if (!m_isActionSetUsed) {
+                        if (m_eyeTracker && m_eyeTracker->getActionSet() != XR_NULL_HANDLE) {
+                            if (!m_isActionSetAttached) {
+                                XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
+                                CHECK_XRCMD(xrAttachSessionActionSets(m_vrSession, &attachInfo));
+                                m_isActionSetAttached = true;
+                            }
+
+                            // The app does not implement controller support, we must sync actions ourselves.
+
+                            // Workaround: the eye tracker on Varjo does not seem to connect unless the app calls
+                            // xrPollEvent(). So we make a call here if the app does not call it. A disciplined app
+                            // should have called xrPollEvent() by now just to begin the session.
+                            if (m_needVarjoPollEventWorkaround) {
+                                XrEventDataBuffer buf{XR_TYPE_EVENT_DATA_BUFFER};
+                                OpenXrApi::xrPollEvent(GetXrInstance(), &buf);
+                            }
                         }
 
-                        // The app does not implement controller support, we must sync actions ourselves.
-
-                        // Workaround: the eye tracker on Varjo does not seem to connect unless the app calls
-                        // xrPollEvent(). So we make a call here if the app does not call it. A disciplined app should
-                        // have called xrPollEvent() by now just to begin the session.
-                        if (m_needVarjoPollEventWorkaround) {
-                            XrEventDataBuffer buf{XR_TYPE_EVENT_DATA_BUFFER};
-                            OpenXrApi::xrPollEvent(GetXrInstance(), &buf);
-                        }
                         XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
                         CHECK_XRCMD(xrSyncActions(m_vrSession, &syncInfo));
                     }
 
-                    m_eyeTracker->beginFrame(m_begunFrameTime);
+                    if (m_eyeTracker) {
+                        m_eyeTracker->beginFrame(m_begunFrameTime);
+                    }
                 }
 
                 if (m_variableRateShader) {
