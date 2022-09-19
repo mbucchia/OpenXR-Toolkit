@@ -86,7 +86,7 @@ namespace {
                 const std::string& name = value.first;
                 ConfigValue& entry = value.second;
 
-                if (m_needRefresh && !m_ignoreRefresh.count(name)) {
+                if (m_wasNeedRefresh && !m_ignoreRefresh.count(name)) {
                     refreshValue(name, entry);
                 }
 

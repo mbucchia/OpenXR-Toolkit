@@ -553,6 +553,15 @@ namespace {
             }
         }
 
+        void setState(D3D12_RESOURCE_STATES newState) override {
+            if (newState != m_currentState) {
+                const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(get(m_texture), m_currentState, newState);
+                m_device->getContextAs<D3D12>()->ResourceBarrier(1, &barrier);
+            }
+
+            m_currentState = newState;
+        }
+
         void pushState(D3D12_RESOURCE_STATES newState) override {
             m_stateStack.push_back(m_currentState);
 

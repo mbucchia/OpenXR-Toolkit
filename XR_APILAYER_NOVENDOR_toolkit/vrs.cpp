@@ -258,10 +258,9 @@ namespace {
                 desc.pViewports = m_nvRates;
                 CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context11, &desc));
 
-                auto idx = static_cast<size_t>(eye);
                 auto& mask = isDoubleWide          ? m_NvShadingRateResources.viewsDoubleWide[maskIndex]
                              : info.arraySize == 2 ? m_NvShadingRateResources.viewsTextureArray[maskIndex]
-                                                   : m_NvShadingRateResources.views[maskIndex][idx];
+                                                   : m_NvShadingRateResources.views[maskIndex][(size_t)eye];
 
                 CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context11, get(mask)));
 
@@ -289,11 +288,22 @@ namespace {
                     // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
 
                     // Use the special SHADING_RATE_SOURCE resource state for barriers on the VRS surface
-                    auto idx = static_cast<size_t>(eye);
-                    auto mask = isDoubleWide ? maskForSize.maskDoubleWide->getAs<D3D12>()
-                                             : maskForSize.mask[idx]->getAs<D3D12>();
+                    auto mask = isDoubleWide ? maskForSize.maskDoubleWide : maskForSize.mask[(size_t)eye];                   
+                    mask->setState(D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE);
 
-                    m_Dx12ShadingRateResources.RSSetShadingRateImage(get(vrsCommandList), mask, idx);
+                    // The commands above must execute in a different command list than the app command list to avoid
+                    // trashing it, but it must execute prior to applying the VRS mask. Here we assume that the game
+                    // uses only the command queue that it passed to the runtime. There is no need for a fence here
+                    // because we know the app command list will be executed later, therefore ensuring correct ordering.
+                    m_device->flushContext();
+
+                    // RSSetShadingRate() function sets both the combiners and the per-drawcall shading rate.
+                    // We set to 1X1 for all sources and all combiners to MAX, so that the coarsest wins (per-drawcall,
+                    // per-primitive, VRS surface).
+                    static const D3D12_SHADING_RATE_COMBINER combiners[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT] = {
+                        D3D12_SHADING_RATE_COMBINER_MAX, D3D12_SHADING_RATE_COMBINER_MAX};
+                    vrsCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiners);
+                    vrsCommandList->RSSetShadingRateImage(mask->getAs<D3D12>());
                 }
 
             } else {
@@ -408,7 +418,6 @@ namespace {
                 resetShadingRates(Api::D3D11);
 
             } else if (m_device->getAs<D3D12>()) {
-                m_Dx12ShadingRateResources.initialize();
                 resetShadingRates(Api::D3D12);
             }
 
@@ -446,8 +455,8 @@ namespace {
                     return;
                 }
 
-                m_Dx12ShadingRateResources.RSUnsetShadingRateImages(get(vrsCommandList));
-
+                vrsCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, nullptr);
+                vrsCommandList->RSSetShadingRateImage(nullptr);
             } else {
                 throw std::runtime_error("Unsupported graphics runtime");
             }
@@ -514,10 +523,13 @@ namespace {
                     int innerRadius = m_configManager->getValue(SettingVRSInnerRadius);
                     int outerRadius = m_configManager->getValue(SettingVRSOuterRadius);
                     if (innerRadius > outerRadius) {
+                        // We (re)write both values to ensure they are committed at the same time (immediately).
                         if (hasInnerRadiusChanged) {
-                            m_configManager->setValue(SettingVRSOuterRadius, innerRadius);
+                            m_configManager->setValue(SettingVRSOuterRadius, innerRadius, true);
+                            m_configManager->setValue(SettingVRSInnerRadius, innerRadius, true);
                         } else if (hasOuterRadiusChanged) {
-                            m_configManager->setValue(SettingVRSInnerRadius, outerRadius);
+                            m_configManager->setValue(SettingVRSInnerRadius, outerRadius, true);
+                            m_configManager->setValue(SettingVRSOuterRadius, outerRadius, true);
                         }
                     }
                     return true;
@@ -675,6 +687,9 @@ namespace {
             }
             mask.gen = m_currentGen;
 
+            // No-op on D3D12, see flush in the caller.
+            m_device->saveContext();
+
             const auto dispatchX = xr::math::DivideRoundingUp(mask.widthInTiles, 8);
             const auto dispatchY = xr::math::DivideRoundingUp(mask.heightInTiles, 8);
 
@@ -682,17 +697,10 @@ namespace {
                 const auto constants = makeShadingConstants(i, mask.widthInTiles, mask.heightInTiles);
                 mask.cbShading[i]->uploadData(&constants, sizeof(constants));
 
-                if (m_device->getApi() == Api::D3D12) {
-                    m_Dx12ShadingRateResources.ResourceBarrier(m_device->getContextAs<D3D12>(),
-                                                               mask.mask[i]->getAs<D3D12>(),
-                                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                                               i);
-                }
-
                 m_csShading->updateThreadGroups({dispatchX, dispatchY, 1});
                 m_device->setShader(m_csShading, SamplerType::NearestClamp);
                 m_device->setShaderInput(0, mask.cbShading[i]);
-                m_device->setShaderInput(0, mask.mask[i]);
+                mask.mask[i]->setState(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 m_device->setShaderOutput(0, mask.mask[i]);
                 m_device->dispatchShader();
             }
@@ -702,6 +710,8 @@ namespace {
             mask.mask[1]->copyTo(mask.maskDoubleWide, mask.widthInTiles, 0, 0);
             mask.mask[0]->copyTo(mask.maskTextureArray, 0, 0, 0);
             mask.mask[1]->copyTo(mask.maskTextureArray, 0, 0, 1);
+
+            m_device->restoreContext();
         }
 
         ShadingConstants makeShadingConstants(size_t eye, uint32_t texW, uint32_t texH) {
@@ -872,57 +882,6 @@ namespace {
             std::vector<ComPtr<ID3D11NvShadingRateResourceView>> viewsTextureArray;
 
         } m_NvShadingRateResources;
-
-        struct {
-            void initialize() {
-                // Make sure we got a valid initial state
-                state[2] = state[1] = state[0] = D3D12_RESOURCE_STATE_COMMON;
-                boundState = 0;
-            }
-
-            void ResourceBarrier(ID3D12GraphicsCommandList* pCommandList,
-                                 ID3D12Resource* pResource,
-                                 D3D12_RESOURCE_STATES newState,
-                                 size_t idx) {
-                if (state[idx] != newState) {
-                    auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(pResource, state[idx], newState);
-                    pCommandList->ResourceBarrier(1, &barrier);
-                    state[idx] = newState;
-                }
-            }
-
-            void RSSetShadingRateImage(ID3D12GraphicsCommandList5* pCommandList,
-                                       ID3D12Resource* pResource,
-                                       size_t idx) {
-                const uint32_t boundMask = 1u << idx;
-                if (!(boundState & boundMask)) {
-                    ResourceBarrier(pCommandList, pResource, D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE, idx);
-
-                    // RSSetShadingRate() function sets both the combiners and the per-drawcall shading rate.
-                    // We set to 1X1 for all sources and all combiners to MAX, so that the coarsest wins (per-drawcall,
-                    // per-primitive, VRS surface).
-
-                    static const D3D12_SHADING_RATE_COMBINER combiners[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT] = {
-                        D3D12_SHADING_RATE_COMBINER_MAX, D3D12_SHADING_RATE_COMBINER_MAX};
-
-                    pCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiners);
-                    pCommandList->RSSetShadingRateImage(pResource);
-
-                    boundState = boundMask;
-                }
-            }
-
-            void RSUnsetShadingRateImages(ID3D12GraphicsCommandList5* pCommandList) {
-                // To disable VRS, set shading rate to 1X1 with no combiners, and no RSSetShadingRateImage()
-                pCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, nullptr);
-                pCommandList->RSSetShadingRateImage(nullptr);
-                boundState = 0;
-            }
-
-            D3D12_RESOURCE_STATES state[ViewCount + 1];
-            uint32_t boundState;
-
-        } m_Dx12ShadingRateResources;
 
         // We use a constant table and a varying shading rate texture filled with a compute shader.
         inline static NV_D3D11_VIEWPORT_SHADING_RATE_DESC
