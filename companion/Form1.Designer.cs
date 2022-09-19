@@ -501,6 +501,7 @@ namespace companion
             this.MaximizeBox = false;
             this.Name = "Form1";
             this.Text = "OpenXR Toolkit Companion app";
+            this.AutoSize = true;
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
