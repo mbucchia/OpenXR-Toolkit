@@ -30,7 +30,6 @@ In order to enable the detailed overlay, you must check the _Enable experimental
 _Note_: All durations are in microseconds.
 
 * **lay CPU**: The overhead (on CPU) of the OpenXR Toolkit.
-* **pre GPU**: The time spent (on GPU) in the pre-processing by the OpenXR Toolkit.
 * **scl GPU**: The time spent (on GPU) to do upscaling by the OpenXR Toolkit.
 * **pst GPU**: The time spent (on GPU) in the post-processing by the OpenXR Toolkit.
 * **ovl CPU**: The time spent (on CPU) to draw the OpenXR Toolkit menu/overlays.
@@ -40,6 +39,7 @@ _Note_: All durations are in microseconds.
 _Intended for developers_:
 
 * **Color/Depth L/R**: Whether the color buffer (C) and depth buffer (D) were identified for each eye.
+* **heur**: The type of heuristic in use for detecting left/right eye render passes (for Foveated Rendering).
 * **biased**: The number of Pixel Shader samplers that were biased.
 * **VRS RTV**: The number of render passes that were used with VRS (for Foveated Rendering).
 

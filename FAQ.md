@@ -14,7 +14,7 @@ nav_order: 7
 
 ## Q: ELI5: What is OpenXR?
 
-OpenXR is a structured set of instructions and rules for developers to create applications (such as Flight Simulator 2020) that use virtual reality or augmented reality (or XR as the industry calls it) that run on modern devices (such as the HP Reverb or Oculus Quest).
+OpenXR is standard for developers to create applications (such as Flight Simulator 2020) that use virtual reality or augmented reality (or XR as the industry calls it) that run on modern devices (such as the HP Reverb or Oculus Quest).
 
 ## Q: Why the OpenXR Toolkit?
 
@@ -43,7 +43,9 @@ It works with both, however DX12 support is considered experimental at this time
 
 This software only works with OpenXR applications, not OpenVR applications.
 
-Even with OpenXR applications, we cannot guarantee it will work, as I've only implemented the bare minimum for MSFS.
+Some OpenVR applications are supported through the use of [OpenComposite](opencomposite).
+
+Even with OpenXR applications, we cannot guarantee it will work.
 
 ## Q: Do I need to uninstall the OpenXR Toolkit if a game is not compatible?
 
@@ -67,8 +69,6 @@ No, you may just run your game as usual. No need to open the companion app.
 ## Q: Can the menu be invoked at any time?
 
 Yes.
-
-The "Press [...] to bring up the menu" banner is only displayed as a hint during the first few runs of the OpenXR Toolkit, and the menu can be called even when this text is not displayed.
 
 ## Q: Can you tell me what the best settings are?
 

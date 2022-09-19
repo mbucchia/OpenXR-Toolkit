@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Changelog
-nav_order: 6
+nav_order: 7
 ---
 
 ## Table of contents
@@ -12,7 +12,37 @@ nav_order: 6
 
 ---
 
-## Changes in v1.1 (Apr 2022 / v1.1.0 -)
+## Changes in v1.2 (Sep 2022 / v1.2.0 -)
+
+- Fix support for iRacing, War Thunder and F1 2022.
+- Fix support for X-Plane 11 and X-Plane 12 (only in conjunction with [OpenXR-Vk-D3D12](https://github.com/mbucchia/OpenXR-Vk-D3D12) on Windows Mixed Reality only, and no support for foveated rendering).
+- Fix support for Unreal Engine OpenXR plugin and Unity OpenXR plugin.
+- Fix crash with DX12 and MSFS/SU10.
+- Fix Eye-tracked Foveated Rendering with MSFS/SU10.
+- Fix WMR motion reprojection on/off setting not sticking across leaving/re-entering VR.
+- Fix WMR motion reprojection issues when used with Shaking Reduction.
+- Fix "invisible menu" issue with DX12 and Varjo.
+- Fix incompatibility between eye tracking and controller/hand tracking on Varjo.
+- Fix detection of hand tracking with PimaxXR.
+- Fix issue when RGB color correction is not applied when post-processing is off.
+- Fix issue with hand tracking in DCS.
+- Fix upside-down image issue with certain OpenComposite games.
+- Add support for fixed foveated rendering in Assetto Corsa Competizione.
+- Add new "tutorial menu" for first time-use, will help debugging issues with users not able to bring up the menu.
+- Add option to alter filtering policy with foveated rendering (possibly eliminate unwanted glitches with certain games).
+- Support writing FPS/frame times to a CSV file (saved under `%LocalAppData%\OpenXR-Toolkit\stats`).
+- Add frame rate throttling for all headsets.
+- Added VRAM statistics in the overlay.
+- Add "legacy menu" mode that reverts the menu to pre-1.1.2, for people not able to bring the menu or having performance issues with the menu.
+- Add visual warning in the menu when HAGS is turned on.
+- Add option to disable hidden area mesh (only supported on certain applications).
+- Add left/right blind eye option (only supported on certain applications).
+- Add clock to the overlay.
+- Include overlay/menu in screenshots.
+- Removed Pimax WFOV hack.
+- Make safe mode even safer.
+
+## Changes in v1.1 (Apr 2022 / v1.1.0 - v1.1.4)
 
 - Add support for Foveated Rendering with eye tracking (sometimes called ETFR or DFR) on Varjo devices, HP G2 Omnicept, and Pimax devices with extension modules.
 - Add support for adjusting exposure, vibrance, highlights, and shadows (post-processing)

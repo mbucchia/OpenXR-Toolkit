@@ -37,6 +37,12 @@ When motion reprojection is enabled via the [OpenXR Tools for Windows Mixed Real
 
 When motion reprojection is not enabled, this setting has no effect.
 
+## Frame rate throttling.
+
+This option can be used to throttle down the frame rate of the application and avoid fluctuations in frame rates. This option may introduce unwanted latency, since the locked frame rate might not properly phase with the scan-out of the headset.
+
+This option will not appear for Windows Mixed Reality users if the _Motion Reprojection_ is forced to _On_ in the _System tab_. You must use the _Lock motion reprojection_ instead (see above). This is because the Motion Reprojection rate locking is preferred, since it is latency-aware and produces better results.
+
 ## Field of view
 
 The field of view override adjusts the pixel density per degree. A smaller field of view is covering a smaller region of the view but with the same amount of pixels, effectively increasing the perceived resolution. Two levels of controls are available: simple and advanced. The former adjusts the fied of view for both eyes simulatneously, while the latter offers individual controls per-eye.
@@ -48,3 +54,11 @@ In order to activate this feature, you must check the _Enable screenshot_ box in
 You may then press `Ctrl+F12` to take a screenshot of the left-eye image view. Screenshots are saved under `%LocalAppData%\OpenXR-Toolkit\screenshots`. This folder may be opened from the _OpenXR Toolkit Companion app_ by clicking the _Open screenshots folder_ button.
 
 **The DDS format is a lossless format native to DirectX but some tools might have issues opening DDS files. The tools that were confirmed to properly open them with the OpenXR Toolkit are [GIMP](https://www.gimp.org/) and [Paint.net](https://github.com/paintdotnet/release/releases)*
+
+## Record statistics
+
+This option can be enable to continuously record some statistics from the application to a comma-separated values (CSV) file stored under `%LocalAppData%\OpenXR-Toolkit\stats`.
+
+When this option is toggled from off to on, a new file is created, with a file name including the date/time (eg: `stats_20220822_183013.csv` for a recording on August 22nd, 2022 at 18:30:13).
+
+The CSV file contains rows with the average FPS, frame times, and VRAM utilization over one second. Every second, a new row is appended.
