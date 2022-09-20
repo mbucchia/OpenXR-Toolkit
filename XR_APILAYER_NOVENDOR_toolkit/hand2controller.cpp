@@ -682,11 +682,6 @@ namespace {
             }
             const auto& subAction = subActionIt->second;
 
-            if ((subAction.hand == Hand::Left && !m_leftHandEnabled) ||
-                (subAction.hand == Hand::Right && !m_rightHandEnabled)) {
-                return false;
-            }
-
             state.isActive = XR_TRUE;
             state.currentState = subAction.boolValue;
             state.changedSinceLastSync = subAction.boolValueChanged;
@@ -711,23 +706,10 @@ namespace {
             }
             const auto& subAction = subActionIt->second;
 
-            if ((subAction.hand == Hand::Left && !m_leftHandEnabled) ||
-                (subAction.hand == Hand::Right && !m_rightHandEnabled)) {
-                return false;
-            }
-
             state.isActive = XR_TRUE;
             state.currentState = subAction.floatValue;
             state.changedSinceLastSync = subAction.floatValueChanged;
             state.lastChangeTime = subAction.timeFloatValueChanged;
-
-            return true;
-        }
-
-        bool isHandEnabled(Hand hand) const override {
-            if ((hand == Hand::Left && !m_leftHandEnabled) || (hand == Hand::Right && !m_rightHandEnabled)) {
-                return false;
-            }
 
             return true;
         }
