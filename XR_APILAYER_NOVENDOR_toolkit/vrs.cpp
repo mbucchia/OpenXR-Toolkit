@@ -202,10 +202,13 @@ namespace {
                 m_mode = mode;
 
             if (mode != VariableShadingRateType::None) {
-                m_usingEyeTracking = m_eyeTracker && m_configManager->getValue(SettingEyeTrackingEnabled);
+                const bool usingEyeTracking = m_eyeTracker && m_configManager->getValue(SettingEyeTrackingEnabled);
 
-                const auto hasPatternChanged = hasModeChanged || checkUpdateRings(mode);
+                const auto hasPatternChanged =
+                    m_usingEyeTracking != usingEyeTracking || hasModeChanged || checkUpdateRings(mode);
                 const auto hasQualityChanged = hasModeChanged || checkUpdateRates(mode);
+
+                m_usingEyeTracking = usingEyeTracking;
 
                 if (hasPatternChanged) {
                     updateRings(mode);
@@ -290,7 +293,7 @@ namespace {
                     // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
 
                     // Use the special SHADING_RATE_SOURCE resource state for barriers on the VRS surface
-                    auto mask = isDoubleWide ? maskForSize.maskDoubleWide : maskForSize.mask[(size_t)eye];                   
+                    auto mask = isDoubleWide ? maskForSize.maskDoubleWide : maskForSize.mask[(size_t)eye];
                     mask->setState(D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE);
 
                     // The commands above must execute in a different command list than the app command list to avoid
@@ -575,13 +578,11 @@ namespace {
 
         void updateGaze() {
             XrVector2f gaze[ViewCount];
-            float xOffset = m_gazeOffset[2].x;
+            // We've determined experimentally that +4% offset gives best results.
+            float xOffset = m_gazeOffset[2].x + 0.04f;
             if (!m_usingEyeTracking || !m_eyeTracker || !m_eyeTracker->getProjectedGaze(gaze)) {
                 gaze[0] = m_gazeOffset[0];
                 gaze[1] = m_gazeOffset[1];
-            } else {
-                // We've determined experimentally that +4% offset gives best results.
-                xOffset += 0.04f;
             }
             // location = view center + view offset (L/R)
             m_gazeLocation[0] = gaze[0] + XrVector2f{xOffset, m_gazeOffset[2].y};
