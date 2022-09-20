@@ -679,6 +679,12 @@ namespace {
 
                         top += 1.05f * fontSize;
                     }
+
+                    if (measureBackgroundWidth) {
+                        m_menuBackgroundWidth = std::max(m_menuBackgroundWidth, left - leftAlign - eyeOffset);
+                    }
+
+                    left = leftAlign;
                     if (m_configManager->isSafeMode()) {
                         top += fontSize;
 
