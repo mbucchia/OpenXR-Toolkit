@@ -27,6 +27,7 @@ Our beta testers:
 - RPthreenine
 - smitty
 - steiNetti
+- Stevil
 
 Special thanks to:
 - Roman Bershadsky ([Roman Design](https://flightsimulation.romandesign.ca/))
