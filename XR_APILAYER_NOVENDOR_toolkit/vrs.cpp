@@ -59,6 +59,8 @@ namespace {
     using namespace toolkit::graphics;
     using namespace toolkit::utilities;
 
+    using namespace xr::math;
+
     // The number of frames before freeing an unused set of VRS mask textures.
     constexpr uint16_t MaxAge = 100;
 
@@ -572,15 +574,18 @@ namespace {
         }
 
         void updateGaze() {
-            using namespace xr::math;
             XrVector2f gaze[ViewCount];
+            float xOffset = m_gazeOffset[2].x;
             if (!m_usingEyeTracking || !m_eyeTracker || !m_eyeTracker->getProjectedGaze(gaze)) {
                 gaze[0] = m_gazeOffset[0];
                 gaze[1] = m_gazeOffset[1];
+            } else {
+                // We've determined experimentally that +4% offset gives best results.
+                xOffset += 0.04f;
             }
             // location = view center + view offset (L/R)
-            m_gazeLocation[0] = gaze[0] + m_gazeOffset[2];
-            m_gazeLocation[1] = gaze[1] + XrVector2f{-m_gazeOffset[2].x, m_gazeOffset[2].y};
+            m_gazeLocation[0] = gaze[0] + XrVector2f{xOffset, m_gazeOffset[2].y};
+            m_gazeLocation[1] = gaze[1] + XrVector2f{-xOffset, m_gazeOffset[2].y};
 
             // The generic mask only supports vertical offsets.
             m_gazeLocation[2].x = 0;
