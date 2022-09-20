@@ -1644,7 +1644,7 @@ namespace {
                 }
                 if (supportedPath) {
                     auto haptics = reinterpret_cast<const XrHapticVibration*>(hapticFeedback);
-                    m_handTracker->handleOutput(hand, haptics->frequency ? haptics->frequency : 1, haptics->duration);
+                    m_handTracker->handleOutput(hand, haptics->frequency, haptics->duration);
                     m_performanceCounters.handTrackingTimer->stop();
                     m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
                 }
