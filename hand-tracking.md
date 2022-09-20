@@ -59,7 +59,7 @@ interaction_profile=/interaction_profiles/valve/index_controller
 
 ## Using with Oculus Quest or Quest 2
 
-1. Create and log in with a [developer account](https://developer.oculus.com/sign-up/).
+1. IMPORTANT: Create and log in with a [developer account](https://developer.oculus.com/sign-up/). You must be a registered developer for the Oculus runtime to expose the hand tracking features.
 
 2. Ensure that your Oculus software is up-to-date (v37 or later).
 
@@ -89,7 +89,7 @@ interaction_profile=/interaction_profiles/valve/index_controller
 
 4. On your PC, open the _Oculus App_, and navigate to _Settings_ and the _Beta_ menu.
 
-5. Enable _Public Test Channel_, _Developer Runtime Features_ and _Passthrough over Oculus Link_.
+5. Enable _Developer Runtime Features_.
 
 ![Enabling hand tracking](site/oculus-dev-3.jpeg)<br>
 
