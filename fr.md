@@ -2,7 +2,7 @@
 layout: default
 title: Foveated Rendering
 parent: Features
-nav_order: 1
+nav_order: 2
 ---
 
 ## Table of contents
@@ -22,7 +22,7 @@ Foveated Rendering (or FR) is rendering technique that reduces the workload of t
 
 Fixed Foveated Rendering (or FFR) is a type of Foveated Rendering technique which assumes a fixed focal point, and does not use eye tracking. FFR is quite effective with VR headsets because 1) your eye gaze tends to always look at the center of the screen 2) the distortion created by the lenses of the headset alter your preception of the resolution near the edges of the screen.
 
-**FFR is only effective at improving performance when you are being limited by your GPU.** FFR will not help if you are limited by your CPU.
+**FR is only effective at improving performance when you are being limited by your GPU.** FFR will not help if you are limited by your CPU.
 
 ![No FFR](site/ffr-none.jpg)<br>
 ![FFR](site/ffr-on.jpg)<br>
@@ -36,6 +36,8 @@ The option to enable FR will appear in the menu if and only if your graphics car
 
 + NVIDIA GeForce GTX 1600 series and RTX series, both DX11 and DX12.
 + AMD RX 6000 series, with DX12 only.
+
+The option to enable Eye Tracking (ET) will appear in the menu if and only if your headset and the application can support it. For more details, see [Eye Tracking](et)
 
 There are two methods for configuring FFR in the OpenXR Toolkit.
 
@@ -80,34 +82,7 @@ The _Horizontal scale_ value lets you control the scale of the horizontal radius
 
 Finally, the _Left/Right_ _Bias_ value lets you lower the resolution of all the regions at once, either for the left or the right eye only at a time. Each setting value changes the regions resolutions one notch down (for example +1 changes 1/2 to 1/4 and +2 changes 1/2 to 1/8). This setting can adjust the bias up to _+4_ on either eye. Select _none_ to remove any bias.
 
-### Using with Eye Tracking
-
-The option to enable Eye Tracking (ET) will appear in the menu if and only if your headset and headset driver can support it. The following are supported:
-
-- Varjo devices.
-- HP G2 Omnicept.
-- Pimax devices with Droolon eye tracking module.
-
-#### Considerations for HP G2 Omnicept
-
-In order to use the eye tracker on your Omnicept device, you must first install the [HP Omnicept Runtime](https://developers.hp.com/omnicept/downloads/hp-omnicept-runtime).
-
-Once installed, please run the HP Omnicept eye calibration application.
-
-When using Foveated Rendering in the OpenXR Toolkit for the first time with an application, allow the application to use the eye tracker through the Omnicept configuration tool:
-
-![Allow client](site/omnicept-perms.png)<br>
-*The HP Omnicept software is used to allow incoming request to use the eye tracker. This must be done for each application upon first use.*
-
-#### Considerations for Pimax+Droolon
-
-In order to use the Droolon eye tracking module on your Pimax device, you must first install the [aSeeVR SDK](https://drive.google.com/file/d/1ELDtOnMa-MkgchmWFf7w5an-iPOFtQL8/view?usp=sharing&_ga=2.110383681.599346747.1650530138-1983392096.1642581798).
-
-Once installed, please run the aSeeVR runtime. In the system tray bar, right-click on the runtime, and make sure to enable _deviced_ -> _Pimax_.
-
-When using Foveated Rendering in the OpenXR Toolkit, adjust the _Eye projection distance_ from the _Foveated rendering_ menu until you reach comfortable sensitivity.
-
-### Improving the quality of Fixed Foveated Rendering
+### Improving the quality of Foveated Rendering
 
 Certain graphics settings in the application may create additional artifacts. There are a few ways to deal this this situation:
 
@@ -148,7 +123,7 @@ In the example above, we show how setting the lowest resolution for all 3 region
 
 ### Combining with the upscaling feature
 
-Fixed Foveated Rendering works very well with the [Upscaling](upscaling) feature of the OpenXR Toolkit, and can provide even more boost in performance.
+Foveated Rendering works very well with the [Upscaling](upscaling) feature of the OpenXR Toolkit, and can provide even more boost in performance.
 
 ![FFR and NIS](site/ffr-nis.jpg)<br>
 *FFR combined with the NIS upscaler in Microsoft Flight Simulator 2020, providing a total boost of 15 FPS.*
