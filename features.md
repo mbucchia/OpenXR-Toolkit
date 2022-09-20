@@ -8,15 +8,15 @@ has_children: true
 Here is a short description of all the options available through the OpenXR Toolkit in-game menu.
 
 **Performance** tab:
-- **Overlay**: Enables the FPS display or advanced timings display in the top-right corner of the view. _Please note that the overlay may reduce performance_. A fourth option - "_Developer_" - is available in experimental mode and may be used for troubleshooting with the developers.
-- **Upscaling**: Enables the use of an upscaler such as NIS or FSR to perform rendering at a lower resolution, and upscale and/or sharpen the image. Requires to restart the VR session.
+- **Overlay**: Enables the FPS display or advanced timings display in the top-right corner of the view. _Please note that the overlay may reduce performance_. A fourth option - "_Developer_" - is available in experimental mode and may be used for troubleshooting with the developers. See [Overlay](overlay) for more details.
+- **Upscaling**: Enables the use of an upscaler such as NIS or FSR to perform rendering at a lower resolution, and upscale and/or sharpen the image. Requires to restart the VR session. See [Upscaling](upscaling) for more details.
   - **Anamorphic**: When _Disabled_, the _Size_ scales both the width and the height propotionally. When _Enabled_, both sizes can be adjusted independently.
   - **Size**: The upscaling factor (ie: the percentage of magnification of the rendering resolution). The resolution displayed next to the percentage is the effective resolution that the application sees. Requires to restart the VR session.
   - **Width/Height**: This displays the actual in-game render width and height, that is the actual number of pixels the game is rendering per eye.
   - **Sharpness**: The sharpness factor. Has a different scale/effect between NIS and FSR.
   - **Mip-map bias** (_Expert_ setting): This settings changes how the game is rendering some of the textures in order to reveal a little bit more details when used with FSR/NIS upscalers.
-- **(Fixed) Foveated rendering** (on supported GPUs only): These settings adjust the [VRS](glossary#vrs) parameters in order to balance out peripheral visual details with rendering performance.
-  - **Eye tracking** (on supported headsets only): Enable the use of eye tracking to control the position of the center of the foveated region.
+- **(Fixed) Foveated rendering** (on supported GPUs only): These settings adjust the [VRS](glossary#vrs) parameters in order to balance out peripheral visual details with rendering performance. See [Foveated Rendering](fr) for more details.
+  - **Eye tracking** (on supported headsets only): Enable the use of eye tracking to control the position of the center of the foveated region. See [Eye Tracking](et) for more details.
   - **Eye projection distance** (only with Pimax headsets): Calibrate the sensitivy of eye gaze movements.
 
   [_Preset_ _mode_ ](fr#preset-mode)
@@ -33,7 +33,7 @@ Here is a short description of all the options available through the OpenXR Tool
   - **Horizontal offset** (_Expert_ _setting_): Add a horizontal offset to the center of the foveation rings. The offset is expressed relative to the left eye, and its opposite value will be applied to the right eye.
   - **Vertical offset** (_Expert_ _setting_): Add a vertical offset to the center of the foveation rings.
   - **Left/Right bias** (_Expert_ _setting_): Lower the resolution of all the regions at once, either for the left or the right eye only at a time.
-  - **Scale filter** (_Expert_ _setting_): XXX
+  - **Scale filter** (_Expert_ _setting_): Tune the minimum size for a render pass to be considered for foveated rendering. The higher this value, the less chances there are that visual glitches occur, however the performance may be lower.
 - **Frame rate throttling**: Throttle down the frame rate of the application. WARNING: This can introduce unwanted latency. This option will not appear on Windows Mixed Reality if the _Motion Reprojection_ is forced to _On_ in the _System tab_, and you must use the _Lock motion reprojection instead_.
 - **Record statistics**: Enable recording basic frame statistics to a comma-separated values (CSV) file stored under `%LocalAppData%\OpenXR-Toolkit\stats`.
 
@@ -61,7 +61,7 @@ Here is a short description of all the options available through the OpenXR Tool
 
 **Inputs** tab:
 - **Shaking reduction**, formerly **Prediction dampening** (only when supported by the system): The prediction override, which can be use to dampen the prediction for head, controllers, and hand movements.
-- **Controller emulation** (only when hand tracking is supported by the system): Enable the use of hand tracking in place of the VR controller. Requires a compatible device, such a Leap Motion controller or an Oculus Quest 2 headset. Either or both hands can be enabled at a time. Requires to restart the VR session when toggling on or off. 
+- **Controller emulation** (only when hand tracking is supported by the system): Enable the use of hand tracking in place of the VR controller. Requires a compatible device, such a Leap Motion controller or an Oculus Quest 2 headset. Either or both hands can be enabled at a time. Requires to restart the VR session when toggling on or off. See [Hand tracking](hand-tracking) for more details.
   - **Hands skeleton**: Whether the hands are displayed and what color tone to use.
   - **Hand occlusion** (on supported apps only): Whether the hands can be occluded by geometry from the application.
   - **Controller timeout**: The amount of time after losing track of the hands before simulator shutdown of the simulated VR controller.

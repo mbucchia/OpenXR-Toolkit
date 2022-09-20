@@ -2,7 +2,7 @@
 layout: default
 title: Hand Tracking
 parent: Features
-nav_order: 2
+nav_order: 4
 ---
 
 ## Table of contents
