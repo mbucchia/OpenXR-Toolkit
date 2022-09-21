@@ -55,28 +55,30 @@ There is an [official compatibility for OpenComposite](https://docs.google.com/s
 | --- | --- | --- |
 | American Truck Simulator 2 | Yes | Yes |
 | Assetto Corsa | Yes | Yes |
-| Assetto Corsa Competizione | Yes | Yes |
+| Assetto Corsa Competizione | Yes | Yes [1] |
 | Automobilista 2 | Yes | Yes |
 | Digital Combat Simulator | Yes | Yes |
 | Dirt Rally 2 | Yes | Yes |
 | Euro Truck Simulator 2 | Yes | Yes |
-| IL-2 Sturmovik | Yes | Yes [1] |
-| iRacing | Yes | No [2] |
+| IL-2 Sturmovik | Yes | Yes [2] |
+| iRacing | Yes | No [3] |
 | F1 2022 | Yes | Yes |
 | Project Cars 2 | Yes | Yes |
 | Project Cars 3 | Yes | Yes |
 | rFactor 2 | Yes | Yes |
 | Subnautica | Yes | Yes |
-| X-Plane 11 | Yes [3] | Yes [1] [4] |
-| X-Plane 12 | Yes [3] | Yes [1] [4] |
+| X-Plane 11 | Yes [4] | Yes [2] [5] |
+| X-Plane 12 | Yes [4] | Yes [2] [5] |
 
-[1] Does not support Fixed Foveated Rendering.
+[1] Supports Eye-tracked Foveated Rendering.
 
-[2] iRacing now has official support for OpenXR, and OpenXR Toolkit is only compatible in that mode, and not with OpenComposite.
+[2] Does not support Fixed Foveated Rendering.
 
-[3] On Windows Mixed Reality, X-Plane requires the use of [OpenXR-Vk-D3D12](https://github.com/mbucchia/OpenXR-Vk-D3D12).
+[3] iRacing now has official support for OpenXR, and OpenXR Toolkit is only compatible in that mode, and not with OpenComposite.
 
-[4] X-Plane is only compatible with OpenXR Toolkit on Windows Mixed Reality.
+[4] On Windows Mixed Reality, X-Plane requires the use of [OpenXR-Vk-D3D12](https://github.com/mbucchia/OpenXR-Vk-D3D12).
+
+[5] X-Plane is only compatible with OpenXR Toolkit on Windows Mixed Reality.
 
 Do you have a game working but it's not in the list? Please file an [Issue](https://github.com/mbucchia/OpenXR-Toolkit/issues) to let us know!
 
