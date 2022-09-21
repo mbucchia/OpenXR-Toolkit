@@ -934,7 +934,9 @@ namespace {
         // OpenXR will not allow more than 2 frames in-flight, so 2 would be sufficient, however we might split the
         // processing in two due to text rendering, so multiply this number by 2. Oh and also we have the app GPU
         // timer, so multiply again by 2.
-        static constexpr size_t NumInflightContexts = 8;
+        // We also perform eye tracked foveated rendering mask update in this context, which is dependent on the number
+        // of passes rendered by the app and the number of masks being used per frame. We chose 24 as a wide default.
+        static constexpr size_t NumInflightContexts = 8 + 24;
 
       public:
         D3D12Device(ID3D12Device* device,
