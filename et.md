@@ -23,7 +23,15 @@ The option to enable Eye Tracking will appear in the menu if and only if your he
 - HP G2 Omnicept.
 - Pimax devices with Droolon eye tracking module.
 
-In addition to this requirement, it must be possible for OpenXR Toolkit to distinguish when the application is rendering the left and right views. This is not possible for all applications, and therefore might not be offered for all applications. The prime example is any application using OpenComposite cannot do Foveated Rendering with Eye Tracking.
+In addition to this requirement, it must be possible for OpenXR Toolkit to distinguish when the application is rendering the left and right views. This is not possible for all applications, and therefore might not be offered for all applications.
+
+Below is a table of games tested with eye-tracked foveated rendering:
+
+| Game |
+| --- |
+| Microsoft Flight Simulator 2020 |
+| iRacing |
+| Assetto Corsa Competizione |
 
 ### Considerations for Varjo
 
