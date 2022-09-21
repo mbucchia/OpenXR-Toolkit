@@ -27,7 +27,7 @@ nav_order: 7
 - Fix issue when RGB color correction is not applied when post-processing is off.
 - Fix issue with hand tracking in DCS.
 - Fix upside-down image issue with certain OpenComposite games.
-- Add support for fixed foveated rendering in Assetto Corsa Competizione.
+- Add support for both eye-tracked foveated rendering and fixed foveated rendering in Assetto Corsa Competizione.
 - Add new "tutorial menu" for first time-use, will help debugging issues with users not able to bring up the menu.
 - Add option to alter filtering policy with foveated rendering (possibly eliminate unwanted glitches with certain games).
 - Support writing FPS/frame times to a CSV file (saved under `%LocalAppData%\OpenXR-Toolkit\stats`).
