@@ -17,6 +17,6 @@ Logo and icons designed by RPthreenine.
 
 User Experience designed by Andrew Lilley (FarFutureFox).
 
-Additional contributions by John Kolencheryl and James Lacey (Jabbah).
+Additional contributions by James Lacey (Jabbah).
 
 Many thanks to the https://forums.flightsimulator.com/ community for the testing and feedback!
