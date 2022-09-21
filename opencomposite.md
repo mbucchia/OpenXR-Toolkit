@@ -59,6 +59,7 @@ There is an [official compatibility for OpenComposite](https://docs.google.com/s
 | Automobilista 2 | Yes | Yes |
 | Digital Combat Simulator | Yes | Yes |
 | Dirt Rally 2 | Yes | Yes |
+| Elite Dangerous | Yes | Yes |
 | Euro Truck Simulator 2 | Yes | Yes |
 | IL-2 Sturmovik | Yes | Yes [2] |
 | iRacing | Yes | No [3] |
