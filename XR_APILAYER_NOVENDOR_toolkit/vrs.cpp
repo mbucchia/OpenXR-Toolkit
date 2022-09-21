@@ -316,11 +316,15 @@ namespace {
                     auto mask = isDoubleWide ? maskForSize.maskDoubleWide : maskForSize.mask[(size_t)eye];
                     mask->setState(D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE);
 
+                    // For now, we update the mask upon the next call to xrEndFrame(). This introduces a frame latency,
+                    // but is much safer to do.
+#if 0
                     // The commands above must execute in a different command list than the app command list to avoid
                     // trashing it, but it must execute prior to applying the VRS mask. Here we assume that the game
                     // uses only the command queue that it passed to the runtime. There is no need for a fence here
                     // because we know the app command list will be executed later, therefore ensuring correct ordering.
                     m_device->flushContext();
+#endif
 
                     // RSSetShadingRate() function sets both the combiners and the per-drawcall shading rate.
                     // We set to 1X1 for all sources and all combiners to MAX, so that the coarsest wins (per-drawcall,
