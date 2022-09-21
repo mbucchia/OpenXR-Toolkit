@@ -2567,7 +2567,12 @@ namespace {
 
             // When using prediction dampening, we want to restore the display time in order to avoid confusing motion
             // reprojection.
-            if (m_hasPerformanceCounterKHR && m_configManager->getValue(config::SettingPredictionDampen) != 100) {
+            const bool isMotionReprojectionOn =
+                m_supportMotionReprojectionLock &&
+                m_configManager->getEnumValue<config::MotionReprojection>(config::SettingMotionReprojection) ==
+                    config::MotionReprojection::On;
+            if (m_hasPerformanceCounterKHR && m_configManager->getValue(config::SettingPredictionDampen) != 100 &&
+                !isMotionReprojectionOn) {
                 chainFrameEndInfo.displayTime = m_savedFrameTime2;
             }
 
