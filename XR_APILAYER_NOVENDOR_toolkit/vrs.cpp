@@ -130,7 +130,8 @@ namespace {
                            uint32_t tileRateMax)
             : m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
               m_renderWidth(renderWidth), m_renderHeight(renderHeight),
-              m_renderRatio(float(renderWidth) / renderHeight), m_tileSize(tileSize), m_tileRateMax(tileRateMax) {
+              m_renderRatio(float(renderWidth) / renderHeight), m_tileSize(tileSize), m_tileRateMax(tileRateMax),
+              m_actualRenderWidth(renderWidth) {
             createRenderResources(m_renderWidth, m_renderHeight);
 
             // Set initial projection center
@@ -188,9 +189,28 @@ namespace {
                     index++;
                 }
             }
+
+            m_renderScales.clear();
         }
 
         void endFrame() override {
+            {
+                // Find the most likely actual render resolution.
+                std::unique_lock lock(m_renderScalesLock);
+
+                uint32_t maxCount = 0;
+                uint32_t renderWidth = 0;
+
+                for (auto it : m_renderScales) {
+                    if (it.second >= maxCount && it.first > renderWidth) {
+                        renderWidth = it.first;
+                        maxCount = it.second;
+                    }
+                }
+
+                m_actualRenderWidth = renderWidth;
+            }
+
             disable();
         }
 
@@ -339,6 +359,10 @@ namespace {
 
         uint8_t getMaxRate() const override {
             return static_cast<uint8_t>(m_tileRateMax);
+        }
+
+        uint32_t getActualRenderWidth() const override {
+            return m_actualRenderWidth;
         }
 
         void startCapture() override {
@@ -791,7 +815,7 @@ namespace {
             }
         }
 
-        bool isVariableRateShadingCandidate(const XrSwapchainCreateInfo& info, bool& isDoubleWide) const {
+        bool isVariableRateShadingCandidate(const XrSwapchainCreateInfo& info, bool& isDoubleWide) {
             TraceLoggingWrite(g_traceProvider,
                               "IsVariableRateShadingCandidate",
                               TLArg(info.width, "Width"),
@@ -803,13 +827,26 @@ namespace {
             const float aspectRatioWidthDiv2 = (float)(info.width / 2) / info.height;
             isDoubleWide = std::abs(aspectRatioWidthDiv2 - m_renderRatio) <= 0.01f;
 
+            const auto trackRenderScale = [&](const uint32_t width) {
+                std::unique_lock lock(m_renderScalesLock);
+
+                auto it = m_renderScales.find(width);
+                if (it == m_renderScales.end()) {
+                    m_renderScales.insert_or_assign(width, 1u);
+                } else {
+                    it->second++;
+                }
+            };
+
             if (!isDoubleWide) {
                 if (std::abs(aspectRatio - m_renderRatio) > 0.01f) {
                     return false;
                 }
 
+                trackRenderScale(info.width);
+
                 // Check for proportionality with the size of our render target.
-                if (info.width < (m_renderWidth * m_filterScale)) {
+                if (info.width < (m_actualRenderWidth * m_filterScale)) {
                     return false;
                 }
 
@@ -817,8 +854,10 @@ namespace {
                     return false;
                 }
             } else {
+                trackRenderScale(info.width / 2);
+
                 // Check for proportionality with the size of our render target.
-                if (info.width / 2 < (m_renderWidth * m_filterScale)) {
+                if (info.width / 2 < (m_actualRenderWidth * m_filterScale)) {
                     return false;
                 }
             }
@@ -838,6 +877,9 @@ namespace {
 
         bool m_usingEyeTracking{false};
 
+        std::map<uint32_t, uint32_t> m_renderScales;
+        uint32_t m_actualRenderWidth;
+        std::mutex m_renderScalesLock;
         float m_filterScale{0.51f};
 
         // This is valid for D3D11 only (single-threaded).

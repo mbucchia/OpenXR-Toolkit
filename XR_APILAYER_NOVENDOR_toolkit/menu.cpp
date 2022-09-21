@@ -906,6 +906,10 @@ namespace {
                                                      OVERLAY_COMMON);
                                 top += 1.05f * fontSize;
 
+                                m_device->drawString(fmt::format("VRSw: {}", m_stats.actualRenderWidth),
+                                                     OVERLAY_COMMON);
+                                top += 1.05f * fontSize;
+
 #undef TIMING_STAT
 
                                 top += 1.05f * fontSize;

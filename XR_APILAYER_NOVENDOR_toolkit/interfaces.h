@@ -731,6 +731,8 @@ namespace toolkit {
 
             virtual uint8_t getMaxRate() const = 0;
 
+            virtual uint32_t getActualRenderWidth() const = 0;
+
             virtual void startCapture() = 0;
             virtual void stopCapture() = 0;
         };
@@ -842,6 +844,7 @@ namespace toolkit {
             XrFovf fov[2]{{0}};
             uint32_t numBiasedSamplers{0};
             uint32_t numRenderTargetsWithVRS{0};
+            uint32_t actualRenderWidth{0};
 
             bool hasColorBuffer[utilities::ViewCount]{false, false};
             bool hasDepthBuffer[utilities::ViewCount]{false, false};

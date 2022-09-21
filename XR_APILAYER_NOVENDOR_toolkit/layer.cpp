@@ -1806,6 +1806,10 @@ namespace {
                 m_stats.numBiasedSamplers = m_graphicsDevice->getNumBiasedSamplersThisFrame();
             }
 
+            if (m_variableRateShader) {
+                m_stats.actualRenderWidth = m_variableRateShader->getActualRenderWidth();
+            }
+
             if (m_frameAnalyzer) {
                 m_stats.frameAnalyzerHeuristic = m_frameAnalyzer->getCurrentHeuristic();
             }
