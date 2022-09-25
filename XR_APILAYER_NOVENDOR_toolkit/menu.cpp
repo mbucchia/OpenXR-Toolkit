@@ -786,6 +786,18 @@ namespace {
                 }
 
                 if (overlayType != OverlayType::None) {
+                    if (m_state != MenuState::Visible && m_configManager->peekValue(SettingRecordStats)) {
+                        m_device->drawString("Recording",
+                                             TextStyle::Normal,
+                                             fontSize,
+                                             overlayAlign - 300,
+                                             top,
+                                             textColorOverlayNoFade,
+                                             true,
+                                             FW1_LEFT);
+                        top += 1.05f * fontSize;
+                    }
+
                     // FPS display.
                     m_device->drawString(
                         fmt::format("FPS: {}", m_stats.fps),

@@ -174,9 +174,11 @@ namespace companion
             new ArgParser("gain-b", "post_gain_b", parseSettingValue, dumpSettingValue, 500, 0, 1000, 10),
             new ArgParser("world-scale", "world_scale", parseSettingValue, dumpSettingValue, 1000, 1, 10000, 10),
             new ArgParser("zoom", "zoom", parseSettingValue, dumpSettingValue, 10, 10, 1500, 10),
+            new ArgParser("frame-throttling", "frame_throttle", parseSettingValue, dumpSettingValue, 120, 15, 120),
             new ArgParser("reprojection-rate", "motion_reprojection_rate", parseMotionReprojectionRate, dumpMotionReprojectionRate, 0, 0, 3),
             new ArgParser("foveated-rendering", "vrs", parseToggle),
             new ArgParser("overlay", "overlay", parseToggle),
+            new ArgParser("record-stats", "record_stats", parseToggle),
         };
 
         private static int parseSettingValue(string value, ArgParser arg)
