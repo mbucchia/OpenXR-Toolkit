@@ -1249,6 +1249,10 @@ namespace {
                                              200,
                                              MenuEntry::FmtPercent});
                     m_menuEntries.back().expert = true;
+                    MenuGroup variableRateShaderHorizontalOffsetGroup(this, [&] {
+                        // We only show horizontal offset setting if we are able to distinguish left/right eyes.
+                        return m_stats.hasColorBuffer[0] && m_stats.hasColorBuffer[1];
+                    });
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Horizontal offset",
                                              MenuEntryType::Slider,
@@ -1257,6 +1261,7 @@ namespace {
                                              100,
                                              MenuEntry::FmtPercent});
                     m_menuEntries.back().expert = true;
+                    variableRateShaderHorizontalOffsetGroup.finalize();
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Vertical offset",
                                              MenuEntryType::Slider,
