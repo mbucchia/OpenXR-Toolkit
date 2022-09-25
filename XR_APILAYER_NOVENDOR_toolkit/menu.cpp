@@ -156,7 +156,8 @@ namespace {
             m_lastInput = std::chrono::steady_clock::now();
 
             // We display the hint for menu hotkeys for the first few runs.
-            if (m_configManager->getValue(SettingFirstRun)) {
+            const int keyMenuGen = m_configManager->getValue("key_menu_gen");
+            if (keyMenuGen != m_configManager->getValue(SettingFirstRun)) {
                 m_state = MenuState::Splash;
             }
 
@@ -230,7 +231,9 @@ namespace {
                     m_state = MenuState::Visible;
 
                     Log("Opening menu\n");
-                    m_configManager->setValue(SettingFirstRun, 0);
+
+                    // Clear the "first run" until the menu key is reconfigured.
+                    m_configManager->setValue(SettingFirstRun, m_configManager->getValue("key_menu_gen"));
 
                     m_needRestart = checkNeedRestartCondition();
                     m_resetTextLayout = m_resetBackgroundLayout = true;

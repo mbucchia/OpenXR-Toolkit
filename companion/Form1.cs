@@ -53,6 +53,8 @@ namespace companion
         private bool loading = true;
         private bool tracing = false;
 
+        private int keyMenuGen = 1;
+
         public Form1()
         {
             InitializeComponent();
@@ -73,6 +75,7 @@ namespace companion
                 key = Microsoft.Win32.Registry.LocalMachine.CreateSubKey(RegPrefix);
 
                 // Must match the defaults in the layer!
+                keyMenuGen = (int)key.GetValue("key_menu_gen", 1);
                 safemodeCheckbox.Checked = (int)key.GetValue("safe_mode", 0) == 1 ? true : false;
                 screenshotCheckbox.Checked = (int)key.GetValue("enable_screenshot", 0) == 1 ? true : false;
                 screenshotFormat.SelectedIndex = (int)key.GetValue("screenshot_fileformat", 1);
@@ -496,6 +499,13 @@ namespace companion
                     if (k.Item1 == (string)key.SelectedItem)
                     {
                         WriteSetting(setting, k.Item2);
+
+                        // Force the splash to appear again after changing the menu key.
+                        if (setting == "key_menu")
+                        {
+                            WriteSetting("key_menu_gen", ++keyMenuGen);
+                        }
+
                         break;
                     }
                 }
