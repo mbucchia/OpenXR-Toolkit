@@ -713,6 +713,7 @@ namespace {
                     }
 
                     m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
+                    m_performanceCounters.appInterFrameTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.waitCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.endFrameCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.overlayCpuTimer = utilities::CreateCpuTimer();
@@ -912,6 +913,7 @@ namespace {
                     m_performanceCounters.overlayGpuTimer[i].reset();
                 }
                 m_performanceCounters.appCpuTimer.reset();
+                m_performanceCounters.appInterFrameTimer.reset();
                 m_performanceCounters.waitCpuTimer.reset();
                 m_performanceCounters.endFrameCpuTimer.reset();
                 m_performanceCounters.overlayCpuTimer.reset();
@@ -1689,9 +1691,25 @@ namespace {
         XrResult xrWaitFrame(XrSession session,
                              const XrFrameWaitInfo* frameWaitInfo,
                              XrFrameState* frameState) override {
+            // Do throttling if needed.
+            if (m_isFrameThrottlingPossible) {
+                const auto frameThrottling = m_configManager->getValue(config::SettingFrameThrottling);
+                if (frameThrottling < config::MaxFrameRate) {
+                    // TODO: Try to reduce latency by slowing slewing to reduce the predictedDisplayTime.
+
+                    const auto target =
+                        m_lastFrameWaitTimestamp +
+                        std::chrono::microseconds(1000000 / frameThrottling + m_frameThrottleSleepOffset) -
+                        500us /* "running start" */;
+                    std::this_thread::sleep_until(target);
+                }
+            }
+            m_lastFrameWaitTimestamp = std::chrono::steady_clock::now();
+
             if (isVrSession(session)) {
                 m_performanceCounters.waitCpuTimer->start();
             }
+
             const XrResult result = OpenXrApi::xrWaitFrame(session, frameWaitInfo, frameState);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 m_performanceCounters.waitCpuTimer->stop();
@@ -1730,28 +1748,13 @@ namespace {
         XrResult xrBeginFrame(XrSession session, const XrFrameBeginInfo* frameBeginInfo) override {
             const XrResult result = OpenXrApi::xrBeginFrame(session, frameBeginInfo);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
-                // Do throttling if needed.
-                if (m_isFrameThrottlingPossible) {
-                    const auto frameThrottling = m_configManager->getValue(config::SettingFrameThrottling);
-                    if (frameThrottling < config::MaxFrameRate) {
-                        // TODO: Try to reduce latency by slowing slewing to reduce the predictedDisplayTime.
-
-                        const auto target =
-                            m_lastFrameBegunTimestamp +
-                            std::chrono::microseconds(1000000 / frameThrottling + m_frameThrottleSleepOffset) -
-                            500us /* "running start" */;
-                        std::this_thread::sleep_until(target);
-                    }
-                }
-
-                m_lastFrameBegunTimestamp = std::chrono::steady_clock::now();
-
                 // Record the predicted display time.
                 m_begunFrameTime = m_waitedFrameTime;
                 m_savedFrameTime2 = m_savedFrameTime1;
                 m_isInFrame = true;
 
                 if (m_graphicsDevice) {
+                    m_performanceCounters.appInterFrameTimer->stop();
                     m_performanceCounters.appCpuTimer->start();
                     m_stats.appGpuTimeUs +=
                         m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
@@ -1845,6 +1848,7 @@ namespace {
 
                 // Push the last averaged statistics.
                 m_stats.appCpuTimeUs /= numFrames;
+                m_stats.appInterFrameTimeUs /= numFrames;
                 m_stats.appGpuTimeUs /= numFrames;
                 m_stats.waitCpuTimeUs /= numFrames;
                 m_stats.endFrameCpuTimeUs /= numFrames;
@@ -2019,6 +2023,7 @@ namespace {
 
             m_performanceCounters.appCpuTimer->stop();
             m_stats.appCpuTimeUs += m_performanceCounters.appCpuTimer->query();
+            m_stats.appInterFrameTimeUs += m_performanceCounters.appInterFrameTimer->query();
             m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
 
             m_stats.endFrameCpuTimeUs += m_performanceCounters.endFrameCpuTimer->query();
@@ -2589,6 +2594,8 @@ namespace {
 
                 m_graphicsDevice->unblockCallbacks();
 
+                m_performanceCounters.appInterFrameTimer->start();
+
                 return result;
             }
         }
@@ -2654,7 +2661,7 @@ namespace {
         XrVector2f m_projCenters[utilities::ViewCount];
         XrVector2f m_eyeGaze[utilities::ViewCount];
         XrView m_posesForFrame[utilities::ViewCount];
-        std::chrono::time_point<std::chrono::steady_clock> m_lastFrameBegunTimestamp{};
+        std::chrono::time_point<std::chrono::steady_clock> m_lastFrameWaitTimestamp{};
         uint32_t m_frameThrottleSleepOffset{0};
 
         std::shared_ptr<config::IConfigManager> m_configManager;
@@ -2688,6 +2695,7 @@ namespace {
 
         struct {
             std::shared_ptr<utilities::ICpuTimer> appCpuTimer;
+            std::shared_ptr<utilities::ICpuTimer> appInterFrameTimer;
             std::shared_ptr<graphics::IGpuTimer> appGpuTimer[GpuTimerLatency + 1];
             std::shared_ptr<utilities::ICpuTimer> waitCpuTimer;
             std::shared_ptr<utilities::ICpuTimer> endFrameCpuTimer;
