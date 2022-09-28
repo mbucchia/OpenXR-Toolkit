@@ -894,6 +894,7 @@ namespace {
                             top += 1.05f * fontSize;
 
                             if (overlayType == OverlayType::Developer) {
+                                TIMING_STAT("int.frm", appInterFrameTimeUs);
                                 TIMING_STAT("lay CPU", endFrameCpuTimeUs);
                                 TIMING_STAT("scl GPU", processorGpuTimeUs[0]);
                                 TIMING_STAT("pst GPU", processorGpuTimeUs[1]);
