@@ -58,28 +58,30 @@ There is an [official compatibility for OpenComposite](https://docs.google.com/s
 | Assetto Corsa Competizione | Yes | Yes [1] |
 | Automobilista 2 | Yes | Yes |
 | Digital Combat Simulator | Yes | Yes |
-| Dirt Rally 2 | Yes | Yes |
+| Dirt Rally 2 | Yes [2] | Yes [2] |
 | Elite Dangerous | Yes | Yes |
 | Euro Truck Simulator 2 | Yes | Yes |
-| IL-2 Sturmovik | Yes | Yes [2] |
-| iRacing | Yes | No [3] |
+| IL-2 Sturmovik | Yes | Yes [3] |
+| iRacing | Yes | No [4] |
 | F1 2022 | Yes | Yes |
 | Project Cars 2 | Yes | Yes |
 | Project Cars 3 | Yes | Yes |
 | rFactor 2 | Yes | Yes |
 | Subnautica | Yes | Yes |
-| X-Plane 11 | Yes [4] | Yes [2] [5] |
-| X-Plane 12 | Yes [4] | Yes [2] [5] |
+| X-Plane 11 | Yes [5] | Yes [3] [6] |
+| X-Plane 12 | Yes [5] | Yes [3] [6] |
 
 [1] Supports Eye-tracked Foveated Rendering.
 
-[2] Does not support Fixed Foveated Rendering.
+[2] Dirt Rally 2 with the eye accomodation fix requires [dr2vrfix-openxr](https://github.com/mbucchia/dr2vrfix-openxr).
 
-[3] iRacing now has official support for OpenXR, and OpenXR Toolkit is only compatible in that mode, and not with OpenComposite.
+[3] Does not support Fixed Foveated Rendering.
 
-[4] On Windows Mixed Reality, X-Plane requires the use of [OpenXR-Vk-D3D12](https://github.com/mbucchia/OpenXR-Vk-D3D12).
+[4] iRacing now has official support for OpenXR, and OpenXR Toolkit is only compatible in that mode, and not with OpenComposite.
 
-[5] X-Plane is only compatible with OpenXR Toolkit on Windows Mixed Reality.
+[5] On Windows Mixed Reality, X-Plane requires the use of [OpenXR-Vk-D3D12](https://github.com/mbucchia/OpenXR-Vk-D3D12).
+
+[6] X-Plane is only compatible with OpenXR Toolkit on Windows Mixed Reality.
 
 Do you have a game working but it's not in the list? Please file an [Issue](https://github.com/mbucchia/OpenXR-Toolkit/issues) to let us know!
 
