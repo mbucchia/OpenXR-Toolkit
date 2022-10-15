@@ -713,7 +713,7 @@ namespace {
                     }
 
                     m_performanceCounters.appCpuTimer = utilities::CreateCpuTimer();
-                    m_performanceCounters.appInterFrameTimer = utilities::CreateCpuTimer();
+                    m_performanceCounters.renderCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.waitCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.endFrameCpuTimer = utilities::CreateCpuTimer();
                     m_performanceCounters.overlayCpuTimer = utilities::CreateCpuTimer();
@@ -913,7 +913,7 @@ namespace {
                     m_performanceCounters.overlayGpuTimer[i].reset();
                 }
                 m_performanceCounters.appCpuTimer.reset();
-                m_performanceCounters.appInterFrameTimer.reset();
+                m_performanceCounters.renderCpuTimer.reset();
                 m_performanceCounters.waitCpuTimer.reset();
                 m_performanceCounters.endFrameCpuTimer.reset();
                 m_performanceCounters.overlayCpuTimer.reset();
@@ -1691,22 +1691,27 @@ namespace {
         XrResult xrWaitFrame(XrSession session,
                              const XrFrameWaitInfo* frameWaitInfo,
                              XrFrameState* frameState) override {
-            // Do throttling if needed.
-            if (m_isFrameThrottlingPossible) {
-                const auto frameThrottling = m_configManager->getValue(config::SettingFrameThrottling);
-                if (frameThrottling < config::MaxFrameRate) {
-                    // TODO: Try to reduce latency by slowing slewing to reduce the predictedDisplayTime.
-
-                    const auto target =
-                        m_lastFrameWaitTimestamp +
-                        std::chrono::microseconds(1000000 / frameThrottling + m_frameThrottleSleepOffset) -
-                        500us /* "running start" */;
-                    std::this_thread::sleep_until(target);
-                }
-            }
-            m_lastFrameWaitTimestamp = std::chrono::steady_clock::now();
-
             if (isVrSession(session)) {
+                if (m_graphicsDevice) {
+                    m_performanceCounters.appCpuTimer->stop();
+                    m_stats.appCpuTimeUs += m_performanceCounters.appCpuTimer->query();
+                }
+
+                // Do throttling if needed.
+                if (m_isFrameThrottlingPossible) {
+                    const auto frameThrottling = m_configManager->getValue(config::SettingFrameThrottling);
+                    if (frameThrottling < config::MaxFrameRate) {
+                        // TODO: Try to reduce latency by slowing slewing to reduce the predictedDisplayTime.
+
+                        const auto target =
+                            m_lastFrameWaitTimestamp +
+                            std::chrono::microseconds(1000000 / frameThrottling + m_frameThrottleSleepOffset) -
+                            500us /* "running start" */;
+                        std::this_thread::sleep_until(target);
+                    }
+                }
+                m_lastFrameWaitTimestamp = std::chrono::steady_clock::now();
+
                 m_performanceCounters.waitCpuTimer->start();
             }
 
@@ -1740,6 +1745,10 @@ namespace {
 
                 // Record the predicted display time.
                 m_waitedFrameTime = frameState->predictedDisplayTime;
+
+                if (m_graphicsDevice) {
+                    m_performanceCounters.appCpuTimer->start();
+                }
             }
 
             return result;
@@ -1754,8 +1763,7 @@ namespace {
                 m_isInFrame = true;
 
                 if (m_graphicsDevice) {
-                    m_performanceCounters.appInterFrameTimer->stop();
-                    m_performanceCounters.appCpuTimer->start();
+                    m_performanceCounters.renderCpuTimer->start();
                     m_stats.appGpuTimeUs +=
                         m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->query();
                     m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->start();
@@ -1833,7 +1841,7 @@ namespace {
                     m_logStats.open(logFile, std::ios_base::ate);
 
                     // Write headers.
-                    m_logStats << "FPS,appCPU (us),appGPU (us),VRAM (MB),VRAM (%)\n";
+                    m_logStats << "FPS,appCPU (us),renderCPU (us),appGPU (us),VRAM (MB),VRAM (%)\n";
                 } else {
                     m_logStats.close();
                 }
@@ -1848,7 +1856,7 @@ namespace {
 
                 // Push the last averaged statistics.
                 m_stats.appCpuTimeUs /= numFrames;
-                m_stats.appInterFrameTimeUs /= numFrames;
+                m_stats.renderCpuTimeUs /= numFrames;
                 m_stats.appGpuTimeUs /= numFrames;
                 m_stats.waitCpuTimeUs /= numFrames;
                 m_stats.endFrameCpuTimeUs /= numFrames;
@@ -1873,8 +1881,9 @@ namespace {
                 }
 
                 if (m_logStats.is_open()) {
-                    m_logStats << m_stats.fps << "," << m_stats.appCpuTimeUs << "," << m_stats.appGpuTimeUs << ","
-                               << m_stats.vramUsedSize / (1024 * 1024) << "," << (int)m_stats.vramUsedPercent << "\n";
+                    m_logStats << m_stats.fps << "," << m_stats.appCpuTimeUs << "," << m_stats.renderCpuTimeUs << ","
+                               << m_stats.appGpuTimeUs << "," << m_stats.vramUsedSize / (1024 * 1024) << ","
+                               << (int)m_stats.vramUsedPercent << "\n";
                 }
 
                 // Start from fresh!
@@ -2021,9 +2030,8 @@ namespace {
 
             updateStatisticsForFrame();
 
-            m_performanceCounters.appCpuTimer->stop();
-            m_stats.appCpuTimeUs += m_performanceCounters.appCpuTimer->query();
-            m_stats.appInterFrameTimeUs += m_performanceCounters.appInterFrameTimer->query();
+            m_performanceCounters.renderCpuTimer->stop();
+            m_stats.renderCpuTimeUs += m_performanceCounters.renderCpuTimer->query();
             m_performanceCounters.appGpuTimer[m_performanceCounters.gpuTimerIndex]->stop();
 
             m_stats.endFrameCpuTimeUs += m_performanceCounters.endFrameCpuTimer->query();
@@ -2594,8 +2602,6 @@ namespace {
 
                 m_graphicsDevice->unblockCallbacks();
 
-                m_performanceCounters.appInterFrameTimer->start();
-
                 return result;
             }
         }
@@ -2695,7 +2701,7 @@ namespace {
 
         struct {
             std::shared_ptr<utilities::ICpuTimer> appCpuTimer;
-            std::shared_ptr<utilities::ICpuTimer> appInterFrameTimer;
+            std::shared_ptr<utilities::ICpuTimer> renderCpuTimer;
             std::shared_ptr<graphics::IGpuTimer> appGpuTimer[GpuTimerLatency + 1];
             std::shared_ptr<utilities::ICpuTimer> waitCpuTimer;
             std::shared_ptr<utilities::ICpuTimer> endFrameCpuTimer;
