@@ -37,11 +37,19 @@ namespace SetupCustomActions
                     continue;
                 }
 
+                // Some installers might have created bogus keys: https://github.com/KhronosGroup/OpenXR-SDK-Source/issues/335.
+                if (key.GetValueKind(value) != Microsoft.Win32.RegistryValueKind.DWord)
+                {
+                    continue;
+                }
+
                 entriesValues.Add(value, key.GetValue(value));
                 key.DeleteValue(value);
             }
 
             bool detectedOldSoftware = false;
+            bool detectedIncompatibleLayer = false;
+            string incompatibleLayers = "";
             key.SetValue(jsonPath, 0);
             foreach (var value in existingValues)
             {
@@ -51,6 +59,20 @@ namespace SetupCustomActions
                 {
                     detectedOldSoftware = true;
                     continue;
+                }
+
+                // We are incompatible with these other API layers.
+                if (value.EndsWith("\\ViveOpenXRFacialTracking.json") && (int)entriesValues[value] == 0)
+                {
+                    if (incompatibleLayers != "")
+                    {
+                        incompatibleLayers += ", ";
+                    }
+                    incompatibleLayers += "ViveOpenXRFacialTracking.json";
+                    detectedIncompatibleLayer = true;
+
+                    // This is how we disable a layer.
+                    entriesValues[value] = 1;
                 }
 
                 // Do not re-create our own key. We did it before this loop.
@@ -74,6 +96,12 @@ namespace SetupCustomActions
             {
                 MessageBox.Show("An older version of this software was detected (OpenXR-NIS-Scaler or OpenXR-Hand-To-Controller). " +
                     "It was deactivated, however please uninstall it through 'Add or remove programs' to free up disk space.",
+                    "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
+            }
+
+            if (detectedIncompatibleLayer)
+            {
+                MessageBox.Show("The following incompatible OpenXR API layers have been detected and disabled: " + incompatibleLayers + ".",
                     "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
             }
 
