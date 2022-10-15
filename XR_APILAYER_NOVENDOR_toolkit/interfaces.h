@@ -828,7 +828,7 @@ namespace toolkit {
 
         struct MenuStatistics {
             uint64_t appCpuTimeUs{0};
-            uint64_t appInterFrameTimeUs{0};
+            uint64_t renderCpuTimeUs{0};
             uint64_t appGpuTimeUs{0};
             uint64_t waitCpuTimeUs{0};
             uint64_t endFrameCpuTimeUs{0};
