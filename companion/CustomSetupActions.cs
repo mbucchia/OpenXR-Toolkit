@@ -92,6 +92,25 @@ namespace SetupCustomActions
 
             key.Close();
 
+            try
+            {
+                key = Microsoft.Win32.Registry.LocalMachine.CreateSubKey("SOFTWARE\\OpenXR_Toolkit");
+
+                // Force showing the splash again after re-install.
+                var gen = key.GetValue("key_menu_gen", null);
+                if (gen != null)
+                {
+                    key.SetValue("key_menu_gen", (int)gen + 1);
+                }
+            }
+            catch (Exception)
+            {
+            }
+            finally
+            {
+                key.Close();
+            }
+
             if (detectedOldSoftware)
             {
                 MessageBox.Show("An older version of this software was detected (OpenXR-NIS-Scaler or OpenXR-Hand-To-Controller). " +
