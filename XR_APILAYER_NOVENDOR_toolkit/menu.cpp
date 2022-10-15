@@ -190,7 +190,7 @@ namespace {
                                      MenuEntryType::Tabs,
                                      "",
                                      0,
-                                     ARRAYSIZE(tabs) - (m_configManager->getValue(SettingDeveloper) ? 1 : 2),
+                                     ARRAYSIZE(tabs) - (m_configManager->isDeveloper() ? 1 : 2),
                                      [&](int value) { return std::string(tabs[value]); }});
             m_menuEntries.back().pValue = reinterpret_cast<int*>(&m_currentTab);
             m_menuEntries.back().visible = true; /* Always visible. */
@@ -882,7 +882,7 @@ namespace {
                         // Advanced display.
                         if (overlayType == OverlayType::Advanced || overlayType == OverlayType::Developer) {
 #define TIMING_STAT(label, name)                                                                                       \
-    m_device->drawString(fmt::format(label ": {:.1f}ms", m_stats.name / 1000.0f), OVERLAY_COMMON);                                     \
+    m_device->drawString(fmt::format(label ": {:.1f}ms", m_stats.name / 1000.0f), OVERLAY_COMMON);                     \
     top += 1.05f * fontSize;
 
                             TIMING_STAT("app CPU", appCpuTimeUs);
@@ -1297,14 +1297,6 @@ namespace {
                                              maxVRSLeftRightBias,
                                              MenuEntry::FmtVrsRate});
                     m_menuEntries.back().expert = true;
-                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                             "Scale Filter",
-                                             MenuEntryType::Slider,
-                                             SettingVRSScaleFilter,
-                                             0,
-                                             100,
-                                             MenuEntry::FmtPercent});
-                    m_menuEntries.back().expert = true;
                 }
                 variableRateShaderCustomGroup.finalize();
             }
@@ -1450,7 +1442,7 @@ namespace {
                                          MenuEntryType::Slider,
                                          SettingPredictionDampen,
                                          0,
-                                         100,
+                                         !m_configManager->isDeveloper() ? 100 : 200,
                                          [&](int value) {
                                              if (value == 100) {
                                                  return fmt::format("{}%", value - 100);
@@ -1664,7 +1656,7 @@ namespace {
                  }});
             m_menuEntries.back().acceleration = 10;
 
-            if (menuInfo.isVisibilityMaskSupported) {
+            if (menuInfo.isVisibilityMaskSupported || m_configManager->isDeveloper()) {
                 m_menuEntries.push_back({MenuIndent::OptionIndent,
                                          "Blind eye",
                                          MenuEntryType::Choice,
@@ -1780,7 +1772,7 @@ namespace {
         }
 
         void setupDeveloperTab(const MenuInfo& menuInfo) {
-            if (!m_configManager->getValue(SettingDeveloper)) {
+            if (!m_configManager->isDeveloper()) {
                 return;
             }
 
@@ -1801,6 +1793,13 @@ namespace {
                                      0,
                                      MenuEntry::LastVal<OffOnType>(),
                                      MenuEntry::FmtEnum<OffOnType>});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Scale Filter",
+                                     MenuEntryType::Slider,
+                                     SettingVRSScaleFilter,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtPercent});
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Simulate eye tracker*",
                                      MenuEntryType::Choice,
