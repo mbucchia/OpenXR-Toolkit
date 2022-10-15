@@ -166,7 +166,7 @@ namespace toolkit {
         const std::string SettingVRSYOffset = "vrs_y_offset";
         const std::string SettingVRSPreferHorizontal = "vrs_prefer_horizontal";
         const std::string SettingVRSLeftRightBias = "vrs_lr_bias";
-        const std::string SettingVRSScaleFilter = "vrs_scale_filter";
+        const std::string SettingVRSScaleFilter = "vrs_scale_filter2";
         const std::string SettingPostProcess = "post_process";
         const std::string SettingPostSunGlasses = "post_sunglasses";
         const std::string SettingPostContrast = "post_contrast";
@@ -237,6 +237,7 @@ namespace toolkit {
             virtual void hardReset() = 0;
 
             virtual bool isSafeMode() const = 0;
+            virtual bool isDeveloper() const = 0;
 
             template <typename T, std::enable_if_t<std::is_enum<T>::value, bool> = true>
             void setEnumDefault(const std::string& name, T value) {
