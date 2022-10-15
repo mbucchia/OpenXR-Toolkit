@@ -1315,8 +1315,8 @@ namespace {
             }
 
             MenuGroup frameThrottlingGroup(this, [&] {
-                return m_configManager->peekEnumValue<MotionReprojection>(SettingMotionReprojection) !=
-                       MotionReprojection::On;
+                return !m_isMotionReprojectionRateSupported || m_configManager->peekEnumValue<MotionReprojection>(
+                                                                   SettingMotionReprojection) != MotionReprojection::On;
             });
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Frame rate throttling",

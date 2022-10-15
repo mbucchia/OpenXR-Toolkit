@@ -832,6 +832,11 @@ namespace {
             isDoubleWide = std::abs(aspectRatioWidthDiv2 - m_renderRatio) <= 0.01f;
 
             const auto trackRenderScale = [&](const uint32_t width) {
+                // Ignore things that are definitely too low. We use DLSS's Ultra Performance (33%) as our lower bound.
+                if (width < 0.32f * m_renderWidth) {
+                    return;
+                }
+
                 std::unique_lock lock(m_renderScalesLock);
 
                 auto it = m_renderScales.find(width);
