@@ -31,13 +31,8 @@ cbuffer config : register(b0) {
 
 SamplerState sourceSampler : register(s0);
 
-#ifdef VPRT
-Texture2DArray sourceTexture : register(t0);
-#define SAMPLE_TEXTURE(texcoord) sourceTexture.Sample(sourceSampler, float3((texcoord), 0))
-#else
 Texture2D sourceTexture : register(t0);
 #define SAMPLE_TEXTURE(texcoord) sourceTexture.Sample(sourceSampler, (texcoord))
-#endif
 
 #ifndef FLT_EPSILON
 #define FLT_EPSILON     1.192092896e-07
@@ -159,7 +154,6 @@ float3 AdjustHighlightsShadows(float3 color, float2 amount) {
   return (color/luma) * (h + s - luma);
 }
 
-// For now, our shader only does a copy, effectively allowing Direct3D to convert between color formats.
 float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
   float3 color = SAMPLE_TEXTURE(texcoord).rgb;
 
@@ -200,7 +194,7 @@ float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TE
 #ifdef PASS_THROUGH_USE_GAINS
 #ifdef POST_PROCESS_SRC_SRGB
   color = srgb2linear(color);
- #endif
+#endif
 
   // adjust color input gains.
   if (any(Params2.rgb)) {

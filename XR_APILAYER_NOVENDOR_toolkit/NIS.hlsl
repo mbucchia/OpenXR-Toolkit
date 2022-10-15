@@ -78,25 +78,8 @@ NIS_BINDING(0) cbuffer cb : register(b0) {
 
 NIS_BINDING(1) SamplerState samplerLinearClamp : register(s0);
 
-#ifndef VPRT
-NIS_BINDING(2) Texture2D in_texture : register(t0);
-NIS_BINDING(3) RWTexture2D<unorm float4> out_texture : register(u0);
-
-#define NVTEX_SAMPLE(x, sampler, pos) x.SampleLevel(sampler, pos, 0)
-#define NVTEX_SAMPLE_RED(x, sampler, pos) x.GatherRed(sampler, pos)
-#define NVTEX_SAMPLE_GREEN(x, sampler, pos) x.GatherGreen(sampler, pos)
-#define NVTEX_SAMPLE_BLUE(x, sampler, pos) x.GatherBlue(sampler, pos)
-#define NVTEX_STORE(x, pos, v) x[pos] = v
-#else
 NIS_BINDING(2) Texture2DArray in_texture : register(t0);
 NIS_BINDING(3) RWTexture2DArray<unorm float4> out_texture : register(u0);
-
-#define NVTEX_SAMPLE(x, sampler, pos) x.SampleLevel(sampler, float3(pos, 0), 0)
-#define NVTEX_SAMPLE_RED(x, sampler, pos) x.GatherRed(sampler, float3(pos, 0))
-#define NVTEX_SAMPLE_GREEN(x, sampler, pos) x.GatherGreen(sampler, float3(pos, 0))
-#define NVTEX_SAMPLE_BLUE(x, sampler, pos) x.GatherBlue(sampler, float3(pos, 0))
-#define NVTEX_STORE(x, pos, v) x[float3(pos, 0)] = v
-#endif
 
 #if NIS_SCALER
 NIS_BINDING(4) Texture2D coef_scaler : register(t1);
