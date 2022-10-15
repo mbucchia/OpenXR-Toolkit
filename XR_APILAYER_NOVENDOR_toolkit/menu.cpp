@@ -880,7 +880,7 @@ namespace {
                         // Advanced display.
                         if (overlayType == OverlayType::Advanced || overlayType == OverlayType::Developer) {
 #define TIMING_STAT(label, name)                                                                                       \
-    m_device->drawString(fmt::format(label ": {}", m_stats.name), OVERLAY_COMMON);                                     \
+    m_device->drawString(fmt::format(label ": {:.1f}ms", m_stats.name / 1000.0f), OVERLAY_COMMON);                                     \
     top += 1.05f * fontSize;
 
                             TIMING_STAT("app CPU", appCpuTimeUs);
@@ -894,7 +894,11 @@ namespace {
 
                             top += 1.05f * fontSize;
 
+#undef TIMING_STAT
                             if (overlayType == OverlayType::Developer) {
+#define TIMING_STAT(label, name)                                                                                       \
+    m_device->drawString(fmt::format(label ": {}", m_stats.name), OVERLAY_COMMON);                                     \
+    top += 1.05f * fontSize;
                                 TIMING_STAT("lay CPU", endFrameCpuTimeUs);
                                 TIMING_STAT("scl GPU", processorGpuTimeUs[0]);
                                 TIMING_STAT("pst GPU", processorGpuTimeUs[1]);
