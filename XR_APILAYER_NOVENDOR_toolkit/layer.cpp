@@ -92,7 +92,7 @@ namespace {
             m_configManager->setDefault(config::SettingMenuOpacity, 85);
             m_configManager->setDefault(config::SettingMenuFontSize, 44); // pt
             m_configManager->setEnumDefault(config::SettingMenuTimeout, config::MenuTimeout::Medium);
-            m_configManager->setDefault(config::SettingMenuExpert, m_configManager->getValue(config::SettingDeveloper));
+            m_configManager->setDefault(config::SettingMenuExpert, m_configManager->isDeveloper());
             m_configManager->setDefault(config::SettingMenuLegacyMode, 0);
             m_configManager->setEnumDefault(config::SettingOverlayType, config::OverlayType::None);
             m_configManager->setDefault(config::SettingOverlayShowClock, 0);
@@ -277,6 +277,13 @@ namespace {
             m_configManager = config::CreateConfigManager(createInfo->applicationInfo.applicationName);
             setOptionsDefaults();
 
+            if (m_configManager->isDeveloper()) {
+                Log("DEVELOPER MODE IS ENABLED! WARRANTY IS VOID!\n");
+            }
+            if (m_configManager->isSafeMode()) {
+                Log("SAFE MODE IS ENABLED! NO SETTINGS ARE LOADED!\n");
+            }
+
             // Hook to enable Direct3D Debug layer on request.
             if (m_configManager->getValue("debug_layer")) {
                 graphics::HookForD3D11DebugLayer();
@@ -387,8 +394,6 @@ namespace {
             const XrResult result = OpenXrApi::xrGetSystem(instance, getInfo, systemId);
             if (XR_SUCCEEDED(result) && getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY &&
                 m_vrSystemId == XR_NULL_SYSTEM_ID) {
-                const bool isDeveloper = m_configManager->getValue(config::SettingDeveloper);
-
                 // Retrieve the actual OpenXR resolution.
                 XrViewConfigurationView views[utilities::ViewCount] = {{XR_TYPE_VIEW_CONFIGURATION_VIEW, nullptr},
                                                                        {XR_TYPE_VIEW_CONFIGURATION_VIEW, nullptr}};
@@ -444,7 +449,7 @@ namespace {
                 // Workaround: the WMR runtime supports mapping the VR controllers through XR_EXT_hand_tracking, which
                 // will (falsely) advertise hand tracking support. Check for the Ultraleap layer in this case.
                 if (m_supportHandTracking &&
-                    (!isDeveloper &&
+                    (!m_configManager->isDeveloper() &&
                      (!m_configManager->getValue(config::SettingBypassMsftHandInteractionCheck) && isWMR))) {
                     bool hasUltraleapLayer = false;
                     for (const auto& layer : GetUpstreamLayers()) {
@@ -461,7 +466,7 @@ namespace {
                 // Workaround: the WMR runtime supports emulating eye tracking for development through
                 // XR_EXT_eye_gaze_interaction, which will (falsely) advertise eye tracking support. Disable it.
                 if (isEyeTrackingThruRuntime &&
-                    (!isDeveloper &&
+                    (!m_configManager->isDeveloper() &&
                      (!m_configManager->getValue(config::SettingBypassMsftEyeGazeInteractionCheck) && isWMR))) {
                     Log("Ignoring XR_EXT_eye_gaze_interaction for %s\n", m_runtimeName.c_str());
                     m_supportEyeTracking = false;

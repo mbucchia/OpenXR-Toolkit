@@ -52,6 +52,9 @@ namespace {
             // Check for safe mode.
             m_safeMode = RegGetDword(HKEY_LOCAL_MACHINE, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"safe_mode")
                              .value_or(0);
+            m_developer =
+                RegGetDword(HKEY_LOCAL_MACHINE, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"developer")
+                    .value_or(0);
 
             std::string baseKey = RegPrefix + "\\" + appName;
             m_baseKey = std::wstring(baseKey.begin(), baseKey.end());
@@ -198,6 +201,10 @@ namespace {
             return m_safeMode;
         }
 
+        bool isDeveloper() const override {
+            return m_developer;
+        }
+
         void hardReset() override {
             RegDeleteKey(HKEY_CURRENT_USER, m_baseKey);
             for (auto& value : m_values) {
@@ -260,6 +267,7 @@ namespace {
         const std::string m_appName;
         std::wstring m_baseKey;
         bool m_safeMode;
+        bool m_developer;
         wil::unique_registry_watcher m_watcher;
         bool m_needRefresh{false};
         std::set<std::string> m_ignoreRefresh;
