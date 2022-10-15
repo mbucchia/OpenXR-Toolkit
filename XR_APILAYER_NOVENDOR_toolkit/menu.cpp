@@ -180,6 +180,8 @@ namespace {
                 m_keyUpLabel = L"SHIFT+" + m_keyMenuLabel;
             }
 
+            Log("Open menu with %s%s\n", m_keyModifiersLabel.c_str(), m_keyMenuLabel.c_str());
+
             // Prepare the tabs.
             static const std::string_view tabs[] = {
                 "Performance", "Appearance", "Inputs", "System", "Menu", "Developer"};
