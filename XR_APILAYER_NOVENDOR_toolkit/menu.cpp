@@ -884,6 +884,7 @@ namespace {
     top += 1.05f * fontSize;
 
                             TIMING_STAT("app CPU", appCpuTimeUs);
+                            TIMING_STAT("rdr CPU", renderCpuTimeUs);
                             TIMING_STAT("app GPU", appGpuTimeUs);
                             m_device->drawString(fmt::format("VRAM: {:.1f}GB ({}%)",
                                                              m_stats.vramUsedSize / (1024 * 1024 * 1024.f),
@@ -894,7 +895,6 @@ namespace {
                             top += 1.05f * fontSize;
 
                             if (overlayType == OverlayType::Developer) {
-                                TIMING_STAT("int.frm", appInterFrameTimeUs);
                                 TIMING_STAT("lay CPU", endFrameCpuTimeUs);
                                 TIMING_STAT("scl GPU", processorGpuTimeUs[0]);
                                 TIMING_STAT("pst GPU", processorGpuTimeUs[1]);
