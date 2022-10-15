@@ -7,23 +7,30 @@ assignees: ''
 
 ---
 
+**ANY ISSUE FILED WITHOUT THE INFORMATION REQUIRED BELOW WILL BE CLOSED WITHOUT BEING LOOKED AT. NO EXCEPTIONS.**
+
 **Describe the bug**
-A clear and concise description of what the bug is. If possible, please attach (upload, do not copy/paste) the log file that can be found at `%LocalAppData%\OpenXR-Toolkit\logs`.
+
+_A clear and concise description of what the bug is._
+_Always attach (upload, do not copy/paste) the log file that can be found at `%LocalAppData%\OpenXR-Toolkit\logs` or opened from the OpenXR Toolkit Companion app._
 
 **Environment**
-- Application/Game and its version
-- Make and model of VR device
-- Version of the OpenXR runtime
-- Make and model of GPU
+
+- _Application/Game and version_: 
+- _Make and model of VR device_: 
 
 **To Reproduce**
-Steps to reproduce the behavior:
+
+_Steps to reproduce the behavior:_
+
 1. Run '....' game
 2. Enable option '....'
 3. See error
 
 **Expected behavior**
-A clear and concise description of what you expected to happen.
+
+_A clear and concise description of what you expected to happen._
 
 **Screenshots**
-If applicable, add screenshots to help explain your problem. Use the Companion app to enable screenshots, then use Ctrl+F12 to capture. The file is placed in `%LocalAppData%\OpenXR-Toolkit\screenshots`.
+
+_If applicable, add screenshots to help explain your problem. Use the Companion app to enable screenshots, then use Ctrl+F12 to capture. The files are placed in `%LocalAppData%\OpenXR-Toolkit\screenshots` or can be opened from the OpenXR Toolkit Companion app._
