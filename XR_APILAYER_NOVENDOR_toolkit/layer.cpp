@@ -1168,7 +1168,7 @@ namespace {
                                            const XrSessionActionSetsAttachInfo* attachInfo) override {
             XrSessionActionSetsAttachInfo chainAttachInfo = *attachInfo;
             std::vector<XrActionSet> newActionSets;
-            if (m_eyeTracker) {
+            if (m_eyeTracker && isVrSession(session)) {
                 const auto eyeTrackerActionSet = m_eyeTracker->getActionSet();
                 if (eyeTrackerActionSet != XR_NULL_HANDLE) {
                     newActionSets.resize(chainAttachInfo.countActionSets + 1);
@@ -1360,27 +1360,29 @@ namespace {
             bool useFullMask = false;
             bool useEmptyMask = false;
 
-            if (m_configManager->getValue(config::SettingDisableHAM)) {
-                useEmptyMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR;
-                useFullMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_VISIBLE_TRIANGLE_MESH_KHR;
-            }
-            switch (m_configManager->getEnumValue<config::BlindEye>(config::SettingBlindEye)) {
-            case config::BlindEye::Left:
-                if (viewIndex == 0) {
-                    useEmptyMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_VISIBLE_TRIANGLE_MESH_KHR;
-                    useFullMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR;
+            if (isVrSession(session)) {
+                if (m_configManager->getValue(config::SettingDisableHAM)) {
+                    useEmptyMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR;
+                    useFullMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_VISIBLE_TRIANGLE_MESH_KHR;
                 }
-                break;
-            case config::BlindEye::Right:
-                if (viewIndex == 1) {
-                    useEmptyMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_VISIBLE_TRIANGLE_MESH_KHR;
-                    useFullMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR;
-                }
-                break;
+                switch (m_configManager->getEnumValue<config::BlindEye>(config::SettingBlindEye)) {
+                case config::BlindEye::Left:
+                    if (viewIndex == 0) {
+                        useEmptyMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_VISIBLE_TRIANGLE_MESH_KHR;
+                        useFullMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR;
+                    }
+                    break;
+                case config::BlindEye::Right:
+                    if (viewIndex == 1) {
+                        useEmptyMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_VISIBLE_TRIANGLE_MESH_KHR;
+                        useFullMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR;
+                    }
+                    break;
 
-            case config::BlindEye::None:
-            default:
-                break;
+                case config::BlindEye::None:
+                default:
+                    break;
+                }
             }
 
             if (useFullMask) {
@@ -1542,7 +1544,7 @@ namespace {
         }
 
         XrResult xrLocateSpace(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation* location) override {
-            if (m_handTracker && location->type == XR_TYPE_SPACE_LOCATION) {
+            if (m_handTracker && m_vrSession != XR_NULL_HANDLE && location->type == XR_TYPE_SPACE_LOCATION) {
                 m_performanceCounters.handTrackingTimer->start();
                 if (m_handTracker->locate(space, baseSpace, time, getTimeNow(), *location)) {
                     m_performanceCounters.handTrackingTimer->stop();
@@ -1557,7 +1559,7 @@ namespace {
         XrResult xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo) override {
             XrActionsSyncInfo chainSyncInfo = *syncInfo;
             std::vector<XrActiveActionSet> newActiveActionSets;
-            if (m_eyeTracker) {
+            if (m_eyeTracker && isVrSession(session)) {
                 const auto eyeTrackerActionSet = m_eyeTracker->getActionSet();
                 if (eyeTrackerActionSet != XR_NULL_HANDLE) {
                     newActiveActionSets.resize(chainSyncInfo.countActiveActionSets + 1);
