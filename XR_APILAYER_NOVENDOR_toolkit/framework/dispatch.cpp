@@ -66,17 +66,16 @@ namespace LAYER_NAMESPACE {
             {
                 char path[_MAX_PATH];
                 GetModuleFileNameA(nullptr, path, sizeof(path));
-                LAYER_NAMESPACE::utilities::RegSetString(
-                    HKEY_CURRENT_USER, std::wstring(baseKey.begin(), baseKey.end()), L"module", path);
+                LAYER_NAMESPACE::utilities::RegSetString(HKEY_CURRENT_USER, xr::utf8_to_wide(baseKey), L"module", path);
             }
 
             const std::string_view engineName(instanceCreateInfo->applicationInfo.engineName);
 
             // Bypass the layer if it's either in the no-no list, or if the user requests it.
-            const bool bypassLayer = engineName == "Chromium" ||
-                                     (LAYER_NAMESPACE::utilities::RegGetDword(
-                                          HKEY_CURRENT_USER, std::wstring(baseKey.begin(), baseKey.end()), L"bypass")
-                                          .value_or(0));
+            const bool bypassLayer =
+                engineName == "Chromium" ||
+                (LAYER_NAMESPACE::utilities::RegGetDword(HKEY_CURRENT_USER, xr::utf8_to_wide(baseKey), L"bypass")
+                     .value_or(0));
             if (bypassLayer) {
                 Log("Bypassing OpenXR Toolkit for application '%s', engine '%s'\n",
                     instanceCreateInfo->applicationInfo.applicationName,
