@@ -550,7 +550,8 @@ namespace {
                     views[i].recommendedImageRectHeight = inputHeight;
                 }
 
-                if (m_vrSession == XR_NULL_HANDLE) {
+                static bool atLeastOnce = false;
+                if (m_vrSession == XR_NULL_HANDLE || atLeastOnce) {
                     if (inputWidth != m_displayWidth || inputHeight != m_displayHeight) {
                         Log("Upscaling from %ux%u to %ux%u (%u%%)\n",
                             inputWidth,
@@ -561,6 +562,7 @@ namespace {
                     } else {
                         Log("Using OpenXR resolution (no upscaling): %ux%u\n", m_displayWidth, m_displayHeight);
                     }
+                    atLeastOnce = true;
                 }
 
                 TraceLoggingWrite(g_traceProvider,
