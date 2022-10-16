@@ -138,7 +138,7 @@ namespace toolkit::utilities {
                                         subKey.c_str(),
                                         value.c_str(),
                                         REG_SZ,
-                                        std::wstring(stringValue.begin(), stringValue.end()).c_str(),
+                                        xr::utf8_to_wide(stringValue).c_str(),
                                         (DWORD)(2 * (stringValue.length() + 1)));
         if (retCode != ERROR_SUCCESS) {
             Log("Failed to write value: %d\n", retCode);

@@ -50,14 +50,11 @@ namespace {
       public:
         ConfigManager(const std::string& appName) : m_appName(appName) {
             // Check for safe mode.
-            m_safeMode = RegGetDword(HKEY_LOCAL_MACHINE, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"safe_mode")
-                             .value_or(0);
-            m_developer =
-                RegGetDword(HKEY_LOCAL_MACHINE, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"developer")
-                    .value_or(0);
+            m_safeMode = RegGetDword(HKEY_LOCAL_MACHINE, xr::utf8_to_wide(RegPrefix), L"safe_mode").value_or(0);
+            m_developer = RegGetDword(HKEY_LOCAL_MACHINE, xr::utf8_to_wide(RegPrefix), L"developer").value_or(0);
 
             std::string baseKey = RegPrefix + "\\" + appName;
-            m_baseKey = std::wstring(baseKey.begin(), baseKey.end());
+            m_baseKey = xr::utf8_to_wide(baseKey);
 
             try {
                 m_watcher = wil::make_registry_watcher(
@@ -116,7 +113,7 @@ namespace {
         }
 
         void setActiveSession(const std::string& appName) override {
-            RegSetString(HKEY_CURRENT_USER, std::wstring(RegPrefix.begin(), RegPrefix.end()), L"running", appName);
+            RegSetString(HKEY_CURRENT_USER, xr::utf8_to_wide(RegPrefix), L"running", appName);
         }
 
         void setDefault(const std::string& name, int value) override {
@@ -189,7 +186,7 @@ namespace {
         }
 
         void deleteValue(const std::string& name) override {
-            RegDeleteValue(HKEY_CURRENT_USER, m_baseKey, std::wstring(name.begin(), name.end()));
+            RegDeleteValue(HKEY_CURRENT_USER, m_baseKey, xr::utf8_to_wide(name));
             m_values.erase(name);
         }
 
@@ -218,12 +215,10 @@ namespace {
 
       private:
         std::optional<int> readRegistry(const std::string& name) const {
-            auto value = RegGetDword(HKEY_CURRENT_USER, m_baseKey, std::wstring(name.begin(), name.end()));
+            auto value = RegGetDword(HKEY_CURRENT_USER, m_baseKey, xr::utf8_to_wide(name));
             if (!value) {
                 // Fallback to HKLM for global options.
-                value = RegGetDword(HKEY_LOCAL_MACHINE,
-                                    std::wstring(RegPrefix.begin(), RegPrefix.end()),
-                                    std::wstring(name.begin(), name.end()));
+                value = RegGetDword(HKEY_LOCAL_MACHINE, xr::utf8_to_wide(RegPrefix), xr::utf8_to_wide(name));
             }
             return value;
         }
@@ -261,7 +256,7 @@ namespace {
         void writeValue(const std::string& name, ConfigValue& entry) const {
             TraceLoggingWrite(
                 g_traceProvider, "Config_WriteValue", TLArg(name.c_str(), "Name"), TLArg(entry.value, "Value"));
-            RegSetDword(HKEY_CURRENT_USER, m_baseKey, std::wstring(name.begin(), name.end()), entry.value);
+            RegSetDword(HKEY_CURRENT_USER, m_baseKey, xr::utf8_to_wide(name), entry.value);
         }
 
         const std::string m_appName;
