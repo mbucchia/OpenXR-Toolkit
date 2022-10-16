@@ -183,6 +183,7 @@ namespace {
             m_configManager->setDefault(config::SettingFOVRightRight, 100);
             m_configManager->setDefault(config::SettingZoom, 10);
             m_configManager->setDefault(config::SettingDisableHAM, 0);
+            m_configManager->setEnumDefault(config::SettingBlindEye, config::BlindEye::None);
             m_configManager->setDefault(config::SettingPredictionDampen, 100);
             m_configManager->setDefault(config::SettingResolutionOverride, 0);
             m_configManager->setEnumDefault(config::SettingMotionReprojection, config::MotionReprojection::Default);
@@ -376,6 +377,10 @@ namespace {
                     m_needVarjoPollEventWorkaround = m_runtimeName.find("Varjo") != std::string::npos;
                 }
             }
+
+            // Clear HAM-related events so they don't fire off unnecessarily.
+            (void)m_configManager->getValue(config::SettingDisableHAM);
+            (void)m_configManager->getEnumValue<config::BlindEye>(config::SettingBlindEye);
 
             return XR_SUCCESS;
         }
@@ -1948,7 +1953,7 @@ namespace {
 
                 // The app might ignore the HAM events. We acknowledge the config change regardless.
                 (void)m_configManager->getValue(config::SettingDisableHAM);
-                (void)m_configManager->getValue(config::SettingBlindEye);
+                (void)m_configManager->getEnumValue<config::BlindEye>(config::SettingBlindEye);
             }
 
             // Check to reload shaders.
