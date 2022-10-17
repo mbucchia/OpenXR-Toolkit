@@ -24,10 +24,28 @@ jobs:
     steps:
     - name: Checkout project
       uses: actions/checkout@v2
-    
-    - name: Checkout submodules
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: git submodule update --init
+      with:
+        lfs: 'true'
+        submodules: 'true'
+
+    - name: Create LFS file list
+      run: |
+        du -h --max-depth=1
+        git lfs ls-files
+        git submodule foreach git lfs ls-files
+        git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
+      shell: bash
+
+    - name: Restore LFS cache
+      uses: actions/cache@v2
+      id: lfs-cache
+      with:
+        path: .git/lfs
+        key: git-lfs-${{ hashFiles('.lfs-assets-id') }}-v1
+
+    - name: Git LFS Pull
+      run: git lfs pull
+      shell: bash
 
     - name: Setup DevEnv
       uses: seanmiddleditch/gha-setup-vsdevenv@v4
