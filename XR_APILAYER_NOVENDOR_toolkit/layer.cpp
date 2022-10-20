@@ -212,6 +212,7 @@ namespace {
             m_configManager->setDefault("canting", 0);
             m_configManager->setDefault("vrs_capture", 0);
             m_configManager->setDefault("force_vprt_path", 0);
+            m_configManager->setDefault("droolon_port", 5347);
 
             // Workaround: the first versions of the toolkit used a different representation for the world scale.
             // Migrate the value upon first run.
@@ -352,10 +353,11 @@ namespace {
                     CHECK_XRCMD(OpenXrApi::xrGetSystemProperties(GetXrInstance(), systemId, &systemProperties));
                     if (std::string(systemProperties.systemName).find("aapvr") != std::string::npos) {
                         aSeeVRInitParam param;
-                        param.ports[0] = 5777;
-                        Log("--> aSeeVR_connect_server\n");
-                        m_hasPimaxEyeTracker = aSeeVR_connect_server(&param) == ASEEVR_RETURN_CODE::success;
-                        Log("<-- aSeeVR_connect_server\n");
+                        param.ports[0] = m_configManager->getValue("droolon_port");
+                        Log("--> aSeeVR_connect_server(%d)\n", param.ports[0]);
+                        const auto code = aSeeVR_connect_server(&param);
+                        m_hasPimaxEyeTracker = code == ASEEVR_RETURN_CODE::success;
+                        Log("<-- aSeeVR_connect_server %d\n", code);
                         if (m_hasPimaxEyeTracker) {
                             Log("Detected Pimax Droolon support\n");
                         }
