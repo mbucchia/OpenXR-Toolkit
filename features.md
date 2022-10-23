@@ -7,6 +7,8 @@ has_children: true
 
 Here is a short description of all the options available through the OpenXR Toolkit in-game menu.
 
+You can access more detailed pages through the menu bar on the left.
+
 **Performance** tab:
 - **Overlay**: Enables the FPS display or advanced timings display in the top-right corner of the view. _Please note that the overlay may reduce performance_. A fourth option - "_Developer_" - is available in experimental mode and may be used for troubleshooting with the developers. See [Overlay](overlay) for more details.
 - **Upscaling**: Enables the use of an upscaler such as NIS or FSR to perform rendering at a lower resolution, and upscale and/or sharpen the image. Requires to restart the VR session. See [Upscaling](upscaling) for more details.

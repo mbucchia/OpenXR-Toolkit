@@ -14,6 +14,8 @@ nav_order: 4
 
 ## Introduction
 
+### What OpenComposite does
+
 The goal of [OpenComposite](https://gitlab.com/znixian/OpenOVR/-/tree/openxr) is to run applications built on the legacy OpenVR (predecessor of OpenXR), which typically require SteamVR, to use OpenXR instead.
 
 The diagram below show how games developed for OpenXR and OpenVR typically operate. This is before the introduction of OpenComposite.
@@ -26,6 +28,29 @@ The diagram below show how OpenComposite enables applications built for OpenVR t
 ![Ecosystem with OpenComposite](site/ecosystem2.png)<br>
 *Ecosystem with OpenComposite*
 
+### Headset compatibility
+
+| Headset brand | Has native OpenXR support? | Can leverage OpenComposite? |
+| --- | --- | --- |
+| Windows Mixed Reality (HP Reverb, Samsung Odyssey...) | Yes | Yes |
+| Oculus | Yes [1] | Yes [1] |
+| Varjo | Yes | Yes |
+| Pimax | Yes [2] | Yes |
+| HTC Tier 1 (Vive original, Vive Pro) | No [3] | No |
+| HTC Tier 2 (Vive Cosmos, Vive Focus) | Yes [3] | Yes [4] |
+| Valve (Index) | No | No |
+| Pico | No | No |
+
+[1] Oculus Quest headsets run either with "Link" (cable or AirLink) and Virtual Desktop. When using Virtual Desktop, you must use SteamVR. OpenComposite currently does not support Virtual Desktop, and therefore OpenComposite can only be used with Link.
+
+[2] Pimax support requires to use the unofficial [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki) OpenXR runtime.
+
+[3] HTC headsets with outside-in tracking (Lighthouse) only work through SteamVR. HTC headsets with inside-out tracking have native OpenXR support (enabled through the VIVE Console software).
+
+[4] HTC headsets using the native OpenXR runtime can be used with OpenComposite but not with OpenXR Toolkit.
+
+### How is it different from OpenXR Toolkit?
+
 OpenComposite is a separate software from OpenXR Toolkit, developed and maintained by a different team.
 
 The goal of OpenXR Toolkit is to add functionality to OpenXR applications. However, not all applications are written for OpenXR, and therefore OpenXR Toolkit cannot be used with these applications, unless they can use OpenComposite to use OpenXR.
@@ -37,13 +62,7 @@ OpenXR Toolkit is not necessary in order to take advantage of OpenComposite to b
 
 For more details on OpenVR, OpenXR, OpenComposite, you may read [An Overview of VR Software Components](https://fredemmott.com/blog/2022/05/29/vr-software-components.html).
 
-### Pimax users
-
-For Pimax users, the story is slightly different. Officially, Pimax does not offer an OpenXR runtime that natively speaks to the Pimax platform software. Instead, Pimax offers support for OpenXR through a SteamVR bridge. Therefore, using OpenXR on Pimax does not allow you to bypass SteamVR.
-
-However, the unofficial project [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki) implements natively OpenXR for Pimax devices without the need to use SteamVR. This can be used with native OpenXR games (like Flight Simulator 2020) or with OpenComposite to bypass SteamVR entirely. 
-
-## Compatibility
+## Game compatibility
 
 Both OpenComposite and OpenXR Tookit are limited in the applications that they support. Sometimes, combinations of OpenComposite plus OpenXR Toolkit are also not working. The table below tracks known games to work with OpenComposite and whether they also work with OpenXR Toolkit.
 
@@ -64,12 +83,13 @@ There is an [official compatibility for OpenComposite](https://docs.google.com/s
 | IL-2 Sturmovik | Yes | Yes [3] |
 | iRacing | Yes | No [4] |
 | F1 2022 | Yes | Yes |
+| Pavlov VR | Yes | Yes |
 | Project Cars 2 | Yes | Yes |
 | Project Cars 3 | Yes | Yes |
 | rFactor 2 | Yes | Yes |
 | Subnautica | Yes | Yes |
-| X-Plane 11 | Yes [5] | Yes [3] [6] |
-| X-Plane 12 | Yes [5] | Yes [3] [6] |
+| X-Plane 11 | Yes [5] | No |
+| X-Plane 12 | Yes [5] | No |
 
 [1] Supports Eye-tracked Foveated Rendering.
 
@@ -81,9 +101,58 @@ There is an [official compatibility for OpenComposite](https://docs.google.com/s
 
 [5] On Windows Mixed Reality, X-Plane requires the use of [OpenXR-Vk-D3D12](https://github.com/mbucchia/OpenXR-Vk-D3D12).
 
-[6] X-Plane is only compatible with OpenXR Toolkit on Windows Mixed Reality.
-
 Do you have a game working but it's not in the list? Please file an [Issue](https://github.com/mbucchia/OpenXR-Toolkit/issues) to let us know!
+
+### Third party software compatibility
+
+A lot of mods don't play well together. This includes ReShade, vrperfkit, openvr_fsr...
+
+Before installing OpenComposite, be sure to disable them. You may run a repair of the game from Steam to do that and restore your original game DLLs.
+
+## Step-by-step
+
+1) Make sure OpenXR is properly configured on your system.
+
+<details>
+  <summary>How to do it on Windows Mixed Reality...</summary>
+  <p>Use either one of the methods below.</p>
+  <p>From the <i>Mixed Reality Portal</i>:</p>
+  <img alt="Toggle OpenXR runtime" src="site/wmr-openxr-1.png">
+  <p>From the <i>OpenXR Tools for Windows Mixed Reality</i>:</p>
+  <img alt="Toggle OpenXR runtime" src="site/wmr-openxr-2.png">
+</details>
+
+<details>
+  <summary>How to do it on Oculus...</summary>
+  <p>Use either one of the methods below.</p>
+  <img alt="Toggle OpenXR runtime" src="site/oculus-openxr-1.jpg">
+  <img alt="Toggle OpenXR runtime" src="site/oculus-openxr-2.png">
+</details>
+
+<details>
+  <summary>How to do it on Varjo...</summary>
+  <p>From the <i>Varjo Base</i>:</p>
+  <img alt="Toggle OpenXR runtime" src="site/varjo-openxr.png">
+</details>
+
+<details>
+  <summary>How to do it on Pimax...</summary>
+  <p>You must download <a href="https://github.com/mbucchia/Pimax-OpenXR/wiki">PimaxXR</a>.</p>
+  <p>From the <i>PimaxXR Control Center</i>:</p>
+  <img alt="Toggle OpenXR runtime" src="site/pimax-openxr.png">
+</details>
+
+2) Download the [OpenComposite Launcher](https://znix.xyz/OpenComposite/runtimeswitcher.php?branch=openxr) and extract it to the installation locatio of your choice.
+
+3) Turn OpenComposite on.
+
+Open the `OpenComposite.exe` application:
+
+![OpenComposite application](site/oc-1.png)
+
+Click "Switch to OpenComposite":
+
+![OpenComposite application](site/oc-2.png)
 
 ## Tips for using OpenComposite
 
@@ -91,15 +160,11 @@ Do you have a game working but it's not in the list? Please file an [Issue](http
 
 When using OpenComposite, you will bypass the SteamVR platform that enables your VR content to run. But you will still need to use Steam, the application store. Just because you will start a game from Steam doesn't mean that it will use SteamVR (unless OpenComposite is not correctly set up for this game).
 
-### Understand what the `openvr_api.dll` is
+### OpenComposite "pretends" to be SteamVR
 
-OpenComposite is an implementation of the OpenVR API, which is typically done on the system with the official `openvr_api.dll` system file. With OpenComposite, you are replacing the system implementation of the OpenVR API, hence replacing this `openvr_api.dll` file with the one provided by OpenComposite.
+OpenComposite replaces the SteamVR implementation of the OpenVR library. Therefore, OpenComposite replaces and pretends to be SteamVR. When starting an application, choose to use SteamVR! OpenComposite will intercept the intent to use SteamVR, and will redirect the application to OpenXR instead.
 
-This can be done in two ways:
-
-1) Per-game. You replace the `openvr_api.dll` file in the game folder directly with the one supplied by OpenComposite.
-
-2) System-wide. You use the OpenComposite launcher application to change where all games looks for the `openvr_api.dll` file and make them use the copy supplied by OpenComposite.
+![OpenComposite OVR error](site/start-steamvr.png)
 
 ### Be sure to grab the OpenXR version of OpenComposite
 
@@ -139,9 +204,47 @@ You may use the  _OpenXR Toolkit Companion app_ (found on the desktop or Start m
 
 ![Disable OpenXR Toolkit](site/per-app-disable.png)
 
-### Disable all other mods: ReShade, vrperfkit, openvr_fsr...
+If you have other OpenXR API layers ("mods"), you should also try disabling them one at a time. Open the registry and navigate to `HKEY_LOCAL_MACHINE\Software\Khronos\OpenXR\1\ApiLayers\Implicit`. You will see a list of files, corresponding to all the OpenXR API layers installed:
 
-A lot of mods don't play well together. Before installing OpenComposite, be sure to disable them. You may run a repair of the game from Steam to do that and restore your original game DLLs.
+![API layers](site/apilayers.png)
+
+You may disable an API layer by changing its value from 0 (enabled) to 1 (disabled). You can re-enable it later by reverting that change.
+
+### Disable OpenComposite for incompatible applications
+
+If an application does not work with OpenComposite, you can disable OpenComposite through the _OpenComposite Launcher_ by clicking "Switch to SteamVR":
+
+![OpenComposite application](site/oc-3.png)
+
+### The game will not start with error -35
+
+If your headset is not properly connected, powered on, or detected you will get the following error:
+
+![OpenComposite error message](site/oc-error-no-device.png)
+
+Make sure to connect and power on your headset prior to starting your game.
+
+If the issue persist, it is likely that you have not correctly set up your OpenXR runtime, and it is looking for the wrong headset (and cannot find it!). Read the next section about error -13 right below.
+
+### The game will not start with error -13
+
+If no OpenXR runtime is currently set, you will get the following error:
+
+![OpenComposite error message](site/oc-error-no-runtime.png)
+
+Follow the [step-by-step guide](#step-by-step) further above to properly set up your OpenXR runtime.
+
+If your OpenXR runtime is properly set, a registry key named `ActiveRuntime` will be created under `HKEY_LOCAL_MACHINE\Software\Khronos\OpenXR\1`.
+
+![ActiveRuntime](site/active-runtime.png)
+
+### The game will not start with error -32
+
+If you get the following error:
+
+![OpenComposite error message](site/oc-error-missing-dll.png)
+
+You are likely missing some system DLL files. The most common missing DLL is the [Visual C++ Redistributables](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 
 ### The game will not start with error "unknown config option"
 
@@ -162,6 +265,19 @@ invertUsingShaders=true
 ```
 
 Make sure that the file extension is `.ini` and not `.ini.txt`!
+
+### If all else fails...
+
+Head to the [OpenComposite Discord](https://discord.gg/sQ2jwSb62J) for support. Before posting, be sure to gather the OpenComposite log file from `%LocalAppData%\OpenComposite\logs` (just copy/paste this path into your Start menu or file explorer):
+
+![OpenComposite logs](site/oc-logs.png)
+
+When posting a message for support, always include the following information:
+
+- What game/application you are trying to use.
+- What headset you are using.
+- **Always provide the log file**.
+- Be very clear when you describe your issue.
 
 ### More OpenXR Toolkit troubleshooting
 

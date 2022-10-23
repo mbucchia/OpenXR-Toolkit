@@ -26,7 +26,7 @@ Current version: **1.2.0**
 
 This software may be used with any brand of VR headset as long as the target application uses DirectX with any GPU compatible with DirectX 11 and above. The application must use OpenXR.
 
-The following headsets have been confirmed to work: Windows Mixed Reality (eg: HP Reverb), Oculus Quest & Quest 2, Pimax 5K & 8KX, Varjo Aero, Valve Index, HTC Vive, Pico Neo.
+The following headsets have been confirmed to work: Windows Mixed Reality (eg: HP Reverb), Oculus Quest & Quest 2, Pimax 5K & 8KX, Varjo Aero, Valve Index, HTC Vive, Pico Neo 3 & 4.
 
 The following OpenXR ToolKit features have additional restrictions:
 
@@ -51,13 +51,8 @@ The following OpenXR ToolKit features have additional restrictions:
 + OpenXR Toolkit is not compatible with War Thunder on Varjo headsets.
 + OpenXR Toolkit is not compatible with Bonelab on Oculus headsets. 
 + OpenXR Toolkit is only compatible with iRacing when using OpenXR. Compatibility going through OpenComposite has not been tested, and will not be officially supported.
-+ OpenXR Toolkit is only compatible with X-Plane 11 & 12 on Windows Mixed Reality headsets, and Foveated Rendering is not supported on any platforms.
 + OpenXR Toolkit is not compatible with ReShade.
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
-
-For future plans, see the [Roadmap](roadmap).
-
-> ⚠️ **Warning:** if you are using the previous NIS Scaler or Hand-To-Controller layer before, please uninstall them now.
 
 ## Installation
 
@@ -85,6 +80,8 @@ Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskyto
 
 ![Setup wizard](site/installer.png)
 
+> 📝 **Note:** You do not need to install the previous version of OpenXR Toolkit if you had one installed. The new version will overwrite the previous one.
+
 ### 3. Launch the _OpenXR Toolkit Companion app_ to confirm that the software is active.
 
 <details>
@@ -94,19 +91,25 @@ Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskyto
   
 </details>
 
-The _OpenXR Toolkit Companion app_ may be used sporadically to enable or disable advanced features or perform recovery (see further below). The application displays a green or red status indicating whether the software OpenXR component is active:
+The _OpenXR Toolkit Companion app_ may be used sporadically to enable or disable advanced features or perform recovery (see further below). The application displays a green or red status indicating whether the software OpenXR component is active.
 
-![Companion app](site/companion.png)
+The _OpenXR Toolkit Companion app_ can also be used to customize the keyboard shortcuts used to invoke and navigate the menu.
+
+![Companion app](site/hotkeys.png)
 
 > 💡 **Tip:** You don't need to keep the companion app running in order to use the software: the actual settings for the toolkit are available from within your OpenXR application and display directly in the headset! (see below). 
 
 # Basic usage
 
-Once installed, please run the desired OpenXR application and use `CTRL+F2` to open the configuration menu:
+Once installed, please run the desired OpenXR application. A welcome message will appear and instruct you to open the menu:
 
-![On-screen menu](site/osd-menu.jpg)
+![On-screen menu](site/welcome.png)
+
+> 💡 **Troubleshooting:** Can't see the menu? Head to [Troubleshooting](troubleshooting#menu-is-not-showing) for help.
 
 In order to navigate the menu, select options and change values:
+
+![On-screen menu](site/menu.png)
 
 - Use `CTRL+F2` to move to the next option (next line) in the menu.
 - Use `CTRL+F1` to move selection to the left / decrease the option value.
@@ -115,10 +118,6 @@ In order to navigate the menu, select options and change values:
 
 > 💡 **Tip:** Use the _OpenXR Toolkit Companion app_ to change the default shortcut keys.
 
-> 💡 **Tip:** When starting an application for the first time, use the configuration menu to adjust the _Menu eye offset_ until the text appears correctly (eg: no "double vision").
-
-> 📝 **Note:** The first few times you're using the OpenXR Toolkit with a new application, a convenient reminder message will appear in the headset and confirms whether the software is operating properly.
-  
 ## Available options
 
 See [Features](features) for more details.

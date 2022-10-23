@@ -53,6 +53,9 @@ In order to activate this feature, you must check the _Enable screenshot_ box in
 
 You may then press `Ctrl+F12` to take a screenshot of the left-eye image view. Screenshots are saved under `%LocalAppData%\OpenXR-Toolkit\screenshots`. This folder may be opened from the _OpenXR Toolkit Companion app_ by clicking the _Open screenshots folder_ button.
 
+![Screenshots](site/screenshot.png)<br>
+*Enabling and accessing screenshots*
+
 **The DDS format is a lossless format native to DirectX but some tools might have issues opening DDS files. The tools that were confirmed to properly open them with the OpenXR Toolkit are [GIMP](https://www.gimp.org/) and [Paint.net](https://github.com/paintdotnet/release/releases)*
 
 ## Record statistics
