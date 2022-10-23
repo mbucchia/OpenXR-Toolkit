@@ -148,11 +148,11 @@ Before installing OpenComposite, be sure to disable them. You may run a repair o
 
 Open the `OpenComposite.exe` application:
 
-![OpenComposite application](site/oc-1.png)
+![OpenComposite application](site/oc1.png)
 
 Click "Switch to OpenComposite":
 
-![OpenComposite application](site/oc-2.png)
+![OpenComposite application](site/oc2.png)
 
 ## Tips for using OpenComposite
 
@@ -214,7 +214,7 @@ You may disable an API layer by changing its value from 0 (enabled) to 1 (disabl
 
 If an application does not work with OpenComposite, you can disable OpenComposite through the _OpenComposite Launcher_ by clicking "Switch to SteamVR":
 
-![OpenComposite application](site/oc-3.png)
+![OpenComposite application](site/oc3.png)
 
 ### The game will not start with error -35
 
