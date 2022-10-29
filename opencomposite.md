@@ -145,7 +145,7 @@ Before installing OpenComposite, be sure to disable them. You may run a repair o
   <p>Open the <i>VIVE Console for SteamVR</i>:</p>
   <img alt="Toggle OpenXR runtime" src="site/vive-openxr-1.png">
   <p>Use either one of the methods below.</p>
-  <img alt="Toggle OpenXR runtime" src="site/vive-openxr-2.jpg">
+  <img alt="Toggle OpenXR runtime" src="site/vive-openxr-2.png">
   <img alt="Toggle OpenXR runtime" src="site/vive-openxr-3.png">
 </details>
 
