@@ -109,6 +109,8 @@ namespace LAYER_NAMESPACE {
         if (!fastInitialization) {
             XrInstance dummyInstance = XR_NULL_HANDLE;
             PFN_xrEnumerateInstanceExtensionProperties xrEnumerateInstanceExtensionProperties = nullptr;
+            PFN_xrGetSystem xrGetSystem = nullptr;
+            PFN_xrGetSystemProperties xrGetSystemProperties = nullptr;
             PFN_xrDestroyInstance xrDestroyInstance = nullptr;
 
             // Try to speed things up by requesting no extentions.
@@ -162,6 +164,12 @@ namespace LAYER_NAMESPACE {
                     "xrEnumerateInstanceExtensionProperties",
                     reinterpret_cast<PFN_xrVoidFunction*>(&xrEnumerateInstanceExtensionProperties)));
                 CHECK_XRCMD(apiLayerInfo->nextInfo->nextGetInstanceProcAddr(
+                    dummyInstance, "xrGetSystem", reinterpret_cast<PFN_xrVoidFunction*>(&xrGetSystem)));
+                CHECK_XRCMD(apiLayerInfo->nextInfo->nextGetInstanceProcAddr(
+                    dummyInstance,
+                    "xrGetSystemProperties",
+                    reinterpret_cast<PFN_xrVoidFunction*>(&xrGetSystemProperties)));
+                CHECK_XRCMD(apiLayerInfo->nextInfo->nextGetInstanceProcAddr(
                     dummyInstance, "xrDestroyInstance", reinterpret_cast<PFN_xrVoidFunction*>(&xrDestroyInstance)));
             } else {
                 TraceLoggingWriteTagged(
@@ -191,6 +199,22 @@ namespace LAYER_NAMESPACE {
                 }
             } else {
                 Log("Failed to query extensions\n");
+            }
+
+            // Workaround: the Vive runtime does not seem to like our flow of destroying the instance
+            // mid-initialization. We skip destruction and we will just create a second instance.
+            if (xrGetSystem && xrGetSystemProperties) {
+                XrSystemGetInfo getInfo{XR_TYPE_SYSTEM_GET_INFO};
+                getInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
+                XrSystemId systemId;
+                if (XR_SUCCEEDED(xrGetSystem(dummyInstance, &getInfo, &systemId))) {
+                    XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES};
+                    CHECK_XRCMD(xrGetSystemProperties(dummyInstance, systemId, &systemProperties));
+                    if (std::string(systemProperties.systemName).find("Vive Reality system") != std::string::npos) {
+                        Log("Detected Vive runtime\n");
+                        xrDestroyInstance = nullptr;
+                    }
+                }
             }
 
             if (xrDestroyInstance) {

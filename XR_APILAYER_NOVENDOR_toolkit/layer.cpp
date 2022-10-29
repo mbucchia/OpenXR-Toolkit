@@ -444,7 +444,13 @@ namespace {
                 Log("Using OpenXR system %s\n", m_systemName.c_str());
 
                 const auto isWMR = m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
+                const auto isVive = m_runtimeName.find("Vive Reality Runtime") != std::string::npos;
+
                 m_supportMotionReprojectionLock = isWMR;
+
+                // Workaround: the Vive runtime does not seem to properly convert timestamps. We disable any feature
+                // depending on timestamps conversion.
+                m_hasPerformanceCounterKHR = !isVive;
 
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
                 m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction || m_isOmniceptDetected ||
