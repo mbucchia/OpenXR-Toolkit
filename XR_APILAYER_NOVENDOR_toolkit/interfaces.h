@@ -189,6 +189,7 @@ namespace toolkit {
         const std::string SettingRecordStats = "record_stats";
         const std::string SettingHighRateStats = "high_rate_stats";
         const std::string SettingFrameThrottling = "frame_throttle";
+        const std::string SettingTurboMode = "turbo";
 
         enum class OffOnType { Off = 0, On, MaxValue };
         enum class NoYesType { No = 0, Yes, MaxValue };

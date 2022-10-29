@@ -1332,6 +1332,14 @@ namespace {
                                          MenuEntry::FmtEnum<OffOnType>});
             }
 
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Turbo mode (Experimental)",
+                                     MenuEntryType::Choice,
+                                     SettingTurboMode,
+                                     0,
+                                     MenuEntry::LastVal<OffOnType>(),
+                                     MenuEntry::FmtEnum<OffOnType>});
+
             MenuGroup frameThrottlingGroup(this, [&] {
                 return !m_isMotionReprojectionRateSupported || m_configManager->peekEnumValue<MotionReprojection>(
                                                                    SettingMotionReprojection) != MotionReprojection::On;
