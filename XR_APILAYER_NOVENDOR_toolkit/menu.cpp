@@ -825,6 +825,24 @@ namespace {
                                                  textColorOverlayNoFade,
                                                  true,
                                                  FW1_LEFT);
+                        } else if (m_configManager->isDeveloper()) {
+                            float top = topAlign - BorderVerticalSpacing - 2.1f * fontSize;
+
+#define TIMING_STAT(label, name)                                                                                       \
+    m_device->drawString(fmt::format(label ": {}", m_stats.name),                                                      \
+                         TextStyle::Normal,                                                                            \
+                         fontSize,                                                                                     \
+                         rightAlign - 300,                                                                             \
+                         top,                                                                                          \
+                         textColorOverlayNoFade,                                                                       \
+                         true,                                                                                         \
+                         FW1_LEFT);                                                                                    \
+    top -= 1.05f * fontSize;
+
+                            TIMING_STAT("app GPU", appGpuTimeUs);
+                            TIMING_STAT("app CPU", appCpuTimeUs);
+
+#undef TIMING_STAT
                         }
                     } else {
 #define OVERLAY_COMMON TextStyle::Normal, fontSize, overlayAlign - 300, top, textColorOverlayNoFade, true, FW1_LEFT
@@ -1828,6 +1846,20 @@ namespace {
                                      0,
                                      MenuEntry::LastVal<OffOnType>(),
                                      MenuEntry::FmtEnum<OffOnType>});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Debug CPU Load",
+                                     MenuEntryType::Slider,
+                                     "debug_cpu_load",
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<0>});
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "Debug GPU Load",
+                                     MenuEntryType::Slider,
+                                     "debug_gpu_load",
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<0>});
 
             m_menuEntries.push_back(
                 {MenuIndent::OptionIndent, "Reload Shaders", MenuEntryType::ReloadShaders, BUTTON_OR_SEPARATOR});

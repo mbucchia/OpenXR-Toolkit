@@ -2002,6 +2002,9 @@ namespace {
             return get(m_context);
         }
 
+        void executeDebugWorkload() override {
+        }
+
       private:
         void initializeInterceptor() {
             if (!m_allowInterceptor) {
