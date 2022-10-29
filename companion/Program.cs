@@ -179,6 +179,7 @@ namespace companion
             new ArgParser("foveated-rendering", "vrs", parseToggle),
             new ArgParser("overlay", "overlay", parseToggle),
             new ArgParser("record-stats", "record_stats", parseToggle),
+            new ArgParser("turbo", "turbo", parseToggle),
         };
 
         private static int parseSettingValue(string value, ArgParser arg)

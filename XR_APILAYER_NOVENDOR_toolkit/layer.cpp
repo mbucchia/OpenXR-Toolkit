@@ -2060,6 +2060,7 @@ namespace {
 
             TraceLoggingWrite(g_traceProvider, "xrWaitFrame", TLPArg(session, "Session"));
 
+            const auto lastFrameWaitTimestamp = m_lastFrameWaitTimestamp;
             if (isVrSession(session)) {
                 if (m_graphicsDevice) {
                     m_performanceCounters.appCpuTimer->stop();
@@ -2084,7 +2085,39 @@ namespace {
                 m_performanceCounters.waitCpuTimer->start();
             }
 
-            const XrResult result = OpenXrApi::xrWaitFrame(session, frameWaitInfo, frameState);
+            XrResult result = XR_ERROR_RUNTIME_FAILURE;
+            if (isVrSession(session) && m_asyncWaitPromise.valid()) {
+                TraceLoggingWrite(g_traceProvider, "AsyncWaitMode");
+
+                // In Turbo mode, we accept pipelining of exactly one frame.
+                if (m_asyncWaitPolled) {
+                    TraceLocalActivity(local);
+
+                    // On second frame poll, we must wait.
+                    TraceLoggingWriteStart(local, "AsyncWaitNow");
+                    m_asyncWaitPromise.wait();
+                    TraceLoggingWriteStop(local, "AsyncWaitNow");
+                }
+                m_asyncWaitPolled = true;
+
+                // In Turbo mode, we don't actually wait, we make up a predicted time.
+                std::unique_lock lock(m_asyncWaitLock);
+                frameState->predictedDisplayTime =
+                    m_asyncWaitCompleted
+                        ? m_lastPredictedDisplayTime
+                        : (m_lastPredictedDisplayTime + (m_lastFrameWaitTimestamp - lastFrameWaitTimestamp).count());
+                frameState->predictedDisplayPeriod = m_lastPredictedDisplayPeriod;
+                frameState->shouldRender = XR_TRUE;
+                result = XR_SUCCESS;
+            } else {
+                result = OpenXrApi::xrWaitFrame(session, frameWaitInfo, frameState);
+
+                if (XR_SUCCEEDED(result)) {
+                    // We must always store those values to properly handle transitions into Turbo Mode.
+                    m_lastPredictedDisplayTime = frameState->predictedDisplayTime;
+                    m_lastPredictedDisplayPeriod = frameState->predictedDisplayPeriod;
+                }
+            }
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 m_performanceCounters.waitCpuTimer->stop();
                 m_stats.waitCpuTimeUs += m_performanceCounters.waitCpuTimer->query();
@@ -2136,7 +2169,14 @@ namespace {
 
             TraceLoggingWrite(g_traceProvider, "xrBeginFrame", TLPArg(session, "Session"));
 
-            const XrResult result = OpenXrApi::xrBeginFrame(session, frameBeginInfo);
+            XrResult result = XR_ERROR_RUNTIME_FAILURE;
+            if (isVrSession(session) && m_asyncWaitPromise.valid()) {
+                // In turbo mode, we do nothing here.
+                TraceLoggingWrite(g_traceProvider, "AsyncWaitMode");
+                result = XR_SUCCESS;
+            } else {
+                result = OpenXrApi::xrBeginFrame(session, frameBeginInfo);
+            }
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 // Record the predicted display time.
                 m_begunFrameTime = m_waitedFrameTime;
@@ -3099,9 +3139,54 @@ namespace {
             }
 
             {
+                if (m_asyncWaitPromise.valid()) {
+                    TraceLocalActivity(local);
+
+                    // This is the latest point we must have fully waited a frame before proceeding.
+                    //
+                    // Note: we should not wait infinitely here, however certain patterns of engine calls may cause us
+                    // to attempt a "double xrWaitFrame". Use a timeout to detect that, and refrain from enqueing a
+                    // second wait further down. This isn't a pretty solution, but it is simple and it seems to work
+                    // effectively (minus the 1s freeze observed in-game).
+                    TraceLoggingWriteStart(local, "AsyncWaitNow");
+                    const auto ready = m_asyncWaitPromise.wait_for(1s) == std::future_status::ready;
+                    TraceLoggingWriteStop(local, "AsyncWaitNow", TLArg(ready, "Ready"));
+                    if (ready) {
+                        m_asyncWaitPromise = {};
+                    }
+
+                    CHECK_XRCMD(OpenXrApi::xrBeginFrame(m_vrSession, nullptr));
+                }
+
                 const auto result = OpenXrApi::xrEndFrame(session, &chainFrameEndInfo);
 
                 m_graphicsDevice->unblockCallbacks();
+
+                if (m_configManager->getValue(config::SettingTurboMode) && !m_asyncWaitPromise.valid()) {
+                    m_asyncWaitPolled = false;
+                    m_asyncWaitCompleted = false;
+
+                    // In Turbo mode, we kick off a wait thread immediately.
+                    TraceLoggingWrite(g_traceProvider, "AsyncWaitStart");
+                    m_asyncWaitPromise = std::async(std::launch::async, [&] {
+                        TraceLocalActivity(local);
+
+                        XrFrameState frameState{XR_TYPE_FRAME_STATE};
+                        TraceLoggingWriteStart(local, "AsyncWaitFrame");
+                        CHECK_XRCMD(OpenXrApi::xrWaitFrame(m_vrSession, nullptr, &frameState));
+                        TraceLoggingWriteStop(local,
+                                              "AsyncWaitFrame",
+                                              TLArg(frameState.predictedDisplayTime, "PredictedDisplayTime"),
+                                              TLArg(frameState.predictedDisplayPeriod, "PredictedDisplayPeriod"));
+                        {
+                            std::unique_lock lock(m_asyncWaitLock);
+                            m_lastPredictedDisplayTime = frameState.predictedDisplayTime;
+                            m_lastPredictedDisplayPeriod = frameState.predictedDisplayPeriod;
+
+                            m_asyncWaitCompleted = true;
+                        }
+                    });
+                }
 
                 return result;
             }
@@ -3174,6 +3259,13 @@ namespace {
         XrView m_posesForFrame[utilities::ViewCount];
         std::chrono::time_point<std::chrono::steady_clock> m_lastFrameWaitTimestamp{};
         uint32_t m_frameThrottleSleepOffset{0};
+
+        std::mutex m_asyncWaitLock;
+        std::future<void> m_asyncWaitPromise;
+        XrTime m_lastPredictedDisplayTime{0};
+        XrTime m_lastPredictedDisplayPeriod{0};
+        bool m_asyncWaitPolled{false};
+        bool m_asyncWaitCompleted{false};
 
         std::shared_ptr<config::IConfigManager> m_configManager;
 
