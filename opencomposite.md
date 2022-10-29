@@ -30,24 +30,22 @@ The diagram below show how OpenComposite enables applications built for OpenVR t
 
 ### Headset compatibility
 
-| Headset brand | Has native OpenXR support? | Can leverage OpenComposite? |
-| --- | --- | --- |
-| Windows Mixed Reality (HP Reverb, Samsung Odyssey...) | Yes | Yes |
-| Oculus | Yes [1] | Yes [1] |
-| Varjo | Yes | Yes |
-| Pimax | Yes [2] | Yes |
-| HTC Tier 1 (Vive original, Vive Pro) | No [3] | No |
-| HTC Tier 2 (Vive Cosmos, Vive Focus) | Yes [3] | Yes [4] |
-| Valve (Index) | No | No |
-| Pico | No | No |
+| Headset brand | Has native OpenXR support? | Can leverage OpenComposite? | OpenXR supports 32-bit apps? |
+| --- | --- | --- | --- |
+| Windows Mixed Reality (HP Reverb, Samsung Odyssey...) | Yes | Yes | Yes |
+| Oculus | Yes [1] | Yes [1] | Yes |
+| Varjo | Yes | Yes | No |
+| Pimax | Yes [2] | Yes | Yes |
+| HTC Tier 1 (Vive original, Vive Pro) | No [3] | No | - |
+| HTC Tier 2 (Vive Cosmos, Vive Focus) | Yes [3] | Yes | No |
+| Valve (Index) | No | No | - |
+| Pico | No | No | - |
 
 [1] Oculus Quest headsets run either with "Link" (cable or AirLink) and Virtual Desktop. When using Virtual Desktop, you must use SteamVR. OpenComposite currently does not support Virtual Desktop, and therefore OpenComposite can only be used with Link.
 
 [2] Pimax support requires to use the unofficial [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki) OpenXR runtime.
 
 [3] HTC headsets with outside-in tracking (Lighthouse) only work through SteamVR. HTC headsets with inside-out tracking have native OpenXR support (enabled through the VIVE Console software).
-
-[4] HTC headsets using the native OpenXR runtime can be used with OpenComposite but not with OpenXR Toolkit.
 
 ### How is it different from OpenXR Toolkit?
 
@@ -142,6 +140,15 @@ Before installing OpenComposite, be sure to disable them. You may run a repair o
   <img alt="Toggle OpenXR runtime" src="site/pimax-openxr.png">
 </details>
 
+<details>
+  <summary>How to do it on HTC Vive Cosmos and Focus...</summary>
+  <p>Open the <i>VIVE Console for SteamVR</i>:</p>
+  <img alt="Toggle OpenXR runtime" src="site/vive-openxr-1.png">
+  <p>Use either one of the methods below.</p>
+  <img alt="Toggle OpenXR runtime" src="site/vive-openxr-2.jpg">
+  <img alt="Toggle OpenXR runtime" src="site/vive-openxr-3.png">
+</details>
+
 2) Download the [OpenComposite Launcher](https://znix.xyz/OpenComposite/runtimeswitcher.php?branch=openxr) and extract it to the installation locatio of your choice.
 
 3) Turn OpenComposite on.
@@ -164,7 +171,11 @@ When using OpenComposite, you will bypass the SteamVR platform that enables your
 
 OpenComposite replaces the SteamVR implementation of the OpenVR library. Therefore, OpenComposite replaces and pretends to be SteamVR. When starting an application, choose to use SteamVR! OpenComposite will intercept the intent to use SteamVR, and will redirect the application to OpenXR instead.
 
-![OpenComposite OVR error](site/start-steamvr.png)
+![Start as SteamVR](site/start-steamvr.png)
+
+For some applications that you cannot start from Steam, you might need to update the command-line options when starting the game to force use of SteamVR (and therefore OpenComposite). For example, with DCS, you must pass the extra command-line argument `--force_steam_VR`, which can be done by creating a shortcut to the `dcs.exe` application:
+
+![Start as SteamVR](site/force-steamvr-cli.png)
 
 ### Be sure to grab the OpenXR version of OpenComposite
 
@@ -196,6 +207,55 @@ Many tutorials out there focus on setting up OpenComposite for Windows Mixed Rea
 
 If your headset is of Oculus, Varjo, or Pimax branch, don't bother with the WMR stuff!
 
+### Always make sure you are running the latest version
+
+Before starting troubleshooting, always make sure you are running the latest version of the following:
+
+- Latest version of your OpenXR runtime. This is typically updated or installed via the Windows store (for Windows Mixed Reality) or the vendor's software (for Oculus, Varjo). Sometimes, you will need to manually check the vendor's website (for Pimax unofficial runtime for example).
+
+- Latest version of [OpenComposite](opencomposite). If using the OpenComposite launcher, look for the update button.
+
+![OpenComposite update](site/oc-update.png)
+
+- Latest version of OpenXR Toolkit (if applicable), downloadable from the front page of this website.
+
+### Your SteamVR settings won't matter anymore!
+
+Any setting you used to change via SteamVR will be ignored with OpenComposite. You are bypassing SteamVR, therefore things like custom render scale (application resolution) will no longer be honored. This can lead to the impression that OpenComposite made your performance worse, however in most cases this is only because you previously had a lower render scale set in SteamVR.
+
+![SteamVR settings](site/steam-settings.png)
+
+You must now use the equivalent OpenXR or platform settings to achieve the same results (of changing render scale for example).
+
+<details>
+  <summary>How to do it on Windows Mixed Reality...</summary>
+  <p>From the <i>OpenXR Tools for Windows Mixed Reality</i>:</p>
+  <img alt="Set render scale" src="site/wmr-render-scale.png">
+</details>
+
+<details>
+  <summary>How to do it on Oculus...</summary>
+  <p>Use either one of the methods below.</p>
+  <img alt="Set render scale" src="site/ott-render-scale.png">
+  <img alt="Set render scale" src="site/oculus-render-scale.png">
+</details>
+
+<details>
+  <summary>How to do it on Varjo...</summary>
+  <p>From the <i>Varjo Base</i>:</p>
+  <img alt="Set render scale" src="site/varjo-render-scale.png">
+</details>
+
+<details>
+  <summary>How to do it on Pimax...</summary>
+  <p>From <i>Pitool</i> or the <i>Pimax Client</i>:</p>
+  <img alt="Set render scale" src="site/pitool-render-scale.png">
+</details>
+
+You can also do it universally from OpenXR Toolkit:
+
+![Override resolution OpenXR Toolkit](site/toolkit-render-scale.png)
+
 ### Don't set up everything at once!
 
 Before even considering the use of OpenXR Toolkit, test the application with just OpenComposite. If the application does not work with OpenComposite only, there is no point in adding OpenXR Toolkit in the mix. You must first get the application to work with OpenComposite, then try to enable OpenXR Toolkit.
@@ -224,7 +284,7 @@ If your headset is not properly connected, powered on, or detected you will get 
 
 Make sure to connect and power on your headset prior to starting your game.
 
-If the issue persist, it is likely that you have not correctly set up your OpenXR runtime, and it is looking for the wrong headset (and cannot find it!). Read the next section about error -13 right below.
+If the issue persists, it is likely that you have not correctly set up your OpenXR runtime, and it is looking for the wrong headset (and cannot find it!). Read the next section about error -13 right below.
 
 ### The game will not start with error -13
 
@@ -237,6 +297,8 @@ Follow the [step-by-step guide](#step-by-step) further above to properly set up 
 If your OpenXR runtime is properly set, a registry key named `ActiveRuntime` will be created under `HKEY_LOCAL_MACHINE\Software\Khronos\OpenXR\1`.
 
 ![ActiveRuntime](site/active-runtime.png)
+
+If the issue persists, check whether your application/game is 32-bit or 64-bit. See the [Headset compatibility](#headset-compatibility) for list of headsets not supporting 32-bit applications with OpenXR.
 
 ### The game will not start with error -32
 

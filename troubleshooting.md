@@ -12,6 +12,18 @@ nav_order: 6
 
 ---
 
+## Always make sure you are running the latest version
+
+Before starting troubleshooting, always make sure you are running the latest version of the following:
+
+- Latest version of your OpenXR runtime. This is typically updated or installed via the Windows store (for Windows Mixed Reality) or the vendor's software (for Oculus, Varjo). Sometimes, you will need to manually check the vendor's website (for Pimax unofficial runtime for example).
+
+- Latest version of [OpenComposite](opencomposite) if applicable (ie: your application does not use OpenXR natively). If using the OpenComposite launcher, look for the update button.
+
+- Latest version of OpenXR Toolkit, downloadable from the front page of this website.
+
+**Half of the "something does not work for me" issues are resolved by updating to the latest software.**
+
 ## Menu is not showing
 
 There are a few common situations leading to this issue.
@@ -25,7 +37,9 @@ After running your application for the first time, open the _OpenXR Toolkit Comp
 ![List of registered applications](site/per-app-disable.png)<br>
 *The list of recognized applications*
 
-If your application does not show up here: it's not using OpenXR or OpenComposite is not properly setup. The OpenXR Toolkit will not work.
+If your application does not show up here: it's not using OpenXR or OpenComposite is not properly setup. **The OpenXR Toolkit will not work.**
+
+If your application does not support OpenXR natively and requires to use [OpenComposite](opencomposite), please refer to the OpenComposite instructions to setup and troubleshoot OpenComposite.
 
 ### Try the legacy menu mode
 
