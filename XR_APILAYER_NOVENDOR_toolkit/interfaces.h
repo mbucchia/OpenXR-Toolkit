@@ -665,6 +665,8 @@ namespace toolkit {
             virtual void* getNativePtr() const = 0;
             virtual void* getContextPtr() const = 0;
 
+            virtual void executeDebugWorkload() = 0;
+
             template <typename ApiTraits>
             auto getAs() const {
                 return GetAs<typename ApiTraits::Device>(this);

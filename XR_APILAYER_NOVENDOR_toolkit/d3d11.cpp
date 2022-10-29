@@ -41,6 +41,23 @@ namespace {
 
     const std::wstring_view FontFamily = L"Segoe UI Symbol";
 
+    // A debug shader to create a GPU workload for testing.
+    const std::string_view DebugWorkloadShader =
+        R"_(
+cbuffer Input : register(b0) { uint Count; };
+RWStructuredBuffer<float> Result;
+
+[numthreads(1, 1, 1)]
+void main(uint3 id : SV_DispatchThreadID)
+{
+    float rnd = 1;
+    for (uint i = 0; i < Count; i++) {
+        rnd = frac(sin(dot(id.xy, float2(12.9898,78.233))) * 43758.5453123 * rnd);
+    }
+    Result[id.x] = rnd;
+}
+    )_";
+
     inline void SetDebugName(ID3D11DeviceChild* resource, std::string_view name) {
         if (resource && !name.empty())
             resource->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(name.size()), name.data());
@@ -849,7 +866,7 @@ namespace {
                     std::shared_ptr<config::IConfigManager> configManager,
                     bool textOnly = false,
                     bool enableOculusQuirk = false)
-            : m_device(device), m_gpuArchitecture(GpuArchitecture::Unknown),
+            : m_device(device), m_gpuArchitecture(GpuArchitecture::Unknown), m_configManager(configManager),
               m_allowInterceptor(!configManager->isSafeMode() &&
                                  !configManager->getValue(config::SettingDisableInterceptor)),
               m_lateInitCountdown(enableOculusQuirk ? 10 : 0) {
@@ -898,6 +915,7 @@ namespace {
                 }
                 initializeShadingResources();
                 initializeMeshResources();
+                initializeDebugResources();
             }
             initializeTextResources();
         }
@@ -1007,6 +1025,10 @@ namespace {
             if (auto count = m_infoQueue ? m_infoQueue->GetNumStoredMessages() : 0) {
                 LogInfoQueueMessage(get(m_infoQueue), count);
                 m_infoQueue->ClearStoredMessages();
+            }
+
+            if (isEndOfFrame) {
+                m_executeDebugWorkload = true;
             }
         }
 
@@ -1557,6 +1579,38 @@ namespace {
             return get(m_context);
         }
 
+        void executeDebugWorkload() override {
+            if (!m_executeDebugWorkload || !m_configManager->isDeveloper()) {
+                return;
+            }
+
+            if (!m_debugWorkloadParams) {
+                m_debugWorkloadParams = createBuffer(16, "DebugWorkloadParams", nullptr, false);
+            }
+
+            const int cpuLoad = m_configManager->getValue("debug_cpu_load");
+            const int gpuLoad = m_configManager->getValue("debug_gpu_load");
+
+            if (gpuLoad) {
+                uint32_t param = gpuLoad * 5000;
+                m_debugWorkloadParams->uploadData(&param, sizeof(param));
+                m_context->CSSetShader(get(m_debugWorkloadShader), nullptr, 0);
+                const auto cb = m_debugWorkloadParams->getAs<D3D11>();
+                m_context->CSSetConstantBuffers(0, 1, &cb);
+                m_context->Dispatch(1, 1, 1);
+                m_context->CSSetShader(nullptr, nullptr, 0);
+                ID3D11Buffer* nullCBV[] = {nullptr};
+                m_context->CSSetConstantBuffers(0, 1, nullCBV);
+                m_context->Flush();
+            }
+            if (cpuLoad) {
+                std::this_thread::sleep_for(cpuLoad * 100us);
+            }
+
+            // Once per frame only.
+            m_executeDebugWorkload = false;
+        }
+
       private:
         void initializeInterceptor() {
             if (!m_allowInterceptor) {
@@ -1671,7 +1725,7 @@ namespace {
             }
         }
 
-        // Initialize the calls needed for draw() and related calls.
+        // Initialize the resources needed for draw() and related calls.
         void initializeMeshResources() {
             {
                 ComPtr<ID3DBlob> vsBytes;
@@ -1738,6 +1792,17 @@ namespace {
                 desc.DepthFunc = D3D11_COMPARISON_GREATER;
                 CHECK_HRCMD(m_device->CreateDepthStencilState(&desc, set(m_reversedZDepthNoStencilTest)));
             }
+        }
+
+        // Initialize the resources needed for debugging.
+        void initializeDebugResources() {
+            ComPtr<ID3DBlob> csBytes;
+            toolkit::utilities::shader::CompileShader(DebugWorkloadShader, "main", set(csBytes), "cs_5_0");
+
+            CHECK_HRCMD(m_device->CreateComputeShader(
+                csBytes->GetBufferPointer(), csBytes->GetBufferSize(), nullptr, set(m_debugWorkloadShader)));
+
+            SetDebugName(get(m_debugWorkloadShader), "DebugWorkload CS");
         }
 
         // Initialize resources for drawString() and related calls.
@@ -1937,6 +2002,7 @@ namespace {
         }
 
         const ComPtr<ID3D11Device> m_device;
+        const std::shared_ptr<config::IConfigManager> m_configManager;
         ComPtr<IDXGIAdapter> m_adapter;
         ComPtr<ID3D11DeviceContext> m_context;
         D3D11ContextState m_state;
@@ -1977,6 +2043,10 @@ namespace {
         UnsetRenderTargetEvent m_unsetRenderTargetEvent;
         CopyTextureEvent m_copyTextureEvent;
         std::atomic<bool> m_blockEvents{false};
+
+        ComPtr<ID3D11ComputeShader> m_debugWorkloadShader;
+        std::shared_ptr<IShaderBuffer> m_debugWorkloadParams;
+        bool m_executeDebugWorkload{false};
 
         mutable std::shared_ptr<IQuadShader> m_currentQuadShader;
         mutable std::shared_ptr<IComputeShader> m_currentComputeShader;
