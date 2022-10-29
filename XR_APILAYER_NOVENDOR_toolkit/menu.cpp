@@ -921,6 +921,7 @@ namespace {
 #define TIMING_STAT(label, name)                                                                                       \
     m_device->drawString(fmt::format(label ": {}", m_stats.name), OVERLAY_COMMON);                                     \
     top += 1.05f * fontSize;
+                                TIMING_STAT("wait", waitCpuTimeUs);
                                 TIMING_STAT("lay CPU", endFrameCpuTimeUs);
                                 TIMING_STAT("scl GPU", processorGpuTimeUs[0]);
                                 TIMING_STAT("pst GPU", processorGpuTimeUs[1]);
