@@ -187,6 +187,7 @@ namespace toolkit {
         const std::string SettingResolutionWidth = "resolution_width";
         const std::string SettingDisableInterceptor = "disable_interceptor";
         const std::string SettingRecordStats = "record_stats";
+        const std::string SettingHighRateStats = "high_rate_stats";
         const std::string SettingFrameThrottling = "frame_throttle";
 
         enum class OffOnType { Off = 0, On, MaxValue };

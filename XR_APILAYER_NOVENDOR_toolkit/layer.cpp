@@ -191,6 +191,7 @@ namespace {
             m_configManager->setEnumDefault(config::SettingScreenshotFileFormat, config::ScreenshotFileFormat::PNG);
             m_configManager->setDefault(config::SettingScreenshotEye, 0); // Both
             m_configManager->setDefault(config::SettingRecordStats, 0);
+            m_configManager->setDefault(config::SettingHighRateStats, 0);
             m_configManager->setDefault(config::SettingFrameThrottling, 120); // Off
 
             // Misc debug.
@@ -2218,13 +2219,15 @@ namespace {
                     m_logStats.open(logFile, std::ios_base::ate);
 
                     // Write headers.
-                    m_logStats << "FPS,appCPU (us),renderCPU (us),appGPU (us),VRAM (MB),VRAM (%)\n";
+                    m_logStats << "time,FPS,appCPU (us),renderCPU (us),appGPU (us),VRAM (MB),VRAM (%)\n";
                 } else {
                     m_logStats.close();
                 }
             }
 
-            if ((now - m_performanceCounters.lastWindowStart) >= std::chrono::seconds(1)) {
+            const bool highRate = m_configManager->getValue(config::SettingHighRateStats);
+            if ((now - m_performanceCounters.lastWindowStart) >= (highRate ? 100ms : 1s)) {
+                const auto duration = now - m_performanceCounters.lastWindowStart;
                 m_performanceCounters.numFrames = 0;
                 m_performanceCounters.lastWindowStart = now;
 
@@ -2243,7 +2246,24 @@ namespace {
                 m_stats.overlayGpuTimeUs /= numFrames;
                 m_stats.handTrackingCpuTimeUs /= numFrames;
                 m_stats.predictionTimeUs /= numFrames;
-                m_stats.fps = static_cast<float>(numFrames);
+                if (highRate) {
+                    // We must still do a rolling average for the FPS otherwise the values are all over the place.
+                    m_performanceCounters.frameRates.push_front(std::make_pair(duration, numFrames));
+                    m_performanceCounters.framesInPeriod += numFrames;
+                    m_performanceCounters.timePeriod += duration;
+                    while (m_performanceCounters.frameRates.size() > 10) {
+                        m_performanceCounters.framesInPeriod -= m_performanceCounters.frameRates.back().second;
+                        m_performanceCounters.timePeriod -= m_performanceCounters.frameRates.back().first;
+                        m_performanceCounters.frameRates.pop_back();
+                    }
+                    m_stats.fps =
+                        m_performanceCounters.framesInPeriod * (1e9f / m_performanceCounters.timePeriod.count());
+                } else {
+                    m_stats.fps = static_cast<float>(numFrames);
+                    m_performanceCounters.frameRates.clear();
+                    m_performanceCounters.framesInPeriod = 0;
+                    m_performanceCounters.timePeriod = 0s;
+                }
 
                 m_graphicsDevice->getVRAMUsage(m_stats.vramUsedSize, m_stats.vramUsedPercent);
 
@@ -2258,9 +2278,14 @@ namespace {
                 }
 
                 if (m_logStats.is_open()) {
-                    m_logStats << m_stats.fps << "," << m_stats.appCpuTimeUs << "," << m_stats.renderCpuTimeUs << ","
-                               << m_stats.appGpuTimeUs << "," << m_stats.vramUsedSize / (1024 * 1024) << ","
-                               << (int)m_stats.vramUsedPercent << "\n";
+                    const std::time_t now = std::time(nullptr);
+
+                    char buf[1024];
+                    size_t offset = std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S %z", std::localtime(&now));
+                    m_logStats << buf << "," << std::fixed << std::setprecision(1) << m_stats.fps << ","
+                               << m_stats.appCpuTimeUs << "," << m_stats.renderCpuTimeUs << "," << m_stats.appGpuTimeUs
+                               << "," << m_stats.vramUsedSize / (1024 * 1024) << "," << (int)m_stats.vramUsedPercent
+                               << "\n";
                 }
 
                 // Start from fresh!
@@ -3188,6 +3213,9 @@ namespace {
 
             unsigned int gpuTimerIndex{0};
             std::chrono::steady_clock::time_point lastWindowStart;
+            std::deque<std::pair<std::chrono::steady_clock::duration, uint32_t>> frameRates;
+            uint32_t framesInPeriod{0};
+            std::chrono::steady_clock::duration timePeriod{0s};
             uint32_t numFrames{0};
         } m_performanceCounters;
 
