@@ -804,7 +804,7 @@ namespace {
 
                     // FPS display.
                     m_device->drawString(
-                        fmt::format("FPS: {}", m_stats.fps),
+                        fmt::format("FPS: {:.1f}", m_stats.fps),
                         TextStyle::Normal,
                         fontSize,
                         (m_state != MenuState::Visible ? overlayAlign : rightAlign) - 300,
@@ -1340,6 +1340,18 @@ namespace {
                                      0,
                                      MenuEntry::LastVal<NoYesType>(),
                                      MenuEntry::FmtEnum<NoYesType>});
+            MenuGroup statisticsGroup(this, [&] {
+                return m_configManager->peekValue(SettingOverlayType) || m_configManager->peekValue(SettingRecordStats);
+            });
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                     "High-rate statistics",
+                                     MenuEntryType::Choice,
+                                     SettingHighRateStats,
+                                     0,
+                                     MenuEntry::LastVal<NoYesType>(),
+                                     MenuEntry::FmtEnum<NoYesType>});
+            m_menuEntries.back().expert = true;
+            statisticsGroup.finalize();
 
             // Must be kept last.
             performanceTab.finalize();
