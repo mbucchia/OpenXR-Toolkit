@@ -56,7 +56,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrPollEvent", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrPollEvent", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -78,7 +78,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrGetSystem", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrGetSystem", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -100,7 +100,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrCreateSession", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrCreateSession", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -122,7 +122,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrDestroySession", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrDestroySession", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -144,7 +144,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrCreateActionSpace", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrCreateActionSpace", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -166,7 +166,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrLocateSpace", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrLocateSpace", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -188,7 +188,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrDestroySpace", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrDestroySpace", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -210,7 +210,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrEnumerateViewConfigurationViews", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrEnumerateViewConfigurationViews", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -232,7 +232,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrCreateSwapchain", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrCreateSwapchain", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -254,7 +254,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrDestroySwapchain", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrDestroySwapchain", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -276,7 +276,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrEnumerateSwapchainImages", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrEnumerateSwapchainImages", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -298,7 +298,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrAcquireSwapchainImage", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrAcquireSwapchainImage", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -320,7 +320,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrReleaseSwapchainImage", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrReleaseSwapchainImage", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -342,7 +342,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrBeginSession", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrBeginSession", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -364,7 +364,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrEndSession", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrEndSession", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -386,7 +386,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrWaitFrame", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrWaitFrame", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -408,7 +408,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrBeginFrame", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrBeginFrame", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -430,7 +430,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrEndFrame", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrEndFrame", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -452,7 +452,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrLocateViews", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrLocateViews", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -474,7 +474,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrCreateAction", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrCreateAction", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -496,7 +496,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrDestroyAction", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrDestroyAction", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -518,7 +518,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrSuggestInteractionProfileBindings", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrSuggestInteractionProfileBindings", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -540,7 +540,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrAttachSessionActionSets", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrAttachSessionActionSets", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -562,7 +562,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrGetCurrentInteractionProfile", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrGetCurrentInteractionProfile", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -584,7 +584,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrGetActionStateBoolean", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrGetActionStateBoolean", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -606,7 +606,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrGetActionStateFloat", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrGetActionStateFloat", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -628,7 +628,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrGetActionStatePose", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrGetActionStatePose", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -650,7 +650,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrSyncActions", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrSyncActions", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -672,7 +672,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrApplyHapticFeedback", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrApplyHapticFeedback", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -694,7 +694,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrStopHapticFeedback", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrStopHapticFeedback", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -716,7 +716,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}
 
-		TraceLoggingWriteStop(local, "xrGetVisibilityMaskKHR", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "xrGetVisibilityMaskKHR", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}
@@ -904,94 +904,120 @@ namespace LAYER_NAMESPACE
 		{
 			throw std::runtime_error("Failed to resolve xrGetInstanceProperties");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrGetInstanceProperties", "Name"), TLPArg(m_xrGetInstanceProperties, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrGetSystem", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrGetSystem))))
 		{
 			throw std::runtime_error("Failed to resolve xrGetSystem");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrGetSystem", "Name"), TLPArg(m_xrGetSystem, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrGetSystemProperties", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrGetSystemProperties))))
 		{
 			throw std::runtime_error("Failed to resolve xrGetSystemProperties");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrGetSystemProperties", "Name"), TLPArg(m_xrGetSystemProperties, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrCreateReferenceSpace", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateReferenceSpace))))
 		{
 			throw std::runtime_error("Failed to resolve xrCreateReferenceSpace");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrCreateReferenceSpace", "Name"), TLPArg(m_xrCreateReferenceSpace, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrCreateActionSpace", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateActionSpace))))
 		{
 			throw std::runtime_error("Failed to resolve xrCreateActionSpace");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrCreateActionSpace", "Name"), TLPArg(m_xrCreateActionSpace, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrLocateSpace", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrLocateSpace))))
 		{
 			throw std::runtime_error("Failed to resolve xrLocateSpace");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrLocateSpace", "Name"), TLPArg(m_xrLocateSpace, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrDestroySpace", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrDestroySpace))))
 		{
 			throw std::runtime_error("Failed to resolve xrDestroySpace");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrDestroySpace", "Name"), TLPArg(m_xrDestroySpace, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrEnumerateViewConfigurationViews", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrEnumerateViewConfigurationViews))))
 		{
 			throw std::runtime_error("Failed to resolve xrEnumerateViewConfigurationViews");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrEnumerateViewConfigurationViews", "Name"), TLPArg(m_xrEnumerateViewConfigurationViews, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrEnumerateSwapchainFormats", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrEnumerateSwapchainFormats))))
 		{
 			throw std::runtime_error("Failed to resolve xrEnumerateSwapchainFormats");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrEnumerateSwapchainFormats", "Name"), TLPArg(m_xrEnumerateSwapchainFormats, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrCreateSwapchain", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateSwapchain))))
 		{
 			throw std::runtime_error("Failed to resolve xrCreateSwapchain");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrCreateSwapchain", "Name"), TLPArg(m_xrCreateSwapchain, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrEnumerateSwapchainImages", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrEnumerateSwapchainImages))))
 		{
 			throw std::runtime_error("Failed to resolve xrEnumerateSwapchainImages");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrEnumerateSwapchainImages", "Name"), TLPArg(m_xrEnumerateSwapchainImages, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrAcquireSwapchainImage", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrAcquireSwapchainImage))))
 		{
 			throw std::runtime_error("Failed to resolve xrAcquireSwapchainImage");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrAcquireSwapchainImage", "Name"), TLPArg(m_xrAcquireSwapchainImage, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrWaitSwapchainImage", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrWaitSwapchainImage))))
 		{
 			throw std::runtime_error("Failed to resolve xrWaitSwapchainImage");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrWaitSwapchainImage", "Name"), TLPArg(m_xrWaitSwapchainImage, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrReleaseSwapchainImage", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrReleaseSwapchainImage))))
 		{
 			throw std::runtime_error("Failed to resolve xrReleaseSwapchainImage");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrReleaseSwapchainImage", "Name"), TLPArg(m_xrReleaseSwapchainImage, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrStringToPath", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrStringToPath))))
 		{
 			throw std::runtime_error("Failed to resolve xrStringToPath");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrStringToPath", "Name"), TLPArg(m_xrStringToPath, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrPathToString", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrPathToString))))
 		{
 			throw std::runtime_error("Failed to resolve xrPathToString");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrPathToString", "Name"), TLPArg(m_xrPathToString, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrCreateActionSet", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateActionSet))))
 		{
 			throw std::runtime_error("Failed to resolve xrCreateActionSet");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrCreateActionSet", "Name"), TLPArg(m_xrCreateActionSet, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrDestroyActionSet", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrDestroyActionSet))))
 		{
 			throw std::runtime_error("Failed to resolve xrDestroyActionSet");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrDestroyActionSet", "Name"), TLPArg(m_xrDestroyActionSet, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrCreateAction", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateAction))))
 		{
 			throw std::runtime_error("Failed to resolve xrCreateAction");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrCreateAction", "Name"), TLPArg(m_xrCreateAction, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrDestroyAction", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrDestroyAction))))
 		{
 			throw std::runtime_error("Failed to resolve xrDestroyAction");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrDestroyAction", "Name"), TLPArg(m_xrDestroyAction, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrGetActionStatePose", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrGetActionStatePose))))
 		{
 			throw std::runtime_error("Failed to resolve xrGetActionStatePose");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrGetActionStatePose", "Name"), TLPArg(m_xrGetActionStatePose, "Ptr"));
 		if (XR_FAILED(m_xrGetInstanceProcAddr(m_instance, "xrSyncActions", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrSyncActions))))
 		{
 			throw std::runtime_error("Failed to resolve xrSyncActions");
 		}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrSyncActions", "Name"), TLPArg(m_xrSyncActions, "Ptr"));
 		m_xrGetInstanceProcAddr(m_instance, "xrConvertWin32PerformanceCounterToTimeKHR", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrConvertWin32PerformanceCounterToTimeKHR));
+		TraceLoggingWrite(g_traceProvider, "OptionalProcAddr", TLArg("xrConvertWin32PerformanceCounterToTimeKHR", "Name"), TLPArg(m_xrConvertWin32PerformanceCounterToTimeKHR, "Ptr"));
 		m_xrGetInstanceProcAddr(m_instance, "xrCreateHandTrackerEXT", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateHandTrackerEXT));
+		TraceLoggingWrite(g_traceProvider, "OptionalProcAddr", TLArg("xrCreateHandTrackerEXT", "Name"), TLPArg(m_xrCreateHandTrackerEXT, "Ptr"));
 		m_xrGetInstanceProcAddr(m_instance, "xrDestroyHandTrackerEXT", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrDestroyHandTrackerEXT));
+		TraceLoggingWrite(g_traceProvider, "OptionalProcAddr", TLArg("xrDestroyHandTrackerEXT", "Name"), TLPArg(m_xrDestroyHandTrackerEXT, "Ptr"));
 		m_xrGetInstanceProcAddr(m_instance, "xrLocateHandJointsEXT", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrLocateHandJointsEXT));
+		TraceLoggingWrite(g_traceProvider, "OptionalProcAddr", TLArg("xrLocateHandJointsEXT", "Name"), TLPArg(m_xrLocateHandJointsEXT, "Ptr"));
 		m_applicationName = createInfo->applicationInfo.applicationName;
 		return XR_SUCCESS;
 	}

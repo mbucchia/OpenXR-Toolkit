@@ -156,9 +156,12 @@ namespace LAYER_NAMESPACE {
             XrApiLayerCreateInfo chainApiLayerInfo = *apiLayerInfo;
             chainApiLayerInfo.nextInfo = apiLayerInfo->nextInfo->next;
 
+            TraceLoggingWriteTagged(local, "xrCreateApiLayerInstance_DummyInstanceCreate");
             const XrResult result = apiLayerInfo->nextInfo->nextCreateApiLayerInstance(
                 &dummyCreateInfo, &chainApiLayerInfo, &dummyInstance);
             if (result == XR_SUCCESS) {
+                TraceLoggingWriteTagged(local, "xrCreateApiLayerInstance_DummyInstanceCreated");
+
                 CHECK_XRCMD(apiLayerInfo->nextInfo->nextGetInstanceProcAddr(
                     dummyInstance,
                     "xrEnumerateInstanceExtensionProperties",
@@ -171,6 +174,14 @@ namespace LAYER_NAMESPACE {
                     reinterpret_cast<PFN_xrVoidFunction*>(&xrGetSystemProperties)));
                 CHECK_XRCMD(apiLayerInfo->nextInfo->nextGetInstanceProcAddr(
                     dummyInstance, "xrDestroyInstance", reinterpret_cast<PFN_xrVoidFunction*>(&xrDestroyInstance)));
+
+                TraceLoggingWriteTagged(
+                    local,
+                    "xrCreateApiLayerInstance_DummyInstanceProcAddr",
+                    TLPArg(xrEnumerateInstanceExtensionProperties, "xrEnumerateInstanceExtensionProperties"),
+                    TLPArg(xrGetSystem, "xrGetSystem"),
+                    TLPArg(xrGetSystemProperties, "xrGetSystemProperties"),
+                    TLPArg(xrDestroyInstance, "xrDestroyInstance"));
             } else {
                 TraceLoggingWriteTagged(
                     local, "xrCreateApiLayerInstance_Error_CreateInstance", TLArg((int)result, "Result"));
@@ -218,7 +229,9 @@ namespace LAYER_NAMESPACE {
             }
 
             if (xrDestroyInstance) {
+                TraceLoggingWriteTagged(local, "xrCreateApiLayerInstance_DummyInstanceDestroy");
                 xrDestroyInstance(dummyInstance);
+                TraceLoggingWriteTagged(local, "xrCreateApiLayerInstance_DummyInstanceDestroyed");
             }
         }
 
@@ -271,9 +284,12 @@ namespace LAYER_NAMESPACE {
         // Call the chain to create the instance.
         XrApiLayerCreateInfo chainApiLayerInfo = *apiLayerInfo;
         chainApiLayerInfo.nextInfo = apiLayerInfo->nextInfo->next;
+        TraceLoggingWriteTagged(local, "xrCreateApiLayerInstance_RealInstanceCreate");
         XrResult result =
             apiLayerInfo->nextInfo->nextCreateApiLayerInstance(&chainInstanceCreateInfo, &chainApiLayerInfo, instance);
         if (result == XR_SUCCESS) {
+            TraceLoggingWriteTagged(local, "xrCreateApiLayerInstance_RealInstanceCreated");
+
             // Create our layer.
             LAYER_NAMESPACE::GetInstance()->SetGetInstanceProcAddr(apiLayerInfo->nextInfo->nextGetInstanceProcAddr,
                                                                    *instance);
