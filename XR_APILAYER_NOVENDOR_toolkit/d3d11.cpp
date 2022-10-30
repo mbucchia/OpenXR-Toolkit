@@ -2041,10 +2041,13 @@ namespace {
             TraceLocalActivity(local);
             TraceLoggingWriteStart(local,
                                    "ID3D11DeviceContext_OMSetRenderTargets",
-                                   TLPArg(Context),
-                                   TLArg(NumViews),
-                                   TLPArray(ppRenderTargetViews, NumViews, "RTV"),
+                                   TLPArg(Context, "Context"),
+                                   TLArg(NumViews, "NumViews"),
                                    TLPArg(pDepthStencilView, "DSV"));
+            for (UINT i = 0; i < NumViews; i++) {
+                TraceLoggingWriteTagged(
+                    local, "ID3D11DeviceContext_OMSetRenderTargets", TLPArg(ppRenderTargetViews[i], "RTV"));
+            }
 
             assert(g_instance);
             assert(g_original_ID3D11DeviceContext_OMSetRenderTargets);
@@ -2070,10 +2073,14 @@ namespace {
             TraceLocalActivity(local);
             TraceLoggingWriteStart(local,
                                    "ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews",
-                                   TLPArg(Context),
-                                   TLArg(NumRTVs),
-                                   TLPArray(ppRenderTargetViews, NumRTVs, "RTV"),
+                                   TLPArg(Context, "Context"),
+                                   TLArg(NumRTVs, "NumRTVs"),
                                    TLPArg(pDepthStencilView, "DSV"));
+            for (UINT i = 0; i < NumRTVs; i++) {
+                TraceLoggingWriteTagged(local,
+                                        "ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews",
+                                        TLPArg(ppRenderTargetViews[i], "RTV"));
+            }
 
             assert(g_instance);
             assert(g_original_ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews);
@@ -2098,7 +2105,10 @@ namespace {
                                 UINT NumViewports,
                                 const D3D11_VIEWPORT* pViewports) {
             TraceLocalActivity(local);
-            TraceLoggingWriteStart(local, "ID3D11DeviceContext_RSSetViewports", TLPArg(Context), TLArg(NumViewports));
+            TraceLoggingWriteStart(local,
+                                   "ID3D11DeviceContext_RSSetViewports",
+                                   TLPArg(Context, "Context"),
+                                   TLArg(NumViewports, "NumViewports"));
 
             if (pViewports) {
                 for (UINT i = 0; i < NumViewports; i++) {
@@ -2124,8 +2134,11 @@ namespace {
                                 ID3D11Resource* pDstResource,
                                 ID3D11Resource* pSrcResource) {
             TraceLocalActivity(local);
-            TraceLoggingWriteStart(
-                local, "ID3D11DeviceContext_CopyResource", TLPArg(Context), TLPArg(pDstResource), TLPArg(pSrcResource));
+            TraceLoggingWriteStart(local,
+                                   "ID3D11DeviceContext_CopyResource",
+                                   TLPArg(Context, "Context"),
+                                   TLPArg(pDstResource, "DstResource"),
+                                   TLPArg(pSrcResource, "SrcResource"));
 
             assert(g_instance);
             g_instance->onCopyResource(Context, pSrcResource, pDstResource);
@@ -2151,11 +2164,11 @@ namespace {
             TraceLocalActivity(local);
             TraceLoggingWriteStart(local,
                                    "ID3D11DeviceContext_CopySubresourceRegion",
-                                   TLPArg(Context),
-                                   TLPArg(pDstResource),
-                                   TLArg(DstSubresource),
-                                   TLPArg(pSrcResource),
-                                   TLArg(SrcSubresource));
+                                   TLPArg(Context, "Context"),
+                                   TLPArg(pDstResource, "DstResource"),
+                                   TLArg(DstSubresource, "DstSubresource"),
+                                   TLPArg(pSrcResource, "SrcResource"),
+                                   TLArg(SrcSubresource, "SrcSubresource"));
 
             assert(g_instance);
             g_instance->onCopyResource(Context, pSrcResource, pDstResource, SrcSubresource, DstSubresource);
@@ -2177,16 +2190,16 @@ namespace {
             TraceLocalActivity(local);
             TraceLoggingWriteStart(local,
                                    "ID3D11DeviceContext_PSSetSamplers",
-                                   TLPArg(Context),
-                                   TLPArg(ppSamplers),
-                                   TLArg(StartSlot),
-                                   TLArg(NumSamplers));
+                                   TLPArg(Context, "Context"),
+                                   TLArg(StartSlot, "StartSlots"),
+                                   TLArg(NumSamplers, "NumSamplers"));
 
             if (NumSamplers > UINT(D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT))
                 NumSamplers = UINT(D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT);
 
             ID3D11SamplerState* updatedSamplers[D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT];
             for (UINT i = 0; i < NumSamplers; i++) {
+                TraceLoggingWriteTagged(local, "ID3D11DeviceContext_PSSetSamplers", TLPArg(ppSamplers[i], "Sampler"));
                 updatedSamplers[i] = ppSamplers[i];
             }
 

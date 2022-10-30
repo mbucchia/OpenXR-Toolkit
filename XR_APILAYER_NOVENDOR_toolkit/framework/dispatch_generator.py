@@ -179,7 +179,7 @@ namespace LAYER_NAMESPACE
 			result = XR_ERROR_RUNTIME_FAILURE;
 		}}
 
-		TraceLoggingWriteStop(local, "{cur_cmd.name}", TLArg((int)result, "Result"));
+		TraceLoggingWriteStop(local, "{cur_cmd.name}", TLArg(xr::ToCString(result), "Result"));
 
 		return result;
 	}}
@@ -218,12 +218,14 @@ namespace LAYER_NAMESPACE
 		{{
 			throw std::runtime_error("Failed to resolve {cur_cmd.name}");
 		}}
+		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("{cur_cmd.name}", "Name"), TLPArg(m_{cur_cmd.name}, "Ptr"));
 '''
 
         # Functions from extensions are allowed to be null.
         for cur_cmd in self.ext_commands:
             if cur_cmd.name in layer_apis.requested_functions:
                 generated += f'''		m_xrGetInstanceProcAddr(m_instance, "{cur_cmd.name}", reinterpret_cast<PFN_xrVoidFunction*>(&m_{cur_cmd.name}));
+		TraceLoggingWrite(g_traceProvider, "OptionalProcAddr", TLArg("{cur_cmd.name}", "Name"), TLPArg(m_{cur_cmd.name}, "Ptr"));
 '''
 
         generated += '''		m_applicationName = createInfo->applicationInfo.applicationName;

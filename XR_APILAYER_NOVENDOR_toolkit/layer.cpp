@@ -229,6 +229,19 @@ namespace {
         }
 
         XrResult xrCreateInstance(const XrInstanceCreateInfo* createInfo) override {
+            if (createInfo->type != XR_TYPE_INSTANCE_CREATE_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrCreateInstance",
+                              TLArg(xr::ToString(createInfo->applicationInfo.apiVersion).c_str(), "ApiVersion"),
+                              TLArg(createInfo->applicationInfo.applicationName, "ApplicationName"),
+                              TLArg(createInfo->applicationInfo.applicationVersion, "ApplicationVersion"),
+                              TLArg(createInfo->applicationInfo.engineName, "EngineName"),
+                              TLArg(createInfo->applicationInfo.engineVersion, "EngineVersion"),
+                              TLArg(createInfo->createFlags, "CreateFlags"));
+
             // Needed to resolve the requested function pointers.
             OpenXrApi::xrCreateInstance(createInfo);
 
@@ -263,6 +276,10 @@ namespace {
             // Dump the OpenXR runtime information to help debugging customer issues.
             XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES, nullptr};
             CHECK_XRCMD(xrGetInstanceProperties(GetXrInstance(), &instanceProperties));
+            TraceLoggingWrite(g_traceProvider,
+                              "xrGetInstanceProperties",
+                              TLArg(instanceProperties.runtimeName, "RuntimeName"),
+                              TLArg(xr::ToString(instanceProperties.runtimeVersion).c_str(), "RuntimeVersion"));
             m_runtimeName = fmt::format("{} {}.{}.{}",
                                         instanceProperties.runtimeName,
                                         XR_VERSION_MAJOR(instanceProperties.runtimeVersion),
@@ -270,19 +287,15 @@ namespace {
                                         XR_VERSION_PATCH(instanceProperties.runtimeVersion));
             Log("Using OpenXR runtime %s\n", m_runtimeName.c_str());
 
-            TraceLoggingWrite(g_traceProvider,
-                              "xrCreateInstance",
-                              TLArg(m_applicationName.c_str(), "Application"),
-                              TLArg(createInfo->applicationInfo.engineName, "Engine"),
-                              TLArg(m_runtimeName.c_str(), "Runtime"));
-
             m_configManager = config::CreateConfigManager(createInfo->applicationInfo.applicationName);
             setOptionsDefaults();
 
             if (m_configManager->isDeveloper()) {
+                TraceLoggingWrite(g_traceProvider, "DeveloperMode");
                 Log("DEVELOPER MODE IS ENABLED! WARRANTY IS VOID!\n");
             }
             if (m_configManager->isSafeMode()) {
+                TraceLoggingWrite(g_traceProvider, "SafeMode");
                 Log("SAFE MODE IS ENABLED! NO SETTINGS ARE LOADED!\n");
             }
 
@@ -398,6 +411,15 @@ namespace {
         }
 
         XrResult xrGetSystem(XrInstance instance, const XrSystemGetInfo* getInfo, XrSystemId* systemId) override {
+            if (getInfo->type != XR_TYPE_SYSTEM_GET_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrGetSystem",
+                              TLPArg(instance, "Instance"),
+                              TLArg(xr::ToCString(getInfo->formFactor), "FormFactor"));
+
             const XrResult result = OpenXrApi::xrGetSystem(instance, getInfo, systemId);
             if (XR_SUCCEEDED(result) && getInfo->formFactor == XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY &&
                 m_vrSystemId == XR_NULL_SYSTEM_ID) {
@@ -437,8 +459,7 @@ namespace {
                     g_traceProvider,
                     "xrGetSystem",
                     TLArg(m_systemName.c_str(), "System"),
-                    TLArg(m_displayWidth, "RecommendedResolutionX"),
-                    TLArg(m_displayHeight, "RecommendedResolutionY"),
+                    TLArg(fmt::format("{}x{}", m_displayWidth, m_displayHeight).c_str(), "RecommendedResolution"),
                     TLArg(handTrackingSystemProperties.supportsHandTracking, "SupportsHandTracking"),
                     TLArg(eyeTrackingSystemProperties.supportsEyeGazeInteraction, "SupportsEyeGazeInteraction"));
                 Log("Using OpenXR system %s\n", m_systemName.c_str());
@@ -505,6 +526,8 @@ namespace {
 
                 // Remember the XrSystemId to use.
                 m_vrSystemId = *systemId;
+
+                TraceLoggingWrite(g_traceProvider, "xrGetSystem", TLArg((int)*systemId, "SystemId"));
             }
 
             return result;
@@ -516,6 +539,13 @@ namespace {
                                                    uint32_t viewCapacityInput,
                                                    uint32_t* viewCountOutput,
                                                    XrViewConfigurationView* views) override {
+            TraceLoggingWrite(g_traceProvider,
+                              "xrEnumerateViewConfigurationViews",
+                              TLPArg(instance, "Instance"),
+                              TLArg((int)systemId, "SystemId"),
+                              TLArg(viewCapacityInput, "ViewCapacityInput"),
+                              TLArg(xr::ToCString(viewConfigurationType), "ViewConfigurationType"));
+
             const XrResult result = OpenXrApi::xrEnumerateViewConfigurationViews(
                 instance, systemId, viewConfigurationType, viewCapacityInput, viewCountOutput, views);
             if (XR_SUCCEEDED(result) && isVrSystem(systemId) && views) {
@@ -573,12 +603,11 @@ namespace {
                     atLeastOnce = true;
                 }
 
-                TraceLoggingWrite(g_traceProvider,
-                                  "xrEnumerateViewConfigurationViews",
-                                  TLArg(inputWidth, "AppResolutionX"),
-                                  TLArg(inputHeight, "AppResolutionY"),
-                                  TLArg(m_displayWidth, "SystemResolutionX"),
-                                  TLArg(m_displayHeight, "SystemResolutionY"));
+                TraceLoggingWrite(
+                    g_traceProvider,
+                    "xrEnumerateViewConfigurationViews",
+                    TLArg(fmt::format("{}x{}", inputWidth, inputHeight).c_str(), "AppResolution"),
+                    TLArg(fmt::format("{}x{}", m_displayWidth, m_displayHeight).c_str(), "SystemResolution"));
             }
 
             return result;
@@ -587,6 +616,16 @@ namespace {
         XrResult xrCreateSession(XrInstance instance,
                                  const XrSessionCreateInfo* createInfo,
                                  XrSession* session) override {
+            if (createInfo->type != XR_TYPE_SESSION_CREATE_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrCreateSession",
+                              TLPArg(instance, "Instance"),
+                              TLArg((int)createInfo->systemId, "SystemId"),
+                              TLArg(createInfo->createFlags, "CreateFlags"));
+
             // Force motion reprojection if requested.
             if (m_supportMotionReprojectionLock) {
                 utilities::ToggleWindowsMixedRealityReprojection(
@@ -601,6 +640,8 @@ namespace {
                 const XrBaseInStructure* entry = reinterpret_cast<const XrBaseInStructure*>(createInfo->next);
                 while (entry) {
                     if (entry->type == XR_TYPE_GRAPHICS_BINDING_D3D11_KHR) {
+                        TraceLoggingWrite(g_traceProvider, "UseD3D11");
+
                         const XrGraphicsBindingD3D11KHR* d3dBindings =
                             reinterpret_cast<const XrGraphicsBindingD3D11KHR*>(entry);
                         // Workaround: On Oculus, we must delay the initialization of Detour.
@@ -609,6 +650,8 @@ namespace {
                             graphics::WrapD3D11Device(d3dBindings->device, m_configManager, enableOculusQuirk);
                         break;
                     } else if (entry->type == XR_TYPE_GRAPHICS_BINDING_D3D12_KHR) {
+                        TraceLoggingWrite(g_traceProvider, "UseD3D12");
+
                         const XrGraphicsBindingD3D12KHR* d3dBindings =
                             reinterpret_cast<const XrGraphicsBindingD3D12KHR*>(entry);
                         // Workaround: On Varjo, we must use intermediate textures with D3D11on12.
@@ -754,7 +797,7 @@ namespace {
 
                         XrSwapchainCreateInfo swapchainInfo{XR_TYPE_SWAPCHAIN_CREATE_INFO};
                         swapchainInfo.width = swapchainInfo.height =
-                            2000; // Let's hope the menu doesn't get bigger than that.
+                            2048; // Let's hope the menu doesn't get bigger than that.
                         swapchainInfo.arraySize = 1;
                         swapchainInfo.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
                         swapchainInfo.format = formats[0];
@@ -762,6 +805,7 @@ namespace {
                         swapchainInfo.faceCount = 1;
                         swapchainInfo.mipCount = 1;
                         CHECK_XRCMD(OpenXrApi::xrCreateSwapchain(*session, &swapchainInfo, &m_menuSwapchain));
+                        TraceLoggingWrite(g_traceProvider, "MenuSwapchain", TLPArg(m_menuSwapchain, "Swapchain"));
 
                         uint32_t imageCount;
                         CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(m_menuSwapchain, 0, &imageCount, nullptr));
@@ -862,12 +906,24 @@ namespace {
                 } else {
                     Log("Unsupported graphics runtime.\n");
                 }
+
+                TraceLoggingWrite(g_traceProvider, "xrCreateSession", TLPArg(*session, "Session"));
             }
 
             return result;
         }
 
         XrResult xrBeginSession(XrSession session, const XrSessionBeginInfo* beginInfo) override {
+            if (beginInfo->type != XR_TYPE_SESSION_BEGIN_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(
+                g_traceProvider,
+                "xrBeginSession",
+                TLPArg(session, "Session"),
+                TLArg(xr::ToCString(beginInfo->primaryViewConfigurationType), "PrimaryViewConfigurationType"));
+
             const XrResult result = OpenXrApi::xrBeginSession(session, beginInfo);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 m_configManager->setActiveSession(m_applicationName);
@@ -880,6 +936,8 @@ namespace {
         }
 
         XrResult xrEndSession(XrSession session) override {
+            TraceLoggingWrite(g_traceProvider, "xrEndSession", TLPArg(session, "Session"));
+
             const XrResult result = OpenXrApi::xrEndSession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 utilities::RestoreTimerPrecision();
@@ -891,6 +949,8 @@ namespace {
         }
 
         XrResult xrDestroySession(XrSession session) override {
+            TraceLoggingWrite(g_traceProvider, "xrDestroySession", TLPArg(session, "Session"));
+
             // Prepare for shutdown
             if (isVrSession(session)) {
                 if (m_configManager) {
@@ -967,6 +1027,23 @@ namespace {
         XrResult xrCreateSwapchain(XrSession session,
                                    const XrSwapchainCreateInfo* createInfo,
                                    XrSwapchain* swapchain) override {
+            if (createInfo->type != XR_TYPE_SWAPCHAIN_CREATE_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrCreateSwapchain",
+                              TLPArg(session, "Session"),
+                              TLArg(createInfo->arraySize, "ArraySize"),
+                              TLArg(createInfo->width, "Width"),
+                              TLArg(createInfo->height, "Height"),
+                              TLArg(createInfo->createFlags, "CreateFlags"),
+                              TLArg(createInfo->format, "Format"),
+                              TLArg(createInfo->faceCount, "FaceCount"),
+                              TLArg(createInfo->mipCount, "MipCount"),
+                              TLArg(createInfo->sampleCount, "SampleCount"),
+                              TLArg(createInfo->usageFlags, "UsageFlags"));
+
             if (!isVrSession(session) || !m_graphicsDevice) {
                 return OpenXrApi::xrCreateSwapchain(session, createInfo, swapchain);
             }
@@ -981,15 +1058,6 @@ namespace {
             // drawing.
             const bool isDepth = createInfo->usageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-            TraceLoggingWrite(g_traceProvider,
-                              "xrCreateSwapchain_AppSwapchain",
-                              TLArg(createInfo->width, "ResolutionX"),
-                              TLArg(createInfo->height, "ResolutionY"),
-                              TLArg(createInfo->arraySize, "ArraySize"),
-                              TLArg(createInfo->mipCount, "MipCount"),
-                              TLArg(createInfo->sampleCount, "SampleCount"),
-                              TLArg(createInfo->format, "Format"),
-                              TLArg(createInfo->usageFlags, "Usage"));
             Log("Creating swapchain with dimensions=%ux%u, arraySize=%u, mipCount=%u, sampleCount=%u, format=%d, "
                 "usage=0x%x\n",
                 createInfo->width,
@@ -1038,9 +1106,9 @@ namespace {
                         D3D11_TEXTURE2D_DESC desc;
                         d3dImages[0].texture->GetDesc(&desc);
                         TraceLoggingWrite(g_traceProvider,
-                                          "xrCreateSwapchain_RuntimeSwapchain",
-                                          TLArg(desc.Width, "ResolutionX"),
-                                          TLArg(desc.Height, "ResolutionY"),
+                                          "RuntimeSwapchain",
+                                          TLArg(desc.Width, "Width"),
+                                          TLArg(desc.Height, "Height"),
                                           TLArg(desc.ArraySize, "ArraySize"),
                                           TLArg(desc.MipLevels, "MipCount"),
                                           TLArg(desc.SampleDesc.Count, "SampleCount"),
@@ -1078,9 +1146,9 @@ namespace {
                     {
                         const auto& desc = d3dImages[0].texture->GetDesc();
                         TraceLoggingWrite(g_traceProvider,
-                                          "xrCreateSwapchain_RuntimeSwapchain",
-                                          TLArg(desc.Width, "ResolutionX"),
-                                          TLArg(desc.Height, "ResolutionY"),
+                                          "RuntimeSwapchain",
+                                          TLArg(desc.Width, "Width"),
+                                          TLArg(desc.Height, "Height"),
                                           TLArg(desc.DepthOrArraySize, "ArraySize"),
                                           TLArg(desc.MipLevels, "MipCount"),
                                           TLArg(desc.SampleDesc.Count, "SampleCount"),
@@ -1139,12 +1207,16 @@ namespace {
                 }
 
                 m_swapchains.insert_or_assign(*swapchain, swapchainState);
+
+                TraceLoggingWrite(g_traceProvider, "xrCreateSwapchain", TLPArg(*swapchain, "Swapchain"));
             }
 
             return result;
         }
 
         XrResult xrDestroySwapchain(XrSwapchain swapchain) override {
+            TraceLoggingWrite(g_traceProvider, "xrDestroySwapchain", TLPArg(swapchain, "Swapchain"));
+
             const XrResult result = OpenXrApi::xrDestroySwapchain(swapchain);
             if (XR_SUCCEEDED(result)) {
                 m_swapchains.erase(swapchain);
@@ -1155,6 +1227,22 @@ namespace {
 
         XrResult xrSuggestInteractionProfileBindings(
             XrInstance instance, const XrInteractionProfileSuggestedBinding* suggestedBindings) override {
+            if (suggestedBindings->type != XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrSuggestInteractionProfileBindings",
+                              TLPArg(instance, "Instance"),
+                              TLArg(getPath(suggestedBindings->interactionProfile).c_str(), "InteractionProfile"));
+
+            for (uint32_t i = 0; i < suggestedBindings->countSuggestedBindings; i++) {
+                TraceLoggingWrite(g_traceProvider,
+                                  "xrSuggestInteractionProfileBindings",
+                                  TLPArg(suggestedBindings->suggestedBindings[i].action, "Action"),
+                                  TLArg(getPath(suggestedBindings->suggestedBindings[i].binding).c_str(), "Path"));
+            }
+
             if (m_configManager->getValue(config::SettingEyeDebugWithController)) {
                 // We must drop calls to allow the controller override for debugging.
                 if (suggestedBindings->countSuggestedBindings > 1 ||
@@ -1174,6 +1262,16 @@ namespace {
 
         XrResult xrAttachSessionActionSets(XrSession session,
                                            const XrSessionActionSetsAttachInfo* attachInfo) override {
+            if (attachInfo->type != XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider, "xrAttachSessionActionSets", TLPArg(session, "Session"));
+            for (uint32_t i = 0; i < attachInfo->countActionSets; i++) {
+                TraceLoggingWrite(
+                    g_traceProvider, "xrAttachSessionActionSets", TLPArg(attachInfo->actionSets[i], "ActionSet"));
+            }
+
             XrSessionActionSetsAttachInfo chainAttachInfo = *attachInfo;
             std::vector<XrActionSet> newActionSets;
             if (m_eyeTracker && isVrSession(session)) {
@@ -1199,15 +1297,36 @@ namespace {
         XrResult xrCreateAction(XrActionSet actionSet,
                                 const XrActionCreateInfo* createInfo,
                                 XrAction* action) override {
+            if (createInfo->type != XR_TYPE_ACTION_CREATE_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrCreateAction",
+                              TLPArg(actionSet, "ActionSet"),
+                              TLArg(createInfo->actionName, "Name"),
+                              TLArg(createInfo->localizedActionName, "LocalizedName"),
+                              TLArg(xr::ToCString(createInfo->actionType), "Type"));
+            for (uint32_t i = 0; i < createInfo->countSubactionPaths; i++) {
+                TraceLoggingWrite(g_traceProvider,
+                                  "xrCreateAction",
+                                  TLArg(getPath(createInfo->subactionPaths[i]).c_str(), "SubactionPath"));
+            }
+
             const XrResult result = OpenXrApi::xrCreateAction(actionSet, createInfo, action);
-            if (XR_SUCCEEDED(result) && m_handTracker) {
-                m_handTracker->registerAction(*action, actionSet);
+            if (XR_SUCCEEDED(result)) {
+                if (m_handTracker) {
+                    m_handTracker->registerAction(*action, actionSet);
+                }
+                TraceLoggingWrite(g_traceProvider, "xrCreateAction", TLPArg(*action, "Action"));
             }
 
             return result;
         }
 
         XrResult xrDestroyAction(XrAction action) override {
+            TraceLoggingWrite(g_traceProvider, "xrDestroyAction", TLPArg(action, "Action"));
+
             const XrResult result = OpenXrApi::xrDestroyAction(action);
             if (XR_SUCCEEDED(result) && m_handTracker) {
                 m_handTracker->unregisterAction(action);
@@ -1219,14 +1338,31 @@ namespace {
         XrResult xrCreateActionSpace(XrSession session,
                                      const XrActionSpaceCreateInfo* createInfo,
                                      XrSpace* space) override {
+            if (createInfo->type != XR_TYPE_ACTION_SPACE_CREATE_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrCreateActionSpace",
+                              TLPArg(session, "Session"),
+                              TLPArg(createInfo->action, "Action"),
+                              TLArg(getPath(createInfo->subactionPath).c_str(), "SubactionPath"),
+                              TLArg(xr::ToString(createInfo->poseInActionSpace).c_str(), "PoseInActionSpace"));
+
             const XrResult result = OpenXrApi::xrCreateActionSpace(session, createInfo, space);
-            if (XR_SUCCEEDED(result) && m_handTracker && isVrSession(session)) {
-                // Keep track of the XrSpace for controllers, so we can override the behavior for them.
-                const std::string fullPath = m_handTracker->getFullPath(createInfo->action, createInfo->subactionPath);
-                if (fullPath == "/user/hand/right/input/grip/pose" || fullPath == "/user/hand/right/input/aim/pose" ||
-                    fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") {
-                    m_handTracker->registerActionSpace(*space, fullPath, createInfo->poseInActionSpace);
+            if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                if (m_handTracker) {
+                    // Keep track of the XrSpace for controllers, so we can override the behavior for them.
+                    const std::string fullPath =
+                        m_handTracker->getFullPath(createInfo->action, createInfo->subactionPath);
+                    if (fullPath == "/user/hand/right/input/grip/pose" ||
+                        fullPath == "/user/hand/right/input/aim/pose" ||
+                        fullPath == "/user/hand/left/input/grip/pose" || fullPath == "/user/hand/left/input/aim/pose") {
+                        m_handTracker->registerActionSpace(*space, fullPath, createInfo->poseInActionSpace);
+                    }
                 }
+
+                TraceLoggingWrite(g_traceProvider, "xrCreateActionSpace", TLPArg(*space, "Space"));
             }
 
             return result;
@@ -1245,6 +1381,11 @@ namespace {
                                             uint32_t imageCapacityInput,
                                             uint32_t* imageCountOutput,
                                             XrSwapchainImageBaseHeader* images) override {
+            TraceLoggingWrite(g_traceProvider,
+                              "xrEnumerateSwapchainImages",
+                              TLPArg(swapchain, "Swapchain"),
+                              TLArg(imageCapacityInput, "ImageCapacityInput"));
+
             const XrResult result =
                 OpenXrApi::xrEnumerateSwapchainImages(swapchain, imageCapacityInput, imageCountOutput, images);
             if (XR_SUCCEEDED(result) && images) {
@@ -1257,11 +1398,15 @@ namespace {
                         XrSwapchainImageD3D11KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D11KHR*>(images);
                         for (uint32_t i = 0; i < *imageCountOutput; i++) {
                             d3dImages[i].texture = swapchainState.images[i].appTexture->getAs<graphics::D3D11>();
+                            TraceLoggingWrite(
+                                g_traceProvider, "xrEnumerateSwapchainImages", TLPArg(d3dImages[i].texture, "Image"));
                         }
                     } else if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
                         XrSwapchainImageD3D12KHR* d3dImages = reinterpret_cast<XrSwapchainImageD3D12KHR*>(images);
                         for (uint32_t i = 0; i < *imageCountOutput; i++) {
                             d3dImages[i].texture = swapchainState.images[i].appTexture->getAs<graphics::D3D12>();
+                            TraceLoggingWrite(
+                                g_traceProvider, "xrEnumerateSwapchainImages", TLPArg(d3dImages[i].texture, "Image"));
                         }
                     } else {
                         throw std::runtime_error("Unsupported graphics runtime");
@@ -1269,12 +1414,21 @@ namespace {
                 }
             }
 
+            TraceLoggingWrite(
+                g_traceProvider, "xrEnumerateSwapchainImages", TLArg(*imageCountOutput, "ImageCountOutput"));
+
             return result;
         }
 
         XrResult xrAcquireSwapchainImage(XrSwapchain swapchain,
                                          const XrSwapchainImageAcquireInfo* acquireInfo,
                                          uint32_t* index) override {
+            if (acquireInfo && acquireInfo->type != XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider, "xrAcquireSwapchainImage", TLPArg(swapchain, "Swapchain"));
+
             auto swapchainIt = m_swapchains.find(swapchain);
             if (swapchainIt != m_swapchains.end()) {
                 if (m_frameAnalyzer) {
@@ -1295,6 +1449,8 @@ namespace {
                 if (swapchainIt != m_swapchains.end()) {
                     swapchainIt->second.acquiredImageIndex = *index;
                 }
+
+                TraceLoggingWrite(g_traceProvider, "xrAcquireSwapchainImage", TLArg(*index, "Index"));
             }
 
             return result;
@@ -1302,6 +1458,12 @@ namespace {
 
         XrResult xrReleaseSwapchainImage(XrSwapchain swapchain,
                                          const XrSwapchainImageReleaseInfo* releaseInfo) override {
+            if (releaseInfo && releaseInfo->type != XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider, "xrReleaseSwapchainImage", TLPArg(swapchain, "Swapchain"));
+
             auto swapchainIt = m_swapchains.find(swapchain);
             if (swapchainIt != m_swapchains.end()) {
                 if (m_frameAnalyzer) {
@@ -1317,6 +1479,8 @@ namespace {
         }
 
         XrResult xrPollEvent(XrInstance instance, XrEventDataBuffer* eventData) override {
+            TraceLoggingWrite(g_traceProvider, "xrPollEvent", TLPArg(instance, "Instance"));
+
             m_needVarjoPollEventWorkaround = false;
 
             if (m_sendInterationProfileEvent && m_vrSession != XR_NULL_HANDLE) {
@@ -1325,6 +1489,8 @@ namespace {
                 buffer->type = XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED;
                 buffer->next = nullptr;
                 buffer->session = m_vrSession;
+
+                TraceLoggingWrite(g_traceProvider, "InteractionProfileChanged", TLPArg(buffer->session, "Session"));
 
                 m_sendInterationProfileEvent = false;
                 return XR_SUCCESS;
@@ -1338,7 +1504,14 @@ namespace {
                 buffer->session = m_vrSession;
                 buffer->viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
                 buffer->viewIndex = m_visibilityMaskEventIndex++;
+
+                TraceLoggingWrite(g_traceProvider,
+                                  "VisibilityMaskChanged",
+                                  TLPArg(buffer->session, "Session"),
+                                  TLArg(xr::ToCString(buffer->viewConfigurationType), "ViewConfigurationType"),
+                                  TLArg(buffer->viewIndex, "ViewIndex"));
                 Log("Send XrEventDataVisibilityMaskChangedKHR event for view %u\n", buffer->viewIndex);
+
                 return XR_SUCCESS;
             }
 
@@ -1348,16 +1521,34 @@ namespace {
         XrResult xrGetCurrentInteractionProfile(XrSession session,
                                                 XrPath topLevelUserPath,
                                                 XrInteractionProfileState* interactionProfile) override {
+            if (interactionProfile->type != XR_TYPE_INTERACTION_PROFILE_STATE) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrGetCurrentInteractionProfile",
+                              TLPArg(session, "Session"),
+                              TLArg(getPath(topLevelUserPath).c_str(), "TopLevelUserPath"));
+
             std::string path = topLevelUserPath != XR_NULL_PATH ? getPath(topLevelUserPath) : "";
+            XrResult result = XR_ERROR_RUNTIME_FAILURE;
             if (m_handTracker && isVrSession(session) &&
                 (path.empty() || path == "/user/hand/left" || path == "/user/hand/right") &&
                 interactionProfile->type == XR_TYPE_INTERACTION_PROFILE_STATE) {
                 // Return our emulated interaction profile for the hands.
                 interactionProfile->interactionProfile = m_handTracker->getInteractionProfile();
-                return XR_SUCCESS;
+                result = XR_SUCCESS;
+            } else {
+                result = OpenXrApi::xrGetCurrentInteractionProfile(session, topLevelUserPath, interactionProfile);
             }
 
-            return OpenXrApi::xrGetCurrentInteractionProfile(session, topLevelUserPath, interactionProfile);
+            if (XR_SUCCEEDED(result)) {
+                TraceLoggingWrite(g_traceProvider,
+                                  "xrGetCurrentInteractionProfile",
+                                  TLArg(getPath(interactionProfile->interactionProfile).c_str(), "InteractionProfile"));
+            }
+
+            return result;
         }
 
         XrResult xrGetVisibilityMaskKHR(XrSession session,
@@ -1365,9 +1556,23 @@ namespace {
                                         uint32_t viewIndex,
                                         XrVisibilityMaskTypeKHR visibilityMaskType,
                                         XrVisibilityMaskKHR* visibilityMask) override {
+            if (visibilityMask->type != XR_TYPE_VISIBILITY_MASK_KHR) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrGetVisibilityMaskKHR",
+                              TLPArg(session, "Session"),
+                              TLArg(xr::ToCString(viewConfigurationType), "ViewConfigurationType"),
+                              TLArg(viewIndex, "ViewIndex"),
+                              TLArg(xr::ToCString(visibilityMaskType), "VisibilityMaskType"),
+                              TLArg(visibilityMask->vertexCapacityInput, "VertexCapacityInput"),
+                              TLArg(visibilityMask->indexCapacityInput, "IndexCapacityInput"));
+
             bool useFullMask = false;
             bool useEmptyMask = false;
 
+            XrResult result = XR_ERROR_RUNTIME_FAILURE;
             if (isVrSession(session)) {
                 if (m_configManager->getValue(config::SettingDisableHAM)) {
                     useEmptyMask = visibilityMaskType == XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR;
@@ -1409,7 +1614,7 @@ namespace {
                     visibilityMask->indices[4] = 3;
                     visibilityMask->indices[5] = 0;
                 }
-                return XR_SUCCESS;
+                result = XR_SUCCESS;
             } else if (useEmptyMask) {
                 // TODO: Not great, but we must return something apparently. No vertices/indices does not seem to work
                 // for all apps (bad two-call idiom)?
@@ -1422,11 +1627,24 @@ namespace {
                     visibilityMask->indices[1] = 0;
                     visibilityMask->indices[2] = 0;
                 }
-                return XR_SUCCESS;
+                result = XR_SUCCESS;
             } else {
-                return OpenXrApi::xrGetVisibilityMaskKHR(
+                result = OpenXrApi::xrGetVisibilityMaskKHR(
                     session, viewConfigurationType, viewIndex, visibilityMaskType, visibilityMask);
             }
+
+            if (XR_SUCCEEDED(result)) {
+                if (visibilityMask->type != XR_TYPE_VISIBILITY_MASK_KHR) {
+                    return XR_ERROR_VALIDATION_FAILURE;
+                }
+
+                TraceLoggingWrite(g_traceProvider,
+                                  "xrGetVisibilityMaskKHR",
+                                  TLArg(visibilityMask->vertexCountOutput, "VertexCountOutput"),
+                                  TLArg(visibilityMask->indexCountOutput, "IndexCountOutput"));
+            }
+
+            return result;
         }
 
         XrResult xrLocateViews(XrSession session,
@@ -1435,6 +1653,18 @@ namespace {
                                uint32_t viewCapacityInput,
                                uint32_t* viewCountOutput,
                                XrView* views) override {
+            if (viewLocateInfo->type != XR_TYPE_VIEW_LOCATE_INFO || viewState->type != XR_TYPE_VIEW_STATE) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrLocateViews",
+                              TLPArg(session, "Session"),
+                              TLArg(xr::ToCString(viewLocateInfo->viewConfigurationType), "ViewConfigurationType"),
+                              TLArg(viewLocateInfo->displayTime, "DisplayTime"),
+                              TLPArg(viewLocateInfo->space, "Space"),
+                              TLArg(viewCapacityInput, "ViewCapacityInput"));
+
             const XrResult result =
                 OpenXrApi::xrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
             if (XR_SUCCEEDED(result) && isVrSession(session) &&
@@ -1546,17 +1776,42 @@ namespace {
                     StoreXrFov(&views[0].fov, LoadXrFov(views[0].fov) * XMVectorReplicate(1.f / (zoom * 0.1f)));
                     StoreXrFov(&views[1].fov, LoadXrFov(views[1].fov) * XMVectorReplicate(1.f / (zoom * 0.1f)));
                 }
+
+                TraceLoggingWrite(g_traceProvider,
+                                  "xrLocateViews",
+                                  TLArg(*viewCountOutput, "ViewCountOutput"),
+                                  TLArg(viewState->viewStateFlags, "ViewStateFlags"),
+                                  TLArg(xr::ToString(views[0].pose).c_str(), "LeftPose"),
+                                  TLArg(xr::ToString(views[0].fov).c_str(), "LeftFov"),
+                                  TLArg(xr::ToString(views[1].pose).c_str(), "RightPose"),
+                                  TLArg(xr::ToString(views[1].fov).c_str(), "RightFov"));
             }
 
             return result;
         }
 
         XrResult xrLocateSpace(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocation* location) override {
+            if (location->type != XR_TYPE_SPACE_LOCATION) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrLocateSpace",
+                              TLPArg(space, "Space"),
+                              TLPArg(baseSpace, "BaseSpace"),
+                              TLArg(time, "Time"));
+
             if (m_handTracker && m_vrSession != XR_NULL_HANDLE && location->type == XR_TYPE_SPACE_LOCATION) {
                 m_performanceCounters.handTrackingTimer->start();
                 if (m_handTracker->locate(space, baseSpace, time, getTimeNow(), *location)) {
                     m_performanceCounters.handTrackingTimer->stop();
                     m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+
+                    TraceLoggingWrite(g_traceProvider,
+                                      "xrLocateSpace",
+                                      TLArg(location->locationFlags, "LocationFlags"),
+                                      TLArg(xr::ToString(location->pose).c_str(), "Pose"));
+
                     return XR_SUCCESS;
                 }
             }
@@ -1565,6 +1820,18 @@ namespace {
         }
 
         XrResult xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo) override {
+            if (syncInfo->type != XR_TYPE_ACTIONS_SYNC_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider, "xrSyncActions", TLPArg(session, "Session"));
+            for (uint32_t i = 0; i < syncInfo->countActiveActionSets; i++) {
+                TraceLoggingWrite(g_traceProvider,
+                                  "xrSyncActions",
+                                  TLPArg(syncInfo->activeActionSets[i].actionSet, "ActionSet"),
+                                  TLArg(getPath(syncInfo->activeActionSets[i].subactionPath).c_str(), "SubactionPath"));
+            }
+
             XrActionsSyncInfo chainSyncInfo = *syncInfo;
             std::vector<XrActiveActionSet> newActiveActionSets;
             if (m_eyeTracker && isVrSession(session)) {
@@ -1601,12 +1868,30 @@ namespace {
         XrResult xrGetActionStateBoolean(XrSession session,
                                          const XrActionStateGetInfo* getInfo,
                                          XrActionStateBoolean* state) override {
+            if (getInfo->type != XR_TYPE_ACTION_STATE_GET_INFO || state->type != XR_TYPE_ACTION_STATE_BOOLEAN) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrGetActionStateBoolean",
+                              TLPArg(session, "Session"),
+                              TLPArg(getInfo->action, "Action"),
+                              TLArg(getPath(getInfo->subactionPath).c_str(), "SubactionPath"));
+
             if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
                 state->type == XR_TYPE_ACTION_STATE_BOOLEAN) {
                 m_performanceCounters.handTrackingTimer->start();
                 if (m_handTracker->getActionState(*getInfo, *state)) {
                     m_performanceCounters.handTrackingTimer->stop();
                     m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+
+                    TraceLoggingWrite(g_traceProvider,
+                                      "xrGetActionStateBoolean",
+                                      TLArg(!!state->isActive, "Active"),
+                                      TLArg(!!state->currentState, "CurrentState"),
+                                      TLArg(!!state->changedSinceLastSync, "ChangedSinceLastSync"),
+                                      TLArg(state->lastChangeTime, "LastChangeTime"));
+
                     return XR_SUCCESS;
                 }
             }
@@ -1617,12 +1902,30 @@ namespace {
         XrResult xrGetActionStateFloat(XrSession session,
                                        const XrActionStateGetInfo* getInfo,
                                        XrActionStateFloat* state) override {
+            if (getInfo->type != XR_TYPE_ACTION_STATE_GET_INFO || state->type != XR_TYPE_ACTION_STATE_FLOAT) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrGetActionStateFloat",
+                              TLPArg(session, "Session"),
+                              TLPArg(getInfo->action, "Action"),
+                              TLArg(getPath(getInfo->subactionPath).c_str(), "SubactionPath"));
+
             if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
                 state->type == XR_TYPE_ACTION_STATE_FLOAT) {
                 m_performanceCounters.handTrackingTimer->start();
                 if (m_handTracker->getActionState(*getInfo, *state)) {
                     m_performanceCounters.handTrackingTimer->stop();
                     m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+
+                    TraceLoggingWrite(g_traceProvider,
+                                      "xrGetActionStateFloat",
+                                      TLArg(!!state->isActive, "Active"),
+                                      TLArg(state->currentState, "CurrentState"),
+                                      TLArg(!!state->changedSinceLastSync, "ChangedSinceLastSync"),
+                                      TLArg(state->lastChangeTime, "LastChangeTime"));
+
                     return XR_SUCCESS;
                 }
             }
@@ -1633,6 +1936,16 @@ namespace {
         XrResult xrGetActionStatePose(XrSession session,
                                       const XrActionStateGetInfo* getInfo,
                                       XrActionStatePose* state) override {
+            if (getInfo->type != XR_TYPE_ACTION_STATE_GET_INFO || state->type != XR_TYPE_ACTION_STATE_POSE) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrGetActionStatePose",
+                              TLPArg(session, "Session"),
+                              TLPArg(getInfo->action, "Action"),
+                              TLArg(getPath(getInfo->subactionPath).c_str(), "SubactionPath"));
+
             if (m_handTracker && isVrSession(session) && getInfo->type == XR_TYPE_ACTION_STATE_GET_INFO &&
                 state->type == XR_TYPE_ACTION_STATE_POSE) {
                 m_performanceCounters.handTrackingTimer->start();
@@ -1651,6 +1964,9 @@ namespace {
                     state->isActive = m_handTracker->isTrackedRecently(hand);
                     m_performanceCounters.handTrackingTimer->stop();
                     m_stats.handTrackingCpuTimeUs += m_performanceCounters.handTrackingTimer->query();
+
+                    TraceLoggingWrite(g_traceProvider, "xrGetActionStatePose", TLArg(!!state->isActive, "Active"));
+
                     return XR_SUCCESS;
                 }
             }
@@ -1661,6 +1977,16 @@ namespace {
         XrResult xrApplyHapticFeedback(XrSession session,
                                        const XrHapticActionInfo* hapticActionInfo,
                                        const XrHapticBaseHeader* hapticFeedback) override {
+            if (hapticActionInfo->type != XR_TYPE_HAPTIC_ACTION_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrApplyHapticFeedback",
+                              TLPArg(session, "Session"),
+                              TLPArg(hapticActionInfo->action, "Action"),
+                              TLArg(getPath(hapticActionInfo->subactionPath).c_str(), "SubactionPath"));
+
             if (m_handTracker && isVrSession(session) && hapticActionInfo->type == XR_TYPE_HAPTIC_ACTION_INFO &&
                 hapticFeedback->type == XR_TYPE_HAPTIC_VIBRATION) {
                 m_performanceCounters.handTrackingTimer->start();
@@ -1687,6 +2013,16 @@ namespace {
         }
 
         XrResult xrStopHapticFeedback(XrSession session, const XrHapticActionInfo* hapticActionInfo) override {
+            if (hapticActionInfo->type != XR_TYPE_HAPTIC_ACTION_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrStopHapticFeedback",
+                              TLPArg(session, "Session"),
+                              TLPArg(hapticActionInfo->action, "Action"),
+                              TLArg(getPath(hapticActionInfo->subactionPath).c_str(), "SubactionPath"));
+
             if (m_handTracker && isVrSession(session) && hapticActionInfo->type == XR_TYPE_HAPTIC_ACTION_INFO) {
                 m_performanceCounters.handTrackingTimer->start();
                 const std::string fullPath =
@@ -1713,6 +2049,13 @@ namespace {
         XrResult xrWaitFrame(XrSession session,
                              const XrFrameWaitInfo* frameWaitInfo,
                              XrFrameState* frameState) override {
+            if ((frameWaitInfo && frameWaitInfo->type != XR_TYPE_FRAME_WAIT_INFO) ||
+                frameState->type != XR_TYPE_FRAME_STATE) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider, "xrWaitFrame", TLPArg(session, "Session"));
+
             if (isVrSession(session)) {
                 if (m_graphicsDevice) {
                     m_performanceCounters.appCpuTimer->stop();
@@ -1771,12 +2114,24 @@ namespace {
                 if (m_graphicsDevice) {
                     m_performanceCounters.appCpuTimer->start();
                 }
+
+                TraceLoggingWrite(g_traceProvider,
+                                  "xrWaitFrame",
+                                  TLArg(!!frameState->shouldRender, "ShouldRender"),
+                                  TLArg(frameState->predictedDisplayTime, "PredictedDisplayTime"),
+                                  TLArg(frameState->predictedDisplayPeriod, "PredictedDisplayPeriod"));
             }
 
             return result;
         }
 
         XrResult xrBeginFrame(XrSession session, const XrFrameBeginInfo* frameBeginInfo) override {
+            if (frameBeginInfo && frameBeginInfo->type != XR_TYPE_FRAME_BEGIN_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider, "xrBeginFrame", TLPArg(session, "Session"));
+
             const XrResult result = OpenXrApi::xrBeginFrame(session, frameBeginInfo);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 // Record the predicted display time.
@@ -2044,6 +2399,16 @@ namespace {
         }
 
         XrResult xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo) override {
+            if (frameEndInfo->type != XR_TYPE_FRAME_END_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider,
+                              "xrEndFrame",
+                              TLPArg(session, "Session"),
+                              TLArg(frameEndInfo->displayTime, "DisplayTime"),
+                              TLArg(xr::ToCString(frameEndInfo->environmentBlendMode), "EnvironmentBlendMode"));
+
             if (!isVrSession(session) || !m_graphicsDevice) {
                 return OpenXrApi::xrEndFrame(session, frameEndInfo);
             }
@@ -2118,6 +2483,12 @@ namespace {
                     const XrCompositionLayerProjection* proj =
                         reinterpret_cast<const XrCompositionLayerProjection*>(chainFrameEndInfo.layers[i]);
 
+                    TraceLoggingWrite(g_traceProvider,
+                                      "xrEndFrame_Layer",
+                                      TLArg("Proj", "Type"),
+                                      TLArg(proj->layerFlags, "Flags"),
+                                      TLPArg(proj->space, "Space"));
+
                     // To patch the resolution of the layer we need to recreate the whole projection & views
                     // data structures.
                     auto correctedProjectionLayer = &layerProjectionAllocator.emplace_back(*proj);
@@ -2145,6 +2516,16 @@ namespace {
                     for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
                         const XrCompositionLayerProjectionView& view = proj->views[eye];
 
+                        TraceLoggingWrite(g_traceProvider,
+                                          "xrEndFrame_View",
+                                          TLArg("Proj", "Type"),
+                                          TLArg(eye, "Index"),
+                                          TLPArg(proj->views[eye].subImage.swapchain, "Swapchain"),
+                                          TLArg(proj->views[eye].subImage.imageArrayIndex, "ImageArrayIndex"),
+                                          TLArg(xr::ToString(proj->views[eye].subImage.imageRect).c_str(), "ImageRect"),
+                                          TLArg(xr::ToString(proj->views[eye].pose).c_str(), "Pose"),
+                                          TLArg(xr::ToString(proj->views[eye].fov).c_str(), "Fov"));
+
                         auto swapchainIt = m_swapchains.find(view.subImage.swapchain);
                         if (swapchainIt == m_swapchains.end()) {
                             throw std::runtime_error("Swapchain is not registered");
@@ -2160,6 +2541,19 @@ namespace {
                             if (entry->type == XR_TYPE_COMPOSITION_LAYER_DEPTH_INFO_KHR) {
                                 const XrCompositionLayerDepthInfoKHR* depth =
                                     reinterpret_cast<const XrCompositionLayerDepthInfoKHR*>(entry);
+
+                                TraceLoggingWrite(g_traceProvider,
+                                                  "xrEndFrame_View",
+                                                  TLArg("Depth", "Type"),
+                                                  TLArg(eye, "Index"),
+                                                  TLPArg(depth->subImage.swapchain, "Swapchain"),
+                                                  TLArg(depth->subImage.imageArrayIndex, "ImageArrayIndex"),
+                                                  TLArg(xr::ToString(depth->subImage.imageRect).c_str(), "ImageRect"),
+                                                  TLArg(depth->nearZ, "Near"),
+                                                  TLArg(depth->farZ, "Far"),
+                                                  TLArg(depth->minDepth, "MinDepth"),
+                                                  TLArg(depth->maxDepth, "MaxDepth"));
+
                                 // The order of color/depth textures must match.
                                 if (depth->subImage.imageArrayIndex == view.subImage.imageArrayIndex) {
                                     auto depthSwapchainIt = m_swapchains.find(depth->subImage.swapchain);
@@ -2404,12 +2798,41 @@ namespace {
 
                     spaceForOverlay = proj->space;
 
+                    for (uint32_t eye = 0; eye < utilities::ViewCount; eye++) {
+                        TraceLoggingWrite(
+                            g_traceProvider,
+                            "CorrectedView",
+                            TLArg("Proj", "Type"),
+                            TLArg(eye, "Index"),
+                            TLPArg(correctedProjectionViews[eye].subImage.swapchain, "Swapchain"),
+                            TLArg(correctedProjectionViews[eye].subImage.imageArrayIndex, "ImageArrayIndex"),
+                            TLArg(xr::ToString(correctedProjectionViews[eye].subImage.imageRect).c_str(), "ImageRect"),
+                            TLArg(xr::ToString(correctedProjectionViews[eye].pose).c_str(), "Pose"),
+                            TLArg(xr::ToString(correctedProjectionViews[eye].fov).c_str(), "Fov"));
+                    }
+
                     correctedProjectionLayer->views = correctedProjectionViews;
                     correctedLayers.push_back(
                         reinterpret_cast<const XrCompositionLayerBaseHeader*>(correctedProjectionLayer));
                 } else if (chainFrameEndInfo.layers[i]->type == XR_TYPE_COMPOSITION_LAYER_QUAD) {
                     const XrCompositionLayerQuad* quad =
                         reinterpret_cast<const XrCompositionLayerQuad*>(chainFrameEndInfo.layers[i]);
+
+                    TraceLoggingWrite(g_traceProvider,
+                                      "xrEndFrame_Layer",
+                                      TLArg("Quad", "Type"),
+                                      TLArg(quad->layerFlags, "Flags"),
+                                      TLPArg(quad->space, "Space"));
+                    TraceLoggingWrite(g_traceProvider,
+                                      "xrEndFrame_View",
+                                      TLArg("Quad", "Type"),
+                                      TLPArg(quad->subImage.swapchain, "Swapchain"),
+                                      TLArg(quad->subImage.imageArrayIndex, "ImageArrayIndex"),
+                                      TLArg(xr::ToString(quad->subImage.imageRect).c_str(), "ImageRect"),
+                                      TLArg(xr::ToString(quad->pose).c_str(), "Pose"),
+                                      TLArg(quad->size.width, "Width"),
+                                      TLArg(quad->size.height, "Height"),
+                                      TLArg(xr::ToCString(quad->eyeVisibility), "EyeVisibility"));
 
                     auto swapchainIt = m_swapchains.find(quad->subImage.swapchain);
                     if (swapchainIt == m_swapchains.end()) {
@@ -2453,6 +2876,9 @@ namespace {
 
                     // Render the hands or eye gaze helper.
                     if (drawHands || drawEyeGaze) {
+                        TraceLoggingWrite(
+                            g_traceProvider, "StampOverlays", TLArg(drawHands, "Hands"), TLArg(drawEyeGaze, "EyeGaze"));
+
                         auto isEyeGazeValid = m_eyeTracker && m_eyeTracker->getProjectedGaze(m_eyeGaze);
                         const bool doHandOcclusion = m_configManager->getValue(config::SettingHandOcclusion);
 
@@ -2490,6 +2916,8 @@ namespace {
                 if (m_menuHandler) {
                     if (!m_configManager->getValue(config::SettingMenuLegacyMode) && !m_configManager->isSafeMode()) {
                         if (m_menuHandler->isVisible() || m_menuLingering) {
+                            TraceLoggingWrite(g_traceProvider, "OverlayMenu");
+
                             // Workaround: there is a bug in the WMR runtime that causes a past quad layer content
                             // to linger on the next projection layer. We make sure to submit a completely blank
                             // quad layer for 3 frames after its disappearance. The number 3 comes from the number
@@ -2538,12 +2966,31 @@ namespace {
                             layerQuadForMenu.subImage.imageRect.extent.height = textureInfo.height;
                             layerQuadForMenu.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
 
+                            TraceLoggingWrite(g_traceProvider,
+                                              "xrEndFrame_Layer",
+                                              TLArg("Quad", "Type"),
+                                              TLArg(layerQuadForMenu.layerFlags, "Flags"),
+                                              TLPArg(layerQuadForMenu.space, "Space"));
+                            TraceLoggingWrite(
+                                g_traceProvider,
+                                "xrEndFrame_View",
+                                TLArg("Quad", "Type"),
+                                TLPArg(layerQuadForMenu.subImage.swapchain, "Swapchain"),
+                                TLArg(layerQuadForMenu.subImage.imageArrayIndex, "ImageArrayIndex"),
+                                TLArg(xr::ToString(layerQuadForMenu.subImage.imageRect).c_str(), "ImageRect"),
+                                TLArg(xr::ToString(layerQuadForMenu.pose).c_str(), "Pose"),
+                                TLArg(layerQuadForMenu.size.width, "Width"),
+                                TLArg(layerQuadForMenu.size.height, "Height"),
+                                TLArg(xr::ToCString(layerQuadForMenu.eyeVisibility), "EyeVisibility"));
+
                             correctedLayers.push_back(
                                 reinterpret_cast<XrCompositionLayerBaseHeader*>(&layerQuadForMenu));
                         }
                     } else {
                         // Legacy menu mode, for people having problems.
                         if (textureForOverlay[0]) {
+                            TraceLoggingWrite(g_traceProvider, "StampMenu");
+
                             const bool useTextureArrays = textureForOverlay[1] == textureForOverlay[0] &&
                                                           sliceForOverlay[0] != sliceForOverlay[1];
 
@@ -2595,12 +3042,16 @@ namespace {
             // Release the swapchain images now, as we are really done this time.
             for (auto& swapchain : m_swapchains) {
                 if (swapchain.second.delayedRelease) {
+                    TraceLoggingWrite(g_traceProvider, "DelayedSwapchainRelease", TLPArg(swapchain.first, "Swapchain"));
+
                     XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
                     swapchain.second.delayedRelease = false;
                     CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(swapchain.first, &releaseInfo));
                 }
             }
             if (needMenuSwapchainDelayedRelease) {
+                TraceLoggingWrite(g_traceProvider, "MenuSwapchainRelease", TLPArg(m_menuSwapchain, "Swapchain"));
+
                 XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
                 CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(m_menuSwapchain, &releaseInfo));
             }
@@ -2638,6 +3089,10 @@ namespace {
         }
 
         const std::string getPath(XrPath path) {
+            if (path == XR_NULL_PATH) {
+                return "";
+            }
+
             char buf[XR_MAX_PATH_LENGTH];
             uint32_t count;
             CHECK_XRCMD(xrPathToString(GetXrInstance(), path, sizeof(buf), &count, buf));
