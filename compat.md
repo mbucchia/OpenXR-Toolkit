@@ -20,6 +20,20 @@ For the best results and to maximize chances that your application will work, al
 - Use the latest version of your OpenXR runtime (typically distributed through your VR software, eg: Oculus software, Varjo base).
 - If using OpenComposite (see further below), use the latest version of OpenComposite.
 
+## Headset compatibility
+
+| Headset brand | Supported? |
+| --- | --- |
+| Windows Mixed Reality (HP Reverb, Samsung Odyssey...) | Yes |
+| Oculus (Rift, Quest, Quest 2, Quest Pro...) | Yes |
+| Oculus (via Virtual Desktop)) | Yes |
+| Varjo (Aero, VR-3...) | Yes |
+| Pimax (5K, 8K...) | Yes |
+| HTC Tier 1 (Vive original, Vive Pro) | Yes |
+| HTC Tier 2 (Vive Cosmos, Vive Focus) | Yes |
+| Valve Index | Yes |
+| Pico (Neo 3, Neo 4) | Yes |
+
 ## OpenXR applications
 
 | Game | Limitations |

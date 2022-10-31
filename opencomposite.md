@@ -33,19 +33,22 @@ The diagram below show how OpenComposite enables applications built for OpenVR t
 | Headset brand | Has native OpenXR support? | Can leverage OpenComposite? | OpenXR supports 32-bit apps? |
 | --- | --- | --- | --- |
 | Windows Mixed Reality (HP Reverb, Samsung Odyssey...) | Yes | Yes | Yes |
-| Oculus | Yes [1] | Yes [1] | Yes |
-| Varjo | Yes | Yes | No |
-| Pimax | Yes [2] | Yes | Yes |
-| HTC Tier 1 (Vive original, Vive Pro) | No [3] | No | - |
+| Oculus (Rift, Quest, Quest 2, Quest Pro...) | Yes | Yes | Yes |
+| Oculus (via Virtual Desktop) | No [1] | No [1] [4] | No |
+| Varjo (Aero, VR-3...) | Yes | Yes | No |
+| Pimax (5K, 8K...) | Yes [2] | Yes | Yes |
+| HTC Tier 1 (Vive original, Vive Pro) | No [3] | No [4] | No |
 | HTC Tier 2 (Vive Cosmos, Vive Focus) | Yes [3] | Yes | No |
-| Valve (Index) | No | No | - |
-| Pico | No | No | - |
+| Valve Index | No | No [4] | No |
+| Pico (Neo 3, Neo 4) | No | No [4] | No |
 
-[1] Oculus Quest headsets run either with "Link" (cable or AirLink) and Virtual Desktop. When using Virtual Desktop, you must use SteamVR. OpenComposite currently does not support Virtual Desktop, and therefore OpenComposite can only be used with Link.
+[1] Oculus Quest headsets run either with "Link" (cable or AirLink) and Virtual Desktop. When using Virtual Desktop, you must not use OpenComposite "system-wide" install, and perform the [per-game](#alternative-the-per-game-install) install instead.
 
 [2] Pimax support requires to use the unofficial [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki) OpenXR runtime.
 
 [3] HTC headsets with outside-in tracking (Lighthouse) only work through SteamVR. HTC headsets with inside-out tracking have native OpenXR support (enabled through the VIVE Console software).
+
+[4] While headsets without native OpenXR support will not see benefits from OpenComposite, you can still use OpenComposite to enable OpenXR Toolkit and leverage its features. Alternatively, you may look into [vrperfkit](https://github.com/fholger/vrperfkit) for an OpenVR-only experience.
 
 ### How is it different from OpenXR Toolkit?
 
@@ -160,6 +163,30 @@ Open the `OpenComposite.exe` application:
 Click "Switch to OpenComposite":
 
 ![OpenComposite application](site/oc2.png)
+
+4) If you ever want to undo these changes and revert back to SteamVR, simple use "Switch to SteamVR":
+
+![OpenComposite application](site/oc-switch-steamvr.png)
+
+## Alternative: the per-game install
+
+You should prefer using the OpenComposite Switcher "system-wide" install. However, in some cases, you might need to perform a per-game install.
+
+1) Follow step 1) of the [step-by-step guide](#step-by-step) above to properly setup OpenXR.
+
+2) Make sure OpenComposite is not installed system-wide. If you ever used the OpenComposite switcher (`OpenComposite.exe`), make sure to use the switcher to "Switch to SteamVR":
+
+![OpenComposite application](site/oc-switch-steamvr.png)
+
+3) Locate your game's installation folder.
+
+4) Locate **all** copies of the `openvr_api.dll` file within the game's installation folder: some games might have more than one copy!
+
+![OpenComposite per-game install](site/oc-per-game.png)
+
+5) Download the [replacement DLL](https://znix.xyz/OpenComposite/download.php?arch=x64&branch=openxr) and copy it **to all locations** identified in step 3). You may make a backup copy if needed.
+
+6) If you ever want to undo these changes and revert back to SteamVR, most games have "repair" options that will restore the original files, or you restore your own backup made in step 4), or reinstall the game entirely.
 
 ## Tips for using OpenComposite
 
@@ -308,6 +335,30 @@ If you get the following error:
 
 You are likely missing some system DLL files. The most common missing DLL is the [Visual C++ Redistributables](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 
+### The game will not start with error -2
+
+If you get the following error, and you are using Virtual Desktop:
+
+![OpenComposite error message](site/oc-error-vd.png)
+
+You must either:
+
+1. (Quest uses) Avoid using Virtual Desktop. Virtual Desktop forces you to run through SteamVR, which greatly reduces the benefits of using OpenComposite. Instead, use Air Link or Link cable, and follow the [step-by-step guide](#step-by-step) further above to properly set up Oculus as your OpenXR runtime.
+
+2. Use the [per-game install](#alternative-the-per-game-install) of OpenComposite rather then the OpenComposite Switcher.
+
+### The game will crash at startup with a Vulkan error
+
+Create an `opencomposite.ini` file in the folder of the game, and add the following line to it:
+
+```
+initUsingVulkan=false
+```
+
+Make sure that the file extension is `.ini` and not `.ini.txt`!
+
+If you are not sure where to create the file, check the [OpenComposite log file](#if-all-else-fails): it will list the path where the file is searched.
+
 ### The game will not start with error "unknown config option"
 
 Don't use a stale `opencomposite.ini` configuration file (from an older version of OpenComposite for example).
@@ -327,6 +378,8 @@ invertUsingShaders=true
 ```
 
 Make sure that the file extension is `.ini` and not `.ini.txt`!
+
+If you are not sure where to create the file, check the [OpenComposite log file](#if-all-else-fails): it will list the path where the file is searched.
 
 ### If all else fails...
 
