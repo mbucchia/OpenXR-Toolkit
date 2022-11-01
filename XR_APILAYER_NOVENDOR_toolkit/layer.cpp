@@ -3145,9 +3145,9 @@ namespace {
                     // This is the latest point we must have fully waited a frame before proceeding.
                     //
                     // Note: we should not wait infinitely here, however certain patterns of engine calls may cause us
-                    // to attempt a "double xrWaitFrame". Use a timeout to detect that, and refrain from enqueing a
-                    // second wait further down. This isn't a pretty solution, but it is simple and it seems to work
-                    // effectively (minus the 1s freeze observed in-game).
+                    // to attempt a "double xrWaitFrame" when turning on Turbo. Use a timeout to detect that, and
+                    // refrain from enqueing a second wait further down. This isn't a pretty solution, but it is simple
+                    // and it seems to work effectively (minus the 1s freeze observed in-game).
                     TraceLoggingWriteStart(local, "AsyncWaitNow");
                     const auto ready = m_asyncWaitPromise.wait_for(1s) == std::future_status::ready;
                     TraceLoggingWriteStop(local, "AsyncWaitNow", TLArg(ready, "Ready"));
