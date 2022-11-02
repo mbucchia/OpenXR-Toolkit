@@ -44,20 +44,16 @@ namespace {
         uint32_t Const1[4];
     };
 
-    class CASUpscaler : public IImageProcessor {
+    class CASSharpener : public IImageProcessor {
       public:
-        CASUpscaler(std::shared_ptr<IConfigManager> configManager,
-                    std::shared_ptr<IDevice> graphicsDevice,
-                    int settingScaling,
-                    int settingAnamorphic)
-            : m_configManager(configManager), m_device(graphicsDevice), m_settingScaling(settingScaling),
-              m_settingAnamorphic(settingAnamorphic),
-              m_isSharpenOnly(m_settingScaling == 100 && m_settingAnamorphic <= 0) {
-            initializeUpscaler();
+        CASSharpener(std::shared_ptr<IConfigManager> configManager,
+                    std::shared_ptr<IDevice> graphicsDevice)
+            : m_configManager(configManager), m_device(graphicsDevice) {
+            initializeSharpener();
         }
 
         void reload() override {
-            initializeUpscaler();
+            initializeSharpener();
         }
 
         void update() override {
@@ -97,7 +93,7 @@ namespace {
                 1};
 
             m_shaderCAS->updateThreadGroups(threadGroups);
-            m_device->setShader(m_isSharpenOnly ? m_shaderCAS : m_shaderUpscaleCAS, SamplerType::LinearClamp);
+            m_device->setShader(m_shaderCAS, SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_configBuffer);
             m_device->setShaderInput(0, input);
             m_device->setShaderOutput(0, output);
@@ -105,16 +101,13 @@ namespace {
         }
 
       private:
-        void initializeUpscaler() {
+        void initializeSharpener() {
             const auto shadersDir = dllHome / "shaders";
             const auto shaderFile = shadersDir / "CAS.hlsl";
 
             utilities::shader::Defines defines;
             defines.add("CAS_THREAD_GROUP_SIZE", 64);
             defines.add("CAS_SAMPLE_FP16", 0);
-            defines.add("CAS_SAMPLE_SHARPEN_ONLY", 0);
-            m_shaderUpscaleCAS =
-                m_device->createComputeShader(shaderFile, "mainCS", "CAS Upscale CS", {}, defines.get());
             defines.add("CAS_SAMPLE_SHARPEN_ONLY", 1);
             m_shaderCAS = m_device->createComputeShader(shaderFile, "mainCS", "CAS CS", {}, defines.get());
 
@@ -123,11 +116,7 @@ namespace {
 
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
-        const int m_settingScaling;
-        const int m_settingAnamorphic;
-        const bool m_isSharpenOnly;
 
-        std::shared_ptr<IComputeShader> m_shaderUpscaleCAS;
         std::shared_ptr<IComputeShader> m_shaderCAS;
         std::shared_ptr<IShaderBuffer> m_configBuffer;
     };
@@ -136,11 +125,9 @@ namespace {
 
 namespace toolkit::graphics {
 
-    std::shared_ptr<IImageProcessor> CreateCASUpscaler(std::shared_ptr<IConfigManager> configManager,
-                                                       std::shared_ptr<IDevice> graphicsDevice,
-                                                       int settingScaling,
-                                                       int settingAnamorphic) {
-        return std::make_shared<CASUpscaler>(configManager, graphicsDevice, settingScaling, settingAnamorphic);
+    std::shared_ptr<IImageProcessor> CreateCASSharpener(std::shared_ptr<IConfigManager> configManager,
+                                                       std::shared_ptr<IDevice> graphicsDevice) {
+        return std::make_shared<CASSharpener>(configManager, graphicsDevice);
     }
 
 } // namespace toolkit::graphics

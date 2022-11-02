@@ -48,9 +48,8 @@ namespace {
                     std::shared_ptr<IDevice> graphicsDevice,
                     int settingScaling,
                     int settingAnamorphic)
-            : m_configManager(configManager), m_device(graphicsDevice), m_settingScaling(settingScaling),
-              m_settingAnamorphic(settingAnamorphic),
-              m_isSharpenOnly(m_settingScaling == 100 && m_settingAnamorphic <= 0) {
+            : m_configManager(configManager), m_device(graphicsDevice),
+              m_isSharpenOnly(settingScaling == 100 && settingAnamorphic <= 0) {
             initializeScaler();
         }
 
@@ -199,8 +198,6 @@ namespace {
 
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
-        const int m_settingScaling;
-        const int m_settingAnamorphic;
         const bool m_isSharpenOnly;
 
         std::shared_ptr<IComputeShader> m_shader;

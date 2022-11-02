@@ -1085,7 +1085,7 @@ namespace {
             m_useAnamorphic = m_originalAnamorphicValue > 0 ? 1 : 0;
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                     "Upscaling",
+                                     "Upscaling/Sharpening",
                                      MenuEntryType::Choice,
                                      SettingScalingType,
                                      0,
@@ -1094,71 +1094,100 @@ namespace {
             m_menuEntries.back().noCommitDelay = true;
 
             // Scaling sub-group.
-            MenuGroup upscalingGroup(this, [&] { return getCurrentScalingType() != ScalingType::None; });
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Anamorphic",
-                                     MenuEntryType::Choice,
-                                     "",
-                                     0,
-                                     MenuEntry::LastVal<OffOnType>(),
-                                     MenuEntry::FmtEnum<OffOnType>});
-            m_menuEntries.back().noCommitDelay = true;
-            m_menuEntries.back().pValue = &m_useAnamorphic;
-
-            // Proportional sub-group.
-            MenuGroup proportionalGroup(
-                this, [&] { return !m_useAnamorphic && getCurrentScalingType() != ScalingType::None; });
-            m_menuEntries.push_back(
-                {MenuIndent::SubGroupIndent, "Size", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
-                     return fmt::format("{}% ({}x{})",
-                                        value,
-                                        GetScaledInputSize(getDisplayWidth(), value, 2),
-                                        GetScaledInputSize(getDisplayHeight(), value, 2));
-                 }});
-            m_menuEntries.back().noCommitDelay = true;
-            proportionalGroup.finalize();
-
-            // Anamorphic sub-group.
-            MenuGroup anamorphicGroup(this,
-                                      [&] { return m_useAnamorphic && getCurrentScalingType() != ScalingType::None; });
-            m_menuEntries.push_back(
-                {MenuIndent::SubGroupIndent, "Width", MenuEntryType::Slider, SettingScaling, 25, 400, [&](int value) {
-                     return fmt::format("{}% ({} pixels)", value, GetScaledInputSize(getDisplayWidth(), value, 2));
-                 }});
-            m_menuEntries.back().noCommitDelay = true;
-
-            m_menuEntries.push_back(
-                {MenuIndent::SubGroupIndent,
-                 "Height",
-                 MenuEntryType::Slider,
-                 SettingAnamorphic,
-                 25,
-                 400,
-                 [&](int value) {
-                     return fmt::format("{}% ({} pixels)", value, GetScaledInputSize(getDisplayHeight(), value, 2));
-                 }});
-            m_menuEntries.back().noCommitDelay = true;
-            anamorphicGroup.finalize();
-
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Sharpness",
-                                     MenuEntryType::Slider,
-                                     SettingSharpness,
-                                     0,
-                                     100,
-                                     MenuEntry::FmtPercent});
-            // TODO: Mip-map biasing is only support on D3D11.
-            if (m_device->getApi() == Api::D3D11) {
+            {
+                MenuGroup upscalingGroup(this, [&] {
+                    return getCurrentScalingType() == ScalingType::NIS || getCurrentScalingType() == ScalingType::FSR;
+                });
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                         "Mip-map bias",
-                                         MenuEntryType::Slider,
-                                         SettingMipMapBias,
+                                         "Anamorphic",
+                                         MenuEntryType::Choice,
+                                         "",
                                          0,
-                                         MenuEntry::LastVal<MipMapBias>(),
-                                         MenuEntry::FmtEnum<MipMapBias>});
-                m_menuEntries.back().expert = true;
+                                         MenuEntry::LastVal<OffOnType>(),
+                                         MenuEntry::FmtEnum<OffOnType>});
+                m_menuEntries.back().noCommitDelay = true;
+                m_menuEntries.back().pValue = &m_useAnamorphic;
+
+                // Proportional sub-group.
+                MenuGroup proportionalGroup(this, [&] { return !m_useAnamorphic; });
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                         "Size",
+                                         MenuEntryType::Slider,
+                                         SettingScaling,
+                                         25,
+                                         400,
+                                         [&](int value) {
+                                             return fmt::format("{}% ({}x{})",
+                                                                value,
+                                                                GetScaledInputSize(getDisplayWidth(), value, 2),
+                                                                GetScaledInputSize(getDisplayHeight(), value, 2));
+                                         }});
+                m_menuEntries.back().noCommitDelay = true;
+                proportionalGroup.finalize();
+
+                // Anamorphic sub-group.
+                MenuGroup anamorphicGroup(this, [&] { return m_useAnamorphic; });
+                m_menuEntries.push_back(
+                    {MenuIndent::SubGroupIndent,
+                     "Width",
+                     MenuEntryType::Slider,
+                     SettingScaling,
+                     25,
+                     400,
+                     [&](int value) {
+                         return fmt::format("{}% ({} pixels)", value, GetScaledInputSize(getDisplayWidth(), value, 2));
+                     }});
+                m_menuEntries.back().noCommitDelay = true;
+
+                m_menuEntries.push_back(
+                    {MenuIndent::SubGroupIndent,
+                     "Height",
+                     MenuEntryType::Slider,
+                     SettingAnamorphic,
+                     25,
+                     400,
+                     [&](int value) {
+                         return fmt::format("{}% ({} pixels)", value, GetScaledInputSize(getDisplayHeight(), value, 2));
+                     }});
+                m_menuEntries.back().noCommitDelay = true;
+                anamorphicGroup.finalize();
+
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                         "Sharpness",
+                                         MenuEntryType::Slider,
+                                         SettingSharpness,
+                                         0,
+                                         100,
+                                         MenuEntry::FmtPercent});
+
+                // TODO: Mip-map biasing is only supported on D3D11.
+                if (m_device->getApi() == Api::D3D11) {
+                    MenuGroup mipmappingGroup(this, [&] { return getCurrentScaling() != 100; });
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Mip-map bias",
+                                             MenuEntryType::Slider,
+                                             SettingMipMapBias,
+                                             0,
+                                             MenuEntry::LastVal<MipMapBias>(),
+                                             MenuEntry::FmtEnum<MipMapBias>});
+                    m_menuEntries.back().expert = true;
+                    mipmappingGroup.finalize();
+                }
+                upscalingGroup.finalize();
             }
-            upscalingGroup.finalize();
+
+            // Sharpening Settings.
+            {
+                MenuGroup sharpeningGroup(this, [&] { return getCurrentScalingType() == ScalingType::CAS; });
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                         "Sharpness",
+                                         MenuEntryType::Slider,
+                                         SettingSharpness,
+                                         0,
+                                         100,
+                                         MenuEntry::FmtPercent});
+                sharpeningGroup.finalize();
+            }
 
             // Fixed Foveated Rendering (VRS) Settings.
             if (menuInfo.variableRateShaderMaxRate) {

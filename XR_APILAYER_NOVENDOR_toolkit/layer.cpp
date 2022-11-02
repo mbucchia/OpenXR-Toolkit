@@ -570,12 +570,12 @@ namespace {
 
                 switch (upscaleMode) {
                 case config::ScalingType::FSR:
-                case config::ScalingType::CAS:
                 case config::ScalingType::NIS: {
                     std::tie(inputWidth, inputHeight) = config::GetScaledDimensions(
                         settingScaling, settingAnamophic, m_displayWidth, m_displayHeight, 2);
                 } break;
 
+                case config::ScalingType::CAS:
                 case config::ScalingType::None:
                     break;
 
@@ -670,23 +670,24 @@ namespace {
                     // Initialize the other resources.
 
                     m_upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
-                    m_settingScaling = m_configManager->peekValue(config::SettingScaling);
-                    m_settingAnamorphic = m_configManager->peekValue(config::SettingAnamorphic);
+                    if (m_upscaleMode == config::ScalingType::NIS || m_upscaleMode == config::ScalingType::FSR) {
+                        m_settingScaling = m_configManager->peekValue(config::SettingScaling);
+                        m_settingAnamorphic = m_configManager->peekValue(config::SettingAnamorphic);
+                    }
 
                     switch (m_upscaleMode) {
+                    case config::ScalingType::NIS:
+                        m_upscaler = graphics::CreateNISUpscaler(
+                            m_configManager, m_graphicsDevice, m_settingScaling, m_settingAnamorphic);
+                        break;
+
                     case config::ScalingType::FSR:
                         m_upscaler = graphics::CreateFSRUpscaler(
                             m_configManager, m_graphicsDevice, m_settingScaling, m_settingAnamorphic);
                         break;
 
                     case config::ScalingType::CAS:
-                        m_upscaler = graphics::CreateCASUpscaler(
-                            m_configManager, m_graphicsDevice, m_settingScaling, m_settingAnamorphic);
-                        break;
-
-                    case config::ScalingType::NIS:
-                        m_upscaler = graphics::CreateNISUpscaler(
-                            m_configManager, m_graphicsDevice, m_settingScaling, m_settingAnamorphic);
+                        m_upscaler = graphics::CreateCASSharpener(m_configManager, m_graphicsDevice);
                         break;
 
                     case config::ScalingType::None:
@@ -700,7 +701,7 @@ namespace {
 
                     uint32_t renderWidth = m_displayWidth;
                     uint32_t renderHeight = m_displayHeight;
-                    if (m_upscaleMode != config::ScalingType::None) {
+                    if (m_upscaleMode == config::ScalingType::NIS || m_upscaleMode == config::ScalingType::FSR) {
                         std::tie(renderWidth, renderHeight) = config::GetScaledDimensions(
                             m_settingScaling, m_settingAnamorphic, m_displayWidth, m_displayHeight, 2);
 
@@ -1079,7 +1080,7 @@ namespace {
             if (useSwapchain && !isDepth) {
                 // Modify the swapchain to handle our processing chain (eg: change resolution and/or usage.
 
-                if (m_upscaler) {
+                if (m_upscaleMode == config::ScalingType::NIS || m_upscaleMode == config::ScalingType::FSR) {
                     float horizontalScaleFactor;
                     float verticalScaleFactor;
                     std::tie(horizontalScaleFactor, verticalScaleFactor) =
@@ -2377,13 +2378,11 @@ namespace {
             }
 
             // Adjust mip map biasing.
-            if (m_configManager->hasChanged(config::SettingMipMapBias) ||
-                m_configManager->hasChanged(config::SettingScalingType)) {
-                const auto biasing = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType) !=
-                                             config::ScalingType::None
-                                         ? m_configManager->getEnumValue<config::MipMapBias>(config::SettingMipMapBias)
-                                         : config::MipMapBias::Off;
-                m_graphicsDevice->setMipMapBias(biasing, m_mipMapBiasForUpscaling);
+            if ((m_upscaleMode == config::ScalingType::NIS || m_upscaleMode == config::ScalingType::FSR) &&
+                m_configManager->hasChanged(config::SettingMipMapBias)) {
+                m_graphicsDevice->setMipMapBias(
+                    m_configManager->getEnumValue<config::MipMapBias>(config::SettingMipMapBias),
+                    m_mipMapBiasForUpscaling);
             }
 
             // Update HAM.
@@ -2676,15 +2675,15 @@ namespace {
 
                         float horizontalScaleFactor = 1.f;
                         float verticalScaleFactor = 1.f;
-                        if (m_upscaleMode != config::ScalingType::None) {
+                        if (m_upscaleMode == config::ScalingType::NIS || m_upscaleMode == config::ScalingType::FSR) {
                             std::tie(horizontalScaleFactor, verticalScaleFactor) =
                                 config::GetScalingFactors(m_settingScaling, m_settingAnamorphic);
                         }
 
-                        auto scaledOutputWidth =
-                            roundUp((uint32_t)std::ceil(view.subImage.imageRect.extent.width * horizontalScaleFactor), 2);
-                        auto scaledOutputHeight =
-                            roundUp((uint32_t)std::ceil(view.subImage.imageRect.extent.height * verticalScaleFactor), 2);
+                        auto scaledOutputWidth = roundUp(
+                            (uint32_t)std::ceil(view.subImage.imageRect.extent.width * horizontalScaleFactor), 2);
+                        auto scaledOutputHeight = roundUp(
+                            (uint32_t)std::ceil(view.subImage.imageRect.extent.height * verticalScaleFactor), 2);
 
                         // Copy the VPRT app input into an intermediate buffer if needed.
                         // TODO: This is a naive solution to uniformely support the same time of input/output for all
