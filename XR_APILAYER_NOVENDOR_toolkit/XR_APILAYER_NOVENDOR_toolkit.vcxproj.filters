@@ -36,6 +36,9 @@
     <Filter Include="Shader Files\VRS">
       <UniqueIdentifier>{e1b58850-3359-4361-85e9-60b095c46aae}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shader Files\CAS">
+      <UniqueIdentifier>{18b9944b-429a-4b5e-8df2-d9de6d96564f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -88,6 +91,12 @@
     </ClInclude>
     <ClInclude Include="utils\ScreenGrab12.h">
       <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\FidelityFX-CAS\ffx-cas\ffx_a.h">
+      <Filter>Shader Files\CAS</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\FidelityFX-CAS\ffx-cas\ffx_cas.h">
+      <Filter>Shader Files\CAS</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -151,6 +160,9 @@
     <ClCompile Include="utils\ScreenGrab12.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="cas.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="XR_APILAYER_NOVENDOR_toolkit.json" />
@@ -183,6 +195,9 @@
     </FxCompile>
     <FxCompile Include="VRS.hlsl">
       <Filter>Shader Files\VRS</Filter>
+    </FxCompile>
+    <FxCompile Include="CAS.hlsl">
+      <Filter>Shader Files\CAS</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

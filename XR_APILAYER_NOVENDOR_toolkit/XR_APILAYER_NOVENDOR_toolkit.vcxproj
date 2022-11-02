@@ -62,7 +62,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr;$(SolutionDir)\external\d3dx12;$(SolutionDir)\external\NVAPI;$(SolutionDir)\external\FW1FontWrapper\Source;$(SolutionDir)\external\Omnicept-SDK\include;$(SolutionDir)\external\aSeeVRClient\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr;$(SolutionDir)\external\FidelityFX-CAS\ffx-cas;$(SolutionDir)\external\d3dx12;$(SolutionDir)\external\NVAPI;$(SolutionDir)\external\FW1FontWrapper\Source;$(SolutionDir)\external\Omnicept-SDK\include;$(SolutionDir)\external\aSeeVRClient\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -93,8 +93,10 @@ type $(SolutionDir)\patches\NVIDIAImageScaling\0001-allow-compileshader-option-w
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_a.h $(OutDir)\shaders
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h $(OutDir)\shaders
 type $(SolutionDir)\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-code-fsr-v1.20210629.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
+copy $(SolutionDir)\external\FidelityFX-CAS\ffx-cas\ffx_cas.h $(OutDir)\shaders
 copy $(ProjectDir)\NIS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\FSR.hlsl $(OutDir)\shaders
+copy $(ProjectDir)\CAS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\VRS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
 copy $(SolutionDir)\external\Omnicept-SDK\bin\$(Configuration)\jsoncpp.dll $(OutDir)
@@ -137,7 +139,7 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr;$(SolutionDir)\external\d3dx12;$(SolutionDir)\external\NVAPI;$(SolutionDir)\external\FW1FontWrapper\Source;$(SolutionDir)\external\Omnicept-SDK\include;$(SolutionDir)\external\aSeeVRClient\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr;$(SolutionDir)\external\FidelityFX-CAS\ffx-cas;$(SolutionDir)\external\d3dx12;$(SolutionDir)\external\NVAPI;$(SolutionDir)\external\FW1FontWrapper\Source;$(SolutionDir)\external\Omnicept-SDK\include;$(SolutionDir)\external\aSeeVRClient\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -170,8 +172,10 @@ type $(SolutionDir)\patches\NVIDIAImageScaling\0001-allow-compileshader-option-w
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_a.h $(OutDir)\shaders
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h $(OutDir)\shaders
 type $(SolutionDir)\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-code-fsr-v1.20210629.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
+copy $(SolutionDir)\external\FidelityFX-CAS\ffx-cas\ffx_cas.h $(OutDir)\shaders
 copy $(ProjectDir)\NIS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\FSR.hlsl $(OutDir)\shaders
+copy $(ProjectDir)\CAS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\VRS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
 copy $(SolutionDir)\external\Omnicept-SDK\bin\$(Configuration)\jsoncpp.dll $(OutDir)
@@ -206,6 +210,14 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\external\FidelityFX-CAS\ffx-cas\ffx_a.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\external\FidelityFX-CAS\ffx-cas\ffx_cas.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\external\FidelityFX-FSR\ffx-fsr\ffx_a.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -234,6 +246,7 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
     <ClInclude Include="utils\ScreenGrab12.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="cas.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="d3d11.cpp" />
     <ClCompile Include="d3d12.cpp" />
@@ -279,6 +292,14 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
     </None>
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="CAS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
     <FxCompile Include="FSR.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>

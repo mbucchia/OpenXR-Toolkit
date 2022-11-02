@@ -570,6 +570,7 @@ namespace {
 
                 switch (upscaleMode) {
                 case config::ScalingType::FSR:
+                case config::ScalingType::CAS:
                 case config::ScalingType::NIS: {
                     std::tie(inputWidth, inputHeight) = config::GetScaledDimensions(
                         settingScaling, settingAnamophic, m_displayWidth, m_displayHeight, 2);
@@ -675,6 +676,11 @@ namespace {
                     switch (m_upscaleMode) {
                     case config::ScalingType::FSR:
                         m_upscaler = graphics::CreateFSRUpscaler(
+                            m_configManager, m_graphicsDevice, m_settingScaling, m_settingAnamorphic);
+                        break;
+
+                    case config::ScalingType::CAS:
+                        m_upscaler = graphics::CreateCASUpscaler(
                             m_configManager, m_graphicsDevice, m_settingScaling, m_settingAnamorphic);
                         break;
 
@@ -1079,8 +1085,8 @@ namespace {
                     std::tie(horizontalScaleFactor, verticalScaleFactor) =
                         config::GetScalingFactors(m_settingScaling, m_settingAnamorphic);
 
-                    chainCreateInfo.width = (uint32_t)std::ceil(createInfo->width * horizontalScaleFactor);
-                    chainCreateInfo.height = (uint32_t)std::ceil(createInfo->height * verticalScaleFactor);
+                    chainCreateInfo.width = roundUp((uint32_t)std::ceil(createInfo->width * horizontalScaleFactor), 2);
+                    chainCreateInfo.height = roundUp((uint32_t)std::ceil(createInfo->height * verticalScaleFactor), 2);
                 }
 
                 // The post processor will draw a full-screen quad onto the final swapchain.
@@ -2445,6 +2451,7 @@ namespace {
                 // TODO: add a getUpscaleModeName() helper to keep enum and string in sync.
                 const auto upscaleName = m_upscaleMode == config::ScalingType::NIS   ? "_NIS_"
                                          : m_upscaleMode == config::ScalingType::FSR ? "_FSR_"
+                                         : m_upscaleMode == config::ScalingType::CAS ? "_CAS_"
                                                                                      : "_SCL_";
                 parameters << upscaleName << m_settingScaling << "_"
                            << m_configManager->getValue(config::SettingSharpness);
@@ -2675,9 +2682,9 @@ namespace {
                         }
 
                         auto scaledOutputWidth =
-                            (uint32_t)std::ceil(view.subImage.imageRect.extent.width * horizontalScaleFactor);
+                            roundUp((uint32_t)std::ceil(view.subImage.imageRect.extent.width * horizontalScaleFactor), 2);
                         auto scaledOutputHeight =
-                            (uint32_t)std::ceil(view.subImage.imageRect.extent.height * verticalScaleFactor);
+                            roundUp((uint32_t)std::ceil(view.subImage.imageRect.extent.height * verticalScaleFactor), 2);
 
                         // Copy the VPRT app input into an intermediate buffer if needed.
                         // TODO: This is a naive solution to uniformely support the same time of input/output for all
