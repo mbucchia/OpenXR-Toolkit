@@ -88,8 +88,7 @@ copy $(SolutionDir)\scripts\OXRTK.wprp $(OutDir)
 copy $(SolutionDir)\scripts\OXRTK_WMR.wprp $(OutDir)
 md $(OutDir)\shaders
 copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
-type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-2.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
-type $(SolutionDir)\patches\NVIDIAImageScaling\0001-allow-compileshader-option-wx-nis-1-0-2.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
+type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-compileshader-option-wx-nis-1-0-2.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_a.h $(OutDir)\shaders
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h $(OutDir)\shaders
 type $(SolutionDir)\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-code-fsr-v1.20210629.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
@@ -167,8 +166,7 @@ copy $(SolutionDir)\scripts\OXRTK.wprp $(OutDir)
 copy $(SolutionDir)\scripts\OXRTK_WMR.wprp $(OutDir)
 md $(OutDir)\shaders
 copy $(SolutionDir)\external\NVIDIAImageScaling\NIS\NIS_Scaler.h $(OutDir)\shaders
-type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-2.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
-type $(SolutionDir)\patches\NVIDIAImageScaling\0001-allow-compileshader-option-wx-nis-1-0-2.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
+type $(SolutionDir)\patches\NVIDIAImageScaling\0000-allow-compileshader-option-wx-nis-1-0-2.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_a.h $(OutDir)\shaders
 copy $(SolutionDir)\external\FidelityFX-FSR\ffx-fsr\ffx_fsr1.h $(OutDir)\shaders
 type $(SolutionDir)\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-code-fsr-v1.20210629.patch | $(SolutionDir)\patches\patch.exe --binary -d $(OutDir)\shaders -p2
@@ -281,8 +279,7 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
   </ItemGroup>
   <ItemGroup>
     <None Include="..\patches\FidelityFX-FSR\0000-conditionaly-compile-denoise-code-fsr-v1.20210629.patch" />
-    <None Include="..\patches\NVIDIAImageScaling\0000-allow-texsample-override-nis-1-0-2.patch" />
-    <None Include="..\patches\NVIDIAImageScaling\0001-allow-compileshader-option-wx-nis-1-0-2.patch" />
+    <None Include="..\patches\NVIDIAImageScaling\0000-allow-compileshader-option-wx-nis-1-0-2.patch" />
     <None Include="framework\dispatch_generator.py" />
     <None Include="framework\layer_apis.py" />
     <None Include="packages.config" />

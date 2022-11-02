@@ -115,11 +115,8 @@ namespace toolkit {
                           int settingScaling,
                           int settingAnamorphic);
 
-        std::shared_ptr<IImageProcessor>
-        CreateCASUpscaler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
-                          std::shared_ptr<IDevice> graphicsDevice,
-                          int settingScaling,
-                          int settingAnamorphic);
+        std::shared_ptr<IImageProcessor> CreateCASSharpener(
+            std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
 
         std::shared_ptr<IVariableRateShader>
         CreateVariableRateShader(std::shared_ptr<toolkit::config::IConfigManager> configManager,

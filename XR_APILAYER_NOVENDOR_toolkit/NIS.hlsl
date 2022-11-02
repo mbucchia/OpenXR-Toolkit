@@ -78,8 +78,8 @@ NIS_BINDING(0) cbuffer cb : register(b0) {
 
 NIS_BINDING(1) SamplerState samplerLinearClamp : register(s0);
 
-NIS_BINDING(2) Texture2DArray in_texture : register(t0);
-NIS_BINDING(3) RWTexture2DArray<unorm float4> out_texture : register(u0);
+NIS_BINDING(2) Texture2D in_texture : register(t0);
+NIS_BINDING(3) RWTexture2D<unorm float4> out_texture : register(u0);
 
 #if NIS_SCALER
 NIS_BINDING(4) Texture2D coef_scaler : register(t1);
