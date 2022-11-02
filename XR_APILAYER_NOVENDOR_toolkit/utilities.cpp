@@ -86,7 +86,7 @@ namespace toolkit::config {
     DECLARE_ENUM_TO_STRING_VIEW(OverlayType, {"Off", "FPS", "Advanced", "Developer"})
     DECLARE_ENUM_TO_STRING_VIEW(MenuFontSize, {"Small", "Medium", "Large"})
     DECLARE_ENUM_TO_STRING_VIEW(MenuTimeout, {"Short", "Medium", "Long", "None"})
-    DECLARE_ENUM_TO_STRING_VIEW(ScalingType, {"Off", "NIS", "FSR"})
+    DECLARE_ENUM_TO_STRING_VIEW(ScalingType, {"Off", "NIS", "FSR", "CAS"})
     DECLARE_ENUM_TO_STRING_VIEW(MipMapBias, {"Off", "Conservative", "All"})
     DECLARE_ENUM_TO_STRING_VIEW(HandTrackingEnabled, {"Off", "Both", "Left", "Right"})
     DECLARE_ENUM_TO_STRING_VIEW(HandTrackingVisibility, {"Hidden", "Bright", "Medium", "Dark", "Darker"})

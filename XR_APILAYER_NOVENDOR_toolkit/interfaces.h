@@ -196,7 +196,7 @@ namespace toolkit {
         enum class OverlayType { None = 0, FPS, Advanced, Developer, MaxValue };
         enum class MenuFontSize { Small = 0, Medium, Large, MaxValue };
         enum class MenuTimeout { Small = 0, Medium, Large, None, MaxValue };
-        enum class ScalingType { None = 0, NIS, FSR, MaxValue };
+        enum class ScalingType { None = 0, NIS, FSR, CAS, MaxValue };
         enum class MipMapBias { Off = 0, Anisotropic, All, MaxValue };
         enum class HandTrackingEnabled { Off = 0, Both, Left, Right, MaxValue };
         enum class HandTrackingVisibility { Hidden = 0, Bright, Medium, Dark, Darker, MaxValue };
