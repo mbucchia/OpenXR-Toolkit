@@ -967,6 +967,11 @@ namespace {
 
                 // Wait for any pending operation to complete.
                 if (m_graphicsDevice) {
+                    if (m_asyncWaitPromise.valid()) {
+                        m_asyncWaitPromise.wait_for(5s);
+                        m_asyncWaitPromise = {};
+                    }
+
                     m_graphicsDevice->blockCallbacks();
                     m_graphicsDevice->flushContext(true);
                 }
