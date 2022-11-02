@@ -142,7 +142,7 @@ namespace {
             m_configManager->setDefault(config::SettingVRSYOffset, 0);
             m_configManager->setDefault(config::SettingVRSPreferHorizontal, 0);
             m_configManager->setDefault(config::SettingVRSLeftRightBias, 0);
-            m_configManager->setDefault(config::SettingVRSScaleFilter, 51);
+            m_configManager->setDefault(config::SettingVRSScaleFilter, 80);
 
             // Appearance.
             m_configManager->setDefault(config::SettingPostProcess, 0);
@@ -2675,15 +2675,17 @@ namespace {
 
                         float horizontalScaleFactor = 1.f;
                         float verticalScaleFactor = 1.f;
+                        uint32_t scaledOutputWidth = view.subImage.imageRect.extent.width;
+                        uint32_t scaledOutputHeight = view.subImage.imageRect.extent.height;
                         if (m_upscaleMode == config::ScalingType::NIS || m_upscaleMode == config::ScalingType::FSR) {
                             std::tie(horizontalScaleFactor, verticalScaleFactor) =
                                 config::GetScalingFactors(m_settingScaling, m_settingAnamorphic);
-                        }
 
-                        auto scaledOutputWidth = roundUp(
-                            (uint32_t)std::ceil(view.subImage.imageRect.extent.width * horizontalScaleFactor), 2);
-                        auto scaledOutputHeight = roundUp(
-                            (uint32_t)std::ceil(view.subImage.imageRect.extent.height * verticalScaleFactor), 2);
+                            scaledOutputWidth = roundUp(
+                                (uint32_t)std::ceil(view.subImage.imageRect.extent.width * horizontalScaleFactor), 2);
+                            scaledOutputHeight = roundUp(
+                                (uint32_t)std::ceil(view.subImage.imageRect.extent.height * verticalScaleFactor), 2);
+                        }
 
                         // Copy the VPRT app input into an intermediate buffer if needed.
                         // TODO: This is a naive solution to uniformely support the same time of input/output for all
@@ -2712,10 +2714,13 @@ namespace {
                             }
 
                             // Patch the top-left corner offset.
-                            correctedProjectionViews[eye].subImage.imageRect.offset.x = (uint32_t)std::ceil(
-                                correctedProjectionViews[eye].subImage.imageRect.offset.x * horizontalScaleFactor);
-                            correctedProjectionViews[eye].subImage.imageRect.offset.y = (uint32_t)std::ceil(
-                                correctedProjectionViews[eye].subImage.imageRect.offset.y * verticalScaleFactor);
+                            if (m_upscaleMode == config::ScalingType::NIS ||
+                                m_upscaleMode == config::ScalingType::FSR) {
+                                correctedProjectionViews[eye].subImage.imageRect.offset.x = (uint32_t)std::ceil(
+                                    correctedProjectionViews[eye].subImage.imageRect.offset.x * horizontalScaleFactor);
+                                correctedProjectionViews[eye].subImage.imageRect.offset.y = (uint32_t)std::ceil(
+                                    correctedProjectionViews[eye].subImage.imageRect.offset.y * verticalScaleFactor);
+                            }
 
                             // Small adjustments to avoid pixel off-texture due to rounding error.
                             if (correctedProjectionViews[eye].subImage.imageRect.offset.x + scaledOutputWidth >
