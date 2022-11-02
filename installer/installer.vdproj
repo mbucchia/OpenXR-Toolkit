@@ -303,6 +303,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_A1AA6DC3DBBC4D96B2C0C1D675D159E0"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_A1C0F5E75EAA4B97A0A55AACB45F8921"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -316,6 +322,12 @@
         "Entry"
         {
         "MsmKey" = "8:_B128155D9EE6452A85B33C8DB9255C69"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_B4FAE8A908824BCDA03316BB2A9D2AB1"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1293,6 +1305,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A1AA6DC3DBBC4D96B2C0C1D675D159E0"
+            {
+            "SourcePath" = "8:..\\bin\\x64\\Release\\shaders\\ffx_cas.h"
+            "TargetName" = "8:ffx_cas.h"
+            "Tag" = "8:"
+            "Folder" = "8:_A3E4D480BBBE4121A0414DD516E4AF66"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A1C0F5E75EAA4B97A0A55AACB45F8921"
             {
             "SourcePath" = "8:..\\external\\Omnicept-SDK\\bin\\Release\\jsoncpp.dll"
@@ -1350,6 +1382,26 @@
             "TargetName" = "8:LICENSE"
             "Tag" = "8:"
             "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B4FAE8A908824BCDA03316BB2A9D2AB1"
+            {
+            "SourcePath" = "8:..\\bin\\x64\\Release\\shaders\\CAS.hlsl"
+            "TargetName" = "8:CAS.hlsl"
+            "Tag" = "8:"
+            "Folder" = "8:_A3E4D480BBBE4121A0414DD516E4AF66"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
