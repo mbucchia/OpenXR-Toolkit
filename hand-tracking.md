@@ -37,7 +37,10 @@ We would love to add more devices to this list! If you have a device that suppor
 
 3. Download and install the [Ultraleap OpenXR Hand Tracking API Layer](https://github.com/ultraleap/OpenXRHandTracking/releases).
 
-4. With your game running, open the menu (Ctrl+F2), then navigate to **Hand Tracking**. Select either **Both** to use both hands, or **Left**/**Right** to use only one hand. Restart the VR session for the hand tracking to begin.
+4. With your game running, open the menu (Ctrl+F2), then navigate to the **Input** tab. Under **Controller emulation**, select either **Both** to use both hands, or **Left**/**Right** to use only one hand. Restart the VR session for the hand tracking to begin.
+
+![Enable hand tracking](site/hand-tracking.png)<br>
+*Enable hand tracking in OpenXR Toolkit*
 
 ### Note fo Varjo Aero users
 
@@ -107,8 +110,10 @@ interaction_profile=/interaction_profiles/hp/mixed_reality_controller
 interaction_profile=/interaction_profiles/oculus/touch_controller
 ```
 
-8. With your game running, open the menu (Ctrl+F2), then navigate to **Hand Tracking**. Select either **Both** to use both hands, or **Left**/**Right** to use only one hand. Restart the VR session for the hand tracking to begin.
+8. With your game running, open the menu (Ctrl+F2), then navigate to the **Input** tab. Under **Controller emulation**, select either **Both** to use both hands, or **Left**/**Right** to use only one hand. Restart the VR session for the hand tracking to begin.
 
+![Enable hand tracking](site/hand-tracking.png)<br>
+*Enable hand tracking in OpenXR Toolkit*
 
 ## Customizing the tracking and gestures
 

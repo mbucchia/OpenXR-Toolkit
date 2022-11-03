@@ -77,7 +77,7 @@ Video tutorial by [PIE IN THE SKY TOURS](https://www.youtube.com/c/pieintheskyto
 
 ![Setup wizard](site/installer.png)
 
-> 📝 **Note:** You do not need to install the previous version of OpenXR Toolkit if you had one installed. The new version will overwrite the previous one.
+> 📝 **Note:** You do not need to uninstall the previous version of OpenXR Toolkit if you had one installed. The new version will overwrite the previous one.
 
 ### 3. Launch the _OpenXR Toolkit Companion app_ to confirm that the software is active.
 
