@@ -16,9 +16,9 @@ DISCLAIMER: This software is distributed as-is, without any warranties or condit
 
 ## Downloads
 
-Current version: **1.2.0**
+Current version: **1.2.1**
 
-[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.2.0/OpenXR-Toolkit-1.2.0.msi){: .btn .btn-blue }
+[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.2.1/OpenXR-Toolkit-1.2.1.msi){: .btn .btn-blue }
 
 ...or expore [all versions](https://github.com/mbucchia/OpenXR-Toolkit/releases).
 
@@ -26,7 +26,7 @@ Current version: **1.2.0**
 
 This software may be used with any brand of VR headset as long as the target application uses DirectX with any GPU compatible with DirectX 11 and above. The application must use OpenXR.
 
-The following headsets have been confirmed to work: Windows Mixed Reality (eg: HP Reverb), Oculus Quest & Quest 2, Pimax 5K & 8KX, Varjo Aero, Valve Index, HTC Vive, Pico Neo 3 & 4.
+The following headsets have been confirmed to work: Windows Mixed Reality (eg: HP Reverb, Samsung Odyssey), Oculus Quest & Quest 2, Pimax 5K & 8KX, Varjo Aero & VR-3, Valve Index, HTC Vive, HTC Vive Cosmos, Pico Neo 3 & 4.
 
 The following OpenXR ToolKit features have additional restrictions:
 
@@ -43,13 +43,10 @@ The following OpenXR ToolKit features have additional restrictions:
 
 + This software may not work with all OpenXR applications. See the [Compatibility](compat) list.
   + It can also be used with certain OpenVR applications through [OpenComposite](opencomposite).
-+ If using with an HTC Vive Cosmos, please select SteamVR as your OpenXR runtime.
-+ If using with an HTC Vive Pro, please disable [`ViveOpenXRFacialTracking`](https://github.com/mbucchia/OpenXR-Toolkit/issues/408#issuecomment-1255773190).
-+ If using with a Pimax headset, consider using [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki) as your OpenXR runtime.
++ If using with a Pimax headset, you may consider using [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki) as your OpenXR runtime.
 + Fixed and Eye-tracked Foveated Rendering in Microsoft Flight Simulator is incorrectly applied in the main menu, resulting in blurry menu windows.
 + Fixed Foveated Rendering is not supported in IL-2 Sturmovik.
 + OpenXR Toolkit is not compatible with War Thunder on Varjo headsets.
-+ OpenXR Toolkit is not compatible with Bonelab on Oculus headsets. 
 + OpenXR Toolkit is only compatible with iRacing when using OpenXR. Compatibility going through OpenComposite has not been tested, and will not be officially supported.
 + OpenXR Toolkit is not compatible with ReShade.
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).

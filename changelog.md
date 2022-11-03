@@ -41,6 +41,21 @@ nav_order: 7
 - Include overlay/menu in screenshots.
 - Removed Pimax WFOV hack.
 - Make safe mode even safer.
+- Hotfix #1: Add ["Turbo mode"](other-features#turbo-mode).
+- Hotfix #1: Add support for AMD FidelityFX Contrast Adaptive Sharpening (CAS).
+- Hotfix #1: Fix support for HTC Vive Cosmos and Vive Focus (to use native OpenXR runtime rather than SteamVR).
+- Hotfix #1: Fix app CPU frame times measurements.
+- Hotfix #1: Fix crash with Bonelab on Oculus devices.
+- Hotfix #1: Fix visual glitches with foveated rendering in certain games (eg: Assetto Corsa).
+- Hotfix #1: Improve the frame throttling option to reduce frame latency.
+- Hotfix #1: Fix Pimax eye tracker module support to work with newer eye tracker software.
+- Hotfix #1: Fix issue with World Scale when application submits depth information.
+- Hotfix #1: Display the "tutorial" menu after changing hotkeys and/or reinstalling OpenXR Toolkit.
+- Hotfix #1: Fix crash in DCS when hand tracking is enabled.
+- Hotfix #1: Add an option to display and record statistics a higher rate (10 Hz vs 1 Hz).
+- Hotfix #1: Display frame times in milliseconds.
+- Hotfix #1: Add a way to toggle statistics recording from the command-line tool.
+- Hotfix #1: Add an indicator in the overlay that statistics recording is on.
 
 ## Changes in v1.1 (Apr 2022 / v1.1.0 - v1.1.4)
 

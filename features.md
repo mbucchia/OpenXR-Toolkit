@@ -11,12 +11,12 @@ You can access more detailed pages through the menu bar on the left.
 
 **Performance** tab:
 - **Overlay**: Enables the FPS display or advanced timings display in the top-right corner of the view. _Please note that the overlay may reduce performance_. A fourth option - "_Developer_" - is available in experimental mode and may be used for troubleshooting with the developers. See [Overlay](overlay) for more details.
-- **Upscaling**: Enables the use of an upscaler such as NIS or FSR to perform rendering at a lower resolution, and upscale and/or sharpen the image. Requires to restart the VR session. See [Upscaling](upscaling) for more details.
-  - **Anamorphic**: When _Disabled_, the _Size_ scales both the width and the height propotionally. When _Enabled_, both sizes can be adjusted independently.
-  - **Size**: The upscaling factor (ie: the percentage of magnification of the rendering resolution). The resolution displayed next to the percentage is the effective resolution that the application sees. Requires to restart the VR session.
-  - **Width/Height**: This displays the actual in-game render width and height, that is the actual number of pixels the game is rendering per eye.
+- **Upscaling/Sharpening**: Enables the use of an upscaler such as NIS or FSR to perform rendering at a lower resolution, and upscale and/or sharpen the image. Requires to restart the VR session. See [Upscaling](upscaling) for more details.
+  - **Anamorphic** (NIS/FSR only): When _Disabled_, the _Size_ scales both the width and the height propotionally. When _Enabled_, both sizes can be adjusted independently.
+  - **Size** (NIS/FSR only): The upscaling factor (ie: the percentage of magnification of the rendering resolution). The resolution displayed next to the percentage is the effective resolution that the application sees. Requires to restart the VR session.
+  - **Width/Height** (NIS/FSR only): This displays the actual in-game render width and height, that is the actual number of pixels the game is rendering per eye.
   - **Sharpness**: The sharpness factor. Has a different scale/effect between NIS and FSR.
-  - **Mip-map bias** (_Expert_ setting): This settings changes how the game is rendering some of the textures in order to reveal a little bit more details when used with FSR/NIS upscalers.
+  - **Mip-map bias** (_Expert_ setting, NIS/FSR only): This settings changes how the game is rendering some of the textures in order to reveal a little bit more details when used with FSR/NIS upscalers.
 - **(Fixed) Foveated rendering** (on supported GPUs only): These settings adjust the [VRS](glossary#vrs) parameters in order to balance out peripheral visual details with rendering performance. See [Foveated Rendering](fr) for more details.
   - **Eye tracking** (on supported headsets only): Enable the use of eye tracking to control the position of the center of the foveated region. See [Eye Tracking](et) for more details.
   - **Eye projection distance** (only with Pimax headsets): Calibrate the sensitivy of eye gaze movements.
@@ -35,9 +35,10 @@ You can access more detailed pages through the menu bar on the left.
   - **Horizontal offset** (_Expert_ _setting_): Add a horizontal offset to the center of the foveation rings. The offset is expressed relative to the left eye, and its opposite value will be applied to the right eye.
   - **Vertical offset** (_Expert_ _setting_): Add a vertical offset to the center of the foveation rings.
   - **Left/Right bias** (_Expert_ _setting_): Lower the resolution of all the regions at once, either for the left or the right eye only at a time.
-  - **Scale filter** (_Expert_ _setting_): Tune the minimum size for a render pass to be considered for foveated rendering. The higher this value, the less chances there are that visual glitches occur, however the performance may be lower.
+- **Turbo mode**: Enable turbo frame timings. See [Turbo Mode](other-features#turbo-mode).
 - **Frame rate throttling**: Throttle down the frame rate of the application. WARNING: This can introduce unwanted latency. This option will not appear on Windows Mixed Reality if the _Motion Reprojection_ is forced to _On_ in the _System tab_, and you must use the _Lock motion reprojection instead_.
 - **Record statistics**: Enable recording basic frame statistics to a comma-separated values (CSV) file stored under `%LocalAppData%\OpenXR-Toolkit\stats`.
+- **High-rate statistics**: Enable displaying and/or recording of statistics at 10x the normal rate.
 
 **Appearance** tab:
 - **Post-processing**: Allows adjusting the image displaying in the headset. When _Enabled_, the following additional controls are available.

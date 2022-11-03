@@ -27,6 +27,21 @@ The OpenXR Toolkit applies some simple post-processing to adjust the brightness,
 
 Each setting has a default value of 50, which means no changes to the game's output. The saturation adjustments can be applied to all 3 color channels (red, green, blue) or individually for each channel.
 
+## Turbo mode
+
+**Note:** This is a highly experimental feature. If it makes your game crash or misbehave, please disable it.
+
+Turbo mode makes the game entirely ignore any frame timing or throttling dictated by the OpenXR runtime. In other words, Turbo mode forces the game to draw and submit frames as fast as possible regardless of any recommendations or policies from the OpenXR runtime.
+
+Turbo mode _can_ increase your frame rate under certain conditions, but there is no rule or guarantee.
+
+Turbo mode can also have undesired side effects:
+- Any statistics or performance measuring tool might now present incorrect data. For example, on WMR, when using the performance overlay, all app CPU/GPU values will read 0.
+- Any feature of your platform that relies on frame timing data, such as Motion Reprojection/Motion Smoothing/ASW, will not behave correctly. For example, on WMR, the motion reprojection will not engage automatically anymore, but it can be forced via the [Lock motion reprojection](#lock-motion-reprojection) option.
+- Latency is increased, in a way that may or may not visible.
+
+**Note:** Turbo mode is offered as-is. There will be no support for issues filed while using Turbo mode.
+
 ## Motion reprojection
 
 **Note:** This settings is only available to Windows Mixed Reality users.
