@@ -2167,7 +2167,9 @@ void main(uint3 id : SV_DispatchThreadID)
                                                                                      ppUnorderedAccessViews,
                                                                                      pUAVInitialCounts);
 
-            g_instance->onSetRenderTargets(Context, NumRTVs, ppRenderTargetViews, pDepthStencilView);
+            if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
+                g_instance->onSetRenderTargets(Context, NumRTVs, ppRenderTargetViews, pDepthStencilView);
+            }
 
             TraceLoggingWriteStop(local, "ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews");
         }
