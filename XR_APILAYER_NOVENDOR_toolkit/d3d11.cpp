@@ -2114,9 +2114,11 @@ void main(uint3 id : SV_DispatchThreadID)
                                    TLPArg(Context, "Context"),
                                    TLArg(NumViews, "NumViews"),
                                    TLPArg(pDepthStencilView, "DSV"));
-            for (UINT i = 0; i < NumViews; i++) {
-                TraceLoggingWriteTagged(
-                    local, "ID3D11DeviceContext_OMSetRenderTargets", TLPArg(ppRenderTargetViews[i], "RTV"));
+            if (IsTraceEnabled()) {
+                for (UINT i = 0; i < NumViews; i++) {
+                    TraceLoggingWriteTagged(
+                        local, "ID3D11DeviceContext_OMSetRenderTargets", TLPArg(ppRenderTargetViews[i], "RTV"));
+                }
             }
 
             assert(g_instance);
@@ -2146,10 +2148,12 @@ void main(uint3 id : SV_DispatchThreadID)
                                    TLPArg(Context, "Context"),
                                    TLArg(NumRTVs, "NumRTVs"),
                                    TLPArg(pDepthStencilView, "DSV"));
-            for (UINT i = 0; i < NumRTVs; i++) {
-                TraceLoggingWriteTagged(local,
-                                        "ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews",
-                                        TLPArg(ppRenderTargetViews[i], "RTV"));
+            if (IsTraceEnabled() && NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
+                for (UINT i = 0; i < NumRTVs; i++) {
+                    TraceLoggingWriteTagged(local,
+                                            "ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews",
+                                            TLPArg(ppRenderTargetViews[i], "RTV"));
+                }
             }
 
             assert(g_instance);
@@ -2180,7 +2184,7 @@ void main(uint3 id : SV_DispatchThreadID)
                                    TLPArg(Context, "Context"),
                                    TLArg(NumViewports, "NumViewports"));
 
-            if (pViewports) {
+            if (IsTraceEnabled() && pViewports) {
                 for (UINT i = 0; i < NumViewports; i++) {
                     TraceLoggingWriteTagged(local,
                                             "ID3D11DeviceContext_RSSetViewports",
