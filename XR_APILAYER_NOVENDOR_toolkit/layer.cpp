@@ -398,6 +398,13 @@ namespace {
             (void)m_configManager->getValue(config::SettingDisableHAM);
             (void)m_configManager->getEnumValue<config::BlindEye>(config::SettingBlindEye);
 
+            // We want to log a warning if HAGS is on.
+            const auto hwSchMode = utilities::RegGetDword(
+                HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers", L"HwSchMode");
+            if (hwSchMode && hwSchMode.value() == 2) {
+                Log("HAGS is on\n");
+            }
+
             return XR_SUCCESS;
         }
 
@@ -882,6 +889,7 @@ namespace {
                         menuInfo.isEyeTrackingProjectionDistanceSupported =
                             m_eyeTracker ? m_eyeTracker->isProjectionDistanceSupported() : false;
                         menuInfo.isVisibilityMaskSupported = m_hasVisibilityMaskKHR;
+                        menuInfo.runtimeName = m_runtimeName;
 
                         m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice, menuInfo);
                     }

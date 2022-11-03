@@ -211,10 +211,14 @@ namespace {
                 {MenuIndent::NoIndent, "Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
             m_menuEntries.back().visible = true; /* Always visible. */
 
-            // We want to display a warning if HAGS is on.
-            const auto hwSchMode =
-                RegGetDword(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers", L"HwSchMode");
-            m_hagsWarning = hwSchMode && hwSchMode.value() == 2;
+
+            m_turboWarning = L"\x26A0  Turbo Mode prevents Motion Reprojection  \x26A0";
+            if (menuInfo.runtimeName.find("Oculus") != std::string::npos) {
+                m_turboWarning = L"\x26A0  Turbo Mode prevents ASW  \x26A0";
+            } else if (menuInfo.runtimeName.find("steam") != std::string::npos ||
+                       menuInfo.runtimeName.find("Steam") != std::string::npos) {
+                m_turboWarning = L"\x26A0  Turbo Mode prevents Motion Smoothing  \x26A0";
+            }
         }
 
         void handleInput() override {
@@ -673,10 +677,10 @@ namespace {
 
                 {
                     float left = leftAlign;
-                    if (m_hagsWarning) {
+                    if (m_configManager->peekValue(SettingTurboMode)) {
                         top += fontSize;
 
-                        left += m_device->drawString(L"\x26A0  HAGS is on, performance might be degraded  \x26A0",
+                        left += m_device->drawString(m_turboWarning,
                                                      TextStyle::Bold,
                                                      fontSize,
                                                      leftAlign,
@@ -2025,7 +2029,7 @@ namespace {
         const float m_resolutionHeightRatio;
         const bool m_isMotionReprojectionRateSupported;
         const uint8_t m_displayRefreshRate;
-        bool m_hagsWarning;
+        std::wstring m_turboWarning;
         MenuStatistics m_stats{};
         GesturesState m_gesturesState{};
         EyeGazeState m_eyeGazeState{};
