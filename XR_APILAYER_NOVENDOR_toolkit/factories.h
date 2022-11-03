@@ -166,6 +166,7 @@ namespace toolkit {
             bool isEyeTrackingSupported;
             bool isEyeTrackingProjectionDistanceSupported;
             bool isVisibilityMaskSupported;
+            std::string runtimeName;
         };
 
         std::shared_ptr<IMenuHandler> CreateMenuHandler(std::shared_ptr<toolkit::config::IConfigManager> configManager,
