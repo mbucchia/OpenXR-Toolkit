@@ -2453,10 +2453,12 @@ namespace {
                                    TLArg(NumRenderTargetDescriptors, "NumRenderTargetDescriptors"),
                                    TLArg(RTsSingleHandleToDescriptorRange, "RTsSingleHandleToDescriptorRange"),
                                    TLPArg(pDepthStencilDescriptor ? pDepthStencilDescriptor->ptr : 0, "DSV"));
-            for (UINT i = 0; i < NumRenderTargetDescriptors; i++) {
-                TraceLoggingWriteTagged(local,
-                                        "ID3D12GraphicsCommandList_OMSetRenderTargets",
-                                        TLPArg(pRenderTargetDescriptors[i].ptr, "RTV"));
+            if (IsTraceEnabled()) {
+                for (UINT i = 0; i < NumRenderTargetDescriptors; i++) {
+                    TraceLoggingWriteTagged(local,
+                                            "ID3D12GraphicsCommandList_OMSetRenderTargets",
+                                            TLPArg(pRenderTargetDescriptors[i].ptr, "RTV"));
+                }
             }
 
             assert(g_instance);
