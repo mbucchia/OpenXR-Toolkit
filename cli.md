@@ -39,6 +39,8 @@ Usage: C:\Program Files\OpenXR-Toolkit\companion.exe
     [-reprojection-rate <unlocked|1/2|1/3|1/4>]
     [-foveated-rendering <toggle>]
     [-overlay <toggle>]
+    [-record-stats toggle]
+    [-turbo toggle]
 
 When no app is specified, the currently running app is used.
 Use syntax <+N> to add value N to integral and decimal values (N can be negative)
