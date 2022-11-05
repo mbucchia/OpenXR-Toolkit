@@ -418,7 +418,14 @@ namespace companion
                 }
             }
 
+            var expectedValue = disableCheckbox.Checked;
+
             InitXr();
+
+            if (!expectedValue && disableCheckbox.Checked != expectedValue)
+            {
+                MessageBox.Show(this, "Failed to activate OpenXR Toolkit. This can happen when incompatible software is installed or system dependencies are missing", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void safemodeCheckbox_CheckedChanged(object sender, EventArgs e)
@@ -752,6 +759,11 @@ namespace companion
 
         private void timer1_Tick(object sender, EventArgs e)
         {
+            if (disableCheckbox.Checked)
+            {
+                return;
+            }
+
             Microsoft.Win32.RegistryKey key = null;
             try
             {
