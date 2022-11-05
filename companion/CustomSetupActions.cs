@@ -37,14 +37,18 @@ namespace SetupCustomActions
                     continue;
                 }
 
+                var keyValue = key.GetValue(value);
+                var valueKind = key.GetValueKind(value);
+                key.DeleteValue(value);
+
                 // Some installers might have created bogus keys: https://github.com/KhronosGroup/OpenXR-SDK-Source/issues/335.
-                if (key.GetValueKind(value) != Microsoft.Win32.RegistryValueKind.DWord)
+                // Make sure we don't re-create them.
+                if (valueKind != Microsoft.Win32.RegistryValueKind.DWord)
                 {
                     continue;
                 }
 
-                entriesValues.Add(value, key.GetValue(value));
-                key.DeleteValue(value);
+                entriesValues.Add(value, keyValue);
             }
 
             bool detectedOldSoftware = false;
