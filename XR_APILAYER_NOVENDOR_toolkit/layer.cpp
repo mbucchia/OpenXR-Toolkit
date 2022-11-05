@@ -1456,8 +1456,10 @@ namespace {
                     m_frameAnalyzer->onAcquireSwapchain(swapchain);
                 }
 
-                // Perform the release now in case it was delayed. This could happen for a discarded frame.
+                // Perform the release now in case it was delayed.
                 if (swapchainIt->second.delayedRelease) {
+                    TraceLoggingWrite(g_traceProvider, "ForcedSwapchainRelease", TLPArg(swapchain, "Swapchain"));
+
                     XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO, nullptr};
                     swapchainIt->second.delayedRelease = false;
                     CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(swapchain, &releaseInfo));
@@ -2188,6 +2190,18 @@ namespace {
             }
 
             TraceLoggingWrite(g_traceProvider, "xrBeginFrame", TLPArg(session, "Session"));
+
+            // Release the swapchain images. Some runtimes don't seem to look cross-frame releasing and this can happen
+            // when a frame is discarded.
+            for (auto& swapchain : m_swapchains) {
+                if (swapchain.second.delayedRelease) {
+                    TraceLoggingWrite(g_traceProvider, "ForcedSwapchainRelease", TLPArg(swapchain.first, "Swapchain"));
+
+                    XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+                    swapchain.second.delayedRelease = false;
+                    CHECK_XRCMD(OpenXrApi::xrReleaseSwapchainImage(swapchain.first, &releaseInfo));
+                }
+            }
 
             XrResult result = XR_ERROR_RUNTIME_FAILURE;
             if (isVrSession(session) && m_asyncWaitPromise.valid()) {
