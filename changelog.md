@@ -56,6 +56,8 @@ nav_order: 7
 - Hotfix #1: Display frame times in milliseconds.
 - Hotfix #1: Add a way to toggle statistics recording from the command-line tool.
 - Hotfix #1: Add an indicator in the overlay that statistics recording is on.
+- Hotfix #2: Delete bogus registry keys that can break the OpenXR Loader (eg: caused by XRNeckSafer installer).
+- Hotfix #2: Remove resolution cap on Varjo.
 
 ## Changes in v1.1 (Apr 2022 / v1.1.0 - v1.1.4)
 
