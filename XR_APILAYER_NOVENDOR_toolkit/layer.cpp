@@ -1447,6 +1447,19 @@ namespace {
             return result;
         }
 
+        XrResult xrWaitSwapchainImage(XrSwapchain swapchain, const XrSwapchainImageWaitInfo* waitInfo) override {
+            if (waitInfo->type != XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+
+            TraceLoggingWrite(g_traceProvider, "xrWaitSwapchainImage", TLPArg(swapchain, "Swapchain"), TLArg(waitInfo->timeout));
+
+            // We remove the timeout causing issues with OpenComposite.
+            XrSwapchainImageWaitInfo chainWaitInfo = *waitInfo;
+            chainWaitInfo.timeout = XR_INFINITE_DURATION;
+            return OpenXrApi::xrWaitSwapchainImage(swapchain, &chainWaitInfo);
+        }
+
         XrResult xrAcquireSwapchainImage(XrSwapchain swapchain,
                                          const XrSwapchainImageAcquireInfo* acquireInfo,
                                          uint32_t* index) override {
@@ -3043,7 +3056,7 @@ namespace {
                                     OpenXrApi::xrAcquireSwapchainImage(m_menuSwapchain, &acquireInfo, &menuImageIndex));
 
                                 XrSwapchainImageWaitInfo waitInfo{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
-                                waitInfo.timeout = 100000000000; // 100ms
+                                waitInfo.timeout = XR_INFINITE_DURATION;
                                 CHECK_XRCMD(OpenXrApi::xrWaitSwapchainImage(m_menuSwapchain, &waitInfo));
                             }
 

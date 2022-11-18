@@ -303,6 +303,28 @@ namespace LAYER_NAMESPACE
 		return result;
 	}
 
+	XrResult xrWaitSwapchainImage(XrSwapchain swapchain, const XrSwapchainImageWaitInfo* waitInfo)
+	{
+		TraceLocalActivity(local);
+		TraceLoggingWriteStart(local, "xrWaitSwapchainImage");
+
+		XrResult result;
+		try
+		{
+			result = LAYER_NAMESPACE::GetInstance()->xrWaitSwapchainImage(swapchain, waitInfo);
+		}
+		catch (std::exception& exc)
+		{
+			TraceLoggingWriteTagged(local, "xrWaitSwapchainImage_Error", TLArg(exc.what(), "Error"));
+			Log("xrWaitSwapchainImage: %s\n", exc.what());
+			result = XR_ERROR_RUNTIME_FAILURE;
+		}
+
+		TraceLoggingWriteStop(local, "xrWaitSwapchainImage", TLArg(xr::ToCString(result), "Result"));
+
+		return result;
+	}
+
 	XrResult xrReleaseSwapchainImage(XrSwapchain swapchain, const XrSwapchainImageReleaseInfo* releaseInfo)
 	{
 		TraceLocalActivity(local);
@@ -795,6 +817,11 @@ namespace LAYER_NAMESPACE
 			{
 				m_xrAcquireSwapchainImage = reinterpret_cast<PFN_xrAcquireSwapchainImage>(*function);
 				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrAcquireSwapchainImage);
+			}
+			else if (apiName == "xrWaitSwapchainImage")
+			{
+				m_xrWaitSwapchainImage = reinterpret_cast<PFN_xrWaitSwapchainImage>(*function);
+				*function = reinterpret_cast<PFN_xrVoidFunction>(LAYER_NAMESPACE::xrWaitSwapchainImage);
 			}
 			else if (apiName == "xrReleaseSwapchainImage")
 			{

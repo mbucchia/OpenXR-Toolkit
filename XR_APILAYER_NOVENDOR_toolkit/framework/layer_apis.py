@@ -15,6 +15,7 @@ override_functions = [
     "xrDestroySpace",
     "xrAttachSessionActionSets",
     "xrEnumerateSwapchainImages",
+    "xrWaitSwapchainImage",
     "xrAcquireSwapchainImage",
     "xrReleaseSwapchainImage",
     "xrPollEvent",
