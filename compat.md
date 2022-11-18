@@ -43,6 +43,7 @@ For the best results and to maximize chances that your application will work, al
 | War Thunder | Not supported on Varjo headsets |
 | Bonelab | - |
 | PLAY'A VR Video Player | - |
+| EVERSLAUGHT | - |
 
 Do you have a game working but it's not in the list? Please file an [Issue](https://github.com/mbucchia/OpenXR-Toolkit/issues) to let us know!
 
