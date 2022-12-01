@@ -1037,6 +1037,8 @@ namespace LAYER_NAMESPACE
 			throw std::runtime_error("Failed to resolve xrSyncActions");
 		}
 		TraceLoggingWrite(g_traceProvider, "ProcAddr", TLArg("xrSyncActions", "Name"), TLPArg(m_xrSyncActions, "Ptr"));
+		m_xrGetInstanceProcAddr(m_instance, "xrGetVisibilityMaskKHR", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrGetVisibilityMaskKHR));
+		TraceLoggingWrite(g_traceProvider, "OptionalProcAddr", TLArg("xrGetVisibilityMaskKHR", "Name"), TLPArg(m_xrGetVisibilityMaskKHR, "Ptr"));
 		m_xrGetInstanceProcAddr(m_instance, "xrConvertWin32PerformanceCounterToTimeKHR", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrConvertWin32PerformanceCounterToTimeKHR));
 		TraceLoggingWrite(g_traceProvider, "OptionalProcAddr", TLArg("xrConvertWin32PerformanceCounterToTimeKHR", "Name"), TLPArg(m_xrConvertWin32PerformanceCounterToTimeKHR, "Ptr"));
 		m_xrGetInstanceProcAddr(m_instance, "xrCreateHandTrackerEXT", reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateHandTrackerEXT));

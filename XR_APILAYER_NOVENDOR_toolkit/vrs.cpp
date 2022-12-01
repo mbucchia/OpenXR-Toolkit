@@ -119,7 +119,8 @@ namespace {
 
     class VariableRateShader : public IVariableRateShader {
       public:
-        VariableRateShader(std::shared_ptr<IConfigManager> configManager,
+        VariableRateShader(OpenXrApi& openXR,
+                           std::shared_ptr<IConfigManager> configManager,
                            std::shared_ptr<IDevice> graphicsDevice,
                            std::shared_ptr<input::IEyeTracker> eyeTracker,
                            uint32_t renderWidth,
@@ -128,7 +129,7 @@ namespace {
                            uint32_t displayHeight,
                            uint32_t tileSize,
                            uint32_t tileRateMax)
-            : m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
+            : m_openXR(openXR), m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
               m_renderWidth(renderWidth), m_renderHeight(renderHeight),
               m_renderRatio(float(renderWidth) / renderHeight), m_tileSize(tileSize), m_tileRateMax(tileRateMax),
               m_actualRenderWidth(renderWidth) {
@@ -159,7 +160,91 @@ namespace {
             m_NvShadingRateResources.viewsTextureArray[index].Detach();
         }
 
+        void beginSession(XrSession session) override {
+            // Create HAM buffers.
+            for (uint32_t i = 0; i < ViewCount; i++) {
+                XrVisibilityMaskKHR mask{XR_TYPE_VISIBILITY_MASK_KHR};
+                if (XR_FAILED(m_openXR.xrGetVisibilityMaskKHR(session,
+                                                              XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+                                                              i,
+                                                              XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR,
+                                                              &mask))) {
+                    break;
+                }
+
+                if (!mask.indexCountOutput) {
+                    break;
+                }
+
+                std::vector<XrVector2f> rawVertices(mask.vertexCountOutput);
+                std::vector<uint32_t> rawIndices(mask.indexCountOutput);
+
+                mask.indexCapacityInput = (uint32_t)rawIndices.size();
+                mask.indices = rawIndices.data();
+                mask.vertexCapacityInput = (uint32_t)rawVertices.size();
+                mask.vertices = rawVertices.data();
+                CHECK_XRCMD(m_openXR.xrGetVisibilityMaskKHR(session,
+                                                            XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+                                                            i,
+                                                            XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR,
+                                                            &mask));
+
+                std::vector<SimpleMeshVertex> vertices(mask.vertexCountOutput);
+                for (uint32_t j = 0; j < vertices.size(); j++) {
+                    vertices[j].Position = {rawVertices[j].x, rawVertices[j].y, -1.0f};
+                    vertices[j].Color = {(float)m_shadingRates[SHADING_RATE_CULL],
+                                         (float)m_shadingRates[SHADING_RATE_CULL],
+                                         (float)m_shadingRates[SHADING_RATE_CULL]};
+                }
+
+                std::vector<uint16_t> indices(mask.indexCountOutput);
+                for (uint32_t j = 0; j < indices.size(); j++) {
+                    indices[j] = rawIndices[j];
+                }
+
+                m_HAM[i] = m_device->createSimpleMesh(vertices, indices, "VRS HAM");
+            }
+
+            m_session = session;
+        }
+
+        void endSession() override {
+            for (uint32_t i = 0; i < ViewCount; i++) {
+                m_HAM[i].reset();
+            }
+
+            m_isHAMReady = false;
+        }
+
         void beginFrame(XrTime frameTime) override {
+            if (m_HAM[0] && m_HAM[1] && !m_isHAMReady) {
+                // Create projection for stamping HAM.
+                XrViewLocateInfo info{XR_TYPE_VIEW_LOCATE_INFO};
+                info.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+                info.displayTime = frameTime;
+
+                XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO, nullptr};
+                referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
+                referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
+                CHECK_XRCMD(m_openXR.xrCreateReferenceSpace(m_session, &referenceSpaceCreateInfo, &info.space));
+
+                XrViewState state{XR_TYPE_VIEW_STATE, nullptr};
+                XrView eyeInViewSpace[2] = {{XR_TYPE_VIEW, nullptr}, {XR_TYPE_VIEW, nullptr}};
+                uint32_t viewCountOutput;
+                CHECK_XRCMD(m_openXR.xrLocateViews(m_session, &info, &state, 2, &viewCountOutput, eyeInViewSpace));
+                for (uint32_t i = 0; i < ViewCount; i++) {
+                    m_viewProjection[i].Pose = Pose::Identity();
+                    m_viewProjection[i].Fov = eyeInViewSpace[i].fov;
+                    m_viewProjection[i].NearFar = {0.001f, 100.f};
+                }
+
+                CHECK_XRCMD(m_openXR.xrDestroySpace(info.space));
+
+                m_isHAMReady = true;
+
+                m_currentGen++;
+            }
+
             // When using eye tracking we must render the views every frame.
             if (m_usingEyeTracking) {
                 // TODO: What do we do upon (permanent) loss of tracking?
@@ -239,9 +324,14 @@ namespace {
                     updateRates(mode);
 
                 // Only update the texture when necessary.
-                if (hasQualityChanged || hasPatternChanged) {
+                const bool isHAMEnabled = !m_configManager->peekValue(SettingDisableHAM);
+                if (hasQualityChanged || hasPatternChanged || isHAMEnabled != m_isHAMEnabled ||
+                    m_configManager->hasChanged(SettingVRSCullHAM)) {
                     m_currentGen++;
                 }
+
+                // We can't use config's hasChanged since we don't own this setting.
+                m_isHAMEnabled = isHAMEnabled;
 
             } else if (m_usingEyeTracking) {
                 m_usingEyeTracking = false;
@@ -652,7 +742,8 @@ namespace {
             info.arraySize = 1;
             info.mipCount = 1;
             info.sampleCount = 1;
-            info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+            info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT |
+                              XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
 
             for (auto& it : newMask.mask) {
                 it = m_device->createTexture(info, "VRS TEX2D");
@@ -724,9 +815,22 @@ namespace {
             // No-op on D3D12, see flush in the caller.
             m_device->saveContext();
 
+            for (size_t i = 0; i < std::size(mask.mask); i++) {
+                m_device->setRenderTargets(1, &mask.mask[i]);
+                m_device->clearColor(
+                    0.f, 0.f, (float)mask.heightInTiles, (float)mask.widthInTiles, {255.f, 255.f, 255.f, 255.f});
+
+                // Initialize mask with HAM culling if needed.
+                if (i < ViewCount && m_isHAMReady && !m_configManager->peekValue(SettingDisableHAM) &&
+                    m_configManager->getValue(SettingVRSCullHAM)) {
+                    m_device->setViewProjection(m_viewProjection[i]);
+                    m_device->draw(m_HAM[i], Pose::Identity(), {1.f, 1.f, 1.f}, true);
+                }
+            }
+
+            // Draw the rings into the mask.
             const auto dispatchX = xr::math::DivideRoundingUp(mask.widthInTiles, 8);
             const auto dispatchY = xr::math::DivideRoundingUp(mask.heightInTiles, 8);
-
             for (size_t i = 0; i < std::size(mask.mask); i++) {
                 const auto constants = makeShadingConstants(i, mask.widthInTiles, mask.heightInTiles);
                 mask.cbShading[i]->uploadData(&constants, sizeof(constants));
@@ -874,6 +978,7 @@ namespace {
             return true;
         }
 
+        OpenXrApi& m_openXR;
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
         const std::shared_ptr<input::IEyeTracker> m_eyeTracker;
@@ -884,6 +989,7 @@ namespace {
         const uint32_t m_tileRateMax;
         const float m_renderRatio;
 
+        XrSession m_session{XR_NULL_HANDLE};
         bool m_usingEyeTracking{false};
 
         std::map<uint32_t, uint32_t> m_renderScales;
@@ -916,6 +1022,11 @@ namespace {
         std::shared_ptr<IComputeShader> m_csShading;
         std::vector<ShadingRateMask> m_shadingRateMask;
         std::mutex m_shadingRateMaskLock;
+
+        bool m_isHAMEnabled{false};
+        bool m_isHAMReady{false};
+        ViewProjection m_viewProjection[ViewCount];
+        std::shared_ptr<ISimpleMesh> m_HAM[ViewCount];
 
         struct {
             // Must appear first.
@@ -959,7 +1070,8 @@ namespace {
 #endif
 
 namespace toolkit::graphics {
-    std::shared_ptr<IVariableRateShader> CreateVariableRateShader(std::shared_ptr<IConfigManager> configManager,
+    std::shared_ptr<IVariableRateShader> CreateVariableRateShader(OpenXrApi& openXR,
+                                                                  std::shared_ptr<IConfigManager> configManager,
                                                                   std::shared_ptr<IDevice> graphicsDevice,
                                                                   std::shared_ptr<input::IEyeTracker> eyeTracker,
                                                                   uint32_t renderWidth,
@@ -1021,7 +1133,8 @@ namespace toolkit::graphics {
                 throw std::runtime_error("Unsupported graphics runtime");
             }
 
-            return std::make_shared<VariableRateShader>(configManager,
+            return std::make_shared<VariableRateShader>(openXR,
+                                                        configManager,
                                                         graphicsDevice,
                                                         eyeTracker,
                                                         renderWidth,

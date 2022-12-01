@@ -143,6 +143,7 @@ namespace {
             m_configManager->setDefault(config::SettingVRSPreferHorizontal, 0);
             m_configManager->setDefault(config::SettingVRSLeftRightBias, 0);
             m_configManager->setDefault(config::SettingVRSScaleFilter, 80);
+            m_configManager->setDefault(config::SettingVRSCullHAM, 1);
 
             // Appearance.
             m_configManager->setDefault(config::SettingPostProcess, 0);
@@ -263,9 +264,6 @@ namespace {
             m_isOpenComposite = m_applicationName.find("OpenComposite_") == 0;
             if (m_isOpenComposite) {
                 Log("Detected OpenComposite\n");
-
-                // Our HAM override does not seem to work with OpenComposite.
-                m_hasVisibilityMaskKHR = false;
             }
 
             // With OpenComposite, we cannot use the frame analyzer, which results in the eye-tracked foveated rendering
@@ -736,7 +734,8 @@ namespace {
                                 m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight, heuristic);
                         }
 
-                        m_variableRateShader = graphics::CreateVariableRateShader(m_configManager,
+                        m_variableRateShader = graphics::CreateVariableRateShader(*this,
+                                                                                  m_configManager,
                                                                                   m_graphicsDevice,
                                                                                   m_eyeTracker,
                                                                                   renderWidth,
@@ -895,6 +894,8 @@ namespace {
                         menuInfo.isEyeTrackingProjectionDistanceSupported =
                             m_eyeTracker ? m_eyeTracker->isProjectionDistanceSupported() : false;
                         menuInfo.isVisibilityMaskSupported = m_hasVisibilityMaskKHR;
+                        // Our HAM override does not seem to work with OpenComposite.
+                        menuInfo.isVisibilityMaskOverrideSupported = !m_isOpenComposite && m_hasVisibilityMaskKHR;
                         menuInfo.runtimeName = m_runtimeName;
 
                         m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice, menuInfo);
@@ -952,6 +953,10 @@ namespace {
 
                 // Bump up timer precision for this process.
                 utilities::EnableHighPrecisionTimer();
+
+                if (m_variableRateShader) {
+                    m_variableRateShader->beginSession(session);
+                }
             }
 
             return result;
@@ -962,6 +967,10 @@ namespace {
 
             const XrResult result = OpenXrApi::xrEndSession(session);
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
+                if (m_variableRateShader) {
+                    m_variableRateShader->endSession();
+                }
+
                 utilities::RestoreTimerPrecision();
 
                 m_configManager->setActiveSession("");
@@ -1452,7 +1461,8 @@ namespace {
                 return XR_ERROR_VALIDATION_FAILURE;
             }
 
-            TraceLoggingWrite(g_traceProvider, "xrWaitSwapchainImage", TLPArg(swapchain, "Swapchain"), TLArg(waitInfo->timeout));
+            TraceLoggingWrite(
+                g_traceProvider, "xrWaitSwapchainImage", TLPArg(swapchain, "Swapchain"), TLArg(waitInfo->timeout));
 
             // We remove the timeout causing issues with OpenComposite.
             XrSwapchainImageWaitInfo chainWaitInfo = *waitInfo;
@@ -1741,7 +1751,7 @@ namespace {
 
                     XrViewState state{XR_TYPE_VIEW_STATE, nullptr};
                     XrView eyeInViewSpace[2] = {{XR_TYPE_VIEW, nullptr}, {XR_TYPE_VIEW, nullptr}};
-                    CHECK_HRCMD(OpenXrApi::xrLocateViews(
+                    CHECK_XRCMD(OpenXrApi::xrLocateViews(
                         session, &info, &state, viewCapacityInput, viewCountOutput, eyeInViewSpace));
 
                     if (Pose::IsPoseValid(state.viewStateFlags)) {
@@ -2521,6 +2531,19 @@ namespace {
             auto path = localAppData / "screenshots" / (m_applicationName + parameters.str());
             path.replace_extension(fileExtension);
 
+            // Handle VPRT.
+            auto info = texture->getInfo();
+            if (info.arraySize > 1 || viewport.offset.x || viewport.offset.y || info.width != viewport.extent.width ||
+                info.height != viewport.extent.height) {
+                const auto srcSlice = (info.arraySize > 1 && suffix == "R") ? 1 : 0;
+                info.arraySize = 1;
+                info.width = viewport.extent.width;
+                info.height = viewport.extent.height;
+                auto cropped = m_graphicsDevice->createTexture(info, "Screenshot");
+                texture->copyTo(viewport.offset.x, viewport.offset.y, srcSlice, cropped);
+                texture = cropped;
+            }
+
             texture->saveToFile(path);
         }
 
@@ -3161,7 +3184,7 @@ namespace {
                 }
                 if (textureForOverlay[1] &&
                     m_configManager->getValue(config::SettingScreenshotEye) != 1 /* Left only */) {
-                    takeScreenshot(textureForOverlay[1], "R", viewportForOverlay[0]);
+                    takeScreenshot(textureForOverlay[1], "R", viewportForOverlay[1]);
                 }
 
                 if (m_variableRateShader && m_configManager->getValue("vrs_capture")) {

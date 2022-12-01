@@ -119,7 +119,8 @@ namespace toolkit {
             std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
 
         std::shared_ptr<IVariableRateShader>
-        CreateVariableRateShader(std::shared_ptr<toolkit::config::IConfigManager> configManager,
+        CreateVariableRateShader(toolkit::OpenXrApi& openXR,
+                                 std::shared_ptr<toolkit::config::IConfigManager> configManager,
                                  std::shared_ptr<IDevice> graphicsDevice,
                                  std::shared_ptr<input::IEyeTracker> eyeTracker,
                                  uint32_t renderWidth,
@@ -166,6 +167,7 @@ namespace toolkit {
             bool isEyeTrackingSupported;
             bool isEyeTrackingProjectionDistanceSupported;
             bool isVisibilityMaskSupported;
+            bool isVisibilityMaskOverrideSupported;
             std::string runtimeName;
         };
 

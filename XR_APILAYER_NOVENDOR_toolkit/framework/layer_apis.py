@@ -63,6 +63,7 @@ requested_functions = [
     "xrCreateHandTrackerEXT",
     "xrDestroyHandTrackerEXT",
     "xrLocateHandJointsEXT",
+    "xrGetVisibilityMaskKHR",
 ]
 
 extensions_to_search = ["XR_KHR_visibility_mask", "XR_KHR_win32_convert_performance_counter_time", "XR_EXT_hand_tracking"]

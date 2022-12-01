@@ -211,7 +211,6 @@ namespace {
                 {MenuIndent::NoIndent, "Exit menu", MenuEntryType::ExitButton, BUTTON_OR_SEPARATOR});
             m_menuEntries.back().visible = true; /* Always visible. */
 
-
             m_turboWarning = L"\x26A0  Turbo Mode prevents Motion Reprojection  \x26A0";
             if (menuInfo.runtimeName.find("Oculus") != std::string::npos) {
                 m_turboWarning = L"\x26A0  Turbo Mode prevents ASW  \x26A0";
@@ -1239,6 +1238,21 @@ namespace {
                     }
                     variableRateShaderEyeTrackingSettingsGroup.finalize();
                 }
+                if (menuInfo.isVisibilityMaskSupported) {
+                    MenuGroup variableRateShaderCullGroup(this, [&] {
+                        // We only show cull HAM when HAM is not disabled and when we can detect L/R views.
+                        return !m_configManager->peekValue(SettingDisableHAM) && m_stats.hasColorBuffer[0] &&
+                               m_stats.hasColorBuffer[1];
+                    });
+                    m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                             "Cull outer mask (HAM)",
+                                             MenuEntryType::Choice,
+                                             SettingVRSCullHAM,
+                                             0,
+                                             MenuEntry::LastVal<NoYesType>(),
+                                             MenuEntry::FmtEnum<NoYesType>});
+                    variableRateShaderCullGroup.finalize();
+                }
                 variableRateShaderCommonGroup.finalize();
 
                 // Preset sub-group.
@@ -1730,7 +1744,7 @@ namespace {
                  }});
             m_menuEntries.back().acceleration = 10;
 
-            if (menuInfo.isVisibilityMaskSupported || m_configManager->isDeveloper()) {
+            if (menuInfo.isVisibilityMaskOverrideSupported || m_configManager->isDeveloper()) {
                 m_menuEntries.push_back({MenuIndent::OptionIndent,
                                          "Blind eye",
                                          MenuEntryType::Choice,
