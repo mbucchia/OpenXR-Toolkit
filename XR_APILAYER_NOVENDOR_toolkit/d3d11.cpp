@@ -1425,7 +1425,7 @@ void main(uint3 id : SV_DispatchThreadID)
                 (view.NearFar.Near > view.NearFar.Far) ? get(m_reversedZDepthNoStencilTest) : nullptr, 0);
         }
 
-        void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling) override {
+        void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling, bool noCulling) override {
             if (auto meshData = mesh->getAs<D3D11>()) {
                 if (mesh != m_currentMesh) {
                     if (!m_meshModelBuffer) {
@@ -1445,6 +1445,7 @@ void main(uint3 id : SV_DispatchThreadID)
                     m_context->IASetIndexBuffer(meshData->indexBuffer, DXGI_FORMAT_R16_UINT, 0);
                     m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
                     m_context->IASetInputLayout(get(m_meshInputLayout));
+                    m_context->RSSetState(noCulling ? m_meshNoCullingRasterizer.Get() : nullptr);
 
                     m_currentMesh = mesh;
                 }
@@ -1785,6 +1786,13 @@ void main(uint3 id : SV_DispatchThreadID)
                 SetDebugName(get(m_meshPixelShader), "SimpleMesh PS");
             }
             {
+                D3D11_RASTERIZER_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.FillMode = D3D11_FILL_SOLID;
+                desc.CullMode = D3D11_CULL_NONE;
+                CHECK_HRCMD(m_device->CreateRasterizerState(&desc, set(m_meshNoCullingRasterizer)));
+            }
+            {
                 D3D11_DEPTH_STENCIL_DESC desc;
                 ZeroMemory(&desc, sizeof(desc));
                 desc.DepthEnable = true;
@@ -2019,6 +2027,7 @@ void main(uint3 id : SV_DispatchThreadID)
         ComPtr<ID3D11VertexShader> m_meshVertexShader;
         ComPtr<ID3D11PixelShader> m_meshPixelShader;
         ComPtr<ID3D11InputLayout> m_meshInputLayout;
+        ComPtr<ID3D11RasterizerState> m_meshNoCullingRasterizer;
         std::shared_ptr<IShaderBuffer> m_meshViewProjectionBuffer;
         std::shared_ptr<IShaderBuffer> m_meshModelBuffer;
         ComPtr<IFW1Factory> m_fontWrapperFactory;

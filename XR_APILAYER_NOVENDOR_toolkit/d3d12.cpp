@@ -1739,16 +1739,18 @@ namespace {
             m_currentDrawDepthBufferIsInverted = view.NearFar.Near > view.NearFar.Far;
         }
 
-        void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling) override {
+        void draw(std::shared_ptr<ISimpleMesh> mesh, const XrPosef& pose, XrVector3f scaling, bool noCulling) override {
             auto meshData = mesh->getAs<D3D12>();
             if (!meshData)
                 return;
+
+            auto& pso = noCulling ? m_meshRendererNoCullingPipelineState : m_meshRendererPipelineState;
 
             if (mesh != m_currentMesh) {
                 // Lazily construct the pipeline state now that we know the format for the render target and whether
                 // depth is inverted.
                 // TODO: We must support the RTV format changing.
-                if (!m_meshRendererPipelineState) {
+                if (!pso) {
                     D3D12_GRAPHICS_PIPELINE_STATE_DESC desc;
                     ZeroMemory(&desc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
                     desc.InputLayout = {m_meshRendererInputLayout.data(), (UINT)m_meshRendererInputLayout.size()};
@@ -1781,14 +1783,17 @@ namespace {
                         desc.SampleDesc.Quality = qualityLevels.NumQualityLevels - 1;
                         desc.RasterizerState.MultisampleEnable = true;
                     }
+                    if (noCulling) {
+                        desc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+                    }
                     if (m_currentDrawDepthBuffer) {
                         desc.DSVFormat = (DXGI_FORMAT)m_currentDrawDepthBuffer->getInfo().format;
                     }
                     CHECK_HRCMD(
-                        m_device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(set(m_meshRendererPipelineState))));
+                        m_device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(set(pso))));
                 }
 
-                m_context->SetPipelineState(get(m_meshRendererPipelineState));
+                m_context->SetPipelineState(get(pso));
                 m_context->SetGraphicsRootSignature(get(m_meshRendererRootSignature));
                 m_context->IASetVertexBuffers(0, 1, meshData->vertexBuffer);
                 m_context->IASetIndexBuffer(meshData->indexBuffer);
@@ -2333,6 +2338,7 @@ namespace {
         ComPtr<ID3DBlob> m_meshRendererPixelShaderBytes;
         ComPtr<ID3D12RootSignature> m_meshRendererRootSignature;
         ComPtr<ID3D12PipelineState> m_meshRendererPipelineState;
+        ComPtr<ID3D12PipelineState> m_meshRendererNoCullingPipelineState;
         ComPtr<ID3D12Fence> m_fence;
         UINT64 m_fenceValue{0};
 

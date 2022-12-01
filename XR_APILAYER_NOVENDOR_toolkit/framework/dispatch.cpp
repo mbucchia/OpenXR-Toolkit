@@ -103,9 +103,7 @@ namespace LAYER_NAMESPACE {
         // Workaround: per specification, we should be able to retrive the pointer to
         // xrEnumerateInstanceExtensionProperties() without an XrInstance. However, some API layers (eg: Ultraleap) do
         // not seem to properly handle this case. So we create a dummy instance.
-        bool hasHandTrackingExt = false;
-        bool hasEyeTrackingExt = false;
-        bool hasConvertPerformanceCounterTimeExt = false;
+        std::set<std::string> extensionsToRequest;
         if (!fastInitialization) {
             XrInstance dummyInstance = XR_NULL_HANDLE;
             PFN_xrEnumerateInstanceExtensionProperties xrEnumerateInstanceExtensionProperties = nullptr;
@@ -144,7 +142,7 @@ namespace LAYER_NAMESPACE {
 
                         if (layerName == "XR_APILAYER_ULTRALEAP_hand_tracking") {
                             // Assume hand tracking extension is present.
-                            hasHandTrackingExt = true;
+                            extensionsToRequest.insert("XR_EXT_hand_tracking");
                         }
 
                         info = info->next;
@@ -200,12 +198,9 @@ namespace LAYER_NAMESPACE {
                     TraceLoggingWriteTagged(
                         local, "xrCreateApiLayerInstance_HasExtension", TLArg(extension.extensionName, "Extension"));
                     Log("Runtime supports extension: %s\n", extension.extensionName);
-                    if (extensionName == "XR_EXT_hand_tracking") {
-                        hasHandTrackingExt = true;
-                    } else if (extensionName == "XR_EXT_eye_gaze_interaction") {
-                        hasEyeTrackingExt = true;
-                    } else if (extensionName == "XR_KHR_win32_convert_performance_counter_time") {
-                        hasConvertPerformanceCounterTimeExt = true;
+                    if (extensionName == "XR_EXT_hand_tracking" || extensionName == "XR_EXT_eye_gaze_interaction" ||
+                        extensionName == "XR_KHR_win32_convert_performance_counter_time" || extensionName == "XR_KHR_visibility_mask") {
+                        extensionsToRequest.insert(extensionName);
                     }
                 }
             } else {
@@ -239,16 +234,8 @@ namespace LAYER_NAMESPACE {
         XrInstanceCreateInfo chainInstanceCreateInfo = *instanceCreateInfo;
         std::vector<const char*> newEnabledExtensionNames;
         if (!fastInitialization) {
-            if (hasHandTrackingExt || hasEyeTrackingExt || hasConvertPerformanceCounterTimeExt) {
-                if (hasHandTrackingExt) {
-                    chainInstanceCreateInfo.enabledExtensionCount++;
-                }
-                if (hasEyeTrackingExt) {
-                    chainInstanceCreateInfo.enabledExtensionCount++;
-                }
-                if (hasConvertPerformanceCounterTimeExt) {
-                    chainInstanceCreateInfo.enabledExtensionCount++;
-                }
+            if (!extensionsToRequest.empty()) {
+                chainInstanceCreateInfo.enabledExtensionCount += (uint32_t)extensionsToRequest.size();
 
                 newEnabledExtensionNames.resize(chainInstanceCreateInfo.enabledExtensionCount);
                 chainInstanceCreateInfo.enabledExtensionNames = newEnabledExtensionNames.data();
@@ -257,20 +244,8 @@ namespace LAYER_NAMESPACE {
                        instanceCreateInfo->enabledExtensionCount * sizeof(const char*));
                 uint32_t nextExtensionSlot = instanceCreateInfo->enabledExtensionCount;
 
-                if (hasHandTrackingExt) {
-                    newEnabledExtensionNames[nextExtensionSlot++] = "XR_EXT_hand_tracking";
-                } else {
-                    Log("XR_EXT_hand_tracking is not available from the OpenXR runtime or any upsteam API "
-                        "layer.\n");
-                }
-                if (hasEyeTrackingExt) {
-                    newEnabledExtensionNames[nextExtensionSlot++] = "XR_EXT_eye_gaze_interaction";
-                } else {
-                    Log("XR_EXT_eye_gaze_interaction is not available from the OpenXR runtime or any upsteam API "
-                        "layer.\n");
-                }
-                if (hasConvertPerformanceCounterTimeExt) {
-                    newEnabledExtensionNames[nextExtensionSlot++] = "XR_KHR_win32_convert_performance_counter_time";
+                for (auto& extension : extensionsToRequest) {
+                    newEnabledExtensionNames[nextExtensionSlot++] = extension.c_str();
                 }
             }
         }

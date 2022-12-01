@@ -167,6 +167,7 @@ namespace toolkit {
         const std::string SettingVRSPreferHorizontal = "vrs_prefer_horizontal";
         const std::string SettingVRSLeftRightBias = "vrs_lr_bias";
         const std::string SettingVRSScaleFilter = "vrs_scale_filter2";
+        const std::string SettingVRSCullHAM = "vrs_cull_mask";
         const std::string SettingPostProcess = "post_process";
         const std::string SettingPostSunGlasses = "post_sunglasses";
         const std::string SettingPostContrast = "post_contrast";
@@ -611,7 +612,8 @@ namespace toolkit {
             virtual void setViewProjection(const xr::math::ViewProjection& view) = 0;
             virtual void draw(std::shared_ptr<ISimpleMesh> mesh,
                               const XrPosef& pose,
-                              XrVector3f scaling = {1.0f, 1.0f, 1.0f}) = 0;
+                              XrVector3f scaling = {1.0f, 1.0f, 1.0f},
+                              bool noCulling = false) = 0;
 
             virtual float drawString(std::wstring_view string,
                                      TextStyle style,
@@ -721,6 +723,9 @@ namespace toolkit {
         // A Variable Rate Shader (VRS) control implementation.
         struct IVariableRateShader {
             virtual ~IVariableRateShader() = default;
+
+            virtual void beginSession(XrSession session) = 0;
+            virtual void endSession() = 0;
 
             virtual void beginFrame(XrTime frameTime) = 0;
             virtual void endFrame() = 0;
