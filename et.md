@@ -32,6 +32,7 @@ Below is a table of games tested with eye-tracked foveated rendering:
 | Microsoft Flight Simulator 2020 |
 | iRacing |
 | Assetto Corsa Competizione |
+| Hubris |
 
 ### Considerations for Varjo
 
