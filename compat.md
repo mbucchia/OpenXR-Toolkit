@@ -42,6 +42,7 @@ For the best results and to maximize chances that your application will work, al
 | iRacing | - |
 | War Thunder | Not supported on Varjo headsets |
 | Bonelab | - |
+| Hubris | - |
 | PLAY'A VR Video Player | - |
 | EVERSLAUGHT | - |
 
@@ -54,7 +55,7 @@ Additionally, OpenXR Toolkit has been confirmed to work with the Unity OpenXR pl
 OpenXR Toolkit can also be used with certain OpenVR applications through [OpenComposite](opencomposite).
 
 | Game | Limitations |
-| --- | --- | --- |
+| --- | --- |
 | American Truck Simulator 2 | - |
 | Assetto Corsa | - |
 | Assetto Corsa Competizione | - |
