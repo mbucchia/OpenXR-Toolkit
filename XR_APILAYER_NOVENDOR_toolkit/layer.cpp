@@ -2126,6 +2126,8 @@ namespace {
                 m_performanceCounters.waitCpuTimer->start();
             }
 
+            std::unique_lock lock(m_frameLock);
+
             XrResult result = XR_ERROR_RUNTIME_FAILURE;
             if (isVrSession(session) && m_asyncWaitPromise.valid()) {
                 TraceLoggingWrite(g_traceProvider, "AsyncWaitMode");
@@ -2151,7 +2153,9 @@ namespace {
                 frameState->shouldRender = XR_TRUE;
                 result = XR_SUCCESS;
             } else {
+                lock.unlock();
                 result = OpenXrApi::xrWaitFrame(session, frameWaitInfo, frameState);
+                lock.lock();
 
                 if (XR_SUCCEEDED(result)) {
                     // We must always store those values to properly handle transitions into Turbo Mode.
@@ -2209,6 +2213,8 @@ namespace {
             }
 
             TraceLoggingWrite(g_traceProvider, "xrBeginFrame", TLPArg(session, "Session"));
+
+            std::unique_lock lock(m_frameLock);
 
             // Release the swapchain images. Some runtimes don't seem to look cross-frame releasing and this can happen
             // when a frame is discarded.
@@ -2532,6 +2538,8 @@ namespace {
             if (!isVrSession(session) || !m_graphicsDevice) {
                 return OpenXrApi::xrEndFrame(session, frameEndInfo);
             }
+
+            std::unique_lock lock(m_frameLock);
 
             m_isInFrame = false;
 
@@ -3302,6 +3310,7 @@ namespace {
         bool m_isFrameThrottlingPossible{true};
         bool m_overrideFoveatedRenderingCapability{false};
 
+        std::mutex m_frameLock;
         XrTime m_waitedFrameTime;
         XrTime m_begunFrameTime;
         XrTime m_savedFrameTime1;
