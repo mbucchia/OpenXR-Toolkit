@@ -143,7 +143,7 @@ namespace {
             m_configManager->setDefault(config::SettingVRSPreferHorizontal, 0);
             m_configManager->setDefault(config::SettingVRSLeftRightBias, 0);
             m_configManager->setDefault(config::SettingVRSScaleFilter, 80);
-            m_configManager->setDefault(config::SettingVRSCullHAM, 1);
+            m_configManager->setDefault(config::SettingVRSCullHAM, 0);
 
             // Appearance.
             m_configManager->setDefault(config::SettingPostProcess, 0);
