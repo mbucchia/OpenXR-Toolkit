@@ -61,7 +61,7 @@ nav_order: 7
 - Hotfix #3: Fix Turbo Mode crashes in Flight Simulator 2020.
 - Hotfix #3: Add an option to cull hidden area mesh (mostly for iRacing, only supported on certain applications).
 - Hotfix #3: Workaround to OpenComposite issue with DCS on WMR (timeout error).
-- Hotfix #3: Workaround to Oculus OpenXR issue with ACC (call out of order).
+- Hotfix #3: Workaround to Oculus OpenXR issue with OpenComposite and ACC (call out of order).
 - Hotfix #3: Do not display CPU frame time in the overlay when it cannot be determined reliably.
 - Hotfix #3: Add a "target frame rate" option to have the overlay give headroom based on a desired frame rate.
 
