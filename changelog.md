@@ -58,6 +58,12 @@ nav_order: 7
 - Hotfix #1: Add an indicator in the overlay that statistics recording is on.
 - Hotfix #2: Delete bogus registry keys that can break the OpenXR Loader (eg: caused by XRNeckSafer installer).
 - Hotfix #2: Remove resolution cap on Varjo.
+- Hotfix #3: Fix Turbo Mode crashes in Flight Simulator 2020.
+- Hotfix #3: Add an option to cull hidden area mesh (mostly for iRacing, only supported on certain applications).
+- Hotfix #3: Workaround to OpenComposite issue with DCS on WMR (timeout error).
+- Hotfix #3: Workaround to Oculus OpenXR issue with ACC (call out of order).
+- Hotfix #3: Do not display CPU frame time in the overlay when it cannot be determined reliably.
+- Hotfix #3: Add a "target frame rate" option to have the overlay give headroom based on a desired frame rate.
 
 ## Changes in v1.1 (Apr 2022 / v1.1.0 - v1.1.4)
 
