@@ -850,14 +850,50 @@ namespace {
                     } else {
 #define OVERLAY_COMMON TextStyle::Normal, fontSize, overlayAlign - 300, top, textColorOverlayNoFade, true, FW1_LEFT
 
+                        std::optional<float> targetFps;
+
                         MotionReprojectionRate targetDivider;
+                        int targetFrameRate;
                         if (m_isMotionReprojectionRateSupported &&
+                            m_configManager->peekEnumValue<MotionReprojection>(SettingMotionReprojection) ==
+                                MotionReprojection::On &&
                             (targetDivider = m_configManager->peekEnumValue<MotionReprojectionRate>(
                                  SettingMotionReprojectionRate)) != MotionReprojectionRate::Off) {
-                            // Give 2 FPS headroom.
-                            const auto targetFps = m_displayRefreshRate / (float)targetDivider;
+                            if (m_configManager->getValue(SettingTargetFrameRate)) {
+                                targetFps = m_displayRefreshRate / (float)targetDivider;
+                            }
+                        } else if ((targetFrameRate = m_configManager->getValue(SettingTargetFrameRate)) <
+                                   MaxFrameRate) {
+                            targetFps = (float)targetFrameRate;
+                        }
+
+                        if (targetFps) {
+                            // Give 2 FPS headroom to avoid flickering.
                             if (m_stats.fps + 2 < targetFps) {
-                                m_device->drawString("Target missed",
+                                // We give a little headroom to avoid flickering.
+                                std::string message;
+                                if (m_stats.isFramePipeliningDetected) {
+                                    // We cannot make an assessment. Likely GPU bound, but cannot know for sure.
+                                    message = "Target missed";
+                                } else if (m_configManager->peekValue(SettingTurboMode)) {
+                                    // We cannot make an assessment since the app CPU cannot be computed reliably.
+                                    message = "Turbo is ON";
+                                } else if (m_stats.appCpuTimeUs + 500 > m_stats.appGpuTimeUs) {
+                                    message = fmt::format(
+                                        "CPU bound (+{:.1f}ms)",
+                                        std::max(0.f,
+                                                 ((int64_t)m_stats.appCpuTimeUs - (int64_t)m_stats.appGpuTimeUs) /
+                                                     1000.f));
+                                } else if (m_stats.appGpuTimeUs + 500 > m_stats.appCpuTimeUs) {
+                                    message = fmt::format(
+                                        "GPU bound (+{:.1f}ms)",
+                                        std::max(0.f,
+                                                 ((int64_t)m_stats.appGpuTimeUs - (int64_t)m_stats.appCpuTimeUs) /
+                                                     1000.f));
+                                } else {
+                                    message = "CPU & GPU bound";
+                                }
+                                m_device->drawString(message,
                                                      TextStyle::Normal,
                                                      fontSize,
                                                      overlayAlign - 300,
@@ -865,40 +901,38 @@ namespace {
                                                      textColorRedNoFade,
                                                      true,
                                                      FW1_LEFT);
-                            } else {
-                                const auto frameTimeMs = 1000.f / targetFps;
-                                const auto headroomPercent = (int)((m_stats.waitCpuTimeUs / 10.f) / frameTimeMs);
-                                const auto headroom = overlayType == OverlayType::Advanced
-                                                          ? fmt::format("CPU headroom: +{}% ({:.1f}ms)",
-                                                                        headroomPercent,
-                                                                        m_stats.waitCpuTimeUs / 1000.f)
-                                                          : fmt::format("CPU headroom: +{}%", headroomPercent);
-                                m_device->drawString(headroom,
-                                                     TextStyle::Normal,
-                                                     fontSize,
-                                                     overlayAlign - 300,
-                                                     top,
-                                                     headroomPercent < 15 ? textColorRedNoFade : textColorOverlayNoFade,
-                                                     true,
-                                                     FW1_LEFT);
-                            }
-                            top += 1.05f * fontSize;
-                        }
+                                top += 1.05f * fontSize;
 
-                        // We give a little headroom to avoid flickering (hysteresis).
-                        if (m_stats.appCpuTimeUs + 500 > m_stats.appGpuTimeUs) {
-                            m_device->drawString(
-                                fmt::format(
-                                    "CPU bound (+{:.1f}ms)",
-                                    std::max(0.f,
-                                             ((int64_t)m_stats.appCpuTimeUs - (int64_t)m_stats.appGpuTimeUs) / 1000.f)),
-                                TextStyle::Normal,
-                                fontSize,
-                                overlayAlign - 300,
-                                top,
-                                textColorRedNoFade,
-                                true,
-                                FW1_LEFT);
+                            } else {
+                                const auto frameTimeMs = 1000.f / targetFps.value();
+                                const auto displayHeadroom = [&](const std::string_view& prefix, uint64_t time) {
+                                    const auto headroomTime = (1000000 / targetFps.value()) - time;
+                                    const auto headroomPercent = (int)((headroomTime / 10.f) / frameTimeMs);
+                                    const auto headroom =
+                                        overlayType == OverlayType::Advanced
+                                            ? fmt::format("{} headroom: +{}% ({:.1f}ms)",
+                                                          prefix,
+                                                          headroomPercent,
+                                                          headroomTime / 1000.f)
+                                            : fmt::format("{} headroom: +{}%", prefix, headroomPercent);
+                                    m_device->drawString(headroom,
+                                                         TextStyle::Normal,
+                                                         fontSize,
+                                                         overlayAlign - 300,
+                                                         top,
+                                                         textColorOverlayNoFade,
+                                                         true,
+                                                         FW1_LEFT);
+                                    top += 1.05f * fontSize;
+                                };
+                                // If the engine is pipelining frames or doing so via Turbo Mode, the app CPU statistics
+                                // cannot be computed reliably.
+                                if (!m_stats.isFramePipeliningDetected &&
+                                    !m_configManager->peekValue(SettingTurboMode)) {
+                                    displayHeadroom("CPU", m_stats.appCpuTimeUs);
+                                }
+                                displayHeadroom("GPU", m_stats.appGpuTimeUs);
+                            }
                         }
                         top += 1.05f * fontSize;
 
@@ -908,7 +942,11 @@ namespace {
     m_device->drawString(fmt::format(label ": {:.1f}ms", m_stats.name / 1000.0f), OVERLAY_COMMON);                     \
     top += 1.05f * fontSize;
 
-                            TIMING_STAT("app CPU", appCpuTimeUs);
+                            // If the engine is pipelining frames or doing so via Turbo Mode, the app CPU statistics
+                            // cannot be computed reliably.
+                            if (!m_stats.isFramePipeliningDetected && !m_configManager->peekValue(SettingTurboMode)) {
+                                TIMING_STAT("app CPU", appCpuTimeUs);
+                            }
                             TIMING_STAT("rdr CPU", renderCpuTimeUs);
                             TIMING_STAT("app GPU", appGpuTimeUs);
                             m_device->drawString(fmt::format("VRAM: {:.1f}GB ({}%)",
@@ -1080,6 +1118,46 @@ namespace {
                                      0,
                                      MenuEntry::LastVal<OverlayType>(),
                                      MenuEntry::FmtEnum<OverlayType>});
+            MenuGroup overlayGroup(this, [&] {
+                return m_configManager->peekEnumValue<OverlayType>(SettingOverlayType) != OverlayType::None;
+            });
+            MenuGroup targetFrameRate1Group(this, [&] {
+                return !(m_isMotionReprojectionRateSupported &&
+                         m_configManager->peekEnumValue<MotionReprojection>(SettingMotionReprojection) ==
+                             MotionReprojection::On &&
+                         m_configManager->peekEnumValue<MotionReprojectionRate>(SettingMotionReprojectionRate) !=
+                             MotionReprojectionRate::Off);
+            });
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Target frame rate",
+                                     MenuEntryType::Slider,
+                                     SettingTargetFrameRate,
+                                     15,
+                                     MaxFrameRate,
+                                     [&](int value) {
+                                         if (value == MaxFrameRate) {
+                                             return std::string("Off");
+                                         } else {
+                                             return fmt::format("{}", value);
+                                         }
+                                     }});
+            targetFrameRate1Group.finalize();
+            MenuGroup targetFrameRate2Group(this, [&] {
+                return m_isMotionReprojectionRateSupported &&
+                       m_configManager->peekEnumValue<MotionReprojection>(SettingMotionReprojection) ==
+                           MotionReprojection::On &&
+                       m_configManager->peekEnumValue<MotionReprojectionRate>(SettingMotionReprojectionRate) !=
+                           MotionReprojectionRate::Off;
+            });
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Target reprojection rate",
+                                     MenuEntryType::Slider,
+                                     SettingTargetFrameRate2,
+                                     0,
+                                     MenuEntry::LastVal<OffOnType>(),
+                                     MenuEntry::FmtEnum<OffOnType>});
+            targetFrameRate2Group.finalize();
+            overlayGroup.finalize();
 
             // Upscaling Settings.
             m_originalScalingType = getCurrentScalingType();

@@ -193,7 +193,9 @@ namespace {
             m_configManager->setDefault(config::SettingScreenshotEye, 0); // Both
             m_configManager->setDefault(config::SettingRecordStats, 0);
             m_configManager->setDefault(config::SettingHighRateStats, 0);
-            m_configManager->setDefault(config::SettingFrameThrottling, 120); // Off
+            m_configManager->setDefault(config::SettingFrameThrottling, config::MaxFrameRate); // Off
+            m_configManager->setDefault(config::SettingTargetFrameRate, config::MaxFrameRate); // Off
+            m_configManager->setDefault(config::SettingTargetFrameRate2, 0);
 
             // Misc debug.
             m_configManager->setDefault("debug_layer",
@@ -2206,6 +2208,8 @@ namespace {
                 if (m_graphicsDevice) {
                     m_performanceCounters.appCpuTimer->start();
                 }
+
+                m_stats.isFramePipeliningDetected = m_isInFrame;
 
                 TraceLoggingWrite(g_traceProvider,
                                   "xrWaitFrame",

@@ -191,6 +191,8 @@ namespace toolkit {
         const std::string SettingHighRateStats = "high_rate_stats";
         const std::string SettingFrameThrottling = "frame_throttle";
         const std::string SettingTurboMode = "turbo";
+        const std::string SettingTargetFrameRate = "target_rate";
+        const std::string SettingTargetFrameRate2 = "target_rate2";
 
         enum class OffOnType { Off = 0, On, MaxValue };
         enum class NoYesType { No = 0, Yes, MaxValue };
@@ -860,6 +862,7 @@ namespace toolkit {
             bool hasColorBuffer[utilities::ViewCount]{false, false};
             bool hasDepthBuffer[utilities::ViewCount]{false, false};
             graphics::FrameAnalyzerHeuristic frameAnalyzerHeuristic{graphics::FrameAnalyzerHeuristic::Unknown};
+            bool isFramePipeliningDetected{false};
         };
 
         // A menu handler.
