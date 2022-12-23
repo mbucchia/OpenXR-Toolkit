@@ -859,7 +859,7 @@ namespace {
                                 MotionReprojection::On &&
                             (targetDivider = m_configManager->peekEnumValue<MotionReprojectionRate>(
                                  SettingMotionReprojectionRate)) != MotionReprojectionRate::Off) {
-                            if (m_configManager->getValue(SettingTargetFrameRate)) {
+                            if (m_configManager->getValue(SettingTargetFrameRate2)) {
                                 targetFps = m_displayRefreshRate / (float)targetDivider;
                             }
                         } else if ((targetFrameRate = m_configManager->getValue(SettingTargetFrameRate)) <
@@ -1151,7 +1151,7 @@ namespace {
             });
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Target reprojection rate",
-                                     MenuEntryType::Slider,
+                                     MenuEntryType::Choice,
                                      SettingTargetFrameRate2,
                                      0,
                                      MenuEntry::LastVal<OffOnType>(),
