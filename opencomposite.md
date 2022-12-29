@@ -303,7 +303,7 @@ If an application does not work with OpenComposite, you can disable OpenComposit
 
 ![OpenComposite application](site/oc3.png)
 
-### The game will not start with error -35
+### The game will not start with error -35 / XR_ERROR_FORM_FACTOR_UNAVAILABLE
 
 If your headset is not properly connected, powered on, or detected you will get the following error:
 
@@ -313,7 +313,7 @@ Make sure to connect and power on your headset prior to starting your game.
 
 If the issue persists, it is likely that you have not correctly set up your OpenXR runtime, and it is looking for the wrong headset (and cannot find it!). Read the next section about error -13 right below.
 
-### The game will not start with error -13
+### The game will not start with error -13 / XR_ERROR_INSTANCE_LOST
 
 If no OpenXR runtime is currently set, you will get the following error:
 
@@ -327,7 +327,7 @@ If your OpenXR runtime is properly set, a registry key named `ActiveRuntime` wil
 
 If the issue persists, check whether your application/game is 32-bit or 64-bit. See the [Headset compatibility](#headset-compatibility) for list of headsets not supporting 32-bit applications with OpenXR.
 
-### The game will not start with error -32
+### The game will not start with error -32 / XR_ERROR_FILE_ACCESS_ERROR
 
 If you get the following error:
 
@@ -335,7 +335,7 @@ If you get the following error:
 
 You are likely missing some system DLL files. The most common missing DLL is the [Visual C++ Redistributables](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 
-### The game will not start with error -2
+### The game will not start with error -2 / XR_ERROR_RUNTIME_FAILURE
 
 If you get the following error, and you are using Virtual Desktop:
 
