@@ -193,6 +193,13 @@ namespace toolkit {
         const std::string SettingTurboMode = "turbo";
         const std::string SettingTargetFrameRate = "target_rate";
         const std::string SettingTargetFrameRate2 = "target_rate2";
+        const std::string SettingPostChromaticCorrectionR = "post_ca_r";
+        const std::string SettingPostChromaticCorrectionG = "post_ca_g";
+        const std::string SettingPostChromaticCorrectionB = "post_ca_b";
+        const std::string SettingPostChromaticCorrectionLensCenterX = "post_ca_lens_center_x";
+        const std::string SettingPostChromaticCorrectionLensCenterY = "post_ca_lens_center_y";
+        const std::string SettingPostChromaticCorrectionSlopeX = "post_ca_slope_x";
+        const std::string SettingPostChromaticCorrectionSlopeY = "post_ca_slope_y";
 
         enum class OffOnType { Off = 0, On, MaxValue };
         enum class NoYesType { No = 0, Yes, MaxValue };
@@ -693,7 +700,8 @@ namespace toolkit {
             virtual void process(std::shared_ptr<ITexture> input,
                                  std::shared_ptr<ITexture> output,
                                  std::vector<std::shared_ptr<ITexture>>& textures,
-                                 std::array<uint8_t, 1024>& blob) = 0;
+                                 std::array<uint8_t, 1024>& blob,
+                                 std::optional<utilities::Eye> eye = std::nullopt) = 0;
         };
 
         struct IFrameAnalyzer {

@@ -40,6 +40,8 @@ namespace {
         XrVector4f Params1; // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
         XrVector4f Params2; // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
         XrVector4f Params3; // Highlights, Shadows, Vibrance (0..1 params)
+        XrVector4f Params4; // ChromaticCorrectionR, ChromaticCorrectionG, ChromaticCorrectionB (-1..+1 params)
+        XrVector4f Params5; // LensCenterX, LensCenterY, SlopeX, SlopeY
     };
 
     class ImageProcessor : public IImageProcessor {
@@ -70,9 +72,24 @@ namespace {
         void process(std::shared_ptr<ITexture> input,
                      std::shared_ptr<ITexture> output,
                      std::vector<std::shared_ptr<ITexture>>& textures,
-                     std::array<uint8_t, 1024>& blob) override {
+                     std::array<uint8_t, 1024>& blob,
+                     std::optional<utilities::Eye> eye) override {
+            // We need to use a per-instance blob.
+            static_assert(sizeof(ImageProcessorConfig) <= 1024);
+            ImageProcessorConfig* const config = reinterpret_cast<ImageProcessorConfig*>(blob.data());
+
+            memcpy(config, &m_config, sizeof(m_config));
+            if (eye == utilities::Eye::Right) {
+                // Mirror LensCenterX.
+                config->Params5.x = 1.0f - config->Params5.x;
+            }
+
+            // TODO: We can use an IShaderBuffer cache per swapchain and avoid this every frame.
+            m_cbParams->uploadData(config, sizeof(*config));
+
             const auto usePostProcess = m_mode != PostProcessType::Off;
-            m_device->setShader(m_shaders[usePostProcess], SamplerType::LinearClamp);
+            // XXX: For now we completely ignore postprocessing.
+            m_device->setShader(m_shaders[0], SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_cbParams);
             m_device->setShaderInput(0, input);
             m_device->setShaderOutput(0, output);
@@ -111,11 +128,25 @@ namespace {
                        m_configManager->hasChanged(SettingPostShadows) ||
                        m_configManager->hasChanged(SettingPostColorGainR) ||
                        m_configManager->hasChanged(SettingPostColorGainG) ||
-                       m_configManager->hasChanged(SettingPostColorGainB);
+                       m_configManager->hasChanged(SettingPostColorGainB) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionR) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionG) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionB) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionLensCenterX) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionLensCenterY) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionSlopeX) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionSlopeY);
             } else {
                 return m_configManager->hasChanged(SettingPostColorGainR) ||
                        m_configManager->hasChanged(SettingPostColorGainG) ||
-                       m_configManager->hasChanged(SettingPostColorGainB);
+                       m_configManager->hasChanged(SettingPostColorGainB) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionR) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionG) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionB) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionLensCenterX) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionLensCenterY) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionSlopeX) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionSlopeY);
             }
         }
 
@@ -145,11 +176,19 @@ namespace {
                 const auto param = XMVectorSaturate((XMLoadSInt4(&params[i]) + XMLoadSInt4(&preset[i])) * 0.001f);
                 StoreXrVector4(&m_config.Params1 + i, (param * kGainBias[i][0]) - kGainBias[i][1]);
             }
-
-            m_cbParams->uploadData(&m_config, sizeof(m_config));
+            // [0..1000] -> [0..1]
+            {
+                const auto param = (XMLoadSInt4(&params[3]) + XMLoadSInt4(&preset[3])) * 0.001f;
+                StoreXrVector4(&m_config.Params4, param);
+            }
+            // [0..100] -> [0..1]
+            {
+                const auto param = (XMLoadSInt4(&params[4]) + XMLoadSInt4(&preset[4])) * 0.01f;
+                StoreXrVector4(&m_config.Params5, param);
+            }
         }
 
-        static std::array<DirectX::XMINT4, 3> GetParams(const IConfigManager* configManager, size_t index) {
+        static std::array<DirectX::XMINT4, 5> GetParams(const IConfigManager* configManager, size_t index) {
             using namespace DirectX;
             if (configManager) {
                 static const char* lut[] = {"", "_u1", "_u2", "_u3", "_u4"}; // placeholder up to 4
@@ -168,30 +207,42 @@ namespace {
                         XMINT4(configManager->getValue(SettingPostHighlights + suffix),
                                configManager->getValue(SettingPostShadows + suffix),
                                configManager->getValue(SettingPostVibrance + suffix),
-                               0)};
+                               0),
+                        XMINT4(configManager->getValue(SettingPostChromaticCorrectionR + suffix),
+                               configManager->getValue(SettingPostChromaticCorrectionG + suffix),
+                               configManager->getValue(SettingPostChromaticCorrectionB + suffix),
+                               0),
+                        XMINT4(configManager->getValue(SettingPostChromaticCorrectionLensCenterX + suffix),
+                               configManager->getValue(SettingPostChromaticCorrectionLensCenterY + suffix),
+                               configManager->getValue(SettingPostChromaticCorrectionSlopeX + suffix),
+                               configManager->getValue(SettingPostChromaticCorrectionSlopeY + suffix))};
             }
-            return {XMINT4(500, 500, 500, 500), XMINT4(500, 500, 500, 0), XMINT4(1000, 0, 0, 0)};
+            return {XMINT4(500, 500, 500, 500),
+                    XMINT4(500, 500, 500, 0),
+                    XMINT4(1000, 0, 0, 0),
+                    XMINT4(500, 500, 500, 0),
+                    XMINT4(50, 50, 100, 100)};
         }
 
-        static std::array<DirectX::XMINT4, 3> GetPreset(size_t index) {
+        static std::array<DirectX::XMINT4, 5> GetPreset(size_t index) {
             using namespace DirectX;
 
             // standard presets
-            static constexpr std::array<XMINT4, 3> lut[to_integral(PostSunGlassesType::MaxValue)] = {
+            static constexpr std::array<XMINT4, 5> lut[to_integral(PostSunGlassesType::MaxValue)] = {
                 // none
-                {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
+                {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
 
                 // sunglasses light: +2.5 contrast, -5 bright, -5 expo, -20 high
-                {{{25, -50, -50, 0}, {0, 0, 0, 0}, {-20, 0, 0, 0}}},
+                {{{25, -50, -50, 0}, {0, 0, 0, 0}, {-20, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
 
                 // sunglasses dark: +2.5 contrast, -10 bright, -10 expo, -40 high, +5 shad
-                {{{25, -100, -100, 0}, {0, 0, 0, 0}, {-400, 50, 0, 0}}},
+                {{{25, -100, -100, 0}, {0, 0, 0, 0}, {-400, 50, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
 
                 //// deep night (beta1): +0.5 contrast, -40 bright, +20 expo, -15 sat, -75 high, +15 shad, +5 vib
-                //{{{5, -400, 200, -150}, {0, 0, 0, 0}, {-750, 150, 50, 0}}},
+                //{{{5, -400, 200, -150}, {0, 0, 0, 0}, {-750, 150, 50, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
 
                 // deep night (beta2): +5 contrast, -30 bright, +25 expo, +5 sat, -100 high, +10 shad
-                {{{50, -300, 250, +50}, {0, 0, 0, 0}, {-1000, 100, 0, 0}}},
+                {{{50, -300, 250, +50}, {0, 0, 0, 0}, {-1000, 100, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
             };
 
             return lut[index < std::size(lut) ? index : 0];
@@ -199,7 +250,7 @@ namespace {
 
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
-        const std::array<DirectX::XMINT4, 3> m_userParams;
+        const std::array<DirectX::XMINT4, 5> m_userParams;
 
         std::shared_ptr<IQuadShader> m_shaders[2]; // off, on
         std::shared_ptr<IShaderBuffer> m_cbParams;
@@ -211,7 +262,6 @@ namespace {
 } // namespace
 
 namespace toolkit::graphics {
-
     bool IsDeviceSupportingFP16(std::shared_ptr<IDevice> device) {
         if (device) {
             if (auto device11 = device->getAs<D3D11>()) {

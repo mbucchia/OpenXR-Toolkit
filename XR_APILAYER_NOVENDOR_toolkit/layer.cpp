@@ -158,6 +158,13 @@ namespace {
             m_configManager->setDefault(config::SettingPostVibrance, 0);
             m_configManager->setDefault(config::SettingPostHighlights, 1000);
             m_configManager->setDefault(config::SettingPostShadows, 0);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionR, 1000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionG, 1000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionB, 1000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionLensCenterX, 50);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionLensCenterY, 50);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionSlopeX, 100);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionSlopeY, 100);
 
             // TODO: Appearance (User)
 #if 0
@@ -1507,7 +1514,9 @@ namespace {
                 TraceLoggingWrite(g_traceProvider, "xrAcquireSwapchainImage", TLArg(*index, "Index"));
 
                 // Arbitrary location to simulate workload.
-                m_graphicsDevice->executeDebugWorkload();
+                if (m_graphicsDevice) {
+                    m_graphicsDevice->executeDebugWorkload();
+                }
             }
 
             return result;
@@ -2893,7 +2902,8 @@ namespace {
                             m_postProcessor->process(nextInput,
                                                      finalOutput,
                                                      swapchainState.postProcessorTextures,
-                                                     swapchainState.postProcessorBlob);
+                                                     swapchainState.postProcessorBlob,
+                                                     (utilities::Eye)eye);
                             timer->stop();
                         }
 
