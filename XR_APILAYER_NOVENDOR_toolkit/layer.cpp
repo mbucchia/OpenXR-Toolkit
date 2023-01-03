@@ -158,6 +158,15 @@ namespace {
             m_configManager->setDefault(config::SettingPostVibrance, 0);
             m_configManager->setDefault(config::SettingPostHighlights, 1000);
             m_configManager->setDefault(config::SettingPostShadows, 0);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionXR, 10000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionXG, 10000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionXB, 10000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionYR, 10000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionYG, 10000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionYB, 10000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionLensCenterX, 500);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionLensCenterY, 500);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionShowCenter, 0);
 
             // TODO: Appearance (User)
 #if 0
@@ -1507,7 +1516,9 @@ namespace {
                 TraceLoggingWrite(g_traceProvider, "xrAcquireSwapchainImage", TLArg(*index, "Index"));
 
                 // Arbitrary location to simulate workload.
-                m_graphicsDevice->executeDebugWorkload();
+                if (m_graphicsDevice) {
+                    m_graphicsDevice->executeDebugWorkload();
+                }
             }
 
             return result;
@@ -2893,7 +2904,8 @@ namespace {
                             m_postProcessor->process(nextInput,
                                                      finalOutput,
                                                      swapchainState.postProcessorTextures,
-                                                     swapchainState.postProcessorBlob);
+                                                     swapchainState.postProcessorBlob,
+                                                     (utilities::Eye)eye);
                             timer->stop();
                         }
 

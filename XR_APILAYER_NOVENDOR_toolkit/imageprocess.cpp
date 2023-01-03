@@ -40,6 +40,9 @@ namespace {
         XrVector4f Params1; // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
         XrVector4f Params2; // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
         XrVector4f Params3; // Highlights, Shadows, Vibrance (0..1 params)
+        XrVector4f Params4; // X axis: ChromaticCorrectionR, ChromaticCorrectionG, ChromaticCorrectionB (0.9..1.1 params)
+        XrVector4f Params5; // Y axis: ChromaticCorrectionR, ChromaticCorrectionG, ChromaticCorrectionB (0.9..1.1 params)
+        XrVector4f Params6; // LensCenterX, LensCenterY (-1..+1 params), ShowCenter (0-1)
     };
 
     class ImageProcessor : public IImageProcessor {
@@ -70,9 +73,24 @@ namespace {
         void process(std::shared_ptr<ITexture> input,
                      std::shared_ptr<ITexture> output,
                      std::vector<std::shared_ptr<ITexture>>& textures,
-                     std::array<uint8_t, 1024>& blob) override {
+                     std::array<uint8_t, 1024>& blob,
+                     std::optional<utilities::Eye> eye) override {
+            // We need to use a per-instance blob.
+            static_assert(sizeof(ImageProcessorConfig) <= 1024);
+            ImageProcessorConfig* const config = reinterpret_cast<ImageProcessorConfig*>(blob.data());
+
+            memcpy(config, &m_config, sizeof(m_config));
+            if (eye == utilities::Eye::Right) {
+                // Mirror LensCenterX.
+                config->Params6.x = 1.0f - config->Params6.x;
+            }
+
+            // TODO: We can use an IShaderBuffer cache per swapchain and avoid this every frame.
+            m_cbParams->uploadData(config, sizeof(*config));
+
             const auto usePostProcess = m_mode != PostProcessType::Off;
-            m_device->setShader(m_shaders[usePostProcess], SamplerType::LinearClamp);
+            // XXX: For now we completely ignore postprocessing.
+            m_device->setShader(m_shaders[0], SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_cbParams);
             m_device->setShaderInput(0, input);
             m_device->setShaderOutput(0, output);
@@ -111,11 +129,29 @@ namespace {
                        m_configManager->hasChanged(SettingPostShadows) ||
                        m_configManager->hasChanged(SettingPostColorGainR) ||
                        m_configManager->hasChanged(SettingPostColorGainG) ||
-                       m_configManager->hasChanged(SettingPostColorGainB);
+                       m_configManager->hasChanged(SettingPostColorGainB) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionXR) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionXG) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionXB) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionYR) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionYG) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionYB) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionLensCenterX) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionLensCenterY) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionShowCenter);                           
             } else {
                 return m_configManager->hasChanged(SettingPostColorGainR) ||
                        m_configManager->hasChanged(SettingPostColorGainG) ||
-                       m_configManager->hasChanged(SettingPostColorGainB);
+                       m_configManager->hasChanged(SettingPostColorGainB) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionXR) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionXG) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionXB) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionYR) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionYG) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionYB) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionLensCenterX) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionLensCenterY) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionShowCenter);
             }
         }
 
@@ -141,15 +177,23 @@ namespace {
             const auto params = GetParams(m_configManager.get(), 0);
 
             // [0..1000] -> [0..1] * Gain - Bias
-            for (size_t i = 0; i < 3; i++) {
+            for (size_t i = 0; i <= 2; i++) {
                 const auto param = XMVectorSaturate((XMLoadSInt4(&params[i]) + XMLoadSInt4(&preset[i])) * 0.001f);
                 StoreXrVector4(&m_config.Params1 + i, (param * kGainBias[i][0]) - kGainBias[i][1]);
             }
-
-            m_cbParams->uploadData(&m_config, sizeof(m_config));
+            // [0..10000] -> [0..1]
+            for (size_t i = 3; i <= 4; i++) {
+                const auto param = XMLoadSInt4(&params[i]) * 0.0001f;
+                StoreXrVector4(&m_config.Params1 + i, param);
+            }
+            // [0..1000] -> [0..1]
+            {
+                const auto param = XMLoadSInt4(&params[5]) * 0.001f;
+                StoreXrVector4(&m_config.Params6, param);
+            }
         }
 
-        static std::array<DirectX::XMINT4, 3> GetParams(const IConfigManager* configManager, size_t index) {
+        static std::array<DirectX::XMINT4, 6> GetParams(const IConfigManager* configManager, size_t index) {
             using namespace DirectX;
             if (configManager) {
                 static const char* lut[] = {"", "_u1", "_u2", "_u3", "_u4"}; // placeholder up to 4
@@ -168,9 +212,26 @@ namespace {
                         XMINT4(configManager->getValue(SettingPostHighlights + suffix),
                                configManager->getValue(SettingPostShadows + suffix),
                                configManager->getValue(SettingPostVibrance + suffix),
+                               0),
+                        XMINT4(configManager->getValue(SettingPostChromaticCorrectionXR),
+                               configManager->getValue(SettingPostChromaticCorrectionXG),
+                               configManager->getValue(SettingPostChromaticCorrectionXB),
+                               0),
+                        XMINT4(configManager->getValue(SettingPostChromaticCorrectionYR),
+                               configManager->getValue(SettingPostChromaticCorrectionYG),
+                               configManager->getValue(SettingPostChromaticCorrectionYB),
+                               0),
+                        XMINT4(configManager->getValue(SettingPostChromaticCorrectionLensCenterX),
+                               configManager->getValue(SettingPostChromaticCorrectionLensCenterY),
+                               configManager->getValue(SettingPostChromaticCorrectionShowCenter),
                                0)};
             }
-            return {XMINT4(500, 500, 500, 500), XMINT4(500, 500, 500, 0), XMINT4(1000, 0, 0, 0)};
+            return {XMINT4(500, 500, 500, 500),
+                    XMINT4(500, 500, 500, 0),
+                    XMINT4(1000, 0, 0, 0),
+                    XMINT4(10000, 10000, 10000, 0),
+                    XMINT4(10000, 10000, 10000, 0),
+                    XMINT4(500, 500, 0, 0)};
         }
 
         static std::array<DirectX::XMINT4, 3> GetPreset(size_t index) {
@@ -199,7 +260,7 @@ namespace {
 
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
-        const std::array<DirectX::XMINT4, 3> m_userParams;
+        const std::array<DirectX::XMINT4, 6> m_userParams;
 
         std::shared_ptr<IQuadShader> m_shaders[2]; // off, on
         std::shared_ptr<IShaderBuffer> m_cbParams;
@@ -211,7 +272,6 @@ namespace {
 } // namespace
 
 namespace toolkit::graphics {
-
     bool IsDeviceSupportingFP16(std::shared_ptr<IDevice> device) {
         if (device) {
             if (auto device11 = device->getAs<D3D11>()) {

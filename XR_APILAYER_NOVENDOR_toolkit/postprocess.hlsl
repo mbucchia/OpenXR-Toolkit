@@ -27,6 +27,9 @@ cbuffer config : register(b0) {
     float4 Params1;  // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
     float4 Params2;  // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
     float4 Params3;  // Highlights, Shadows, Vibrance (0..1 params)
+    float4 Params4; // X axis: ChromaticCorrectionR, ChromaticCorrectionG, ChromaticCorrectionB (0.9..1.1 params)
+    float4 Params5; // Y axis: ChromaticCorrectionR, ChromaticCorrectionG, ChromaticCorrectionB (0.9..1.1 params)
+    float4 Params6; // LensCenterX, LensCenterY (-1..+1 params), ShowCenter (0-1)
 };
 
 SamplerState sourceSampler : register(s0);
@@ -189,7 +192,38 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
 }
 
 float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
-  float3 color = SAMPLE_TEXTURE(texcoord).rgb;
+#if 0 // Original PP shader
+    float3 color = SAMPLE_TEXTURE(texcoord).rgb;
+#else
+    float3 colorOffsetX = Params4.rgb;
+    float3 colorOffsetY = Params5.rgb;
+    float2 lensCenter = Params6.xy;
+    bool showCenter = Params6.z > 0;
+
+    float r, g, b;
+
+    if (!showCenter || length(texcoord - lensCenter) > 0.01f) {
+        float2 uvr;
+        uvr.x = ((texcoord.x - lensCenter.x) * colorOffsetX.r) + lensCenter.x;
+        uvr.y = ((texcoord.y - lensCenter.y) * colorOffsetY.r) + lensCenter.y;
+        r = SAMPLE_TEXTURE(uvr).r;
+
+        float2 uvg;
+        uvg.x = ((texcoord.x - lensCenter.x) * colorOffsetX.g) + lensCenter.x;
+        uvg.y = ((texcoord.y - lensCenter.y) * colorOffsetY.g) + lensCenter.y;
+        g = SAMPLE_TEXTURE(uvg).g;
+
+        float2 uvb;
+        uvb.x = ((texcoord.x - lensCenter.x) * colorOffsetX.b) + lensCenter.x;
+        uvb.y = ((texcoord.y - lensCenter.y) * colorOffsetY.b) + lensCenter.y;
+        b = SAMPLE_TEXTURE(uvb).b;
+    }
+    else {
+        r = g = b = 1.0f;
+    }
+
+    float3 color = float3(r, g, b);
+#endif
 
 #ifdef PASS_THROUGH_USE_GAINS
 #ifdef POST_PROCESS_SRC_SRGB

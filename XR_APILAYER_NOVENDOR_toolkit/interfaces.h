@@ -193,6 +193,15 @@ namespace toolkit {
         const std::string SettingTurboMode = "turbo";
         const std::string SettingTargetFrameRate = "target_rate";
         const std::string SettingTargetFrameRate2 = "target_rate2";
+        const std::string SettingPostChromaticCorrectionXR = "post_ca_r_x";
+        const std::string SettingPostChromaticCorrectionXG = "post_ca_g_x";
+        const std::string SettingPostChromaticCorrectionXB = "post_ca_b_x";
+        const std::string SettingPostChromaticCorrectionYR = "post_ca_r_y";
+        const std::string SettingPostChromaticCorrectionYG = "post_ca_g_y";
+        const std::string SettingPostChromaticCorrectionYB = "post_ca_b_y";
+        const std::string SettingPostChromaticCorrectionLensCenterX = "post_ca_lens_center_x";
+        const std::string SettingPostChromaticCorrectionLensCenterY = "post_ca_lens_center_y";
+        const std::string SettingPostChromaticCorrectionShowCenter = "post_ca_show_center";
 
         enum class OffOnType { Off = 0, On, MaxValue };
         enum class NoYesType { No = 0, Yes, MaxValue };
@@ -693,7 +702,8 @@ namespace toolkit {
             virtual void process(std::shared_ptr<ITexture> input,
                                  std::shared_ptr<ITexture> output,
                                  std::vector<std::shared_ptr<ITexture>>& textures,
-                                 std::array<uint8_t, 1024>& blob) = 0;
+                                 std::array<uint8_t, 1024>& blob,
+                                 std::optional<utilities::Eye> eye = std::nullopt) = 0;
         };
 
         struct IFrameAnalyzer {

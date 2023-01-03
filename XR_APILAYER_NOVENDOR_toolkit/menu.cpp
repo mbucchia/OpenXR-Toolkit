@@ -1513,6 +1513,7 @@ namespace {
             MenuGroup appearanceTab(
                 this, [&] { return m_currentTab == MenuTab::Appearance; }, true);
 
+#if 0
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Post Processing",
                                      MenuEntryType::Choice,
@@ -1587,6 +1588,7 @@ namespace {
                                      MenuEntry::FmtDecimal<1>});
             m_menuEntries.back().acceleration = 5;
             postProcessGroup.finalize();
+#endif
 
             m_menuEntries.push_back(
                 {MenuIndent::OptionIndent, "World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
@@ -1751,6 +1753,90 @@ namespace {
                                      1000,
                                      MenuEntry::FmtDecimal<1>});
             m_menuEntries.back().acceleration = 5;
+
+            m_menuEntries.push_back(
+                {MenuIndent::NoIndent, "Chromatic correction:", MenuEntryType::Separator, BUTTON_OR_SEPARATOR});
+            m_menuEntries.back().expert = true;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Red (X)",
+                                     MenuEntryType::Slider,
+                                     SettingPostChromaticCorrectionXR,
+                                     9000,
+                                     11000,
+                                     MenuEntry::FmtDecimal<2>});
+            m_menuEntries.back().acceleration = 50;
+            m_menuEntries.back().expert = true;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Red (Y)",
+                                     MenuEntryType::Slider,
+                                     SettingPostChromaticCorrectionYR,
+                                     9000,
+                                     11000,
+                                     MenuEntry::FmtDecimal<2>});
+            m_menuEntries.back().acceleration = 50;
+            m_menuEntries.back().expert = true;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Green (X)",
+                                     MenuEntryType::Slider,
+                                     SettingPostChromaticCorrectionXG,
+                                     9000,
+                                     11000,
+                                     MenuEntry::FmtDecimal<2>});
+            m_menuEntries.back().acceleration = 50;
+            m_menuEntries.back().expert = true;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Green (Y)",
+                                     MenuEntryType::Slider,
+                                     SettingPostChromaticCorrectionYG,
+                                     9000,
+                                     11000,
+                                     MenuEntry::FmtDecimal<2>});
+            m_menuEntries.back().acceleration = 50;
+            m_menuEntries.back().expert = true;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Blue (X)",
+                                     MenuEntryType::Slider,
+                                     SettingPostChromaticCorrectionXB,
+                                     9000,
+                                     11000,
+                                     MenuEntry::FmtDecimal<2>});
+            m_menuEntries.back().expert = true;
+            m_menuEntries.back().acceleration = 50;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Blue (Y)",
+                                     MenuEntryType::Slider,
+                                     SettingPostChromaticCorrectionYB,
+                                     9000,
+                                     11000,
+                                     MenuEntry::FmtDecimal<2>});
+            m_menuEntries.back().expert = true;
+            m_menuEntries.back().acceleration = 50;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Lens center (X) (Left eye)",
+                                     MenuEntryType::Slider,
+                                     SettingPostChromaticCorrectionLensCenterX,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().expert = true;
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Lens center (Y)",
+                                     MenuEntryType::Slider,
+                                     SettingPostChromaticCorrectionLensCenterY,
+                                     0,
+                                     1000,
+                                     MenuEntry::FmtDecimal<1>});
+            m_menuEntries.back().expert = true;
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Show lens center",
+                                     MenuEntryType::Choice,
+                                     SettingPostChromaticCorrectionShowCenter,
+                                     0,
+                                     MenuEntry::LastVal<NoYesType>(),
+                                     MenuEntry::FmtEnum<NoYesType>});
+            m_menuEntries.back().expert = true;
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Field of view",
