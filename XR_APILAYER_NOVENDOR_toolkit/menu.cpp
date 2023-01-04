@@ -1802,24 +1802,6 @@ namespace {
                                      MenuEntry::FmtPercent});
             m_menuEntries.back().expert = true;
             m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Slope for X axis",
-                                     MenuEntryType::Slider,
-                                     SettingPostChromaticCorrectionSlopeX,
-                                     0,
-                                     200,
-                                     MenuEntry::FmtDecimal<2>});
-            m_menuEntries.back().expert = true;
-            m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Slope for Y axis",
-                                     MenuEntryType::Slider,
-                                     SettingPostChromaticCorrectionSlopeY,
-                                     0,
-                                     200,
-                                     MenuEntry::FmtDecimal<2>});
-            m_menuEntries.back().expert = true;
-            m_menuEntries.back().acceleration = 5;
 
             m_menuEntries.push_back({MenuIndent::OptionIndent,
                                      "Field of view",
