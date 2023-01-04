@@ -158,9 +158,9 @@ namespace {
             m_configManager->setDefault(config::SettingPostVibrance, 0);
             m_configManager->setDefault(config::SettingPostHighlights, 1000);
             m_configManager->setDefault(config::SettingPostShadows, 0);
-            m_configManager->setDefault(config::SettingPostChromaticCorrectionR, 1000);
-            m_configManager->setDefault(config::SettingPostChromaticCorrectionG, 1000);
-            m_configManager->setDefault(config::SettingPostChromaticCorrectionB, 1000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionR, 10000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionG, 10000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionB, 10000);
             m_configManager->setDefault(config::SettingPostChromaticCorrectionLensCenterX, 50);
             m_configManager->setDefault(config::SettingPostChromaticCorrectionLensCenterY, 50);
             m_configManager->setDefault(config::SettingPostChromaticCorrectionSlopeX, 100);

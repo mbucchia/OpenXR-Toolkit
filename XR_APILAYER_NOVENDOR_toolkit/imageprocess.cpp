@@ -176,9 +176,9 @@ namespace {
                 const auto param = XMVectorSaturate((XMLoadSInt4(&params[i]) + XMLoadSInt4(&preset[i])) * 0.001f);
                 StoreXrVector4(&m_config.Params1 + i, (param * kGainBias[i][0]) - kGainBias[i][1]);
             }
-            // [0..1000] -> [0..1]
+            // [0..10000] -> [0..1]
             {
-                const auto param = (XMLoadSInt4(&params[3]) + XMLoadSInt4(&preset[3])) * 0.001f;
+                const auto param = (XMLoadSInt4(&params[3]) + XMLoadSInt4(&preset[3])) * 0.0001f;
                 StoreXrVector4(&m_config.Params4, param);
             }
             // [0..100] -> [0..1]
@@ -220,7 +220,7 @@ namespace {
             return {XMINT4(500, 500, 500, 500),
                     XMINT4(500, 500, 500, 0),
                     XMINT4(1000, 0, 0, 0),
-                    XMINT4(500, 500, 500, 0),
+                    XMINT4(5000, 5000, 5000, 0),
                     XMINT4(50, 50, 100, 100)};
         }
 

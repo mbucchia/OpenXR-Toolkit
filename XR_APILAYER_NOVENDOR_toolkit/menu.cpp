@@ -1762,8 +1762,8 @@ namespace {
                                      MenuEntryType::Slider,
                                      SettingPostChromaticCorrectionR,
                                      0,
-                                     2000,
-                                     MenuEntry::FmtDecimal<1>});
+                                     20000,
+                                     MenuEntry::FmtDecimal<2>});
             m_menuEntries.back().acceleration = 5;
             m_menuEntries.back().expert = true;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
@@ -1771,8 +1771,8 @@ namespace {
                                      MenuEntryType::Slider,
                                      SettingPostChromaticCorrectionG,
                                      0,
-                                     2000,
-                                     MenuEntry::FmtDecimal<1>});
+                                     20000,
+                                     MenuEntry::FmtDecimal<2>});
             m_menuEntries.back().acceleration = 5;
             m_menuEntries.back().expert = true;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
@@ -1780,8 +1780,8 @@ namespace {
                                      MenuEntryType::Slider,
                                      SettingPostChromaticCorrectionB,
                                      0,
-                                     2000,
-                                     MenuEntry::FmtDecimal<1>});
+                                     20000,
+                                     MenuEntry::FmtDecimal<2>});
             m_menuEntries.back().expert = true;
             m_menuEntries.back().acceleration = 5;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
