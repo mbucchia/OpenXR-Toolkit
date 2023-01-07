@@ -1764,7 +1764,7 @@ namespace {
                                      9000,
                                      11000,
                                      MenuEntry::FmtDecimal<2>});
-            m_menuEntries.back().acceleration = 50;
+            m_menuEntries.back().acceleration = 1;
             m_menuEntries.back().expert = true;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Red (Y)",
@@ -1773,7 +1773,7 @@ namespace {
                                      9000,
                                      11000,
                                      MenuEntry::FmtDecimal<2>});
-            m_menuEntries.back().acceleration = 50;
+            m_menuEntries.back().acceleration = 1;
             m_menuEntries.back().expert = true;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Green (X)",
@@ -1782,7 +1782,7 @@ namespace {
                                      9000,
                                      11000,
                                      MenuEntry::FmtDecimal<2>});
-            m_menuEntries.back().acceleration = 50;
+            m_menuEntries.back().acceleration = 1;
             m_menuEntries.back().expert = true;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Green (Y)",
@@ -1791,7 +1791,7 @@ namespace {
                                      9000,
                                      11000,
                                      MenuEntry::FmtDecimal<2>});
-            m_menuEntries.back().acceleration = 50;
+            m_menuEntries.back().acceleration = 1;
             m_menuEntries.back().expert = true;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Blue (X)",
@@ -1801,7 +1801,7 @@ namespace {
                                      11000,
                                      MenuEntry::FmtDecimal<2>});
             m_menuEntries.back().expert = true;
-            m_menuEntries.back().acceleration = 50;
+            m_menuEntries.back().acceleration = 1;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Blue (Y)",
                                      MenuEntryType::Slider,
@@ -1810,7 +1810,7 @@ namespace {
                                      11000,
                                      MenuEntry::FmtDecimal<2>});
             m_menuEntries.back().expert = true;
-            m_menuEntries.back().acceleration = 50;
+            m_menuEntries.back().acceleration = 1;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Lens center (X) (Left eye)",
                                      MenuEntryType::Slider,
