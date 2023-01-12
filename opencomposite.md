@@ -77,7 +77,6 @@ There is an [official compatibility for OpenComposite](https://docs.google.com/s
 | Assetto Corsa | Yes | Yes |
 | Assetto Corsa Competizione | Yes | Yes [1] |
 | Automobilista 2 | Yes | Yes |
-| Digital Combat Simulator | Yes | Yes |
 | Dirt Rally 2 | Yes [2] | Yes [2] |
 | Elite Dangerous | Yes | Yes |
 | Euro Truck Simulator 2 | Yes | Yes |
@@ -200,7 +199,7 @@ OpenComposite replaces the SteamVR implementation of the OpenVR library. Therefo
 
 ![Start as SteamVR](site/start-steamvr.png)
 
-For some applications that you cannot start from Steam, you might need to update the command-line options when starting the game to force use of SteamVR (and therefore OpenComposite). For example, with DCS, you must pass the extra command-line argument `--force_steam_VR`, which can be done by creating a shortcut to the `dcs.exe` application:
+For some applications that you cannot start from Steam, you might need to update the command-line options when starting the game to force use of SteamVR (and therefore OpenComposite). For example, with (redacted), you must pass the extra command-line argument `--force_steam_VR`, which can be done by creating a shortcut to the `.exe` application:
 
 ![Start as SteamVR](site/force-steamvr-cli.png)
 

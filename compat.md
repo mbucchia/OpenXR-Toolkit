@@ -60,7 +60,6 @@ OpenXR Toolkit can also be used with certain OpenVR applications through [OpenCo
 | Assetto Corsa | - |
 | Assetto Corsa Competizione | - |
 | Automobilista 2 | - |
-| Digital Combat Simulator | - |
 | Dirt Rally 2 | Requires [dr2vrfix-openxr](https://github.com/mbucchia/dr2vrfix-openxr) when using "eye accomodation fix" |
 | Elite Dangerous | - |
 | Euro Truck Simulator 2 | - |

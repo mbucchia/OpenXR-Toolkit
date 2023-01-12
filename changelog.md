@@ -25,7 +25,6 @@ nav_order: 7
 - Fix incompatibility between eye tracking and controller/hand tracking on Varjo.
 - Fix detection of hand tracking with PimaxXR.
 - Fix issue when RGB color correction is not applied when post-processing is off.
-- Fix issue with hand tracking in DCS.
 - Fix upside-down image issue with certain OpenComposite games.
 - Add support for both eye-tracked foveated rendering and fixed foveated rendering in Assetto Corsa Competizione.
 - Add new "tutorial menu" for first time-use, will help debugging issues with users not able to bring up the menu.
@@ -51,7 +50,6 @@ nav_order: 7
 - Hotfix #1: Fix Pimax eye tracker module support to work with newer eye tracker software.
 - Hotfix #1: Fix issue with World Scale when application submits depth information.
 - Hotfix #1: Display the "tutorial" menu after changing hotkeys and/or reinstalling OpenXR Toolkit.
-- Hotfix #1: Fix crash in DCS when hand tracking is enabled.
 - Hotfix #1: Add an option to display and record statistics a higher rate (10 Hz vs 1 Hz).
 - Hotfix #1: Display frame times in milliseconds.
 - Hotfix #1: Add a way to toggle statistics recording from the command-line tool.
@@ -60,7 +58,6 @@ nav_order: 7
 - Hotfix #2: Remove resolution cap on Varjo.
 - Hotfix #3: Fix Turbo Mode crashes in Flight Simulator 2020.
 - Hotfix #3: Add a foveated rendering option to cull hidden area mesh (mostly for iRacing, only supported on certain applications).
-- Hotfix #3: Workaround to OpenComposite issue with DCS on WMR (timeout error).
 - Hotfix #3: Workaround to Oculus OpenXR issue with OpenComposite and ACC (call out of order).
 - Hotfix #3: Do not display CPU frame time in the overlay when it cannot be determined reliably.
 - Hotfix #3: Add a "target frame rate" option to have the overlay give headroom based on a desired frame rate.
@@ -89,7 +86,7 @@ nav_order: 7
 - Hotfix #1: Make the overlay position customizable.
 - Hotfix #1: Fix the menu display on Pimax.
 - Hotfix #1: Fix eye tracking detection on G2 Omnicept.
-- Hotfix #1: Fix various crashes with OpenComposite (DCS, ACC, IL2).
+- Hotfix #1: Fix various crashes with OpenComposite (ACC, IL2).
 - Hotfix #1: Fix issue with OpenComposite and Oculus devices.
 - Hotfix #1: Fix issue with OpenComposite and missing menu/loading screens.
 - Hotfix #1: Fix issue with OpenComposite and upside-down menu.
