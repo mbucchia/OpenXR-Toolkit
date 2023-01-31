@@ -62,6 +62,7 @@ nav_order: 7
 - Hotfix #3: Do not display CPU frame time in the overlay when it cannot be determined reliably.
 - Hotfix #3: Add a "target frame rate" option to have the overlay give headroom based on a desired frame rate.
 - Hotfix #3: Fix screenshot showing both eyes with certain applications (eg: iRacing).
+- Hotfix #4: Fix Turbo Mode crashes in DCS World.
 
 ## Changes in v1.1 (Apr 2022 / v1.1.0 - v1.1.4)
 
