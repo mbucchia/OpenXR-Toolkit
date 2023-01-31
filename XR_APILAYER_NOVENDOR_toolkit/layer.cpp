@@ -2202,6 +2202,9 @@ namespace {
                     }
                 }
 
+                // Per OpenXR spec, the predicted display must increase monotonically.
+                frameState->predictedDisplayTime = std::max(frameState->predictedDisplayTime, m_waitedFrameTime + 1);
+
                 // Record the predicted display time.
                 m_waitedFrameTime = frameState->predictedDisplayTime;
 
