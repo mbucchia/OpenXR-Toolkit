@@ -212,7 +212,8 @@ namespace {
                                                                                                                   : 0);
             // We disable the frame analyzer when using OpenComposite, because the app does not see the OpenXR
             // textures anyways.
-            m_configManager->setDefault("disable_frame_analyzer", !m_isOpenComposite ? 0 : 1);
+            m_configManager->setDefault("disable_frame_analyzer",
+                                        m_isOpenComposite || m_applicationName == "DCS World");
             m_configManager->setDefault("canting", 0);
             m_configManager->setDefault("vrs_capture", 0);
             m_configManager->setDefault("force_vprt_path", 0);
