@@ -36,7 +36,7 @@ Turbo mode makes the game entirely ignore any frame timing or throttling dictate
 Turbo mode _can_ increase your frame rate under certain conditions, but there is no rule or guarantee.
 
 Turbo mode can also have undesired side effects:
-- Any statistics or performance measuring tool might now present incorrect data. For example, on WMR, when using the performance overlay, all app CPU/GPU values will read 0.
+- Any statistics or performance measuring tool might now present incorrect data for frame times (however frame rate will be reported correctly). For example, on WMR, when using the performance overlay, all app CPU/GPU values will read 0.
 - Any feature of your platform that relies on frame timing data, such as Motion Reprojection/Motion Smoothing/ASW, will not behave correctly. For example, on WMR, the motion reprojection will not engage automatically anymore, but it can be forced via the [Lock motion reprojection](#lock-motion-reprojection) option.
 - Latency is increased, in a way that may or may not visible.
 
