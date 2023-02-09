@@ -476,6 +476,7 @@ namespace {
                 const auto isWMR = m_runtimeName.find("Windows Mixed Reality Runtime") != std::string::npos;
                 const auto isVive = m_runtimeName.find("Vive Reality Runtime") != std::string::npos;
                 const auto isVarjo = m_runtimeName.find("Varjo") != std::string::npos;
+                const auto isSteamVR = m_runtimeName.find("SteamVR") != std::string::npos;
 
                 m_supportMotionReprojectionLock = isWMR;
 
@@ -483,8 +484,8 @@ namespace {
                 // depending on timestamps conversion.
                 m_hasPerformanceCounterKHR = !isVive;
 
-                // Workaround: the Varjo runtime always advertises maxImageRect==recommendedImageRect.
-                if (isVarjo) {
+                // Workaround: the Varjo and SteamVR runtimes always advertises maxImageRect==recommendedImageRect.
+                if (isVarjo || isSteamVR) {
                     m_maxDisplayWidth = 8192;
                 }
 
