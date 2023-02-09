@@ -199,7 +199,8 @@ namespace LAYER_NAMESPACE {
                         local, "xrCreateApiLayerInstance_HasExtension", TLArg(extension.extensionName, "Extension"));
                     Log("Runtime supports extension: %s\n", extension.extensionName);
                     if (extensionName == "XR_EXT_hand_tracking" || extensionName == "XR_EXT_eye_gaze_interaction" ||
-                        extensionName == "XR_KHR_win32_convert_performance_counter_time" || extensionName == "XR_KHR_visibility_mask") {
+                        extensionName == "XR_KHR_win32_convert_performance_counter_time" ||
+                        extensionName == "XR_KHR_visibility_mask" || extensionName == "XR_FB_eye_tracking_social") {
                         extensionsToRequest.insert(extensionName);
                     }
                 }
@@ -246,6 +247,7 @@ namespace LAYER_NAMESPACE {
 
                 for (auto& extension : extensionsToRequest) {
                     newEnabledExtensionNames[nextExtensionSlot++] = extension.c_str();
+                    Log("Requesting extra extension: %s\n", extension.c_str());
                 }
             }
         }

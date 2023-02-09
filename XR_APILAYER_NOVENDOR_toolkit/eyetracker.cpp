@@ -289,6 +289,84 @@ namespace {
         XrSpace m_eyeSpace{XR_NULL_HANDLE};
     };
 
+    class OpenXrFBEyeTracker : public EyeTrackerBase {
+      public:
+        OpenXrFBEyeTracker(OpenXrApi& openXR, std::shared_ptr<IConfigManager> configManager)
+            : EyeTrackerBase(openXR, configManager) {
+            CHECK_XRCMD(m_openXR.xrGetInstanceProcAddr(m_openXR.GetXrInstance(),
+                                                       "xrCreateEyeTrackerFB",
+                                                       reinterpret_cast<PFN_xrVoidFunction*>(&m_xrCreateEyeTrackerFB)));
+            CHECK_XRCMD(
+                m_openXR.xrGetInstanceProcAddr(m_openXR.GetXrInstance(),
+                                               "xrDestroyEyeTrackerFB",
+                                               reinterpret_cast<PFN_xrVoidFunction*>(&m_xrDestroyEyeTrackerFB)));
+            CHECK_XRCMD(m_openXR.xrGetInstanceProcAddr(m_openXR.GetXrInstance(),
+                                                       "xrGetEyeGazesFB",
+                                                       reinterpret_cast<PFN_xrVoidFunction*>(&m_xrGetEyeGazesFB)));
+        }
+
+        ~OpenXrFBEyeTracker() override {
+        }
+
+        void beginSession(XrSession session) override {
+            EyeTrackerBase::beginSession(session);
+
+            // Create the resources for the eye tracker.
+            XrEyeTrackerCreateInfoFB createInfo{XR_TYPE_EYE_TRACKER_CREATE_INFO_FB};
+            CHECK_XRCMD(m_xrCreateEyeTrackerFB(session, &createInfo, &m_eyeTracker));
+        }
+
+        void endSession() override {
+            if (m_eyeTracker != XR_NULL_HANDLE) {
+                m_xrDestroyEyeTrackerFB(m_eyeTracker);
+                m_eyeTracker = XR_NULL_HANDLE;
+            }
+
+            EyeTrackerBase::endSession();
+        }
+
+        bool getEyeGaze(XrVector3f& projectedPoint) const override {
+            XrEyeGazesInfoFB eyeGazeInfo{XR_TYPE_EYE_GAZES_INFO_FB};
+            eyeGazeInfo.baseSpace = m_viewSpace;
+            eyeGazeInfo.time = m_frameTime;
+
+            XrEyeGazesFB eyeGaze{XR_TYPE_EYE_GAZES_FB};
+
+            CHECK_XRCMD(m_xrGetEyeGazesFB(m_eyeTracker, &eyeGazeInfo, &eyeGaze));
+
+            if (!(eyeGaze.gaze[0].isValid && eyeGaze.gaze[1].isValid)) {
+                return false;
+            }
+
+            if (!(eyeGaze.gaze[0].gazeConfidence > 0.5f && eyeGaze.gaze[1].gazeConfidence > 0.5f)) {
+                return false;
+            }
+
+            // Average the poses from both eyes.
+            const auto gaze = LoadXrPose(Pose::Slerp(eyeGaze.gaze[0].gazePose, eyeGaze.gaze[1].gazePose, 0.5f));
+            const auto gazeProjectedPoint =
+                DirectX::XMVector3Transform(DirectX::XMVectorSet(0, 0, m_projectionDistance, 1), gaze);
+
+            projectedPoint.x = gazeProjectedPoint.m128_f32[0];
+            projectedPoint.y = gazeProjectedPoint.m128_f32[1];
+            projectedPoint.z = gazeProjectedPoint.m128_f32[2];
+
+            return true;
+        }
+
+        bool isProjectionDistanceSupported() const {
+            return true;
+        }
+
+      private:
+        PFN_xrCreateEyeTrackerFB m_xrCreateEyeTrackerFB{nullptr};
+        PFN_xrDestroyEyeTrackerFB m_xrDestroyEyeTrackerFB{nullptr};
+        PFN_xrGetEyeGazesFB m_xrGetEyeGazesFB{nullptr};
+
+        XrEyeTrackerFB m_eyeTracker{XR_NULL_HANDLE};
+        XrSpace m_eyeSpace{XR_NULL_HANDLE};
+    };
+
     class OmniceptEyeTracker : public EyeTrackerBase {
       public:
         OmniceptEyeTracker(OpenXrApi& openXR,
@@ -454,6 +532,11 @@ namespace toolkit::input {
     std::shared_ptr<IEyeTracker> CreateEyeTracker(toolkit::OpenXrApi& openXR,
                                                   std::shared_ptr<toolkit::config::IConfigManager> configManager) {
         return std::make_shared<OpenXrEyeTracker>(openXR, configManager);
+    }
+
+    std::shared_ptr<IEyeTracker> CreateEyeTrackerFB(toolkit::OpenXrApi& openXR,
+                                                    std::shared_ptr<toolkit::config::IConfigManager> configManager) {
+        return std::make_shared<OpenXrFBEyeTracker>(openXR, configManager);
     }
 
     std::shared_ptr<IEyeTracker>

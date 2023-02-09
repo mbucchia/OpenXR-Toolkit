@@ -119,6 +119,9 @@ constexpr inline T roundDown(T value, uint32_t pad) noexcept {
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
 
+// Oculus definitions.
+#include <openxr/fb_eye_tracking_social.h>
+
 // OpenXR loader interfaces.
 #include <loader_interfaces.h>
 

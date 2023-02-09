@@ -260,6 +260,11 @@ namespace {
                 m_hasVisibilityMaskKHR =
                     XR_SUCCEEDED(xrGetInstanceProcAddr(GetXrInstance(), "xrGetVisibilityMaskKHR", &unused));
             }
+            bool hasEyeTrackerFB = false;
+            {
+                PFN_xrVoidFunction unused;
+                hasEyeTrackerFB = XR_SUCCEEDED(xrGetInstanceProcAddr(GetXrInstance(), "xrCreateEyeTrackerFB", &unused));
+            }
             m_applicationName = createInfo->applicationInfo.applicationName;
             Log("Application name: '%s', Engine name: '%s'\n",
                 createInfo->applicationInfo.applicationName,
@@ -388,6 +393,8 @@ namespace {
                     m_eyeTracker = input::CreateOmniceptEyeTracker(*this, m_configManager, std::move(omniceptClient));
                 } else if (m_hasPimaxEyeTracker) {
                     m_eyeTracker = input::CreatePimaxEyeTracker(*this, m_configManager);
+                } else if (hasEyeTrackerFB) {
+                    m_eyeTracker = input::CreateEyeTrackerFB(*this, m_configManager);
                 } else {
                     m_eyeTracker = input::CreateEyeTracker(*this, m_configManager);
 
@@ -460,7 +467,11 @@ namespace {
                     XR_TYPE_SYSTEM_EYE_GAZE_INTERACTION_PROPERTIES_EXT, &handTrackingSystemProperties};
                 eyeTrackingSystemProperties.supportsEyeGazeInteraction = false;
 
-                XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES, &eyeTrackingSystemProperties};
+                XrSystemEyeTrackingPropertiesFB eyeTrackingFBSystemProperties{XR_TYPE_SYSTEM_EYE_TRACKING_PROPERTIES_FB,
+                                                                              &eyeTrackingSystemProperties};
+                eyeTrackingFBSystemProperties.supportsEyeTracking = false;
+
+                XrSystemProperties systemProperties{XR_TYPE_SYSTEM_PROPERTIES, &eyeTrackingFBSystemProperties};
                 CHECK_XRCMD(OpenXrApi::xrGetSystemProperties(instance, *systemId, &systemProperties));
 
                 m_systemName = systemProperties.systemName;
@@ -490,7 +501,8 @@ namespace {
                 }
 
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
-                m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction || m_isOmniceptDetected ||
+                m_supportEyeTracking = eyeTrackingSystemProperties.supportsEyeGazeInteraction ||
+                                       eyeTrackingFBSystemProperties.supportsEyeTracking || m_isOmniceptDetected ||
                                        m_hasPimaxEyeTracker ||
                                        m_configManager->getValue(config::SettingEyeDebugWithController);
                 const bool isEyeTrackingThruRuntime =
