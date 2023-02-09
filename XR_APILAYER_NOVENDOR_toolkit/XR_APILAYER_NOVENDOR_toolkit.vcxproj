@@ -62,7 +62,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr;$(SolutionDir)\external\FidelityFX-CAS\ffx-cas;$(SolutionDir)\external\d3dx12;$(SolutionDir)\external\NVAPI;$(SolutionDir)\external\FW1FontWrapper\Source;$(SolutionDir)\external\Omnicept-SDK\include;$(SolutionDir)\external\aSeeVRClient\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr;$(SolutionDir)\external\FidelityFX-CAS\ffx-cas;$(SolutionDir)\external\d3dx12;$(SolutionDir)\external\NVAPI;$(SolutionDir)\external\FW1FontWrapper\Source;$(SolutionDir)\external\Omnicept-SDK\include;$(SolutionDir)\external\aSeeVRClient\include;$(SolutionDir)\external\FB</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -138,7 +138,7 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr;$(SolutionDir)\external\FidelityFX-CAS\ffx-cas;$(SolutionDir)\external\d3dx12;$(SolutionDir)\external\NVAPI;$(SolutionDir)\external\FW1FontWrapper\Source;$(SolutionDir)\external\Omnicept-SDK\include;$(SolutionDir)\external\aSeeVRClient\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)\external\OpenXR-SDK\include;$(SolutionDir)\external\OpenXR-SDK\src\common;$(SolutionDir)\external\OpenXR-MixedReality\Shared\XrUtility;$(SolutionDir)\external\NVIDIAImageScaling\NIS;$(SolutionDir)\external\FidelityFX-FSR\ffx-fsr;$(SolutionDir)\external\FidelityFX-CAS\ffx-cas;$(SolutionDir)\external\d3dx12;$(SolutionDir)\external\NVAPI;$(SolutionDir)\external\FW1FontWrapper\Source;$(SolutionDir)\external\Omnicept-SDK\include;$(SolutionDir)\external\aSeeVRClient\include;$(SolutionDir)\external\FB</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
