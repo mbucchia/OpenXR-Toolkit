@@ -30,25 +30,25 @@ The diagram below show how OpenComposite enables applications built for OpenVR t
 
 ### Headset compatibility
 
-| Headset brand | Has native OpenXR support? | Can leverage OpenComposite? | OpenXR supports 32-bit apps? |
-| --- | --- | --- | --- |
-| Windows Mixed Reality (HP Reverb, Samsung Odyssey...) | Yes | Yes | Yes |
-| Oculus (Rift, Quest, Quest 2, Quest Pro...) | Yes | Yes | Yes |
-| Oculus (via Virtual Desktop) | No [1] | No [1] [4] | No |
-| Varjo (Aero, VR-3...) | Yes | Yes | No |
-| Pimax (5K, 8K...) | Yes [2] | Yes | Yes |
-| HTC Tier 1 (Vive original, Vive Pro) | No [3] | No [4] | No |
-| HTC Tier 2 (Vive Cosmos, Vive Focus) | Yes [3] | Yes | No |
-| Valve Index | No | No [4] | No |
-| Pico (Neo 3, Neo 4) | No | No [4] | No |
+| Headset brand | Has native OpenXR support? | Can leverage OpenComposite? | OpenXR supports 32-bit apps? | Installation method |
+| --- | --- | --- | --- | --- |
+| Windows Mixed Reality (HP Reverb, Samsung Odyssey...) | Yes | Yes | Yes | [System-wide](#step-by-step) |
+| Oculus (Rift, Quest, Quest 2, Quest Pro...) | Yes | Yes | Yes | [System-wide](#step-by-step) |
+| Oculus (via Virtual Desktop) | No [1] | No [1] [4] | No | [Per-game](#alternative-the-per-game-install) |
+| Varjo (Aero, VR-3...) | Yes | Yes | No | [Per-game](#alternative-the-per-game-install) |
+| Pimax (5K, 8K...) | Yes [2] | Yes | Yes | [System-wide](#step-by-step) |
+| HTC Tier 1 (Vive original, Vive Pro) | No [3] | No [4] | No | [Per-game](#alternative-the-per-game-install) |
+| HTC Tier 2 (Vive Cosmos, Vive Focus) | Yes [3] | Yes | No | [System-wide](#step-by-step) |
+| Valve Index | No | No [4] | No | [Per-game](#alternative-the-per-game-install) |
+| Pico (Neo 3, Neo 4) (via Virtual Desktop) | No | No [4] | No | [Per-game](#alternative-the-per-game-install) |
 
-[1] Oculus Quest headsets run either with "Link" (cable or AirLink) and Virtual Desktop. When using Virtual Desktop, you must not use OpenComposite "system-wide" install, and perform the [per-game](#alternative-the-per-game-install) install instead.
+[1] Oculus Quest headsets run either with "Link" (cable or AirLink) and Virtual Desktop. When using Virtual Desktop, you must set your OpenXR runtime to SteamVR, and you must not use OpenComposite "system-wide" install, and perform the [per-game](#alternative-the-per-game-install) install instead.
 
 [2] Pimax support requires to use the unofficial [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki) OpenXR runtime.
 
 [3] HTC headsets with outside-in tracking (Lighthouse) only work through SteamVR. HTC headsets with inside-out tracking have native OpenXR support (enabled through the VIVE Console software).
 
-[4] While headsets without native OpenXR support will not see benefits from OpenComposite, you can still use OpenComposite to enable OpenXR Toolkit and leverage its features. Alternatively, you may look into [vrperfkit](https://github.com/fholger/vrperfkit) for an OpenVR-only experience.
+[4] While headsets without native OpenXR support will not see benefits from OpenComposite, you can still use OpenComposite (through [per-game](#alternative-the-per-game-install) install) to enable OpenXR Toolkit and leverage its features. Alternatively, you may look into [vrperfkit](https://github.com/fholger/vrperfkit) for an OpenVR-only experience.
 
 ### How is it different from OpenXR Toolkit?
 
@@ -169,7 +169,7 @@ Click "Switch to OpenComposite":
 
 ## Alternative: the per-game install
 
-You should prefer using the OpenComposite Switcher "system-wide" install. However, in some cases, you might need to perform a per-game install.
+You should prefer using the OpenComposite Switcher "system-wide" install. However, in some cases (eg: you are using Virtual Desktop, or your headset is Varjo or Pico), you might need to perform a per-game install.
 
 1) Follow step 1) of the [step-by-step guide](#step-by-step) above to properly setup OpenXR.
 
