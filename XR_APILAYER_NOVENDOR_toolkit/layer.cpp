@@ -618,7 +618,7 @@ namespace {
                 }
 
                 static bool atLeastOnce = false;
-                if (m_vrSession == XR_NULL_HANDLE || atLeastOnce) {
+                if (m_vrSession == XR_NULL_HANDLE || !atLeastOnce) {
                     if (inputWidth != m_displayWidth || inputHeight != m_displayHeight) {
                         Log("Upscaling from %ux%u to %ux%u (%u%%)\n",
                             inputWidth,
