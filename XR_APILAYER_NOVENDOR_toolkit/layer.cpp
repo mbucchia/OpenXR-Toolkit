@@ -2549,7 +2549,9 @@ namespace {
                                        : fileFormat == config::ScreenshotFileFormat::BMP ? ".bmp"
                                                                                          : ".png";
             // Using std::filesystem automatically filters out unwanted app name chars.
-            auto path = localAppData / "screenshots" / (m_applicationName + parameters.str());
+            std::string sanitizedName = m_applicationName;
+            std::replace(sanitizedName.begin(), sanitizedName.end(), '.', '_');
+            auto path = localAppData / "screenshots" / (sanitizedName + parameters.str());
             path.replace_extension(fileExtension);
 
             // Handle VPRT.
