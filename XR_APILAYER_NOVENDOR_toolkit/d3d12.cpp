@@ -1008,7 +1008,7 @@ namespace {
             }
 
             // Initialize the command lists and heaps.
-            m_rtvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+            m_rtvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 128);
             m_dsvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
             m_rvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 32 + MaxModelBuffers);
             m_samplerHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
@@ -2208,7 +2208,7 @@ namespace {
                 {
                     std::unique_lock lock(m_renderTargetResourceDescriptorsLock);
 
-                    m_renderTargetResourceDescriptors.insert_or_assign(handle, resource);
+                    m_renderTargetResourceDescriptors.insert_or_assign(handle, std::make_pair(resource, resourceDesc));
                     if (sizeBefore && !(sizeBefore % 100) && m_renderTargetResourceDescriptors.size() != sizeBefore) {
                         Log("Dictionary of render target resource descriptor now at %zu elements\n", sizeBefore + 1);
                     }
@@ -2253,8 +2253,8 @@ namespace {
                     return;
                 }
 
-                ID3D12Resource* const resource = it->second;
-                const D3D12_RESOURCE_DESC& resourceDesc = resource->GetDesc();
+                ID3D12Resource* const resource = it->second.first;
+                const D3D12_RESOURCE_DESC& resourceDesc = it->second.second;
 
                 renderTarget = std::make_shared<D3D12Texture>(shared_from_this(),
                                                               getTextureInfo(resourceDesc),
@@ -2372,7 +2372,9 @@ namespace {
         CopyTextureEvent m_copyTextureEvent;
         std::atomic<bool> m_blockEvents{false};
 
-        std::map<D3D12_CPU_DESCRIPTOR_HANDLE, ID3D12Resource*, decltype(descriptorCompare)>
+        std::map<D3D12_CPU_DESCRIPTOR_HANDLE,
+                 std::pair<ID3D12Resource*, D3D12_RESOURCE_DESC>,
+                 decltype(descriptorCompare)>
             m_renderTargetResourceDescriptors{descriptorCompare};
         std::mutex m_renderTargetResourceDescriptorsLock;
 
