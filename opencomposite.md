@@ -74,7 +74,7 @@ There is an [official compatibility for OpenComposite](https://docs.google.com/s
 | Game | OpenComposite | OpenXR Toolkit |
 | --- | --- | --- |
 | American Truck Simulator 2 | Yes | Yes |
-| Assetto Corsa | Yes | Yes |
+| Assetto Corsa | Yes | Yes [6] |
 | Assetto Corsa Competizione | Yes | Yes [1] |
 | Automobilista 2 | Yes | Yes |
 | Dirt Rally 2 | Yes [2] | Yes [2] |
@@ -86,7 +86,7 @@ There is an [official compatibility for OpenComposite](https://docs.google.com/s
 | Pavlov VR | Yes | Yes |
 | Project Cars 2 | Yes | Yes |
 | Project Cars 3 | Yes | Yes |
-| rFactor 2 | Yes | Yes |
+| rFactor 2 | Yes | Yes [7] |
 | Subnautica | Yes | Yes |
 | X-Plane 11 | Yes [5] | No |
 | X-Plane 12 | Yes [5] | No |
@@ -100,6 +100,10 @@ There is an [official compatibility for OpenComposite](https://docs.google.com/s
 [4] iRacing now has official support for OpenXR, and OpenXR Toolkit is only compatible in that mode, and not with OpenComposite.
 
 [5] On Windows Mixed Reality, X-Plane requires the use of [OpenXR-Vk-D3D12](https://github.com/mbucchia/OpenXR-Vk-D3D12).
+
+[6] Assetto Corsa with Fixed Foveated Rendering requires to lower the "Glare" setting under "Video settings" to Medium or lower.
+
+[7] rFactor 2 with Fixed Foveated Rendering requires to lower the "Post Effects" setting under "Video setup" to Medium or lower.
 
 Do you have a game working but it's not in the list? Please file an [Issue](https://github.com/mbucchia/OpenXR-Toolkit/issues) to let us know!
 
