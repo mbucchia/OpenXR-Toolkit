@@ -38,7 +38,7 @@ For the best results and to maximize chances that your application will work, al
 
 | Game | Limitations |
 | --- | --- |
-| Microsoft Flight Simulator 2020 | - |
+| Microsoft Flight Simulator 2020 | Foveated Rendering causes blur in the main menu |
 | iRacing | - |
 | War Thunder | Not supported on Varjo headsets |
 | Bonelab | - |
@@ -57,7 +57,7 @@ OpenXR Toolkit can also be used with certain OpenVR applications through [OpenCo
 | Game | Limitations |
 | --- | --- |
 | American Truck Simulator 2 | - |
-| Assetto Corsa | - |
+| Assetto Corsa | Fixed Foveated Rendering requires to lower the "Glare" setting under "Video settings" to Medium or lower |
 | Assetto Corsa Competizione | - |
 | Automobilista 2 | - |
 | Dirt Rally 2 | Requires [dr2vrfix-openxr](https://github.com/mbucchia/dr2vrfix-openxr) when using "eye accomodation fix" |
@@ -68,7 +68,7 @@ OpenXR Toolkit can also be used with certain OpenVR applications through [OpenCo
 | Pavlov VR | - |
 | Project Cars 2 | - |
 | Project Cars 3 | - |
-| rFactor 2 | - |
+| rFactor 2 | Fixed Foveated Rendering requires to lower the "Post Effects" setting under "Video setup" to Medium or lower |
 | Subnautica | - |
 
 Do you have a game working but it's not in the list? Please file an [Issue](https://github.com/mbucchia/OpenXR-Toolkit/issues) to let us know!
