@@ -44,11 +44,17 @@ The following OpenXR ToolKit features have additional restrictions:
 + This software may not work with all OpenXR applications. See the [Compatibility](compat) list.
   + It can also be used with certain OpenVR applications through [OpenComposite](opencomposite).
 + If using with a Pimax headset, you may consider using [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki) as your OpenXR runtime.
++ OpenXR Toolkit is not compatible with ReShade.
++ OpenXR Toolkit might be flagged as unauthorized by anti-cheat software, for example with War Thunder.
+
+## Known issues
+
 + Fixed and Eye-tracked Foveated Rendering in Microsoft Flight Simulator is incorrectly applied in the main menu, resulting in blurry menu windows.
 + Fixed Foveated Rendering is not supported in IL-2 Sturmovik.
++ Fixed Foveated Rendering in Assetto Corsa requires to lower the "Glare" setting under "Video settings" to Medium or lower.
++ Fixed Foveated Rendering in rFactor 2 requires to lower the "Post Effects" setting under "Video setup" to Medium or lower.
 + OpenXR Toolkit is not compatible with War Thunder on Varjo headsets.
 + OpenXR Toolkit is only compatible with iRacing when using OpenXR. Compatibility going through OpenComposite has not been tested, and will not be officially supported.
-+ OpenXR Toolkit is not compatible with ReShade.
 + See the [open bugs](https://github.com/mbucchia/OpenXR-Toolkit/issues?q=is%3Aopen+is%3Aissue+label%3Abug).
 
 ## Installation
