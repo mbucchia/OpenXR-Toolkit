@@ -10,6 +10,14 @@ This software provides a collection of useful features to customize and improve 
 
 DISCLAIMER: This software is distributed as-is, without any warranties or conditions of any kind. Use at your own risks.
 
+## Table of contents
+{: .no_toc .text-delta }
+
+1. TOC
+{:toc}
+
+---
+
 # Setup
 
 ## Downloads
