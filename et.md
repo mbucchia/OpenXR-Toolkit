@@ -13,17 +13,17 @@ nav_order: 3
 
 ---
 
-## Using with Eye Tracking
+## Supported headsets
+
+The option to enable Eye Tracking will appear in the menu if and only if your headset and headset driver can support it.
+
+See [Supported headsets / Eye tracking feature](index#eye-tracking-feature).
+
+## Using Eye Tracking Foveated Rendering
 
 The use of Eye Tracking (ET) in conjunction with [Foveated Rendering](fr) (FR) can greatly improve performance with minimal loss of visual quality.
 
-The option to enable Eye Tracking will appear in the menu if and only if your headset and headset driver can support it. The following are supported:
-
-- Varjo devices.
-- HP G2 Omnicept.
-- Pimax devices with Droolon eye tracking module.
-
-In addition to this requirement, it must be possible for OpenXR Toolkit to distinguish when the application is rendering the left and right views. This is not possible for all applications, and therefore might not be offered for all applications.
+In addition to the requirements for your graphics card and headset, it must be possible for OpenXR Toolkit to distinguish when the application is rendering the left and right views. This is not possible for all applications, and therefore eye tracking might not be offered for all applications.
 
 Below is a table of games tested with eye-tracked foveated rendering:
 
