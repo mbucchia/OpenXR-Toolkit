@@ -28,7 +28,7 @@ OpenXR Toolkit is compatible with any headset supporting OpenXR on PC. Lately, m
 
 For headsets that do not require the use of OpenXR via SteamVR, please note that using OpenXR via SteamVR is still an option, if you prefer to use SteamVR. OpenXR Toolkit will work both with the native OpenXR runtime and OpenXR via SteamVR.
 
-Please note that if you are interested in using OpenXR Toolkit with OpenVR applications through [OpenComposite](opencomposite), [that table](opencomposite#Headset-compatibility) will tell you a more accurate story than the table below.
+Please note that if you are interested in using OpenXR Toolkit with OpenVR applications through [OpenComposite](opencomposite), [that table](opencomposite#headset-compatibility) will tell you a more accurate story than the table below.
 
 | Headset brand | Supports OpenXR Toolkit | Requires OpenXR via SteamVR |
 | --- | --- | --- |
