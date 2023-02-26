@@ -22,17 +22,7 @@ For the best results and to maximize chances that your application will work, al
 
 ## Headset compatibility
 
-| Headset brand | Supported? |
-| --- | --- |
-| Windows Mixed Reality (HP Reverb, Samsung Odyssey...) | Yes |
-| Oculus (Rift, Quest, Quest 2, Quest Pro...) | Yes |
-| Oculus (via Virtual Desktop)) | Yes |
-| Varjo (Aero, VR-3...) | Yes |
-| Pimax (5K, 8K...) | Yes |
-| HTC Tier 1 (Vive original, Vive Pro) | Yes |
-| HTC Tier 2 (Vive Cosmos, Vive Focus) | Yes |
-| Valve Index | Yes |
-| Pico (Neo 3, Neo 4) | Yes |
+See [Supported headsets](index#supported-headsets).
 
 ## OpenXR applications
 
