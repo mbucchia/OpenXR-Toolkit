@@ -63,8 +63,8 @@ Please note that if you are interested in using OpenXR Toolkit with OpenVR appli
 | Varjo (all models) | Yes |
 | Pimax with Droolon eye tracking module | Yes |
 | Pimax Crystal | Coming soon [3] |
-| HTC Vive Pro Eye | No |
-| Pico (all models) | No [1] |
+| HTC Vive Pro Eye, Vive Focus 3 | No |
+| Pico Neo 4 Pro | No [1] |
 
 [1] **Pico devices do not support eye tracking for PC applications. Pico does not provide the necessary tools to implement it. The marketing of Pico devices is misleading for the consumers**, and hurts the developers community: a) Pico marketing claims support for eye tracking without mentioning that this feature is only supported for standalone mode (Android apps) and not available to developers on PC; b) This practice makes us developers look bad for not supporting eye tracking, in spite of the shortcoming being on Pico's side.
 
