@@ -8,8 +8,6 @@ nav_order: 1
 
 This software provides a collection of useful features to customize and improve existing OpenXR applications, including render upscaling and sharpening, foveated rendering, image post-processing, hand tracking to controller input simulation (on supported devices only) and other game-enhancing tweaks.
 
-For more details on how it works, see the [How does it work?](how-does-it-work).
-
 DISCLAIMER: This software is distributed as-is, without any warranties or conditions of any kind. Use at your own risks.
 
 # Setup
@@ -24,28 +22,90 @@ Current version: **1.2.4**
 
 ## Requirements
 
-This software may be used with any brand of VR headset as long as the target application uses DirectX with any GPU compatible with DirectX 11 and above. The application must use OpenXR.
+### Supported headsets
 
-The following headsets have been confirmed to work: Windows Mixed Reality (eg: HP Reverb, Samsung Odyssey), Oculus Quest & Quest 2, Pimax 5K & 8KX, Varjo Aero & VR-3, Valve Index, HTC Vive, HTC Vive Cosmos, Pico Neo 3 & 4.
+OpenXR Toolkit is compatible with any headset supporting OpenXR on PC. Lately, marketing tends to advertise OpenXR support for certain devices without mentioning whether it is applicable to standalone mode (eg: Android apps) or PC. Fortunately, the majority of headsets can support OpenXR via SteamVR as a fallback, and leverage OpenXR Toolkit that way.
 
-The following OpenXR ToolKit features have additional restrictions:
+For headsets that do not require the use of OpenXR via SteamVR, please note that using OpenXR via SteamVR is still an option, if you prefer to use SteamVR. OpenXR Toolkit will work both with the native OpenXR runtime and OpenXR via SteamVR.
 
-+ Fixed Foveated Rendering and Foveated Rendering are only supported with the following GPUs:
-  + NVIDIA GeForce GTX 1600 series and RTX series, both DX11 and DX12 applications.
-  + AMD RX 6000 series, with DX12 applications only.
+Please note that if you are interested in using OpenXR Toolkit with OpenVR applications through [OpenComposite](opencomposite), [that table](opencomposite#Headset-compatibility) will tell you a more accurate story than the table below.
 
-+ Foveated Rendering with eye tracking is only supported with the following headsets:
-  + Varjo-brand devices.
-  + HP G2 Omnicept.
-  + Pimax-brand devices with Droolon eye tracking module. 
+| Headset brand | Supports OpenXR Toolkit | Requires OpenXR via SteamVR |
+| --- | --- | --- |
+| Windows Mixed Reality (HP Reverb, Samsung Odyssey...) | Yes | No |
+| Oculus (Rift, Quest, Quest 2, Quest Pro...) | Yes | No |
+| Oculus (via Virtual Desktop) | Yes | Yes [1] |
+| Varjo (Aero, VR-3...) | Yes | No |
+| Pimax (5K, 8K...) | Yes | No [2] |
+| HTC Tier 1 (Vive original, Vive Pro) | Yes | Yes |
+| HTC Tier 2 (Vive Cosmos, Vive Focus) | Yes | No |
+| Valve Index | Yes | Yes |
+| Pico (Neo 3, Neo 4) | Yes | Yes [1] |
+
+[1] Using Oculus via Virtual Desktop or Pico via Virtual Desktop or Streaming Assistant requires to use OpenXR via SteamVR.
+
+[2] Pimax officially only supports OpenXR via SteamVR, however you may consider using [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki) to remove the use of SteamVR.
+
+#### Eye tracking feature
+
+| Headset brand | Supports eye tracking in OpenXR Toolkit? |
+| --- | --- |
+| HP Reverb G2 Omnicept | Yes |
+| Oculus Quest Pro | Coming soon [2] |
+| Varjo (all models) | Yes |
+| Pimax with Droolon eye tracking module | Yes |
+| Pimax Crystal | Coming soon [3] |
+| HTC Vive Pro Eye | No |
+| Pico (all models) | No [1] |
+
+[1] **Pico devices do not support eye tracking for PC applications. Pico does not provide the necessary tools to implement it. The marketing of Pico devices is misleading for the consumers**, and hurts the developers community: a) Pico marketing claims support for eye tracking without mentioning that this feature is only supported for standalone mode (Android apps) and not available to developers on PC; b) This practice makes us developers look bad for not supporting eye tracking, in spite of the shortcoming being on Pico's side.
+
+[2] Oculus Quest Pro only supports eye tracking for social interactions for PC applications. OpenXR Toolkit will implement additional code to adapt that feature for Foveated Rendering.
+
+[3] Pimax Crystal eye tracking will be supported via [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki).
+
+#### Hand tracking feature
+
+| Headset brand | Supports hand tracking in OpenXR Toolkit? |
+| --- | --- |
+| Oculus Quest 2 and Quest Pro | Yes |
+| Varjo VR-3 and XR-3 | Yes |
+| Pimax with hand tracking module | Yes |
+| HTC Vive (all models) | No |
+| Pico (all models) | No [1] |
+| Any headset with add-on Ultraleap module | Yes |
+
+[1] **Pico devices do not support hand tracking for PC applications. Pico does not provide the necessary tools to implement it. The marketing of Pico devices is misleading for the consumers**, and hurts the developers community: a) Pico marketing claims support for hand tracking without mentioning that this feature is only supported for standalone mode (Android apps) and not available to developers on PC; b) This practice makes us developers look bad for not supporting hand tracking, in spite of the shortcoming being on Pico's side.
+
+### Supported graphics cards
+
+OpenXR Toolkit is compatible with any graphics card supporting DirectX 11, regardless of brand.
+
+Certain features, like Fixed Foveated Rendering and Foveated Rendering, have additional requirements:
+
+| Graphics card | Supports (Fixed) Foveated Rendering? | Limitations |
+| --- | --- | --- |
+| Nvidia RTX 4000 series | Yes | - |
+| Nvidia RTX 3000 series | Yes | - |
+| Nvidia RTX 2000 series | Yes | - |
+| Nvidia GTX 1600 series | Yes | - |
+| Nvidia GTX 1000 (and below) | No | - |
+| AMD RX 7000 series | Yes | Application must use Direct3D 12 |
+| AMD RX 6000 series | Yes | Application must use Direct3D 12 |
+| AMD RX 5000 series (and below) | No | - |
+| Intel Arc | Yes (but untested) | Application must use Direct3D 12 |
+| Intel Gen11 (Ice Lake and above) | Yes (but untested) | Application must use Direct3D 12 |
+| Intel (any other model) | No | - |
+
+### Supported applications
+
+OpenXR Toolkit may not work with all OpenXR applications. See the [Compatibility](compat) list.
+It can also be used with certain OpenVR applications through [OpenComposite](opencomposite).
 
 ## Limitations
 
-+ This software may not work with all OpenXR applications. See the [Compatibility](compat) list.
-  + It can also be used with certain OpenVR applications through [OpenComposite](opencomposite).
-+ If using with a Pimax headset, you may consider using [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki) as your OpenXR runtime.
-+ OpenXR Toolkit is not compatible with ReShade.
-+ OpenXR Toolkit might be flagged as unauthorized by anti-cheat software, for example with War Thunder.
++ OpenXR Toolkit is not compatible with ReShade and many other injectors or 3rd party mods.
++ OpenXR Toolkit might be flagged as unauthorized by some anti-cheat software, for example with War Thunder.
 
 ## Known issues
 
