@@ -30,18 +30,19 @@ Fixed Foveated Rendering (or FFR) is a type of Foveated Rendering technique whic
 
 In the comparison above, you can see the noticeable difference in quality near the bottom left corner. However, when looking through the lenses of the headset, the difference is barely noticeable.
 
-### Foveated Rendering in the OpenXR Toolkit
+## Supported graphics cards
 
-The option to enable FR will appear in the menu if and only if your graphics card and graphics driver can support it. The following are supported:
+The option to enable FR will appear in the menu if and only if your graphics card and graphics driver can support it.
 
-+ NVIDIA GeForce GTX 1600 series and RTX series, both DX11 and DX12.
-+ AMD RX 6000 series, with DX12 only.
+See [Supported graphics card](index#supported-graphics-cards).
 
-The option to enable Eye Tracking (ET) will appear in the menu if and only if your headset and the application can support it. For more details, see [Eye Tracking](et)
+## Foveated Rendering in the OpenXR Toolkit
+
+The option to enable Eye Tracking (ET) will appear in the menu if and only if your headset and the application can support it. For more details, see [Eye Tracking](et).
 
 There are two methods for configuring FFR in the OpenXR Toolkit.
 
-#### Preset mode
+### Preset mode
 
 In _Preset_ mode, we offer two parameters:
 
@@ -61,7 +62,7 @@ The _Pattern_ setting controls the size of the rings separating the regions. The
 
 Note that the rings are not of circular shape, and instead they are of elliptical shapes, with their aspect ratio "flattened" alongside the horizontal axis.
 
-#### Custom mode
+### Custom mode
 
 In _Custom_ mode, every aspect of the FR feature can be tweaked.
 
@@ -82,7 +83,7 @@ The _Horizontal scale_ value lets you control the scale of the horizontal radius
 
 Finally, the _Left/Right_ _Bias_ value lets you lower the resolution of all the regions at once, either for the left or the right eye only at a time. Each setting value changes the regions resolutions one notch down (for example +1 changes 1/2 to 1/4 and +2 changes 1/2 to 1/8). This setting can adjust the bias up to _+4_ on either eye. Select _none_ to remove any bias.
 
-### Improving the quality of Foveated Rendering
+## Improving the quality of Foveated Rendering
 
 Certain graphics settings in the application may create additional artifacts. There are a few ways to deal this this situation:
 
@@ -103,7 +104,7 @@ Another way to reduce or conceal some of the visual artifacts is to use the shar
 
 Lowering the rendering resolution before the FR processing happens (ie: the render scale setting within the application) has also shown to create visible artifacts. For this reason, it is also preferred to use the upscaling feature of the OpenXR Toolkit rather than any in-app upscaling.
 
-### Balancing performance and finding the limit of the gain
+## Balancing performance and finding the limit of the gain
 
 Configuring a narrower inner and middle regions may improve performance further, however the loss in quality will become more and more noticeable.
 
@@ -121,7 +122,7 @@ In the example above, we show how setting the lowest resolution for all 3 region
 
 **In other words, setting the radius for the inner and outer regions to a lower value does not always result in a higher performance gain.**
 
-### Combining with the upscaling feature
+## Combining with the upscaling feature
 
 Foveated Rendering works very well with the [Upscaling](upscaling) feature of the OpenXR Toolkit, and can provide even more boost in performance.
 
