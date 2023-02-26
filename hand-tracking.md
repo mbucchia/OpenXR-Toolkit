@@ -20,16 +20,13 @@ The OpenXR Toolkit does not add hand tracking capability to your headset, but in
 ![Hand tracking in Microsoft Flight Simulator 2020](site/hand-tracking.jpg)<br>
 *Hand tracking in Microsoft Flight Simulator 2020*
 
-Devices confirmed to work:
+## Supported headsets
 
-* Ultraleap [Leap Motion Controller](https://www.ultraleap.com/product/leap-motion-controller/)
-* Ultraleap [Stereo IR 170](https://www.ultraleap.com/product/stereo-ir-170/)
-* Pimax [Hand Tracking Module](https://pimax.com/product/hand-tracking-module/)
-* Oculus Quest and Quest 2
+The option to enable Hand Tracking will appear in the menu if and only if your headset and headset driver can support it.
 
-We would love to add more devices to this list! If you have a device that supports hand tracking via OpenXR that is no on this list, please contact us on [Discord](https://discord.gg/WXFshwMnke) or submit an [issue on GitHub](https://github.com/mbucchia/OpenXR-Toolkit/issues).
+See [Supported headsets / Hand tracking feature](index#hand-tracking-feature).
 
-## Using with Ultraleap or Pimax devices
+## Using with Ultraleap (including Pimax and Varjo headsets)
 
 1. Download and install the [Leap Motion tracking software](https://developer.leapmotion.com/tracking-software-download).
 
