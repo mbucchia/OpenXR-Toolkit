@@ -97,7 +97,7 @@ Certain features, like Fixed Foveated Rendering and Foveated Rendering, have add
 | Nvidia RTX 3000 series | Yes | - |
 | Nvidia RTX 2000 series | Yes | - |
 | Nvidia GTX 1600 series | Yes | - |
-| Nvidia GTX 1000 (and below) | No | - |
+| Nvidia GTX 1000 series (and below) | No | - |
 | AMD RX 7000 series | Yes | Application must use Direct3D 12 |
 | AMD RX 6000 series | Yes | Application must use Direct3D 12 |
 | AMD RX 5000 series (and below) | No | - |
