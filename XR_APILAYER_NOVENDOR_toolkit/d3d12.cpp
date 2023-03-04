@@ -39,7 +39,7 @@ namespace {
     using namespace toolkit::graphics::d3dcommon;
     using namespace toolkit::log;
 
-    constexpr size_t MaxGpuTimers = 128;
+    constexpr size_t MaxGpuTimers = 256;
     constexpr size_t MaxModelBuffers = 128;
 
     // If the application uses the Streamline SDK, some D3D12 objects are shimmed, and this will confuse our Detours
@@ -1009,7 +1009,7 @@ namespace {
 
             // Initialize the command lists and heaps.
             m_rtvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 128);
-            m_dsvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+            m_dsvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 128);
             m_rvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 32 + MaxModelBuffers);
             m_samplerHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
             {
