@@ -161,7 +161,7 @@ namespace toolkit {
             std::vector<int> keyModifiers;
             bool isHandTrackingSupported;
             bool isPredictionDampeningSupported;
-            uint32_t maxDisplayWidth;
+            uint32_t maxDisplayHeight;
             float resolutionHeightRatio;
             bool isMotionReprojectionRateSupported;
             uint8_t displayRefreshRate;

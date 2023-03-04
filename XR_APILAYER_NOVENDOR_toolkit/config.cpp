@@ -244,7 +244,7 @@ namespace {
             }
 
             const auto value = readRegistry(name);
-            if (entry.value != value.value_or(entry.defaultValue)) {
+            if (value && entry.value != value.value_or(entry.defaultValue)) {
                 entry.value = value.value_or(entry.defaultValue);
                 entry.changedSinceLastQuery = true;
 

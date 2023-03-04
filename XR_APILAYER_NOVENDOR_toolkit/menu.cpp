@@ -1685,16 +1685,16 @@ namespace {
                                      MenuEntry::FmtEnum<NoYesType>});
 
             MenuGroup resolutionGroup(this, [&] { return m_configManager->peekValue(SettingResolutionOverride); });
-            m_originalResolutionWidth = m_displayWidth;
+            m_originalResolutionHeight = m_displayHeight;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Display resolution (per eye)",
                                      MenuEntryType::Slider,
-                                     SettingResolutionWidth,
+                                     SettingResolutionHeight,
                                      500,
-                                     static_cast<int>(menuInfo.maxDisplayWidth),
+                                     static_cast<int>(menuInfo.maxDisplayHeight),
                                      [&](int value) {
                                          return fmt::format(
-                                             "{}x{}", value, static_cast<int>(value * m_resolutionHeightRatio));
+                                             "{}x{}", static_cast<int>(value / m_resolutionHeightRatio), value);
                                      }});
             m_menuEntries.back().acceleration = 10;
             resolutionGroup.finalize();
@@ -2066,13 +2066,13 @@ namespace {
 
         uint32_t getDisplayWidth() const {
             return m_configManager->peekValue(SettingResolutionOverride)
-                       ? m_configManager->peekValue(SettingResolutionWidth)
+                       ? (uint32_t)(m_configManager->peekValue(SettingResolutionHeight) / m_resolutionHeightRatio)
                        : m_displayWidth;
         }
 
         uint32_t getDisplayHeight() const {
             return m_configManager->peekValue(SettingResolutionOverride)
-                       ? (uint32_t)(m_configManager->peekValue(SettingResolutionWidth) * m_resolutionHeightRatio)
+                       ? m_configManager->peekValue(SettingResolutionHeight)
                        : m_displayHeight;
         }
 
@@ -2101,7 +2101,7 @@ namespace {
             }
 
             if (m_configManager->peekValue(SettingResolutionOverride) &&
-                m_originalResolutionWidth != m_configManager->peekValue(SettingResolutionWidth)) {
+                m_originalResolutionHeight != m_configManager->peekValue(SettingResolutionHeight)) {
                 return true;
             }
 
@@ -2160,7 +2160,7 @@ namespace {
 
         bool m_originalHandTrackingEnabled{false};
         bool m_originalEyeTrackingEnabled{false};
-        int m_originalResolutionWidth{0};
+        int m_originalResolutionHeight{0};
         bool m_originalMotionReprojectionEnabled{false};
         bool m_needRestart{false};
 

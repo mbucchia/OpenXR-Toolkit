@@ -143,7 +143,8 @@ namespace {
             m_configManager->setDefault(config::SettingVRSPreferHorizontal, 0);
             m_configManager->setDefault(config::SettingVRSLeftRightBias, 0);
             // Fix issue in iRacing: https://forums.iracing.com/discussion/comment/310749
-            m_configManager->setDefault(config::SettingVRSScaleFilter, m_applicationName != "iRacingSim64DX11" ? 80 : 90);
+            m_configManager->setDefault(config::SettingVRSScaleFilter,
+                                        m_applicationName != "iRacingSim64DX11" ? 80 : 90);
             m_configManager->setDefault(config::SettingVRSCullHAM, 0);
 
             // Appearance.
@@ -452,12 +453,25 @@ namespace {
                                                                          views));
 
                 m_displayWidth = views[0].recommendedImageRectWidth;
-                m_configManager->setDefault(config::SettingResolutionWidth, m_displayWidth);
                 m_displayHeight = views[0].recommendedImageRectHeight;
 
                 m_resolutionHeightRatio = (float)m_displayHeight / m_displayWidth;
-                m_maxDisplayWidth = std::min(views[0].maxImageRectWidth,
-                                             (uint32_t)(views[0].maxImageRectHeight / m_resolutionHeightRatio));
+
+                m_configManager->setDefault(config::SettingResolutionHeight, m_displayHeight);
+
+                // Workaround: the previous versions of the toolkit used a different representation for the resolution
+                // override.
+                // Migrate the value upon first run.
+                m_configManager->setDefault("resolution_width", 0);
+                if (m_configManager->getValue("resolution_width") != 0) {
+                    const int migratedValue = m_configManager->getValue("resolution_width") * m_resolutionHeightRatio;
+                    m_configManager->setValue(config::SettingResolutionHeight, migratedValue, true);
+                    m_configManager->deleteValue("resolution_width");
+                    m_configManager->tick();
+                }
+
+                m_maxDisplayHeight = std::min(views[0].maxImageRectHeight,
+                                              (uint32_t)(views[0].maxImageRectWidth * m_resolutionHeightRatio));
 
                 // Check for hand and eye tracking support.
                 XrSystemHandTrackingPropertiesEXT handTrackingSystemProperties{
@@ -498,7 +512,7 @@ namespace {
 
                 // Workaround: the Varjo and SteamVR runtimes always advertises maxImageRect==recommendedImageRect.
                 if (isVarjo || isSteamVR) {
-                    m_maxDisplayWidth = 8192;
+                    m_maxDisplayHeight = 8192;
                 }
 
                 m_supportHandTracking = handTrackingSystemProperties.supportsHandTracking;
@@ -547,8 +561,8 @@ namespace {
 
                 // Apply override to the target resolution.
                 if (m_configManager->getValue(config::SettingResolutionOverride)) {
-                    m_displayWidth = m_configManager->getValue(config::SettingResolutionWidth);
-                    m_displayHeight = (uint32_t)(m_displayWidth * m_resolutionHeightRatio);
+                    m_displayHeight = m_configManager->getValue(config::SettingResolutionHeight);
+                    m_displayWidth = (uint32_t)(m_displayHeight / m_resolutionHeightRatio);
 
                     Log("Overriding OpenXR resolution: %ux%u\n", m_displayWidth, m_displayHeight);
                 }
@@ -894,7 +908,7 @@ namespace {
                         menuInfo.keyModifiers = m_keyModifiers;
                         menuInfo.isHandTrackingSupported = m_supportHandTracking;
                         menuInfo.isPredictionDampeningSupported = m_hasPerformanceCounterKHR;
-                        menuInfo.maxDisplayWidth = m_maxDisplayWidth;
+                        menuInfo.maxDisplayHeight = m_maxDisplayHeight;
                         menuInfo.resolutionHeightRatio = m_resolutionHeightRatio;
                         menuInfo.isMotionReprojectionRateSupported = m_supportMotionReprojectionLock;
                         menuInfo.displayRefreshRate =
@@ -3363,7 +3377,7 @@ namespace {
         uint32_t m_displayWidth{0};
         uint32_t m_displayHeight{0};
         float m_resolutionHeightRatio{1.f};
-        uint32_t m_maxDisplayWidth{0};
+        uint32_t m_maxDisplayHeight{0};
         bool m_supportHandTracking{false};
         bool m_supportEyeTracking{false};
         bool m_supportMotionReprojectionLock{false};

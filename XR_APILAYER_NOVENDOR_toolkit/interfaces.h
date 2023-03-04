@@ -185,7 +185,7 @@ namespace toolkit {
         const std::string SettingEyeDebug = "eye_debug";
         const std::string SettingEyeDebugWithController = "eye_controller_debug";
         const std::string SettingResolutionOverride = "override_resolution";
-        const std::string SettingResolutionWidth = "resolution_width";
+        const std::string SettingResolutionHeight = "resolution_height";
         const std::string SettingDisableInterceptor = "disable_interceptor";
         const std::string SettingRecordStats = "record_stats";
         const std::string SettingHighRateStats = "high_rate_stats";
