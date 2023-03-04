@@ -1269,6 +1269,19 @@ namespace {
         XrResult xrDestroySwapchain(XrSwapchain swapchain) override {
             TraceLoggingWrite(g_traceProvider, "xrDestroySwapchain", TLPArg(swapchain, "Swapchain"));
 
+            // In Turbo Mode, make sure there is no pending frame that may potentially hold onto the swapchain.
+            {
+                std::unique_lock lock(m_frameLock);
+
+                if (m_asyncWaitPromise.valid()) {
+                    TraceLocalActivity(local);
+
+                    TraceLoggingWriteStart(local, "AsyncWaitNow");
+                    m_asyncWaitPromise.wait();
+                    TraceLoggingWriteStop(local, "AsyncWaitNow");
+                }
+            }
+
             const XrResult result = OpenXrApi::xrDestroySwapchain(swapchain);
             if (XR_SUCCEEDED(result)) {
                 m_swapchains.erase(swapchain);
