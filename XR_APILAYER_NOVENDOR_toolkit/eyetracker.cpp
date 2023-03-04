@@ -313,7 +313,15 @@ namespace {
 
             // Create the resources for the eye tracker.
             XrEyeTrackerCreateInfoFB createInfo{XR_TYPE_EYE_TRACKER_CREATE_INFO_FB};
-            CHECK_XRCMD(m_xrCreateEyeTrackerFB(session, &createInfo, &m_eyeTracker));
+            const XrResult result = m_xrCreateEyeTrackerFB(session, &createInfo, &m_eyeTracker);
+            if (XR_FAILED(result)) {
+                if (result != XR_ERROR_RUNTIME_FAILURE) {
+                    CHECK_XRCMD(result);
+                } else {
+                    Log("xrCreateEyeTrackerFB() failed with XR_ERROR_RUNTIME_FAILURE! This is an Oculus platform "
+                        "software bug, please file a report to Meta!\n");
+                }
+            }
         }
 
         void endSession() override {
@@ -326,6 +334,10 @@ namespace {
         }
 
         bool getEyeGaze(XrVector3f& projectedPoint) const override {
+            if (m_eyeTracker == XR_NULL_HANDLE) {
+                return false;
+            }
+
             XrEyeGazesInfoFB eyeGazeInfo{XR_TYPE_EYE_GAZES_INFO_FB};
             eyeGazeInfo.baseSpace = m_viewSpace;
             eyeGazeInfo.time = m_frameTime;
