@@ -142,7 +142,8 @@ namespace {
             m_configManager->setDefault(config::SettingVRSYOffset, 0);
             m_configManager->setDefault(config::SettingVRSPreferHorizontal, 0);
             m_configManager->setDefault(config::SettingVRSLeftRightBias, 0);
-            m_configManager->setDefault(config::SettingVRSScaleFilter, 80);
+            // Fix issue in iRacing: https://forums.iracing.com/discussion/comment/310749
+            m_configManager->setDefault(config::SettingVRSScaleFilter, m_applicationName != "iRacingSim64DX11" ? 80 : 90);
             m_configManager->setDefault(config::SettingVRSCullHAM, 0);
 
             // Appearance.
