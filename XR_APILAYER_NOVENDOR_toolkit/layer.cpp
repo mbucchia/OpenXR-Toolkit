@@ -1535,7 +1535,9 @@ namespace {
                 TraceLoggingWrite(g_traceProvider, "xrAcquireSwapchainImage", TLArg(*index, "Index"));
 
                 // Arbitrary location to simulate workload.
-                m_graphicsDevice->executeDebugWorkload();
+                if (m_graphicsDevice) {
+                    m_graphicsDevice->executeDebugWorkload();
+                }
             }
 
             return result;
