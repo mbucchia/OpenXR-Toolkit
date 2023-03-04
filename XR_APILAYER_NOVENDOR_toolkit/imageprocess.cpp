@@ -39,7 +39,9 @@ namespace {
     struct alignas(16) ImageProcessorConfig {
         XrVector4f Params1; // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
         XrVector4f Params2; // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
-        XrVector4f Params3; // Highlights, Shadows, Vibrance (0..1 params)
+        XrVector4f Params3; // Highlights, Shadows, Vibrance (0..1 params), UseCA (0 = off, 1 = on)
+        XrVector4f Params4; // ChromaticCorrectionR, ChromaticCorrectionG, ChromaticCorrectionB (-1..+1 params)
+                            // Eye (0 = left, 1 = right)
     };
 
     class ImageProcessor : public IImageProcessor {
@@ -70,8 +72,21 @@ namespace {
         void process(std::shared_ptr<ITexture> input,
                      std::shared_ptr<ITexture> output,
                      std::vector<std::shared_ptr<ITexture>>& textures,
-                     std::array<uint8_t, 1024>& blob) override {
-            const auto usePostProcess = m_mode != PostProcessType::Off;
+                     std::array<uint8_t, 1024>& blob,
+                     std::optional<utilities::Eye> eye = std::nullopt) override {
+            // We need to use a per-instance blob.
+            static_assert(sizeof(ImageProcessorConfig) <= 1024);
+            ImageProcessorConfig* const config = reinterpret_cast<ImageProcessorConfig*>(blob.data());
+
+            memcpy(config, &m_config, sizeof(m_config));
+
+            // Patch the eye.
+            config->Params4.w = (float)eye.value_or(utilities::Eye::Both);
+
+            // TODO: We can use an IShaderBuffer cache per swapchain and avoid this every frame.
+            m_cbParams->uploadData(config, sizeof(*config));
+
+            const auto usePostProcess = m_mode == PostProcessType::On;
             m_device->setShader(m_shaders[usePostProcess], SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_cbParams);
             m_device->setShaderInput(0, input);
@@ -111,7 +126,10 @@ namespace {
                        m_configManager->hasChanged(SettingPostShadows) ||
                        m_configManager->hasChanged(SettingPostColorGainR) ||
                        m_configManager->hasChanged(SettingPostColorGainG) ||
-                       m_configManager->hasChanged(SettingPostColorGainB);
+                       m_configManager->hasChanged(SettingPostColorGainB) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionR) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionG) ||
+                       m_configManager->hasChanged(SettingPostChromaticCorrectionB);
             } else {
                 return m_configManager->hasChanged(SettingPostColorGainR) ||
                        m_configManager->hasChanged(SettingPostColorGainG) ||
@@ -146,7 +164,16 @@ namespace {
                 StoreXrVector4(&m_config.Params1 + i, (param * kGainBias[i][0]) - kGainBias[i][1]);
             }
 
-            m_cbParams->uploadData(&m_config, sizeof(m_config));
+            // CA Correction stuff.
+            if (m_mode == PostProcessType::CACorrection) {
+                m_config.Params3.w = 1;
+                m_config.Params4.x = m_configManager->getValue(SettingPostChromaticCorrectionR) / 10000.0f;
+                m_config.Params4.y = m_configManager->getValue(SettingPostChromaticCorrectionG) / 10000.0f;
+                m_config.Params4.z = m_configManager->getValue(SettingPostChromaticCorrectionB) / 10000.0f;
+                // Params4.w is patched JIT in process().
+            } else {
+                m_config.Params3.w = 0;
+            }
         }
 
         static std::array<DirectX::XMINT4, 3> GetParams(const IConfigManager* configManager, size_t index) {

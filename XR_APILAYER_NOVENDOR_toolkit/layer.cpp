@@ -160,6 +160,9 @@ namespace {
             m_configManager->setDefault(config::SettingPostVibrance, 0);
             m_configManager->setDefault(config::SettingPostHighlights, 1000);
             m_configManager->setDefault(config::SettingPostShadows, 0);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionR, 10000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionG, 10000);
+            m_configManager->setDefault(config::SettingPostChromaticCorrectionB, 10000);
 
             // TODO: Appearance (User)
 #if 0
@@ -927,6 +930,7 @@ namespace {
                         menuInfo.isVisibilityMaskSupported = m_hasVisibilityMaskKHR;
                         // Our HAM override does not seem to work with OpenComposite.
                         menuInfo.isVisibilityMaskOverrideSupported = !m_isOpenComposite && m_hasVisibilityMaskKHR;
+                        menuInfo.isCACorrectionNeed = m_configManager->isDeveloper() || m_runtimeName.find("Varjo") != std::string::npos;
                         menuInfo.runtimeName = m_runtimeName;
 
                         m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice, menuInfo);
@@ -2927,7 +2931,8 @@ namespace {
                             m_upscaler->process(nextInput,
                                                 swapchainState.upscaledTexture,
                                                 swapchainState.upscalerTextures,
-                                                swapchainState.upscalerBlob);
+                                                swapchainState.upscalerBlob,
+                                                (utilities::Eye)eye);
                             timer->stop();
 
                             nextInput = swapchainState.upscaledTexture;
@@ -2942,7 +2947,8 @@ namespace {
                             m_postProcessor->process(nextInput,
                                                      finalOutput,
                                                      swapchainState.postProcessorTextures,
-                                                     swapchainState.postProcessorBlob);
+                                                     swapchainState.postProcessorBlob,
+                                                     (utilities::Eye)eye);
                             timer->stop();
                         }
 

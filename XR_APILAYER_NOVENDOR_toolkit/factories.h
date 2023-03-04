@@ -170,6 +170,7 @@ namespace toolkit {
             bool isEyeTrackingProjectionDistanceSupported;
             bool isVisibilityMaskSupported;
             bool isVisibilityMaskOverrideSupported;
+            bool isCACorrectionNeed;
             std::string runtimeName;
         };
 

@@ -1518,10 +1518,10 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingPostProcess,
                                      0,
-                                     MenuEntry::LastVal<PostProcessType>(),
+                                     MenuEntry::LastVal<PostProcessType>() - (menuInfo.isCACorrectionNeed ? 0 : 1),
                                      MenuEntry::FmtEnum<PostProcessType>});
             MenuGroup postProcessGroup(this, [&] {
-                return m_configManager->peekEnumValue<PostProcessType>(SettingPostProcess) != PostProcessType::Off;
+                return m_configManager->peekEnumValue<PostProcessType>(SettingPostProcess) == PostProcessType::On;
             });
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Sun Glasses",
@@ -1587,6 +1587,35 @@ namespace {
                                      MenuEntry::FmtDecimal<1>});
             m_menuEntries.back().acceleration = 5;
             postProcessGroup.finalize();
+            MenuGroup caCorrectionGroup(this, [&] {
+                return m_configManager->peekEnumValue<PostProcessType>(SettingPostProcess) == PostProcessType::CACorrection;
+            });
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Red",
+                                     MenuEntryType::Slider,
+                                     SettingPostChromaticCorrectionR,
+                                     0,
+                                     20000,
+                                     MenuEntry::FmtDecimal<2>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Green",
+                                     MenuEntryType::Slider,
+                                     SettingPostChromaticCorrectionG,
+                                     0,
+                                     20000,
+                                     MenuEntry::FmtDecimal<2>});
+            m_menuEntries.back().acceleration = 5;
+            m_menuEntries.back().expert = true;
+            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                     "Blue",
+                                     MenuEntryType::Slider,
+                                     SettingPostChromaticCorrectionB,
+                                     0,
+                                     20000,
+                                     MenuEntry::FmtDecimal<2>});
+            m_menuEntries.back().acceleration = 5;
+            caCorrectionGroup.finalize();
 
             m_menuEntries.push_back(
                 {MenuIndent::OptionIndent, "World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {

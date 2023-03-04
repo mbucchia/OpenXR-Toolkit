@@ -26,7 +26,8 @@
 cbuffer config : register(b0) {
     float4 Params1;  // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
     float4 Params2;  // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
-    float4 Params3;  // Highlights, Shadows, Vibrance (0..1 params)
+    float4 Params3;  // Highlights, Shadows, Vibrance (0..1 params), UseCA (0 = off, 1 = on)
+    float4 Params4;  // ChromaticCorrectionR, ChromaticCorrectionG, ChromaticCorrectionB (-1..+1 params), Eye (0 = left, 1 = right)
 };
 
 SamplerState sourceSampler : register(s0);
@@ -189,7 +190,13 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
 }
 
 float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
-  float3 color = SAMPLE_TEXTURE(texcoord).rgb;
+  float3 color;
+  if (Params3.w) {
+    // TODO: CA Correction code.
+    color = SAMPLE_TEXTURE(texcoord).rgb;
+  } else {
+    color = SAMPLE_TEXTURE(texcoord).rgb;
+  }
 
 #ifdef PASS_THROUGH_USE_GAINS
 #ifdef POST_PROCESS_SRC_SRGB

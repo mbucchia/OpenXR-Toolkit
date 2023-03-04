@@ -63,7 +63,8 @@ namespace {
         void process(std::shared_ptr<ITexture> input,
                      std::shared_ptr<ITexture> output,
                      std::vector<std::shared_ptr<ITexture>>& textures,
-                     std::array<uint8_t, 1024>& blob) override {
+                     std::array<uint8_t, 1024>& blob,
+                     std::optional<utilities::Eye> eye = std::nullopt) override {
             // We need to use a per-instance blob.
             static_assert(sizeof(NISConfig) <= 1024);
             NISConfig* const config = reinterpret_cast<NISConfig*>(blob.data());

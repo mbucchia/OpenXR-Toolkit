@@ -68,7 +68,8 @@ namespace {
         void process(std::shared_ptr<ITexture> input,
                      std::shared_ptr<ITexture> output,
                      std::vector<std::shared_ptr<ITexture>>& textures,
-                     std::array<uint8_t, 1024>& blob) override {
+                     std::array<uint8_t, 1024>& blob,
+                     std::optional<utilities::Eye> eye = std::nullopt) override {
             // We need to use a per-instance blob.
             static_assert(sizeof(FSRConstants) <= 1024);
             FSRConstants* const config = reinterpret_cast<FSRConstants*>(blob.data());
