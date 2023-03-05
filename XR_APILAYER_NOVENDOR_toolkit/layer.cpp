@@ -202,14 +202,6 @@ namespace {
             m_configManager->setDefault(config::SettingTargetFrameRate, config::MaxFrameRate); // Off
             m_configManager->setDefault(config::SettingTargetFrameRate2, 0);
 
-            // Misc debug.
-            m_configManager->setDefault("debug_layer",
-#ifdef _DEBUG
-                                        1
-#else
-                                        0
-#endif
-            );
             // We disable the API interceptor with certain games where it seems to cause issues. As a result, foveated
             // rendering will not be offered.
             m_configManager->setDefault(config::SettingDisableInterceptor,
@@ -309,12 +301,6 @@ namespace {
             if (m_configManager->isSafeMode()) {
                 TraceLoggingWrite(g_traceProvider, "SafeMode");
                 Log("SAFE MODE IS ENABLED! NO SETTINGS ARE LOADED!\n");
-            }
-
-            // Hook to enable Direct3D Debug layer on request.
-            if (m_configManager->getValue("debug_layer")) {
-                graphics::HookForD3D11DebugLayer();
-                graphics::EnableD3D12DebugLayer();
             }
 
             // Check what keys to use.
@@ -427,8 +413,6 @@ namespace {
             }
 
             utilities::RestoreTimerPrecision();
-
-            graphics::UnhookForD3D11DebugLayer();
         }
 
         XrResult xrGetSystem(XrInstance instance, const XrSystemGetInfo* getInfo, XrSystemId* systemId) override {

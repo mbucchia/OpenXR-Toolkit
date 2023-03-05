@@ -893,17 +893,6 @@ void main(uint3 id : SV_DispatchThreadID)
                 }
             }
 
-            // Initialize Debug layer logging.
-            if (!textOnly && configManager->getValue("debug_layer")) {
-                if (SUCCEEDED(m_device->QueryInterface(set(m_infoQueue)))) {
-                    Log("D3D11 Debug layer is enabled\n");
-                } else {
-                    Log("Failed to enable debug layer - please check that the 'Graphics Tools' feature of Windows "
-                        "is "
-                        "installed\n");
-                }
-            }
-
             // Create common resources.
             if (!textOnly) {
                 // Workaround: the Oculus OpenXR Runtime for DX11 seems to intercept some of the D3D calls as well.
@@ -1019,12 +1008,6 @@ void main(uint3 id : SV_DispatchThreadID)
             if (m_lateInitCountdown && --m_lateInitCountdown == 0) {
                 Log("Late initializeInterceptor() call\n");
                 initializeInterceptor();
-            }
-
-            // Log any messages from the Debug layer.
-            if (auto count = m_infoQueue ? m_infoQueue->GetNumStoredMessages() : 0) {
-                LogInfoQueueMessage(get(m_infoQueue), count);
-                m_infoQueue->ClearStoredMessages();
             }
 
             if (isEndOfFrame) {
@@ -2042,8 +2025,6 @@ void main(uint3 id : SV_DispatchThreadID)
         int32_t m_currentDrawDepthBufferSlice;
         std::shared_ptr<ISimpleMesh> m_currentMesh;
 
-        ComPtr<ID3D11InfoQueue> m_infoQueue;
-
         config::MipMapBias m_mipMapBiasingType{config::MipMapBias::Off};
         float m_mipMapBias{0.f};
         mutable uint32_t m_numBiasedSamplersThisFrame{0};
@@ -2298,85 +2279,9 @@ void main(uint3 id : SV_DispatchThreadID)
         }
     };
 
-    decltype(D3D11CreateDeviceAndSwapChain)* g_original_D3D11CreateDeviceAndSwapChain = nullptr;
-
-    HRESULT STDMETHODCALLTYPE Hooked_D3D11CreateDeviceAndSwapChain(IDXGIAdapter* pAdapter,
-                                                                   D3D_DRIVER_TYPE DriverType,
-                                                                   HMODULE Software,
-                                                                   UINT Flags,
-                                                                   const D3D_FEATURE_LEVEL* pFeatureLevels,
-                                                                   UINT FeatureLevels,
-                                                                   UINT SDKVersion,
-                                                                   const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
-                                                                   IDXGISwapChain** ppSwapChain,
-                                                                   ID3D11Device** ppDevice,
-                                                                   D3D_FEATURE_LEVEL* pFeatureLevel,
-                                                                   ID3D11DeviceContext** ppImmediateContext) {
-        assert(g_original_D3D11CreateDeviceAndSwapChain);
-
-        Log("Creating D3D11 device with D3D11_CREATE_DEVICE_DEBUG flag\n");
-        return g_original_D3D11CreateDeviceAndSwapChain(pAdapter,
-                                                        DriverType,
-                                                        Software,
-                                                        Flags | D3D11_CREATE_DEVICE_DEBUG,
-                                                        pFeatureLevels,
-                                                        FeatureLevels,
-                                                        SDKVersion,
-                                                        pSwapChainDesc,
-                                                        ppSwapChain,
-                                                        ppDevice,
-                                                        pFeatureLevel,
-                                                        ppImmediateContext);
-    }
-
-    decltype(D3D11CreateDevice)* g_original_D3D11CreateDevice = nullptr;
-
-    HRESULT STDMETHODCALLTYPE Hooked_D3D11CreateDevice(IDXGIAdapter* pAdapter,
-                                                       D3D_DRIVER_TYPE DriverType,
-                                                       HMODULE Software,
-                                                       UINT Flags,
-                                                       const D3D_FEATURE_LEVEL* pFeatureLevels,
-                                                       UINT FeatureLevels,
-                                                       UINT SDKVersion,
-                                                       ID3D11Device** ppDevice,
-                                                       D3D_FEATURE_LEVEL* pFeatureLevel,
-                                                       ID3D11DeviceContext** ppImmediateContext) {
-        assert(g_original_D3D11CreateDevice);
-
-        // The actual implementation of D3D11CreateDevice() seems to call D3D11CreateDeviceAndSwapChain(). In order to
-        // avoid recursion, we follow the same pattern.
-        return Hooked_D3D11CreateDeviceAndSwapChain(pAdapter,
-                                                    DriverType,
-                                                    Software,
-                                                    Flags,
-                                                    pFeatureLevels,
-                                                    FeatureLevels,
-                                                    SDKVersion,
-                                                    nullptr,
-                                                    nullptr,
-                                                    ppDevice,
-                                                    pFeatureLevel,
-                                                    ppImmediateContext);
-    }
-
 } // namespace
 
 namespace toolkit::graphics {
-    void HookForD3D11DebugLayer() {
-        DetourDllAttach("d3d11.dll",
-                        "D3D11CreateDeviceAndSwapChain",
-                        Hooked_D3D11CreateDeviceAndSwapChain,
-                        g_original_D3D11CreateDeviceAndSwapChain);
-        DetourDllAttach("d3d11.dll", "D3D11CreateDevice", Hooked_D3D11CreateDevice, g_original_D3D11CreateDevice);
-    }
-
-    void UnhookForD3D11DebugLayer() {
-        DetourDllDetach("d3d11.dll",
-                        "D3D11CreateDeviceAndSwapChain",
-                        Hooked_D3D11CreateDeviceAndSwapChain,
-                        g_original_D3D11CreateDeviceAndSwapChain);
-        DetourDllDetach("d3d11.dll", "D3D11CreateDevice", Hooked_D3D11CreateDevice, g_original_D3D11CreateDevice);
-    }
 
     std::shared_ptr<IDevice> WrapD3D11Device(ID3D11Device* device,
                                              std::shared_ptr<config::IConfigManager> configManager,
