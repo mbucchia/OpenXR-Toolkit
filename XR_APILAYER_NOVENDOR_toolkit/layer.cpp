@@ -828,67 +828,6 @@ namespace {
                     m_performanceCounters.lastWindowStart = std::chrono::steady_clock::now();
 
                     {
-                        uint32_t formatCount = 0;
-                        CHECK_XRCMD(xrEnumerateSwapchainFormats(*session, 0, &formatCount, nullptr));
-                        std::vector<int64_t> formats(formatCount);
-                        CHECK_XRCMD(xrEnumerateSwapchainFormats(*session, formatCount, &formatCount, formats.data()));
-
-                        XrSwapchainCreateInfo swapchainInfo{XR_TYPE_SWAPCHAIN_CREATE_INFO};
-                        swapchainInfo.width = swapchainInfo.height =
-                            2048; // Let's hope the menu doesn't get bigger than that.
-                        swapchainInfo.arraySize = 1;
-                        swapchainInfo.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
-                        swapchainInfo.format = formats[0];
-                        swapchainInfo.sampleCount = 1;
-                        swapchainInfo.faceCount = 1;
-                        swapchainInfo.mipCount = 1;
-                        CHECK_XRCMD(OpenXrApi::xrCreateSwapchain(*session, &swapchainInfo, &m_menuSwapchain));
-                        TraceLoggingWrite(g_traceProvider, "MenuSwapchain", TLPArg(m_menuSwapchain, "Swapchain"));
-
-                        uint32_t imageCount;
-                        CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(m_menuSwapchain, 0, &imageCount, nullptr));
-
-                        SwapchainState swapchainState;
-                        int64_t overrideFormat = 0;
-                        if (m_graphicsDevice->getApi() == graphics::Api::D3D11) {
-                            std::vector<XrSwapchainImageD3D11KHR> d3dImages(imageCount,
-                                                                            {XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
-                            CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(
-                                m_menuSwapchain,
-                                imageCount,
-                                &imageCount,
-                                reinterpret_cast<XrSwapchainImageBaseHeader*>(d3dImages.data())));
-
-                            for (uint32_t i = 0; i < imageCount; i++) {
-                                m_menuSwapchainImages.push_back(
-                                    graphics::WrapD3D11Texture(m_graphicsDevice,
-                                                               swapchainInfo,
-                                                               d3dImages[i].texture,
-                                                               fmt::format("Menu swapchain {} TEX2D", i)));
-                            }
-                        } else if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
-                            std::vector<XrSwapchainImageD3D12KHR> d3dImages(imageCount,
-                                                                            {XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR});
-                            CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(
-                                m_menuSwapchain,
-                                imageCount,
-                                &imageCount,
-                                reinterpret_cast<XrSwapchainImageBaseHeader*>(d3dImages.data())));
-
-                            for (uint32_t i = 0; i < imageCount; i++) {
-                                m_menuSwapchainImages.push_back(
-                                    graphics::WrapD3D12Texture(m_graphicsDevice,
-                                                               swapchainInfo,
-                                                               d3dImages[i].texture,
-                                                               D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                                               fmt::format("Menu swapchain {} TEX2D", i)));
-                            }
-                        } else {
-                            throw std::runtime_error("Unsupported graphics runtime");
-                        }
-                    }
-
-                    {
                         menu::MenuInfo menuInfo;
                         menuInfo.displayWidth = m_displayWidth;
                         menuInfo.displayHeight = m_displayHeight;
@@ -914,7 +853,8 @@ namespace {
                         menuInfo.isVisibilityMaskSupported = m_hasVisibilityMaskKHR;
                         // Our HAM override does not seem to work with OpenComposite.
                         menuInfo.isVisibilityMaskOverrideSupported = !m_isOpenComposite && m_hasVisibilityMaskKHR;
-                        menuInfo.isCACorrectionNeed = m_configManager->isDeveloper() || m_runtimeName.find("Varjo") != std::string::npos;
+                        menuInfo.isCACorrectionNeed =
+                            m_configManager->isDeveloper() || m_runtimeName.find("Varjo") != std::string::npos;
                         menuInfo.runtimeName = m_runtimeName;
 
                         m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice, menuInfo);
@@ -2640,6 +2580,11 @@ namespace {
 
             // Handle inputs.
             if (m_menuHandler) {
+                // Defer creating the menu swapchain to avoid issues with OpenComposite double-initialization.
+                if (m_menuSwapchain == XR_NULL_HANDLE) {
+                    createMenuSwapchain();
+                }
+
                 m_menuHandler->handleInput();
             }
 
@@ -3356,6 +3301,64 @@ namespace {
             }
 
             return xrTimeNow;
+        }
+
+        void createMenuSwapchain() {
+            uint32_t formatCount = 0;
+            CHECK_XRCMD(xrEnumerateSwapchainFormats(m_vrSession, 0, &formatCount, nullptr));
+            std::vector<int64_t> formats(formatCount);
+            CHECK_XRCMD(xrEnumerateSwapchainFormats(m_vrSession, formatCount, &formatCount, formats.data()));
+
+            XrSwapchainCreateInfo swapchainInfo{XR_TYPE_SWAPCHAIN_CREATE_INFO};
+            swapchainInfo.width = swapchainInfo.height = 2048; // Let's hope the menu doesn't get bigger than that.
+            swapchainInfo.arraySize = 1;
+            swapchainInfo.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+            swapchainInfo.format = formats[0];
+            swapchainInfo.sampleCount = 1;
+            swapchainInfo.faceCount = 1;
+            swapchainInfo.mipCount = 1;
+            CHECK_XRCMD(OpenXrApi::xrCreateSwapchain(m_vrSession, &swapchainInfo, &m_menuSwapchain));
+            TraceLoggingWrite(g_traceProvider, "MenuSwapchain", TLPArg(m_menuSwapchain, "Swapchain"));
+
+            uint32_t imageCount;
+            CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(m_menuSwapchain, 0, &imageCount, nullptr));
+
+            SwapchainState swapchainState;
+            int64_t overrideFormat = 0;
+            if (m_graphicsDevice->getApi() == graphics::Api::D3D11) {
+                std::vector<XrSwapchainImageD3D11KHR> d3dImages(imageCount, {XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
+                CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(
+                    m_menuSwapchain,
+                    imageCount,
+                    &imageCount,
+                    reinterpret_cast<XrSwapchainImageBaseHeader*>(d3dImages.data())));
+
+                for (uint32_t i = 0; i < imageCount; i++) {
+                    m_menuSwapchainImages.push_back(
+                        graphics::WrapD3D11Texture(m_graphicsDevice,
+                                                   swapchainInfo,
+                                                   d3dImages[i].texture,
+                                                   fmt::format("Menu swapchain {} TEX2D", i)));
+                }
+            } else if (m_graphicsDevice->getApi() == graphics::Api::D3D12) {
+                std::vector<XrSwapchainImageD3D12KHR> d3dImages(imageCount, {XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR});
+                CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(
+                    m_menuSwapchain,
+                    imageCount,
+                    &imageCount,
+                    reinterpret_cast<XrSwapchainImageBaseHeader*>(d3dImages.data())));
+
+                for (uint32_t i = 0; i < imageCount; i++) {
+                    m_menuSwapchainImages.push_back(
+                        graphics::WrapD3D12Texture(m_graphicsDevice,
+                                                   swapchainInfo,
+                                                   d3dImages[i].texture,
+                                                   D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                                   fmt::format("Menu swapchain {} TEX2D", i)));
+                }
+            } else {
+                throw std::runtime_error("Unsupported graphics runtime");
+            }
         }
 
         std::string m_applicationName;
