@@ -190,10 +190,22 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
 }
 
 float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
+
   float3 color;
   if (Params3.w) {
-    // TODO: CA Correction code.
-    color = SAMPLE_TEXTURE(texcoord).rgb;
+    float2 correctionOrigin = float2(0.313, 0.42);
+    if (Params4.w) {
+        correctionOrigin.x = 1 - correctionOrigin.x;
+    }
+
+    float2 uvr = ((texcoord - correctionOrigin) * Params4.r) + correctionOrigin;
+    color.r = SAMPLE_TEXTURE(uvr).r;
+
+    float2 uvg = ((texcoord - correctionOrigin) * Params4.g) + correctionOrigin;
+    color.g = SAMPLE_TEXTURE(uvg).g;
+
+    float2 uvb = ((texcoord - correctionOrigin) * Params4.b) + correctionOrigin;
+    color.b = SAMPLE_TEXTURE(uvb).b;
   } else {
     color = SAMPLE_TEXTURE(texcoord).rgb;
   }
