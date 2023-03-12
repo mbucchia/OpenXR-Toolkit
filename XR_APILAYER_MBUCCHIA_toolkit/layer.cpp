@@ -451,7 +451,7 @@ namespace {
                 // Migrate the value upon first run.
                 m_configManager->setDefault("resolution_width", 0);
                 if (m_configManager->getValue("resolution_width") != 0) {
-                    const int migratedValue = m_configManager->getValue("resolution_width") * m_resolutionHeightRatio;
+                    const int migratedValue = (int)(m_configManager->getValue("resolution_width") * m_resolutionHeightRatio);
                     m_configManager->setValue(config::SettingResolutionHeight, migratedValue, true);
                     m_configManager->deleteValue("resolution_width");
                     m_configManager->tick();
