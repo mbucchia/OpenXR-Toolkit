@@ -1607,26 +1607,26 @@ namespace {
                                      "Red",
                                      MenuEntryType::Slider,
                                      SettingPostChromaticCorrectionR,
-                                     0,
-                                     20000,
-                                     MenuEntry::FmtDecimal<2>});
+                                     98000,
+                                     102000,
+                                     MenuEntry::FmtDecimal<3>});
             m_menuEntries.back().acceleration = 5;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Green",
                                      MenuEntryType::Slider,
                                      SettingPostChromaticCorrectionG,
-                                     0,
-                                     20000,
-                                     MenuEntry::FmtDecimal<2>});
+                                     98000,
+                                     102000,
+                                     MenuEntry::FmtDecimal<3>});
             m_menuEntries.back().acceleration = 5;
             m_menuEntries.back().expert = true;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Blue",
                                      MenuEntryType::Slider,
                                      SettingPostChromaticCorrectionB,
-                                     0,
-                                     20000,
-                                     MenuEntry::FmtDecimal<2>});
+                                     98000,
+                                     102000,
+                                     MenuEntry::FmtDecimal<3>});
             m_menuEntries.back().acceleration = 5;
             caCorrectionGroup.finalize();
 

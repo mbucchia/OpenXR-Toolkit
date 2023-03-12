@@ -167,9 +167,9 @@ namespace {
             // CA Correction stuff.
             if (m_mode == PostProcessType::CACorrection) {
                 m_config.Params3.w = 1;
-                m_config.Params4.x = m_configManager->getValue(SettingPostChromaticCorrectionR) / 10000.0f;
-                m_config.Params4.y = m_configManager->getValue(SettingPostChromaticCorrectionG) / 10000.0f;
-                m_config.Params4.z = m_configManager->getValue(SettingPostChromaticCorrectionB) / 10000.0f;
+                m_config.Params4.x = m_configManager->getValue(SettingPostChromaticCorrectionR) / 100000.0f;
+                m_config.Params4.y = m_configManager->getValue(SettingPostChromaticCorrectionG) / 100000.0f;
+                m_config.Params4.z = m_configManager->getValue(SettingPostChromaticCorrectionB) / 100000.0f;
                 // Params4.w is patched JIT in process().
             } else {
                 m_config.Params3.w = 0;
