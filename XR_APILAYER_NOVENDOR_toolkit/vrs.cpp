@@ -253,27 +253,58 @@ namespace {
                 m_currentGen++;
             }
 
-            // Age all masks. If they are used in this frame, their age will be reset to 0.
-            size_t index = 0;
-            for (auto it = m_shadingRateMask.begin(); it != m_shadingRateMask.end();) {
-                // Evict old entries.
-                if (++it->age > MaxAge) {
-                    it = m_shadingRateMask.erase(it);
+            m_device->blockCallbacks();
+            m_device->saveContext();
 
-                    if (m_NvShadingRateResources.views.size()) {
-                        // TODO: Leak NVAPI resources for now, since there is an occasional crash.
-                        LeakNVAPIResource(index);
-                        m_NvShadingRateResources.views.erase(m_NvShadingRateResources.views.begin() + index);
-                        m_NvShadingRateResources.viewsDoubleWide.erase(
-                            m_NvShadingRateResources.viewsDoubleWide.begin() + index);
-                        m_NvShadingRateResources.viewsTextureArray.erase(
-                            m_NvShadingRateResources.viewsTextureArray.begin() + index);
+            {
+                std::unique_lock lock(m_shadingRateMaskLock);
+
+                // Update all masks.
+                size_t index = 0;
+                for (auto it = m_shadingRateMask.begin(); it != m_shadingRateMask.end();) {
+                    // Age all masks.
+                    if (++it->age > MaxAge) {
+                        // Evict old entries. If a mask is used in a frame, its age is to 0.
+                        TraceLocalActivity(local);
+                        TraceLoggingWriteStart(local,
+                                               "VariableRateShading_DestroyMask",
+                                               TLArg(it->widthInTiles, "WidthInTiles"),
+                                               TLArg(it->heightInTiles, "HeightInTiles"),
+                                               TLArg("DiedOfAge", "State"));
+
+                        it = m_shadingRateMask.erase(it);
+
+                        if (m_NvShadingRateResources.views.size()) {
+                            // TODO: Leak NVAPI resources for now, since there is an occasional crash.
+                            LeakNVAPIResource(index);
+                            m_NvShadingRateResources.views.erase(m_NvShadingRateResources.views.begin() + index);
+                            m_NvShadingRateResources.viewsDoubleWide.erase(
+                                m_NvShadingRateResources.viewsDoubleWide.begin() + index);
+                            m_NvShadingRateResources.viewsTextureArray.erase(
+                                m_NvShadingRateResources.viewsTextureArray.begin() + index);
+                        }
+
+                        TraceLoggingWriteStop(local, "VariableRateShading_DestroyMask");
+                    } else {
+                        // If this mask is still valid...
+
+                        // ...and is pending creation, create it.
+                        if (!it->mask[0]) {
+                            createMaskResources(*it);
+                        }
+
+                        // ...and eventually, update it.
+                        updateViews(*it);
+
+                        it++;
+                        index++;
                     }
-                } else {
-                    it++;
-                    index++;
                 }
             }
+
+            m_device->restoreContext();
+            m_device->flushContext(false, false);
+            m_device->unblockCallbacks();
 
             m_renderScales.clear();
         }
@@ -354,16 +385,27 @@ namespace {
             const Eye eye = eyeHint.value_or(Eye::Both);
             TraceLoggingWrite(g_traceProvider, "EnableVariableRateShading", TLArg(isDoubleWide, "IsDoubleWide"));
 
-            if (auto context11 = context->getAs<D3D11>()) {
-                if (m_currentState.isActive && m_currentState.width == info.width &&
-                    m_currentState.height == info.height && m_currentState.eye == eye) {
-                    TraceLoggingWrite(g_traceProvider, "SkipEnableVariableRateShading");
+            size_t maskIndex;
+            {
+                std::unique_lock lock(m_shadingRateMaskLock);
+
+                if (!getMaskIndex(isDoubleWide ? info.width / 2 : info.width, info.height, maskIndex)) {
+                    // Creation was deferred to the next frame.
+                    TraceLoggingWrite(
+                        g_traceProvider, "SkipEnableVariableRateShading", TLArg("DeferredCreation", "Reason"));
                     return true;
                 }
 
-                size_t maskIndex;
-                updateViews(
-                    getOrCreateMaskResources(isDoubleWide ? info.width / 2 : info.width, info.height, &maskIndex));
+                // Reset the age to keep this mask active.
+                m_shadingRateMask[maskIndex].age = 0;
+            }
+
+            if (auto context11 = context->getAs<D3D11>()) {
+                if (m_currentState.isActive && m_currentState.width == info.width &&
+                    m_currentState.height == info.height && m_currentState.eye == eye) {
+                    TraceLoggingWrite(g_traceProvider, "SkipEnableVariableRateShading", TLArg("AlreadySet", "Reason"));
+                    return true;
+                }
 
                 // We set VRS on all viewports in case multiple views render in parallel.
                 NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
@@ -393,38 +435,18 @@ namespace {
                     return false;
                 }
 
-                {
-                    std::unique_lock lock(m_shadingRateMaskLock);
+                // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
 
-                    auto& maskForSize =
-                        getOrCreateMaskResources(isDoubleWide ? info.width / 2 : info.width, info.height);
-                    updateViews(maskForSize);
+                auto mask = isDoubleWide ? m_shadingRateMask[maskIndex].maskDoubleWide
+                                         : m_shadingRateMask[maskIndex].mask[(size_t)eye];
 
-                    // TODO: With DX12, the mask cannot be a texture array. For now we just use the generic mask.
-
-                    // Use the special SHADING_RATE_SOURCE resource state for barriers on the VRS surface
-                    auto mask = isDoubleWide ? maskForSize.maskDoubleWide : maskForSize.mask[(size_t)eye];
-                    mask->setState(D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE);
-
-                    // For now, we update the mask upon the next call to xrEndFrame(). This introduces a frame latency,
-                    // but is much safer to do.
-#if 0
-                    // The commands above must execute in a different command list than the app command list to avoid
-                    // trashing it, but it must execute prior to applying the VRS mask. Here we assume that the game
-                    // uses only the command queue that it passed to the runtime. There is no need for a fence here
-                    // because we know the app command list will be executed later, therefore ensuring correct ordering.
-                    m_device->flushContext();
-#endif
-
-                    // RSSetShadingRate() function sets both the combiners and the per-drawcall shading rate.
-                    // We set to 1X1 for all sources and all combiners to MAX, so that the coarsest wins (per-drawcall,
-                    // per-primitive, VRS surface).
-                    static const D3D12_SHADING_RATE_COMBINER combiners[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT] = {
-                        D3D12_SHADING_RATE_COMBINER_MAX, D3D12_SHADING_RATE_COMBINER_MAX};
-                    vrsCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiners);
-                    vrsCommandList->RSSetShadingRateImage(mask->getAs<D3D12>());
-                }
-
+                // RSSetShadingRate() function sets both the combiners and the per-drawcall shading rate.
+                // We set to 1X1 for all sources and all combiners to MAX, so that the coarsest wins (per-drawcall,
+                // per-primitive, VRS surface).
+                static const D3D12_SHADING_RATE_COMBINER combiners[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT] = {
+                    D3D12_SHADING_RATE_COMBINER_MAX, D3D12_SHADING_RATE_COMBINER_MAX};
+                vrsCommandList->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiners);
+                vrsCommandList->RSSetShadingRateImage(mask->getAs<D3D12>());
             } else {
                 throw std::runtime_error("Unsupported graphics runtime");
             }
@@ -711,21 +733,27 @@ namespace {
             m_gazeLocation[2].y = m_gazeOffset[2].y;
         }
 
-        ShadingRateMask& getOrCreateMaskResources(uint32_t width, uint32_t height, size_t* index = nullptr) {
+        bool getMaskIndex(uint32_t width, uint32_t height, size_t& index) {
             const auto texW = xr::math::DivideRoundingUp(width, m_tileSize);
             const auto texH = xr::math::DivideRoundingUp(height, m_tileSize);
 
             // Look-up existing resources.
             for (size_t i = 0; i < m_shadingRateMask.size(); i++) {
                 if (m_shadingRateMask[i].widthInTiles == texW && m_shadingRateMask[i].heightInTiles == texH) {
-                    if (index) {
-                        *index = i;
-                    }
-                    return m_shadingRateMask[i];
+                    index = i;
+
+                    // Do not return invalid masks deferred to the next frame.
+                    return !!m_shadingRateMask[i].mask[0];
                 }
             }
 
-            TraceLoggingWrite(g_traceProvider, "VariableRateShading_Mask", TLArg(width), TLArg(height));
+            TraceLoggingWrite(g_traceProvider,
+                              "VariableRateShading_CreateMask",
+                              TLArg(width, "Width"),
+                              TLArg(height, "Height"),
+                              TLArg(texW, "WidthInTiles"),
+                              TLArg(texH, "HeightInTiles"),
+                              TLArg("Deferred", "State"));
 
             ShadingRateMask newMask;
             newMask.widthInTiles = texW;
@@ -733,11 +761,25 @@ namespace {
             newMask.age = 0;
             newMask.gen = 0;
 
+            // Defer creation to the next beginFrame() event.
+            m_shadingRateMask.push_back(newMask);
+
+            return false;
+        }
+
+        void createMaskResources(ShadingRateMask& mask) {
+            TraceLocalActivity(local);
+            TraceLoggingWriteStart(local,
+                                   "VariableRateShading_CreateMask",
+                                   TLArg(mask.widthInTiles, "WidthInTiles"),
+                                   TLArg(mask.heightInTiles, "HeightInTiles"),
+                                   TLArg("Current", "State"));
+
             // Initialize shading rate resources
             XrSwapchainCreateInfo info;
             ZeroMemory(&info, sizeof(info));
-            info.width = texW;
-            info.height = texH;
+            info.width = mask.widthInTiles;
+            info.height = mask.heightInTiles;
             info.format = DXGI_FORMAT_R8_UINT;
             info.arraySize = 1;
             info.mipCount = 1;
@@ -745,20 +787,18 @@ namespace {
             info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT |
                               XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
 
-            for (auto& it : newMask.mask) {
+            for (auto& it : mask.mask) {
                 it = m_device->createTexture(info, "VRS TEX2D");
             }
             info.width *= 2;
-            newMask.maskDoubleWide = m_device->createTexture(info, "VRS DoubleWide TEX2D");
-            info.width = texW;
+            mask.maskDoubleWide = m_device->createTexture(info, "VRS DoubleWide TEX2D");
+            info.width = mask.widthInTiles;
             info.arraySize = 2;
-            newMask.maskTextureArray = m_device->createTexture(info, "VRS TextureArray TEX2D");
+            mask.maskTextureArray = m_device->createTexture(info, "VRS TextureArray TEX2D");
 
-            for (auto& it : newMask.cbShading) {
+            for (auto& it : mask.cbShading) {
                 it = m_device->createBuffer(sizeof(ShadingConstants), "VRS CB");
             }
-
-            m_shadingRateMask.push_back(newMask);
 
             if (auto device11 = m_device->getAs<D3D11>()) {
                 NV_D3D11_SHADING_RATE_RESOURCE_VIEW_DESC desc;
@@ -773,17 +813,17 @@ namespace {
                 m_NvShadingRateResources.viewsDoubleWide.push_back({});
                 m_NvShadingRateResources.viewsTextureArray.push_back({});
 
-                for (size_t i = 0; i < std::size(newMask.mask); i++) {
+                for (size_t i = 0; i < std::size(mask.mask); i++) {
                     CHECK_NVCMD(
                         NvAPI_D3D11_CreateShadingRateResourceView(device11,
-                                                                  newMask.mask[i]->getAs<D3D11>(),
+                                                                  mask.mask[i]->getAs<D3D11>(),
                                                                   &desc,
                                                                   set(m_NvShadingRateResources.views[newIndex][i])));
                 }
 
                 CHECK_NVCMD(
                     NvAPI_D3D11_CreateShadingRateResourceView(device11,
-                                                              newMask.maskDoubleWide->getAs<D3D11>(),
+                                                              mask.maskDoubleWide->getAs<D3D11>(),
                                                               &desc,
                                                               set(m_NvShadingRateResources.viewsDoubleWide[newIndex])));
 
@@ -791,29 +831,26 @@ namespace {
                 desc.Texture2DArray.ArraySize = 2;
                 CHECK_NVCMD(NvAPI_D3D11_CreateShadingRateResourceView(
                     device11,
-                    newMask.maskTextureArray->getAs<D3D11>(),
+                    mask.maskTextureArray->getAs<D3D11>(),
                     &desc,
                     set(m_NvShadingRateResources.viewsTextureArray[newIndex])));
             }
 
-            if (index) {
-                *index = m_shadingRateMask.size() - 1;
-            }
-            return m_shadingRateMask.back();
+            TraceLoggingWriteStop(local, "VariableRateShading_CreateMask");
         }
 
         void updateViews(ShadingRateMask& mask) {
-            // Reset the age to keep this mask active.
-            mask.age = 0;
-
             // Check if this mask needs to be updated.
             if (mask.gen == m_currentGen) {
                 return;
             }
             mask.gen = m_currentGen;
 
-            // No-op on D3D12, see flush in the caller.
-            m_device->saveContext();
+            TraceLocalActivity(local);
+            TraceLoggingWriteStart(local,
+                                   "VariableRateShading_UpdateMask",
+                                   TLArg(mask.widthInTiles, "WidthInTiles"),
+                                   TLArg(mask.heightInTiles, "HeightInTiles"));
 
             for (size_t i = 0; i < std::size(mask.mask); i++) {
                 m_device->setRenderTargets(1, &mask.mask[i]);
@@ -841,6 +878,7 @@ namespace {
                 mask.mask[i]->setState(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 m_device->setShaderOutput(0, mask.mask[i]);
                 m_device->dispatchShader();
+                mask.mask[i]->setState(D3D12_RESOURCE_STATE_COPY_SOURCE);
             }
 
             // Copy to the double wide/texture arrays mask.
@@ -849,7 +887,11 @@ namespace {
             mask.mask[0]->copyTo(mask.maskTextureArray, 0, 0, 0);
             mask.mask[1]->copyTo(mask.maskTextureArray, 0, 0, 1);
 
-            m_device->restoreContext();
+            for (size_t i = 0; i < std::size(mask.mask); i++) {
+                mask.mask[i]->setState(D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE);
+            }
+
+            TraceLoggingWriteStop(local, "VariableRateShading_UpdateMask");
         }
 
         ShadingConstants makeShadingConstants(size_t eye, uint32_t texW, uint32_t texH) {
