@@ -69,4 +69,6 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: Setup
-        path: installer/output/OpenXR-Toolkit.msi
+        path: |
+            installer/output/OpenXR-Toolkit.msi
+            bin/x64/Release/XR_APILAYER_MBUCCHIA_toolkit.pdb
