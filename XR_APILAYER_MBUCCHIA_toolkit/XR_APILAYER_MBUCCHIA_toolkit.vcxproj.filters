@@ -165,7 +165,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="XR_APILAYER_NOVENDOR_toolkit.json" />
+    <None Include="XR_APILAYER_MBUCCHIA_toolkit.json" />
     <None Include="framework\dispatch_generator.py">
       <Filter>Framework</Filter>
     </None>

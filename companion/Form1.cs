@@ -42,7 +42,7 @@ namespace companion
 {
     public partial class Form1 : Form
     {
-        [DllImport("XR_APILAYER_NOVENDOR_toolkit.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall)]
+        [DllImport("XR_APILAYER_MBUCCHIA_toolkit.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall)]
         public static extern IntPtr getVersionString();
 
         // Must match config.cpp.
@@ -274,7 +274,7 @@ namespace companion
                         {
                             string layerName = SilkMarshal.PtrToString(new System.IntPtr(nptr));
                             layersList += layerName + "\n";
-                            if (layerName == "XR_APILAYER_NOVENDOR_toolkit")
+                            if (layerName == "XR_APILAYER_MBUCCHIA_toolkit")
                             {
                                 found = true;
                             }
@@ -372,7 +372,7 @@ namespace companion
 
             var assembly = Assembly.GetAssembly(GetType());
             var installPath = Path.GetDirectoryName(assembly.Location);
-            var jsonName = "XR_APILAYER_NOVENDOR_toolkit.json";
+            var jsonName = "XR_APILAYER_MBUCCHIA_toolkit.json";
             var jsonPath = installPath + "\\" + jsonName;
 
             Microsoft.Win32.RegistryKey key = null;
@@ -548,7 +548,7 @@ namespace companion
             var processInfo = new ProcessStartInfo();
             processInfo.Verb = "Open";
             processInfo.UseShellExecute = true;
-            processInfo.FileName = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\OpenXR-Toolkit\\logs\\XR_APILAYER_NOVENDOR_toolkit.log";
+            processInfo.FileName = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\OpenXR-Toolkit\\logs\\XR_APILAYER_MBUCCHIA_toolkit.log";
             try
             {
                 Process.Start(processInfo);

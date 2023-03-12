@@ -1,5 +1,5 @@
 $RegistryPath = "HKLM:\Software\Khronos\OpenXR\1\ApiLayers\Implicit"
-$JsonPath = Join-Path "$PSScriptRoot" "XR_APILAYER_NOVENDOR_toolkit.json"
+$JsonPath = Join-Path "$PSScriptRoot" "XR_APILAYER_MBUCCHIA_toolkit.json"
 
 # Search for Ultraleap.
 $ultraleapPath = $null

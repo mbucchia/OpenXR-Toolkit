@@ -68,9 +68,9 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileVersion", "1.0.0.0"
-            VALUE "InternalName", "XR_APILAYER_NOVENDOR_toolkit.dll"
-            VALUE "LegalCopyright", "Copyright ©2021-2022 Matthieu Bucchianeri, Jean-Luc Dupiot"
-            VALUE "OriginalFilename", "XR_APILAYER_NOVENDOR_toolkit.dll"
+            VALUE "InternalName", "XR_APILAYER_MBUCCHIA_toolkit.dll"
+            VALUE "LegalCopyright", "Copyright ï¿½2021-2022 Matthieu Bucchianeri, Jean-Luc Dupiot"
+            VALUE "OriginalFilename", "XR_APILAYER_MBUCCHIA_toolkit.dll"
             VALUE "ProductName", "OpenXR-Toolkit"
             VALUE "ProductVersion", "1.0.0.0"
         END

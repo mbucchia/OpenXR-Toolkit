@@ -19,7 +19,7 @@ namespace SetupCustomActions
         protected override void OnAfterInstall(IDictionary savedState)
         {
             var installPath = Path.GetDirectoryName(base.Context.Parameters["AssemblyPath"]);
-            var jsonName = "XR_APILAYER_NOVENDOR_toolkit.json";
+            var jsonName = "XR_APILAYER_MBUCCHIA_toolkit.json";
             var jsonPath = installPath + "\\" + jsonName;
 
             // We want to add our layer at the very beginning, so that any other layer like the Ultraleap layer is following us.
@@ -32,7 +32,8 @@ namespace SetupCustomActions
             foreach (var value in existingValues)
             {
                 // Leave the layers that we want to be upstream of us.
-                if (value.EndsWith("\\XR_APILAYER_NOVENDOR_vulkan_d3d12_interop.json"))
+                if (value.EndsWith("\\XR_APILAYER_MBUCCHIA_vulkan_d3d12_interop.json") ||
+                    value.EndsWith("\\XR_APILAYER_NOVENDOR_vulkan_d3d12_interop.json"))
                 {
                     continue;
                 }
@@ -80,7 +81,8 @@ namespace SetupCustomActions
                 }
 
                 // Do not re-create our own key. We did it before this loop.
-                if (value.EndsWith("\\" + jsonName))
+                if (value.EndsWith("\\" + jsonName) ||
+                    value.EndsWith("\\XR_APILAYER_NOVENDOR_toolkit.json"))
                 {
                     continue;
                 }

@@ -653,8 +653,8 @@
         {
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1329253F13154AEDA4C6FCEAB18FB8FA"
             {
-            "SourcePath" = "8:..\\bin\\x64\\Release\\XR_APILAYER_NOVENDOR_toolkit.dll"
-            "TargetName" = "8:XR_APILAYER_NOVENDOR_toolkit.dll"
+            "SourcePath" = "8:..\\bin\\x64\\Release\\XR_APILAYER_MBUCCHIA_toolkit.dll"
+            "TargetName" = "8:XR_APILAYER_MBUCCHIA_toolkit.dll"
             "Tag" = "8:"
             "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
             "Condition" = "8:"
@@ -1205,7 +1205,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7AA43EF3FFAC487494FBEC1C5615C88A"
             {
-            "SourcePath" = "8:..\\XR_APILAYER_NOVENDOR_toolkit\\VRS.hlsl"
+            "SourcePath" = "8:..\\XR_APILAYER_MBUCCHIA_toolkit\\VRS.hlsl"
             "TargetName" = "8:VRS.hlsl"
             "Tag" = "8:"
             "Folder" = "8:_A3E4D480BBBE4121A0414DD516E4AF66"
@@ -1850,7 +1850,7 @@
                                                                 {
                                                                     "{ADCFDA98-8FDD-45E4-90BC-E3D20B029870}:_5FEA3BE5378B49BDBBC0E7EAF2AF49DF"
                                                                     {
-                                                                    "Name" = "8:[TARGETDIR]XR_APILAYER_NOVENDOR_toolkit.json"
+                                                                    "Name" = "8:[TARGETDIR]XR_APILAYER_MBUCCHIA_toolkit.json"
                                                                     "Condition" = "8:"
                                                                     "Transitive" = "11:FALSE"
                                                                     "ValueTypes" = "3:3"
