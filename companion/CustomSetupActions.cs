@@ -67,13 +67,13 @@ namespace SetupCustomActions
                 }
 
                 // We are incompatible with these other API layers.
-                if (value.EndsWith("\\ViveOpenXRFacialTracking.json") && (int)entriesValues[value] == 0)
+                if ((value.EndsWith("\\ViveOpenXRFacialTracking.json") || value.EndsWith("\\ViveOpenXRHandTracking.json")) && (int)entriesValues[value] == 0)
                 {
                     if (incompatibleLayers != "")
                     {
                         incompatibleLayers += ", ";
                     }
-                    incompatibleLayers += "ViveOpenXRFacialTracking.json";
+                    incompatibleLayers += value;
                     detectedIncompatibleLayer = true;
 
                     // This is how we disable a layer.
