@@ -212,11 +212,15 @@ namespace {
             m_menuEntries.back().visible = true; /* Always visible. */
 
             m_turboWarning = L"\x26A0  Turbo Mode prevents Motion Reprojection  \x26A0";
+            m_predictionDampeningWarning = L"\x26A0  Over-prediction reduction breaks Motion Reprojection  \x26A0";
             if (menuInfo.runtimeName.find("Oculus") != std::string::npos) {
                 m_turboWarning = L"\x26A0  Turbo Mode prevents ASW  \x26A0";
+                m_predictionDampeningWarning = L"\x26A0  Over-prediction reduction breaks ASW  \x26A0";
             } else if (menuInfo.runtimeName.find("steam") != std::string::npos ||
-                       menuInfo.runtimeName.find("Steam") != std::string::npos) {
+                       menuInfo.runtimeName.find("Steam") != std::string::npos ||
+                       menuInfo.runtimeName.find("Varjo") != std::string::npos) {
                 m_turboWarning = L"\x26A0  Turbo Mode prevents Motion Smoothing  \x26A0";
+                m_predictionDampeningWarning = L"\x26A0  Over-prediction reduction breaks Motion Smoothing  \x26A0";
             }
         }
 
@@ -676,10 +680,18 @@ namespace {
 
                 {
                     float left = leftAlign;
-                    if (m_configManager->peekValue(SettingTurboMode)) {
+
+                    std::wstring warning;
+                    if (m_currentTab == MenuTab::Performance && m_configManager->peekValue(SettingTurboMode)) {
+                        warning = m_turboWarning;
+                    } else if (m_currentTab == MenuTab::Inputs && m_configManager->peekValue(SettingPredictionDampen) != 100) {
+                        warning = m_predictionDampeningWarning;
+                    }
+
+                    if (!warning.empty()) {
                         top += fontSize;
 
-                        left += m_device->drawString(m_turboWarning,
+                        left += m_device->drawString(warning,
                                                      TextStyle::Bold,
                                                      fontSize,
                                                      leftAlign,
@@ -1588,7 +1600,8 @@ namespace {
             m_menuEntries.back().acceleration = 5;
             postProcessGroup.finalize();
             MenuGroup caCorrectionGroup(this, [&] {
-                return m_configManager->peekEnumValue<PostProcessType>(SettingPostProcess) == PostProcessType::CACorrection;
+                return m_configManager->peekEnumValue<PostProcessType>(SettingPostProcess) ==
+                       PostProcessType::CACorrection;
             });
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Red",
@@ -1633,7 +1646,7 @@ namespace {
 
             if (menuInfo.isPredictionDampeningSupported) {
                 m_menuEntries.push_back({MenuIndent::OptionIndent,
-                                         "Shaking reduction",
+                                         "Over-prediction reduction",
                                          MenuEntryType::Slider,
                                          SettingPredictionDampen,
                                          0,
@@ -2151,6 +2164,7 @@ namespace {
         const bool m_isMotionReprojectionRateSupported;
         const uint8_t m_displayRefreshRate;
         std::wstring m_turboWarning;
+        std::wstring m_predictionDampeningWarning;
         MenuStatistics m_stats{};
         GesturesState m_gesturesState{};
         EyeGazeState m_eyeGazeState{};

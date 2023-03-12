@@ -451,7 +451,8 @@ namespace {
                 // Migrate the value upon first run.
                 m_configManager->setDefault("resolution_width", 0);
                 if (m_configManager->getValue("resolution_width") != 0) {
-                    const int migratedValue = (int)(m_configManager->getValue("resolution_width") * m_resolutionHeightRatio);
+                    const int migratedValue =
+                        (int)(m_configManager->getValue("resolution_width") * m_resolutionHeightRatio);
                     m_configManager->setValue(config::SettingResolutionHeight, migratedValue, true);
                     m_configManager->deleteValue("resolution_width");
                     m_configManager->tick();
@@ -3203,6 +3204,7 @@ namespace {
             chainFrameEndInfo.layers = correctedLayers.data();
             chainFrameEndInfo.layerCount = (uint32_t)correctedLayers.size();
 
+#if 0
             // When using prediction dampening, we want to restore the display time in order to avoid confusing motion
             // reprojection.
             const bool isMotionReprojectionOn =
@@ -3213,6 +3215,7 @@ namespace {
                 !isMotionReprojectionOn) {
                 chainFrameEndInfo.displayTime = m_savedFrameTime2;
             }
+#endif
 
             {
                 if (m_asyncWaitPromise.valid()) {
