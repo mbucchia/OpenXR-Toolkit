@@ -161,7 +161,6 @@ namespace {
             m_configManager->setDefault(config::SettingPostHighlights, 1000);
             m_configManager->setDefault(config::SettingPostShadows, 0);
             m_configManager->setDefault(config::SettingPostChromaticCorrectionR, 100090);
-            m_configManager->setDefault(config::SettingPostChromaticCorrectionG, 100000);
             m_configManager->setDefault(config::SettingPostChromaticCorrectionB, 99880);
 
             // TODO: Appearance (User)

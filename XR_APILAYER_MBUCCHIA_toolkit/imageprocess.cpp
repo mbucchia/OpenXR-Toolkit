@@ -128,11 +128,9 @@ namespace {
                        m_configManager->hasChanged(SettingPostColorGainG) ||
                        m_configManager->hasChanged(SettingPostColorGainB) ||
                        m_configManager->hasChanged(SettingPostChromaticCorrectionR) ||
-                       m_configManager->hasChanged(SettingPostChromaticCorrectionG) ||
                        m_configManager->hasChanged(SettingPostChromaticCorrectionB);
             } else {
                 return m_configManager->hasChanged(SettingPostColorGainR) ||
-                       m_configManager->hasChanged(SettingPostColorGainG) ||
                        m_configManager->hasChanged(SettingPostColorGainB);
             }
         }
@@ -168,7 +166,7 @@ namespace {
             if (m_mode == PostProcessType::CACorrection) {
                 m_config.Params3.w = 1;
                 m_config.Params4.x = m_configManager->getValue(SettingPostChromaticCorrectionR) / 100000.0f;
-                m_config.Params4.y = m_configManager->getValue(SettingPostChromaticCorrectionG) / 100000.0f;
+                m_config.Params4.y = 1.0f;
                 m_config.Params4.z = m_configManager->getValue(SettingPostChromaticCorrectionB) / 100000.0f;
                 // Params4.w is patched JIT in process().
             } else {

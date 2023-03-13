@@ -108,7 +108,7 @@ namespace {
 
         template <typename E>
         static std::string FmtEnum(int value);
-        template <size_t N>
+        template <size_t N, int offset = 0>
         static std::string FmtDecimal(int value);
         static std::string FmtPostVal(int value);
         static std::string FmtPercent(int value);
@@ -684,7 +684,8 @@ namespace {
                     std::wstring warning;
                     if (m_currentTab == MenuTab::Performance && m_configManager->peekValue(SettingTurboMode)) {
                         warning = m_turboWarning;
-                    } else if (m_currentTab == MenuTab::Inputs && m_configManager->peekValue(SettingPredictionDampen) != 100) {
+                    } else if (m_currentTab == MenuTab::Inputs &&
+                               m_configManager->peekValue(SettingPredictionDampen) != 100) {
                         warning = m_predictionDampeningWarning;
                     }
 
@@ -1609,24 +1610,15 @@ namespace {
                                      SettingPostChromaticCorrectionR,
                                      98000,
                                      102000,
-                                     MenuEntry::FmtDecimal<3>});
+                                     MenuEntry::FmtDecimal<3, -100000>});
             m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Green",
-                                     MenuEntryType::Slider,
-                                     SettingPostChromaticCorrectionG,
-                                     98000,
-                                     102000,
-                                     MenuEntry::FmtDecimal<3>});
-            m_menuEntries.back().acceleration = 5;
-            m_menuEntries.back().expert = true;
             m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                      "Blue",
                                      MenuEntryType::Slider,
                                      SettingPostChromaticCorrectionB,
                                      98000,
                                      102000,
-                                     MenuEntry::FmtDecimal<3>});
+                                     MenuEntry::FmtDecimal<3, -100000>});
             m_menuEntries.back().acceleration = 5;
             caCorrectionGroup.finalize();
 
@@ -2230,9 +2222,10 @@ namespace {
         return fmt::format("{}%", value);
     }
 
-    template <size_t N>
+    template <size_t N, int offset>
     std::string MenuEntry::FmtDecimal(int value) {
         const uint32_t pow10 = N == 0 ? 1u : N == 1 ? 10u : N == 2 ? 100u : 1000u; // crude but working
+        value += offset;
         auto prec = value % pow10;
         return fmt::format("{:.{}f}", static_cast<float>(value) / pow10, prec ? N : 0);
     }
