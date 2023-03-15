@@ -214,6 +214,7 @@ namespace {
             m_configManager->setDefault("vrs_capture", 0);
             m_configManager->setDefault("force_vprt_path", 0);
             m_configManager->setDefault("droolon_port", 5347);
+            m_configManager->setDefault("allow_ca_correction", 0);
 
             // Workaround: the first versions of the toolkit used a different representation for the world scale.
             // Migrate the value upon first run.
@@ -853,8 +854,8 @@ namespace {
                         menuInfo.isVisibilityMaskSupported = m_hasVisibilityMaskKHR;
                         // Our HAM override does not seem to work with OpenComposite.
                         menuInfo.isVisibilityMaskOverrideSupported = !m_isOpenComposite && m_hasVisibilityMaskKHR;
-                        menuInfo.isCACorrectionNeed =
-                            m_configManager->isDeveloper() || m_runtimeName.find("Varjo") != std::string::npos;
+                        menuInfo.isCACorrectionNeed = m_configManager->isDeveloper() || m_systemName == "AERO" ||
+                                                      m_configManager->getValue("allow_ca_correction");
                         menuInfo.runtimeName = m_runtimeName;
 
                         m_menuHandler = menu::CreateMenuHandler(m_configManager, m_graphicsDevice, menuInfo);
