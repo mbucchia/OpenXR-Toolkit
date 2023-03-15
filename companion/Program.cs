@@ -161,7 +161,7 @@ namespace companion
         private static ArgParser[] parser = new ArgParser[]
         {
             new ArgParser("sunglasses", "post_sunglasses", parseSunglassesMode, dumpSunglassesMode, 0, 0, 3),
-            new ArgParser("post-process", "post_process", parseSettingValue, dumpSettingValue, 0, 0, 1),
+            new ArgParser("post-process", "post_process", parsePostProcessMode, dumpPostProcessMode, 0, 0, 2),
             new ArgParser("contrast", "post_contrast", parseSettingValue, dumpSettingValue, 500, 0, 1000, 10),
             new ArgParser("brightness", "post_brightness", parseSettingValue, dumpSettingValue, 500, 0, 1000, 10),
             new ArgParser("exposure", "post_exposure", parseSettingValue, dumpSettingValue, 500, 0, 1000, 10),
@@ -217,6 +217,34 @@ namespace companion
         private static string dumpSettingValue(ArgParser arg, int value)
         {
             return (arg.Scale == 1 ? value : value / (float)arg.Scale).ToString();
+        }
+
+        private static int parsePostProcessMode(string value, ArgParser arg)
+        {
+            // Support "cycling" through.
+            if (value[0] == '+')
+            {
+                return (int.Parse(value.Substring(1)) + (int)key.GetValue(arg.Regkey, arg.Default)) % (arg.Max + 1);
+            }
+
+            return value switch
+            {
+                "off" => 0,
+                "on" => 1,
+                "ca_correction" => 2,
+                _ => throw new Exception("Unsupported value: " + value),
+            };
+        }
+
+        private static string dumpPostProcessMode(ArgParser arg, int value)
+        {
+            return value switch
+            {
+                0 => "off",
+                1 => "on",
+                2 => "ca_correction",
+                _ => "invalid",
+            };
         }
 
         private static int parseSunglassesMode(string value, ArgParser arg)
