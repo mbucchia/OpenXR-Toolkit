@@ -367,7 +367,7 @@ namespace companion
                         }
                     }
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                 }
 

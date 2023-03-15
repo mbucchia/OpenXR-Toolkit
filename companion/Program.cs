@@ -176,6 +176,7 @@ namespace companion
             new ArgParser("zoom", "zoom", parseSettingValue, dumpSettingValue, 10, 10, 1500, 10),
             new ArgParser("frame-throttling", "frame_throttle", parseSettingValue, dumpSettingValue, 120, 15, 120),
             new ArgParser("reprojection-rate", "motion_reprojection_rate", parseMotionReprojectionRate, dumpMotionReprojectionRate, 0, 0, 3),
+            new ArgParser("over-prediction-reduction", "prediction_dampen", parsePredictionDampenValue, dumpPredictionDampenValue, 100, -100, 0),
             new ArgParser("foveated-rendering", "vrs", parseToggle),
             new ArgParser("overlay", "overlay", parseToggle),
             new ArgParser("record-stats", "record_stats", parseToggle),
@@ -305,6 +306,27 @@ namespace companion
                 4 => "1/4",
                 _ => "invalid",
             };
+        }
+
+        // This one is tricky due to negative math.
+        private static int parsePredictionDampenValue(string value, ArgParser arg)
+        {
+            // Detect absolute or relative.
+            bool increaseBy = value[0] == '+';
+            value = value.Substring(increaseBy ? 1 : 0);
+            int v = int.Parse(value);
+            if (increaseBy)
+            {
+                v += (int)key.GetValue(arg.Regkey, arg.Default) - 100;
+            }
+
+            // Clamp.
+            return 100 + Math.Min(Math.Max(v, arg.Min), arg.Max);
+        }
+
+        private static string dumpPredictionDampenValue(ArgParser arg, int value)
+        {
+            return (value - 100).ToString();
         }
 
         private static int parseToggle(string value, ArgParser arg)
