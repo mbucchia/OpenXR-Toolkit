@@ -37,6 +37,11 @@ using System.Reflection;
 using System.Diagnostics;
 using System.Windows.Input;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Net;
+using System.Runtime.Serialization.Json;
+using System.Xml.Linq;
+using System.Xml.XPath;
 
 namespace companion
 {
@@ -119,6 +124,8 @@ namespace companion
                 }
             }
             ResumeLayout();
+
+            CheckForUpdates();
 
             loading = false;
         }
@@ -231,6 +238,7 @@ namespace companion
         }
 
         string versionString = null;
+        string updateAvailable = null;
 
         private unsafe void InitXr()
         {
@@ -324,6 +332,46 @@ namespace companion
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
+        }
+
+        private void CheckForUpdates()
+        {
+            new Thread(() =>
+            {
+                Thread.CurrentThread.IsBackground = true;
+
+                string url = "https://api.github.com/repos/mbucchia/OpenXR-Toolkit/releases/latest";
+
+                // https://stackoverflow.com/questions/9620278/how-do-i-make-calls-to-a-rest-api-using-c
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "GET";
+                request.UserAgent = "PimaxXR/Updated";
+                try
+                {
+                    WebResponse webResponse = request.GetResponse();
+                    using (Stream webStream = webResponse.GetResponseStream() ?? Stream.Null)
+                    using (StreamReader responseReader = new StreamReader(webStream))
+                    {
+                        string response = responseReader.ReadToEnd();
+                        var jsonReader = JsonReaderWriterFactory.CreateJsonReader(Encoding.UTF8.GetBytes(response), new System.Xml.XmlDictionaryReaderQuotas());
+                        var root = XElement.Load(jsonReader);
+                        var indexOfV = versionString.LastIndexOf('v');
+                        var ourVersion = versionString.Substring(indexOfV + 1, versionString.Length - indexOfV - 2).Split('.');
+                        string tagName = root.XPathSelectElement("//tag_name").Value;
+                        var githubLatestVersion = tagName.Split('.');
+                        var ourVersionNumber = (int.Parse(ourVersion[0]) << 24) + (int.Parse(ourVersion[1]) << 16) + int.Parse(ourVersion[2]);
+                        var githubLatestVersionNumber = (int.Parse(githubLatestVersion[0]) << 24) + (int.Parse(githubLatestVersion[1]) << 16) + int.Parse(githubLatestVersion[2]);
+                        if (ourVersionNumber < githubLatestVersionNumber)
+                        {
+                            updateAvailable = tagName;
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                }
+
+            }).Start();
         }
 
         private void WriteSetting(string name, int value)
@@ -780,6 +828,15 @@ namespace companion
                 {
                     key.Close();
                 }
+            }
+
+            if (updateAvailable != null)
+            {
+                if (MessageBox.Show(this, "A new version of OpenXR Toolkit is available: " + updateAvailable + ".\n\nDo you wish to open the download page?", "New version is available", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                {
+                    checkUpdatesLink_LinkClicked(null, null);
+                }
+                updateAvailable = null;
             }
         }
     }
