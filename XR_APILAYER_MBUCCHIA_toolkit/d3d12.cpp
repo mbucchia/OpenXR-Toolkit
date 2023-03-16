@@ -987,7 +987,7 @@ namespace {
             // Initialize the command lists and heaps.
             m_rtvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 128);
             m_dsvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 128);
-            m_rvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 32 + MaxModelBuffers);
+            m_rvHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 128 + MaxModelBuffers);
             m_samplerHeap.initialize(get(m_device), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
             {
                 D3D12_QUERY_HEAP_DESC desc;
