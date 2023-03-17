@@ -832,11 +832,11 @@ namespace companion
 
             if (updateAvailable != null)
             {
+                updateAvailable = null;
                 if (MessageBox.Show(this, "A new version of OpenXR Toolkit is available: " + updateAvailable + ".\n\nDo you wish to open the download page?", "New version is available", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
                 {
                     checkUpdatesLink_LinkClicked(null, null);
                 }
-                updateAvailable = null;
             }
         }
     }
