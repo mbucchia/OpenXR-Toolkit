@@ -23,7 +23,7 @@ The OpenXR Toolkit command line too lets you create various shortcuts to control
 Usage: C:\Program Files\OpenXR-Toolkit\companion.exe
     [app <name>]
     [-sunglasses <off|light|dark|trunite>]
-    [-post-process <[0,1]>]
+    [-post-process <off|on|ca_correction>]
     [-contrast <[0,100]>]
     [-brightness <[0,100]>]
     [-exposure <[0,100]>]
@@ -36,9 +36,11 @@ Usage: C:\Program Files\OpenXR-Toolkit\companion.exe
     [-gain-b <[0,100]>]
     [-world-scale <[0,1000]>]
     [-zoom <[1,150]>]
-    [-reprojection-rate <unlocked|1/2|1/3|1/4>]
-    [-foveated-rendering <toggle>]
-    [-overlay <toggle>]
+    [-frame-throttling <[15,120]>]
+    [-reprojection-rate <invalid|unlocked|1/2|1/3>]
+    [-over-prediction-reduction <-100,0>]
+    [-foveated-rendering toggle]
+    [-overlay toggle]
     [-record-stats toggle]
     [-turbo toggle]
 
