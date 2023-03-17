@@ -102,3 +102,23 @@ This option can be enable to continuously record some statistics from the applic
 When this option is toggled from off to on, a new file is created, with a file name including the date/time (eg: `stats_20220822_183013.csv` for a recording on August 22nd, 2022 at 18:30:13).
 
 The CSV file contains rows with the average FPS, frame times, and VRAM utilization over one second. Every second, a new row is appended.
+
+## CA Correction (Varjo Aero Exclusive)
+
+The **CA Correction** option on Varjo Aero HMDs allows you to correct for a problem called **longitudinal chromatic aberrations**, which can cause red and blue colors to appear shifted in depth. This option scales the red and blue color channels relative to the green color channel to help mitigate this problem. 
+
+It is recommended to disable the **AutoIPD** setting in Varjo Base and either use the value provided by your optician or the value measured by Varjo using the AutoIPD feature, since the AutoIPD setting can change between measurements and throw off your correction values. 
+
+Negative values move colors further away, while positive values bring colors closer.
+
+There is a small app called [**RedShiftTester**](https://github.com/bernhardberger/RedShiftTester/releases) that can help you find the best correction values for your eyes.
+
+*Note that by default, this correction option is only available on **Varjo Aero HMDs** using Varjo Base's OpenXR implementation, and not when using SteamVR. However, you can enable this feature on **OpenXR through SteamVR** by setting a **registry key** to allow CA correction:*
+```
+Key: HKEY_LOCAL_MACHINE\SOFTWARE\OpenXR_Toolkit\allow_ca_correction 
+Value: 1 
+Type: DWORD32 
+```
+*Please keep in mind that this will only work on OpenXR apps and not on OpenVR overlays.*
+
+You can use the same correction values for all apps you run with the OpenXR Toolkit, but you will need to re-enter them individually for each application, since they are treated as a separate setting.
