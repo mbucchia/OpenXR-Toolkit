@@ -22,9 +22,9 @@ DISCLAIMER: This software is distributed as-is, without any warranties or condit
 
 ## Downloads
 
-Current version: **1.2.4**
+Current version: **1.3.0**
 
-[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.2.4/OpenXR-Toolkit-1.2.4.msi){: .btn .btn-blue }
+[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.3.0/OpenXR-Toolkit-1.3.0.msi){: .btn .btn-blue }
 
 ...or expore [all versions](https://github.com/mbucchia/OpenXR-Toolkit/releases).
 
@@ -59,18 +59,16 @@ Please note that if you are interested in using OpenXR Toolkit with OpenVR appli
 | Headset brand | Supports eye tracking in OpenXR Toolkit? |
 | --- | --- |
 | HP Reverb G2 Omnicept | Yes |
-| Oculus Quest Pro | Coming soon [2] |
+| Oculus Quest Pro | Yes |
 | Varjo (all models) | Yes |
 | Pimax with Droolon eye tracking module | Yes |
-| Pimax Crystal | Coming soon [3] |
+| Pimax Crystal | Coming soon [2] |
 | HTC Vive Pro Eye, Vive Focus 3 | No |
 | Pico Neo 4 Pro | No [1] |
 
 [1] **Pico devices do not support eye tracking for PC applications. Pico does not provide the necessary tools to implement it. The marketing of Pico devices is misleading for the consumers**, and hurts the developers community: a) Pico marketing claims support for eye tracking without mentioning that this feature is only supported for standalone mode (Android apps) and not available to developers on PC; b) This practice makes us developers look bad for not supporting eye tracking, in spite of the shortcoming being on Pico's side.
 
-[2] Oculus Quest Pro only supports eye tracking for social interactions for PC applications. OpenXR Toolkit will implement additional code to adapt that feature for Foveated Rendering.
-
-[3] Pimax Crystal eye tracking will be supported via [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki).
+[2] Pimax Crystal eye tracking will be supported via [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki).
 
 #### Hand tracking feature
 
