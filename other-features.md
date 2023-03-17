@@ -113,6 +113,12 @@ Negative values move colors further away, while positive values bring colors clo
 
 There is a small app called [**RedShiftTester**](https://github.com/bernhardberger/RedShiftTester/releases) that can help you find the best correction values for your eyes.
 
-*Note that by default, this correction option is only available on **Varjo HMDs** using Varjo Base's OpenXR implementation, and not when using SteamVR. However, there is a [hidden registry key](https://example.com) available to enable this feature when running OpenXR through SteamVR. Please keep in mind that this will only work on OpenXR apps and not on OpenVR overlays.*
+*Note that by default, this correction option is only available on **Varjo Aero HMDs** using Varjo Base's OpenXR implementation, and not when using SteamVR. However, you can enable this feature on **OpenXR through SteamVR** by setting a **registry key** to allow CA correction:*
+```
+Key: HKEY_LOCAL_MACHINE\SOFTWARE\OpenXR_Toolkit\allow_ca_correction 
+Value: 1 
+Type: DWORD32 
+```
+*Please keep in mind that this will only work on OpenXR apps and not on OpenVR overlays.*
 
 You can use the same correction values for all apps you run with the OpenXR Toolkit, but you will need to re-enter them individually for each application, since they are treated as a separate setting.
