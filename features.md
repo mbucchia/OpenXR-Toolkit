@@ -60,6 +60,12 @@ You can access more detailed pages through the menu bar on the left.
   - **Highlights**: Adjusts the highlight details in reducing the intensity of the brightest pixels _(Neutral: 100)_.
   - **Shadows**: Adjusts the details that appear in shadows in brightening the darkest pixels _(Neutral: 0)_.
   
+  **CA Correction**
+  
+  This option is only available on Varjo Aero. See [CA Correction](other-features#ca-correction-varjo-aero-exclusive).
+  
+  - **Red/Blue**: Adjusts the amount of shifting for each color channel _(Neutral: 0)_.
+  
 - **World scale**: The Inter-Camera Distance override, which can be used to alter the world scale.
 
 **Inputs** tab:
