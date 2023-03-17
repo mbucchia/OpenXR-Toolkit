@@ -12,7 +12,26 @@ nav_order: 7
 
 ---
 
-## Changes in v1.2 (Sep 2022 / v1.2.0 -)
+## Changes in v1.3 (Mar 2023 / v1.3.0 -)
+
+- Add chromatic aberration correction for Varjo Aero (reduces red color depth inconsistency, precludes usage of post-processing like sunglasses)
+   - __Contributed by Bernhard Berger__, thanks!
+- Add foveated rendering support for Quest Pro
+   - **Warning: there are bugs in the Oculus software that prevent using the eye tracker on PC for some users.
+     If you are experiencing issues, check your OpenXR Toolkit log file for the following error message:**
+   > xrCreateEyeTrackerFB() failed with XR_ERROR_RUNTIME_FAILURE! This is an Oculus platform software bug, please file a report to Meta!
+- Remove resolution override cap on Pico (was limited by SteamVR)
+- Make resolution override use the height instead of width as reference (allows to change FOV on Pimax)
+- Rename "Shaking reduction" to "Over-prediction reduction" and reverted behavior to version 1.1
+- Some bug fixes related to foveated rendering with Direct3D 12
+- Some bug fixes related to Turbo Mode
+- Add a command line option to alter the over-prediction reduction value
+- Fix an issue with foveated rendering that caused blocky clouds in iRacing
+- Fix an issue when using OpenComposite with Vive Cosmos
+- Fix an issue when running non-Direct3D applications (OpenXR Toolkit will not be enabled)
+- Add an automatic check for updates in the Companion app
+
+## Changes in v1.2 (Sep 2022 / v1.2.0 - v1.2.4)
 
 - Fix support for iRacing, War Thunder and F1 2022.
 - Fix support for X-Plane 11 and X-Plane 12 (only in conjunction with [OpenXR-Vk-D3D12](https://github.com/mbucchia/OpenXR-Vk-D3D12) on Windows Mixed Reality only, and no support for foveated rendering).
