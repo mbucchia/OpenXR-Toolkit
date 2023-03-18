@@ -31,7 +31,7 @@ See [Supported headsets](index#supported-headsets).
 | Microsoft Flight Simulator 2020 | Foveated Rendering causes blur in the main menu |
 | iRacing | - |
 | War Thunder | Not supported on Varjo headsets |
-| Bonelab | - |
+| Bonelab | Steam edition only- the Oculus store edition does not use OpenXR |
 | Hubris | - |
 | PLAY'A VR Video Player | - |
 | EVERSLAUGHT | - |
