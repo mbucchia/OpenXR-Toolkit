@@ -36,6 +36,8 @@ Below is a table of games tested with eye-tracked foveated rendering:
 
 ### Considerations for Varjo
 
+**Varjo supports eye tracking for PC applications when using Varjo as the OpenXR runtime. If you are using SteamVR as the OpenXR runtime, this runtime cannot support eye tracking for PC applications.**
+
 You must toggle the _Allow eye tracking_ option from the _System_ tab of the Varjo Base software:
 
 <details>
@@ -73,6 +75,8 @@ You may otherwise selectively allow applications, one by one. You must first run
 </details>
 
 ### Considerations for Quest Pro
+
+**Oculus Quest Pro only supports eye tracking for PC applications when using Oculus as the OpenXR runtime. If you are using SteamVR as the OpenXR runtime (for example, to use Virtual Desktop), this runtime cannot support eye tracking for PC applications.**
 
 1. IMPORTANT: Create and log in with a [developer account](https://developer.oculus.com/sign-up/). You must be a registered developer for the Oculus runtime to expose the hand tracking features.
 
