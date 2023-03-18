@@ -23,7 +23,7 @@ See [Supported headsets / Eye tracking feature](index#eye-tracking-feature).
 
 The use of Eye Tracking (ET) in conjunction with [Foveated Rendering](fr) (FR) can greatly improve performance with minimal loss of visual quality.
 
-**In addition to the requirements for your graphics card and headset, it must be possible for OpenXR Toolkit to distinguish when the application is rendering the left and right views. This is not possible for all applications, and therefore eye tracking might not be offered for all applications.**
+**In addition to the requirements for your graphics card and headset, it must be possible for OpenXR Toolkit to distinguish when the application is rendering the left and right views. This is not possible for all applications, and therefore eye tracking might not be offered for all applications.** When not available, Fixed Foveated Rendering will still be offered as a fallback.
 
 Below is a table of games tested with eye-tracked foveated rendering:
 
