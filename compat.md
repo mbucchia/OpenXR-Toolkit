@@ -30,11 +30,15 @@ See [Supported headsets](index#supported-headsets).
 | --- | --- |
 | Microsoft Flight Simulator 2020 | Foveated Rendering causes blur in the main menu |
 | iRacing | - |
+| DCS World OpenBeta | On Varjo headsets, requires the use of [OpenXR-InstanceExtensionsWrapper](https://github.com/mbucchia/OpenXR-InstanceExtensionsWrapper/releases/tag/0.0.1) |
 | War Thunder | Not supported on Varjo headsets |
-| Bonelab | Steam edition only- the Oculus store edition does not use OpenXR |
+| Bonelab | Steam edition only - Oculus store edition does not use OpenXR |
 | Hubris | - |
-| PLAY'A VR Video Player | - |
 | EVERSLAUGHT | - |
+| Contractors | - |
+| Light Brigade | - |
+| A Township Tale | - |
+| PLAY'A VR Video Player | - |
 
 Do you have a game working but it's not in the list? Please file an [Issue](https://github.com/mbucchia/OpenXR-Toolkit/issues) to let us know!
 
@@ -50,7 +54,8 @@ OpenXR Toolkit can also be used with certain OpenVR applications through [OpenCo
 | Assetto Corsa | Fixed Foveated Rendering requires to lower the "Glare" setting under "Video settings" to Medium or lower |
 | Assetto Corsa Competizione | - |
 | Automobilista 2 | - |
-| Dirt Rally 2 | Requires [dr2vrfix-openxr](https://github.com/mbucchia/dr2vrfix-openxr) when using "eye accomodation fix" |
+| DCS World [1] | - |
+| Dirt Rally 2 | Requires [dr2vrfix-openxr](https://github.com/mbucchia/dr2vrfix-openxr) when using the "eye accomodation fix" |
 | Elite Dangerous | - |
 | Euro Truck Simulator 2 | - |
 | IL-2 Sturmovik | Does not support Fixed Foveated Rendering |
@@ -60,5 +65,7 @@ OpenXR Toolkit can also be used with certain OpenVR applications through [OpenCo
 | Project Cars 3 | - |
 | rFactor 2 | Fixed Foveated Rendering requires to lower the "Post Effects" setting under "Video setup" to Medium or lower |
 | Subnautica | - |
+
+[1] DCS World OpenBeta supports OpenXR without OpenComposite, and should be preferred.
 
 Do you have a game working but it's not in the list? Please file an [Issue](https://github.com/mbucchia/OpenXR-Toolkit/issues) to let us know!
