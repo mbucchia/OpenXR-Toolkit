@@ -40,7 +40,6 @@ Below is a table of games reported to work with eye-tracked foveated rendering (
 | Game |
 | --- |
 | Contractors |
-| Survival Nation |
 
 Most Unreal Engine games using OpenXR directly (not OpenVR) should work, since Unreal Engine uses a rendering technique that allows left and right eye to be identified at rendering time.
 
