@@ -600,12 +600,13 @@ namespace {
 
                 switch (upscaleMode) {
                 case config::ScalingType::FSR:
-                case config::ScalingType::NIS: {
+                case config::ScalingType::NIS:
+                case config::ScalingType::CAS: {
                     std::tie(inputWidth, inputHeight) = config::GetScaledDimensions(
                         settingScaling, settingAnamophic, m_displayWidth, m_displayHeight, 2);
                 } break;
 
-                case config::ScalingType::CAS:
+               
                 case config::ScalingType::None:
                     break;
 
@@ -700,7 +701,10 @@ namespace {
                     // Initialize the other resources.
 
                     m_upscaleMode = m_configManager->getEnumValue<config::ScalingType>(config::SettingScalingType);
-                    if (m_upscaleMode == config::ScalingType::NIS || m_upscaleMode == config::ScalingType::FSR) {
+                    if (m_upscaleMode == config::ScalingType::NIS || 
+                        m_upscaleMode == config::ScalingType::FSR ||
+                        m_upscaleMode == config::ScalingType::CAS
+                    ) {
                         m_settingScaling = m_configManager->peekValue(config::SettingScaling);
                         m_settingAnamorphic = m_configManager->peekValue(config::SettingAnamorphic);
                     }
@@ -717,7 +721,8 @@ namespace {
                         break;
 
                     case config::ScalingType::CAS:
-                        m_upscaler = graphics::CreateCASSharpener(m_configManager, m_graphicsDevice);
+                        m_upscaler = graphics::CreateCASUpscaler(
+                            m_configManager, m_graphicsDevice, m_settingScaling, m_settingAnamorphic);
                         break;
 
                     case config::ScalingType::None:
@@ -731,7 +736,10 @@ namespace {
 
                     uint32_t renderWidth = m_displayWidth;
                     uint32_t renderHeight = m_displayHeight;
-                    if (m_upscaleMode == config::ScalingType::NIS || m_upscaleMode == config::ScalingType::FSR) {
+                    if (m_upscaleMode == config::ScalingType::NIS || 
+                        m_upscaleMode == config::ScalingType::FSR ||
+                        m_upscaleMode == config::ScalingType::CAS
+                    ) {
                         std::tie(renderWidth, renderHeight) = config::GetScaledDimensions(
                             m_settingScaling, m_settingAnamorphic, m_displayWidth, m_displayHeight, 2);
 
@@ -1068,7 +1076,10 @@ namespace {
             if (useSwapchain && !isDepth) {
                 // Modify the swapchain to handle our processing chain (eg: change resolution and/or usage.
 
-                if (m_upscaleMode == config::ScalingType::NIS || m_upscaleMode == config::ScalingType::FSR) {
+                if (m_upscaleMode == config::ScalingType::NIS || 
+                    m_upscaleMode == config::ScalingType::FSR ||
+                    m_upscaleMode == config::ScalingType::CAS
+                ) {
                     float horizontalScaleFactor;
                     float verticalScaleFactor;
                     std::tie(horizontalScaleFactor, verticalScaleFactor) =
@@ -2420,7 +2431,10 @@ namespace {
             }
 
             // Adjust mip map biasing.
-            if ((m_upscaleMode == config::ScalingType::NIS || m_upscaleMode == config::ScalingType::FSR) &&
+            if ((m_upscaleMode == config::ScalingType::NIS ||
+                 m_upscaleMode == config::ScalingType::FSR ||
+                 m_upscaleMode == config::ScalingType::CAS
+                ) &&
                 m_configManager->hasChanged(config::SettingMipMapBias)) {
                 m_graphicsDevice->setMipMapBias(
                     m_configManager->getEnumValue<config::MipMapBias>(config::SettingMipMapBias),
@@ -2741,7 +2755,10 @@ namespace {
                         float verticalScaleFactor = 1.f;
                         uint32_t scaledOutputWidth = view.subImage.imageRect.extent.width;
                         uint32_t scaledOutputHeight = view.subImage.imageRect.extent.height;
-                        if (m_upscaleMode == config::ScalingType::NIS || m_upscaleMode == config::ScalingType::FSR) {
+                        if (m_upscaleMode == config::ScalingType::NIS 
+                            || m_upscaleMode == config::ScalingType::FSR
+                            || m_upscaleMode == config::ScalingType::CAS
+                        ) {
                             std::tie(horizontalScaleFactor, verticalScaleFactor) =
                                 config::GetScalingFactors(m_settingScaling, m_settingAnamorphic);
 
@@ -2779,7 +2796,9 @@ namespace {
 
                             // Patch the top-left corner offset.
                             if (m_upscaleMode == config::ScalingType::NIS ||
-                                m_upscaleMode == config::ScalingType::FSR) {
+                                m_upscaleMode == config::ScalingType::FSR ||
+                                m_upscaleMode == config::ScalingType::CAS    
+                            ) {
                                 correctedProjectionViews[eye].subImage.imageRect.offset.x = (uint32_t)std::ceil(
                                     correctedProjectionViews[eye].subImage.imageRect.offset.x * horizontalScaleFactor);
                                 correctedProjectionViews[eye].subImage.imageRect.offset.y = (uint32_t)std::ceil(

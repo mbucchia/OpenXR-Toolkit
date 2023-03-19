@@ -1190,7 +1190,9 @@ namespace {
             // Scaling sub-group.
             {
                 MenuGroup upscalingGroup(this, [&] {
-                    return getCurrentScalingType() == ScalingType::NIS || getCurrentScalingType() == ScalingType::FSR;
+                    return getCurrentScalingType() == ScalingType::NIS 
+                            || getCurrentScalingType() == ScalingType::FSR
+                            || getCurrentScalingType() == ScalingType::CAS;
                 });
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Anamorphic",
@@ -1268,19 +1270,6 @@ namespace {
                     mipmappingGroup.finalize();
                 }
                 upscalingGroup.finalize();
-            }
-
-            // Sharpening Settings.
-            {
-                MenuGroup sharpeningGroup(this, [&] { return getCurrentScalingType() == ScalingType::CAS; });
-                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                         "Sharpness",
-                                         MenuEntryType::Slider,
-                                         SettingSharpness,
-                                         0,
-                                         100,
-                                         MenuEntry::FmtPercent});
-                sharpeningGroup.finalize();
             }
 
             // Fixed Foveated Rendering (VRS) Settings.

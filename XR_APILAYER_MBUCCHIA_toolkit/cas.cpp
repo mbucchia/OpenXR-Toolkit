@@ -44,16 +44,19 @@ namespace {
         uint32_t Const1[4];
     };
 
-    class CASSharpener : public IImageProcessor {
+    class CASUpscaler : public IImageProcessor {
       public:
-        CASSharpener(std::shared_ptr<IConfigManager> configManager,
-                    std::shared_ptr<IDevice> graphicsDevice)
-            : m_configManager(configManager), m_device(graphicsDevice) {
-            initializeSharpener();
+        CASUpscaler(std::shared_ptr<IConfigManager> configManager,
+                    std::shared_ptr<IDevice> graphicsDevice,
+                    int settingScaling,
+                    int settingAnamorphic)
+            : m_configManager(configManager), m_device(graphicsDevice),
+              m_isSharpenOnly(settingScaling == 100 && settingAnamorphic <= 0) {
+            initializeUpscaler();
         }
 
         void reload() override {
-            initializeSharpener();
+            initializeUpscaler();
         }
 
         void update() override {
@@ -102,14 +105,14 @@ namespace {
         }
 
       private:
-        void initializeSharpener() {
+        void initializeUpscaler() {
             const auto shadersDir = dllHome / "shaders";
             const auto shaderFile = shadersDir / "CAS.hlsl";
 
             utilities::shader::Defines defines;
             defines.add("CAS_THREAD_GROUP_SIZE", 64);
             defines.add("CAS_SAMPLE_FP16", 0);
-            defines.add("CAS_SAMPLE_SHARPEN_ONLY", 1);
+            defines.add("CAS_SAMPLE_SHARPEN_ONLY", m_isSharpenOnly ? 1 : 0);
             m_shaderCAS = m_device->createComputeShader(shaderFile, "mainCS", "CAS CS", {}, defines.get());
 
             m_configBuffer = m_device->createBuffer(sizeof(CASConstants), "CAS Constants CB");
@@ -117,6 +120,7 @@ namespace {
 
         const std::shared_ptr<IConfigManager> m_configManager;
         const std::shared_ptr<IDevice> m_device;
+        const bool m_isSharpenOnly;
 
         std::shared_ptr<IComputeShader> m_shaderCAS;
         std::shared_ptr<IShaderBuffer> m_configBuffer;
@@ -126,9 +130,11 @@ namespace {
 
 namespace toolkit::graphics {
 
-    std::shared_ptr<IImageProcessor> CreateCASSharpener(std::shared_ptr<IConfigManager> configManager,
-                                                       std::shared_ptr<IDevice> graphicsDevice) {
-        return std::make_shared<CASSharpener>(configManager, graphicsDevice);
+    std::shared_ptr<IImageProcessor> CreateCASUpscaler(std::shared_ptr<IConfigManager> configManager,
+                                                       std::shared_ptr<IDevice> graphicsDevice,
+                                                       int settingScaling,
+                                                       int settingAnamorphic) {
+        return std::make_shared<CASUpscaler>(configManager, graphicsDevice, settingScaling, settingAnamorphic);
     }
 
 } // namespace toolkit::graphics
