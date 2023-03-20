@@ -26,7 +26,7 @@
 cbuffer config : register(b0) {
     float4 Params1;  // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
     float4 Params2;  // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
-    float4 Params3;  // Highlights, Shadows, Vibrance (0..1 params), UseCA (0 = off, 1 = on)
+    float4 Params3;  // Highlights, Shadows, Vibrance (0..1 params)
     float4 Params4;  // ChromaticCorrectionR, ChromaticCorrectionG, ChromaticCorrectionB (-1..+1 params), Eye (0 = left, 1 = right)
 };
 
@@ -189,11 +189,33 @@ float4 mainPostProcess(in float4 position : SV_POSITION, in float2 texcoord : TE
   return float4(saturate(color), 1.0);
 }
 
-float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
 
-  float3 color;
-  if (Params3.w) {
+
+float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
+  float3 color = SAMPLE_TEXTURE(texcoord).rgb;
+#ifdef PASS_THROUGH_USE_GAINS
+
+    #ifdef POST_PROCESS_SRC_SRGB
+      color = srgb2linear(color);
+    #endif
+
+    // adjust color input gains.
+    if (any(Params2.rgb)) {
+    color = AdjustGains(color, Params2.rgb);
+    }
+
+    #ifdef POST_PROCESS_DST_SRGB
+      color = linear2srgb(color);
+    #endif
+
+#endif
+  return float4(saturate(color), 1.0);
+}
+
+float4 mainCACorrectionVarjoGeneric(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
+    float3 color;
     float2 correctionOrigin = float2(0.313, 0.42);
+
     if (Params4.w) {
         correctionOrigin.x = 1 - correctionOrigin.x;
     }
@@ -206,27 +228,8 @@ float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TE
 
     float2 uvb = ((texcoord - correctionOrigin) * Params4.b) + correctionOrigin;
     color.b = SAMPLE_TEXTURE(uvb).b;
-  } else {
-    color = SAMPLE_TEXTURE(texcoord).rgb;
-  }
-
-#ifdef PASS_THROUGH_USE_GAINS
-#ifdef POST_PROCESS_SRC_SRGB
-  color = srgb2linear(color);
-#endif
-
-  // adjust color input gains.
-  if (any(Params2.rgb)) {
-    color = AdjustGains(color, Params2.rgb);
-  }
-
-#ifdef POST_PROCESS_DST_SRGB
-  color = linear2srgb(color);
-#endif
-
-#endif
-
-  return float4(saturate(color), 1.0);
+    
+    return float4(color, 1.0);
 }
 
 // clang-format on

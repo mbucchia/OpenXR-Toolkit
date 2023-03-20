@@ -1520,7 +1520,7 @@ namespace {
                                      MenuEntryType::Choice,
                                      SettingPostProcess,
                                      0,
-                                     MenuEntry::LastVal<PostProcessType>() - (menuInfo.isCACorrectionNeed ? 0 : 1),
+                                     MenuEntry::LastVal<PostProcessType>(),
                                      MenuEntry::FmtEnum<PostProcessType>});
             MenuGroup postProcessGroup(this, [&] {
                 return m_configManager->peekEnumValue<PostProcessType>(SettingPostProcess) == PostProcessType::On;
@@ -1589,27 +1589,38 @@ namespace {
                                      MenuEntry::FmtDecimal<1>});
             m_menuEntries.back().acceleration = 5;
             postProcessGroup.finalize();
-            MenuGroup caCorrectionGroup(this, [&] {
-                return m_configManager->peekEnumValue<PostProcessType>(SettingPostProcess) ==
-                       PostProcessType::CACorrection;
-            });
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Red",
-                                     MenuEntryType::Slider,
-                                     SettingPostChromaticCorrectionR,
-                                     98000,
-                                     102000,
-                                     MenuEntry::FmtDecimal<3, -100000>});
-            m_menuEntries.back().acceleration = 5;
-            m_menuEntries.push_back({MenuIndent::SubGroupIndent,
-                                     "Blue",
-                                     MenuEntryType::Slider,
-                                     SettingPostChromaticCorrectionB,
-                                     98000,
-                                     102000,
-                                     MenuEntry::FmtDecimal<3, -100000>});
-            m_menuEntries.back().acceleration = 5;
-            caCorrectionGroup.finalize();
+
+            m_menuEntries.push_back({MenuIndent::OptionIndent,
+                            "CA Correction",
+                            MenuEntryType::Choice,
+                            SettingPostChromaticCorrection,
+                            0,
+                            MenuEntry::LastVal<PostProcessCACorrectionType>(),
+                            MenuEntry::FmtEnum<PostProcessCACorrectionType>});
+
+            if (menuInfo.isCACorrectionNeed) {
+                MenuGroup caCorrectionGroup(this, [&] {
+                    return m_configManager->peekEnumValue<PostProcessCACorrectionType>(SettingPostChromaticCorrection) !=
+                           PostProcessCACorrectionType::Off;
+                });
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                         "Red",
+                                         MenuEntryType::Slider,
+                                         SettingPostChromaticCorrectionR,
+                                         98000,
+                                         102000,
+                                         MenuEntry::FmtDecimal<3, -100000>});
+                m_menuEntries.back().acceleration = 5;
+                m_menuEntries.push_back({MenuIndent::SubGroupIndent,
+                                         "Blue",
+                                         MenuEntryType::Slider,
+                                         SettingPostChromaticCorrectionB,
+                                         98000,
+                                         102000,
+                                         MenuEntry::FmtDecimal<3, -100000>});
+                m_menuEntries.back().acceleration = 5;
+                caCorrectionGroup.finalize();
+            }
 
             m_menuEntries.push_back(
                 {MenuIndent::OptionIndent, "World scale", MenuEntryType::Slider, SettingICD, 1, 10000, [&](int value) {
