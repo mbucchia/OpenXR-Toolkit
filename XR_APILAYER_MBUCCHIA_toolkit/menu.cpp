@@ -1590,15 +1590,15 @@ namespace {
             m_menuEntries.back().acceleration = 5;
             postProcessGroup.finalize();
 
-            m_menuEntries.push_back({MenuIndent::OptionIndent,
-                            "CA Correction",
-                            MenuEntryType::Choice,
-                            SettingPostChromaticCorrection,
-                            0,
-                            MenuEntry::LastVal<PostProcessCACorrectionType>(),
-                            MenuEntry::FmtEnum<PostProcessCACorrectionType>});
-
             if (menuInfo.isCACorrectionNeed) {
+                m_menuEntries.push_back({MenuIndent::OptionIndent,
+                                         "CA Correction",
+                                         MenuEntryType::Choice,
+                                         SettingPostChromaticCorrection,
+                                         0,
+                                         MenuEntry::LastVal<PostProcessCACorrectionType>(),
+                                         MenuEntry::FmtEnum<PostProcessCACorrectionType>});
+
                 MenuGroup caCorrectionGroup(this, [&] {
                     return m_configManager->peekEnumValue<PostProcessCACorrectionType>(SettingPostChromaticCorrection) !=
                            PostProcessCACorrectionType::Off;
