@@ -102,6 +102,11 @@ namespace {
                         XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
                     textures.push_back(m_device->createTexture(createInfo, "PostProcessor Intermediate Texture"));
                 }
+            } else {
+                if (!textures.empty()) {
+                    textures[0].reset();
+                    textures.clear();
+                }
             }
 
              // First pass
