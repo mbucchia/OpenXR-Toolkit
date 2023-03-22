@@ -98,11 +98,6 @@ namespace {
                     textures.clear();
                     auto createInfo = outputInfo;
 
-                    // Good balance between visuals and performance.
-                    createInfo.format = m_device->getTextureFormat(TextureFormat::R16G16B16A16_UNORM);
-
-                    createInfo.createFlags |= D3D11_BIND_SHADER_RESOURCE;
-
                     createInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT | 
                         XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
                     textures.push_back(m_device->createTexture(createInfo, "PostProcessor Intermediate Texture"));
