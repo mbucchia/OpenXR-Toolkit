@@ -93,7 +93,10 @@ namespace toolkit {
                                                    D3D12_RESOURCE_STATES initialState,
                                                    std::string_view debugName);
 
-        std::shared_ptr<IImageProcessor> CreateImageProcessor(
+        std::shared_ptr<IPostProcessor> CreateImageProcessor(
+            std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
+
+        std::shared_ptr<IPostProcessor> CreateChromaticAberrationPostProcessor(
             std::shared_ptr<toolkit::config::IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice);
 
         std::shared_ptr<IFrameAnalyzer>

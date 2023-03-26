@@ -27,7 +27,6 @@ cbuffer config : register(b0) {
     float4 Params1;  // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
     float4 Params2;  // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
     float4 Params3;  // Highlights, Shadows, Vibrance (0..1 params)
-    float4 Params4;  // ChromaticCorrectionR, ChromaticCorrectionG, ChromaticCorrectionB (-1..+1 params), Eye (0 = left, 1 = right)
 };
 
 SamplerState sourceSampler : register(s0);
@@ -210,26 +209,6 @@ float4 mainPassThrough(in float4 position : SV_POSITION, in float2 texcoord : TE
 
 #endif
   return float4(saturate(color), 1.0);
-}
-
-float4 mainCACorrectionVarjoGeneric(in float4 position : SV_POSITION, in float2 texcoord : TEXCOORD0) : SV_TARGET {
-    float3 color;
-    float2 correctionOrigin = float2(0.313, 0.42);
-
-    if (Params4.w) {
-        correctionOrigin.x = 1 - correctionOrigin.x;
-    }
-
-    float2 uvr = ((texcoord - correctionOrigin) * Params4.r) + correctionOrigin;
-    color.r = SAMPLE_TEXTURE(uvr).r;
-
-    float2 uvg = ((texcoord - correctionOrigin) * Params4.g) + correctionOrigin;
-    color.g = SAMPLE_TEXTURE(uvg).g;
-
-    float2 uvb = ((texcoord - correctionOrigin) * Params4.b) + correctionOrigin;
-    color.b = SAMPLE_TEXTURE(uvb).b;
-    
-    return float4(color, 1.0);
 }
 
 // clang-format on

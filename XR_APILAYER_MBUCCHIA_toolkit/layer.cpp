@@ -751,7 +751,17 @@ namespace {
                         Log("MipMap biasing for upscaling is: %.3f\n", m_mipMapBiasForUpscaling);
                     }
 
-                    m_postProcessor = graphics::CreateImageProcessor(m_configManager, m_graphicsDevice);
+                    // the default post processing pass that's always run
+                    m_postProcessors.push_back(
+                        graphics::CreateImageProcessor(m_configManager, m_graphicsDevice));
+
+                    // optional varjo ca correction pass when supported
+                    if (m_configManager->isDeveloper() || m_systemName == "AERO" ||
+                        m_configManager->getValue("allow_ca_correction")) {
+                        m_postProcessors.push_back({
+                            graphics::CreateChromaticAberrationPostProcessor(m_configManager, m_graphicsDevice)
+                        });
+                    }
 
                     if (m_graphicsDevice->isEventsSupported()) {
                         if (!m_configManager->getValue("disable_frame_analyzer")) {
@@ -991,7 +1001,7 @@ namespace {
             if (XR_SUCCEEDED(result) && isVrSession(session)) {
                 // Cleanup our resources.
                 m_upscaler.reset();
-                m_postProcessor.reset();
+                m_postProcessors.clear();
                 m_frameAnalyzer.reset();
                 m_variableRateShader.reset();
                 for (unsigned int i = 0; i <= GpuTimerLatency; i++) {
@@ -2471,9 +2481,13 @@ namespace {
                 m_upscaler->update();
             }
             if (reloadShaders) {
-                m_postProcessor->reload();
+                for (const auto& postProcessor : m_postProcessors) {
+                    postProcessor->reload();
+                }
             }
-            m_postProcessor->update();
+            for (const auto& postProcessor : m_postProcessors) {
+                postProcessor->update();
+            }
 
             if (m_eyeTracker) {
                 m_eyeTracker->update();
@@ -2895,11 +2909,22 @@ namespace {
                             m_stats.processorGpuTimeUs[1] += timer->query();
 
                             timer->start();
-                            m_postProcessor->process(nextInput,
-                                                     finalOutput,
-                                                     swapchainState.postProcessorTextures,
-                                                     swapchainState.postProcessorBlob,
-                                                     (utilities::Eye)eye);
+
+                            std::shared_ptr<graphics::ITexture> nextOutput = finalOutput;
+                            
+                            for (auto& postProcessor : m_postProcessors) {
+                                if (postProcessor->isEnabled()) {
+                                    postProcessor->process(nextInput,
+                                                                     nextOutput,
+                                                                     swapchainState.postProcessorTextures,
+                                                                     swapchainState.postProcessorBlob,
+                                                                     (utilities::Eye)eye);
+                                    nextOutput->copyTo(nextInput);
+                                }
+                            }
+                            
+                            finalOutput = nextInput;
+
                             timer->stop();
                         }
 
@@ -3444,7 +3469,8 @@ namespace {
         std::shared_ptr<input::IHandTracker> m_handTracker;
 
         std::shared_ptr<graphics::IImageProcessor> m_upscaler;
-        std::shared_ptr<graphics::IImageProcessor> m_postProcessor;
+        std::vector<std::shared_ptr<graphics::IPostProcessor>> m_postProcessors;
+
         std::shared_ptr<graphics::IVariableRateShader> m_variableRateShader;
 
         std::vector<int> m_keyModifiers;

@@ -40,16 +40,18 @@ namespace {
         XrVector4f Params1; // Contrast, Brightness, Exposure, Saturation (-1..+1 params)
         XrVector4f Params2; // ColorGainR, ColorGainG, ColorGainB (-1..+1 params)
         XrVector4f Params3; // Highlights, Shadows, Vibrance (0..1 params), UseCA (0 = off, 1 = on)
-        XrVector4f Params4; // ChromaticCorrectionR, ChromaticCorrectionG, ChromaticCorrectionB (-1..+1 params)
-                            // Eye (0 = left, 1 = right)
     };
 
-    class ImageProcessor : public IImageProcessor {
+    class ImageProcessor : public IPostProcessor {
       public:
         ImageProcessor(std::shared_ptr<IConfigManager> configManager, std::shared_ptr<IDevice> graphicsDevice)
             : m_configManager(configManager), m_device(graphicsDevice),
               m_userParams(GetParams(configManager.get(), 1)) {
             createRenderResources();
+        }
+
+        bool isEnabled() override {
+            return true;
         }
 
         void reload() override {
@@ -59,16 +61,13 @@ namespace {
         void update() override {
             // Generic implementation to support more than just Off/On modes in the future.
             const auto mode = m_configManager->getEnumValue<PostProcessType>(config::SettingPostProcess);
-            const auto caCorrection = m_configManager->getEnumValue<PostProcessCACorrectionType>(config::SettingPostChromaticCorrection);
-            const auto hasModeChanged = mode != m_mode || caCorrection != m_caCorrectionType;
+            const auto hasModeChanged = mode != m_mode;
 
             if (hasModeChanged) {
                 m_mode = mode;
-                m_caCorrectionType = caCorrection;
-                reload();
             }
                 
-            if (hasModeChanged || checkUpdateConfig()) {
+            if (hasModeChanged || checkUpdateConfig(mode)) {
                 updateConfig();
             }
         }
@@ -84,46 +83,15 @@ namespace {
 
             memcpy(config, &m_config, sizeof(m_config));
 
-            // Patch the eye.
-            config->Params4.w = (float)eye.value_or(utilities::Eye::Both);
-
             // TODO: We can use an IShaderBuffer cache per swapchain and avoid this every frame.
             m_cbParams->uploadData(config, sizeof(*config));
 
-           
-            if (m_caCorrectionType != PostProcessCACorrectionType::Off) {
-                const auto outputInfo = output->getInfo();
-                if (textures.empty() || textures[0]->getInfo().width != outputInfo.width ||
-                    textures[0]->getInfo().height != outputInfo.height) {
-                    textures.clear();
-                    auto createInfo = outputInfo;
-
-                    createInfo.usageFlags |= XR_SWAPCHAIN_USAGE_SAMPLED_BIT | 
-                        XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
-                    textures.push_back(m_device->createTexture(createInfo, "PostProcessor Intermediate Texture"));
-                }
-            } else {
-                if (!textures.empty()) {
-                    textures[0].reset();
-                    textures.clear();
-                }
-            }
-
-             // First pass
-            m_device->setShader(m_shaderPP, SamplerType::LinearClamp);
+            const auto usePostProcess = m_mode == PostProcessType::On;
+            m_device->setShader(m_shaders[usePostProcess], SamplerType::LinearClamp);
             m_device->setShaderInput(0, m_cbParams);
             m_device->setShaderInput(0, input);
-            m_device->setShaderOutput(0, m_caCorrectionType == PostProcessCACorrectionType::Off ? output : textures[0]);
+            m_device->setShaderOutput(0, output);
             m_device->dispatchShader();
-
-            // Second pass
-            if (m_caCorrectionType != PostProcessCACorrectionType::Off) {
-                m_device->setShader(m_shaderCA, SamplerType::LinearClamp);
-                m_device->setShaderInput(0, m_cbParams);
-                m_device->setShaderInput(0, textures[0]);
-                m_device->setShaderOutput(0, output);
-                m_device->dispatchShader();
-            }
         }
 
       private:
@@ -135,22 +103,10 @@ namespace {
             // defines.add("POST_PROCESS_SRC_SRGB", true);
             // defines.add("POST_PROCESS_DST_SRGB", true);
 
-            if (m_mode == PostProcessType::On) {
-                m_shaderPP =
-                    m_device->createQuadShader(shaderFile, "mainPostProcess", "Postprocess PS", defines.get());
-            } else {
-                defines.add("PASS_THROUGH_USE_GAINS", true);
-
-                m_shaderPP =
-                    m_device->createQuadShader(shaderFile, "mainPassThrough", "Passthrough PS", defines.get());
-            }
+            defines.add("PASS_THROUGH_USE_GAINS", true);
+            m_shaders[0] = m_device->createQuadShader(shaderFile, "mainPassThrough", "Passthrough PS", defines.get());
+            m_shaders[1] = m_device->createQuadShader(shaderFile, "mainPostProcess", "Postprocess PS", defines.get());
             
-            if (m_caCorrectionType == PostProcessCACorrectionType::VarjoGeneric) {
-                m_shaderCA = 
-                    m_device->createQuadShader(shaderFile, "mainCACorrectionVarjoGeneric", "CACorrection PS", defines.get());
-            }
-
-
             // TODO: For now, we're going to require that all image processing shaders share the same configuration
             // structure.
             m_cbParams = m_device->createBuffer(sizeof(ImageProcessorConfig), "Postprocess CB");
@@ -158,20 +114,24 @@ namespace {
             updateConfig();
         }
 
-        bool checkUpdateConfig() const {
-            return m_configManager->hasChanged(SettingPostSunGlasses) ||
-                    m_configManager->hasChanged(SettingPostContrast) ||
-                    m_configManager->hasChanged(SettingPostBrightness) ||
-                    m_configManager->hasChanged(SettingPostExposure) ||
-                    m_configManager->hasChanged(SettingPostSaturation) ||
-                    m_configManager->hasChanged(SettingPostVibrance) ||
-                    m_configManager->hasChanged(SettingPostHighlights) ||
-                    m_configManager->hasChanged(SettingPostShadows) ||
-                    m_configManager->hasChanged(SettingPostColorGainR) ||
-                    m_configManager->hasChanged(SettingPostColorGainG) ||
-                    m_configManager->hasChanged(SettingPostColorGainB) ||
-                    m_configManager->hasChanged(SettingPostChromaticCorrectionR) ||
-                    m_configManager->hasChanged(SettingPostChromaticCorrectionB);
+        bool checkUpdateConfig(PostProcessType mode) const {
+            if (mode != PostProcessType::Off) {
+                return m_configManager->hasChanged(SettingPostSunGlasses) ||
+                       m_configManager->hasChanged(SettingPostContrast) ||
+                       m_configManager->hasChanged(SettingPostBrightness) ||
+                       m_configManager->hasChanged(SettingPostExposure) ||
+                       m_configManager->hasChanged(SettingPostSaturation) ||
+                       m_configManager->hasChanged(SettingPostVibrance) ||
+                       m_configManager->hasChanged(SettingPostHighlights) ||
+                       m_configManager->hasChanged(SettingPostShadows) ||
+                       m_configManager->hasChanged(SettingPostColorGainR) ||
+                       m_configManager->hasChanged(SettingPostColorGainG) ||
+                       m_configManager->hasChanged(SettingPostColorGainB);
+            } else {
+                return m_configManager->hasChanged(SettingPostColorGainR) ||
+                       m_configManager->hasChanged(SettingPostColorGainG) ||
+                       m_configManager->hasChanged(SettingPostColorGainB);
+            }
         }
 
         void updateConfig() {
@@ -199,14 +159,6 @@ namespace {
             for (size_t i = 0; i < 3; i++) {
                 const auto param = XMVectorSaturate((XMLoadSInt4(&params[i]) + XMLoadSInt4(&preset[i])) * 0.001f);
                 StoreXrVector4(&m_config.Params1 + i, (param * kGainBias[i][0]) - kGainBias[i][1]);
-            }
-
-            // CA Correction stuff.
-            if (m_caCorrectionType != PostProcessCACorrectionType::Off) {
-                m_config.Params4.x = m_configManager->getValue(SettingPostChromaticCorrectionR) / 100000.0f;
-                m_config.Params4.y = 1.0f;
-                m_config.Params4.z = m_configManager->getValue(SettingPostChromaticCorrectionB) / 100000.0f;
-                // Params4.w is patched JIT in process().
             }
         }
 
@@ -262,13 +214,10 @@ namespace {
         const std::shared_ptr<IDevice> m_device;
         const std::array<DirectX::XMINT4, 3> m_userParams;
 
-        std::shared_ptr<IQuadShader> m_shaderPP;
-        std::shared_ptr<IQuadShader> m_shaderCA;
-
+        std::shared_ptr<IQuadShader> m_shaders[2]; // off, on
         std::shared_ptr<IShaderBuffer> m_cbParams;
 
         PostProcessType m_mode{PostProcessType::Off};
-        PostProcessCACorrectionType m_caCorrectionType{PostProcessCACorrectionType::Off};
         ImageProcessorConfig m_config{};
     };
 
@@ -324,7 +273,7 @@ namespace toolkit::graphics {
         return GpuArchitecture::Unknown;
     }
 
-    std::shared_ptr<IImageProcessor> CreateImageProcessor(std::shared_ptr<IConfigManager> configManager,
+    std::shared_ptr<IPostProcessor> CreateImageProcessor(std::shared_ptr<IConfigManager> configManager,
                                                           std::shared_ptr<IDevice> graphicsDevice) {
         return std::make_shared<ImageProcessor>(configManager, graphicsDevice);
     }

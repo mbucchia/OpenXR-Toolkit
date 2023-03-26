@@ -100,6 +100,7 @@ copy $(ProjectDir)\FSR.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\CAS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\VRS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
+copy $(ProjectDir)\varjo_ca.hlsl $(OutDir)\shaders
 copy $(SolutionDir)\external\Omnicept-SDK\bin\$(Configuration)\jsoncpp.dll $(OutDir)
 copy $(SolutionDir)\external\Omnicept-SDK\bin\$(Configuration)\libzmq-mt-gd-4_3_3.dll $(OutDir)
 copy $(SolutionDir)\external\aSeeVRClient\bin\aSeeVRClient.dll $(OutDir)</Command>
@@ -178,6 +179,7 @@ copy $(ProjectDir)\FSR.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\CAS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\VRS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
+copy $(ProjectDir)\varjo_ca.hlsl $(OutDir)\shaders
 copy $(SolutionDir)\external\Omnicept-SDK\bin\$(Configuration)\jsoncpp.dll $(OutDir)
 copy $(SolutionDir)\external\Omnicept-SDK\bin\$(Configuration)\libzmq-mt-4_3_3.dll $(OutDir)
 copy $(SolutionDir)\external\aSeeVRClient\bin\aSeeVRClient.dll $(OutDir)
@@ -266,6 +268,7 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="imageprocess.cpp" />
+    <ClCompile Include="chromatic_aberration.cpp" />
     <ClCompile Include="utilities.cpp" />
     <ClCompile Include="utils\ScreenGrab11.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
@@ -311,6 +314,16 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </DeploymentContent>
+    </FxCompile>
+    <FxCompile Include="varjo_ca.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+	  <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
       </DeploymentContent>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </DeploymentContent>

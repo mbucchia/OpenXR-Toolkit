@@ -701,6 +701,22 @@ namespace toolkit {
                                  std::optional<utilities::Eye> eye = std::nullopt) = 0;
         };
 
+        struct IPostProcessor : IImageProcessor {
+            virtual bool isEnabled() = 0;
+        };
+
+        using PostProcessorPassIsEnabledFunction = std::function<bool()>;
+        struct PostProcessorPass {
+            std::shared_ptr<graphics::IImageProcessor> processor;
+            PostProcessorPassIsEnabledFunction isEnabled;
+
+            PostProcessorPass(
+                std::shared_ptr<graphics::IImageProcessor> processor,
+                PostProcessorPassIsEnabledFunction isEnabled = []() { return true; })
+                : processor(processor), isEnabled(isEnabled) {
+            }
+        };
+
         struct IFrameAnalyzer {
             virtual ~IFrameAnalyzer() = default;
 

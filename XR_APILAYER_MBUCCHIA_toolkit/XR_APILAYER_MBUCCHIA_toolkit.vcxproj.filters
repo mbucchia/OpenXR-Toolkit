@@ -163,6 +163,9 @@
     <ClCompile Include="cas.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="chromatic_aberration.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="XR_APILAYER_MBUCCHIA_toolkit.json" />
@@ -195,6 +198,9 @@
     </FxCompile>
     <FxCompile Include="CAS.hlsl">
       <Filter>Shader Files\CAS</Filter>
+    </FxCompile>
+    <FxCompile Include="varjo_ca.hlsl">
+      <Filter>Shader Files\PostProcess</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
