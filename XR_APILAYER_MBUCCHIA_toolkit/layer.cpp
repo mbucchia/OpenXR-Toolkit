@@ -496,6 +496,10 @@ namespace {
 
                 m_supportMotionReprojectionLock = isWMR;
 
+                // Fix Fallout 4 / OpenComposite Decal Issue for WMR
+                m_overrideParallelProjection =
+                    m_applicationName == "OpenComposite_Fallout4VR" && isWMR;
+
                 // Workaround: the Vive runtime does not seem to properly convert timestamps. We disable any feature
                 // depending on timestamps conversion.
                 m_hasPerformanceCounterKHR = !isVive;
@@ -1707,6 +1711,14 @@ namespace {
 
                 m_posesForFrame[0].pose = views[0].pose;
                 m_posesForFrame[1].pose = views[1].pose;
+
+                // Fix Fallout 4 / OpenComposite Decal Issue for WMR
+                if (m_overrideParallelProjection) {
+                    views[0].pose.orientation.w = views[1].pose.orientation.w;
+                    views[0].pose.orientation.x = views[1].pose.orientation.x;
+                    views[0].pose.orientation.y = views[1].pose.orientation.y;
+                    views[0].pose.orientation.z = views[1].pose.orientation.z;
+                }
 
                 // Override the canting angle if requested.
                 const int cantOverride = m_configManager->getValue("canting");
@@ -3383,6 +3395,7 @@ namespace {
         bool m_hasPimaxEyeTracker{false};
         bool m_isFrameThrottlingPossible{true};
         bool m_overrideFoveatedRenderingCapability{false};
+        bool m_overrideParallelProjection{false};
 
         std::mutex m_frameLock;
         XrTime m_waitedFrameTime;
