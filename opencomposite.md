@@ -76,7 +76,7 @@ There is an [official compatibility for OpenComposite](https://docs.google.com/s
 | American Truck Simulator 2 | Yes | Yes |
 | Assetto Corsa | Yes | Yes [6] |
 | Assetto Corsa Competizione | Yes | Yes [1] |
-| Automobilista 2 | Yes | Yes |
+| Automobilista 2 | Yes [8] | Yes [8] |
 | Dirt Rally 2 | Yes [2] | Yes [2] |
 | Elite Dangerous | Yes | Yes |
 | Euro Truck Simulator 2 | Yes | Yes |
@@ -104,6 +104,8 @@ There is an [official compatibility for OpenComposite](https://docs.google.com/s
 [6] Assetto Corsa with Fixed Foveated Rendering requires to lower the "Glare" setting under "Video settings" to Medium or lower.
 
 [7] rFactor 2 with Fixed Foveated Rendering requires to lower the "Post Effects" setting under "Video setup" to Medium or lower.
+
+[8] Automobilista 2 forces usage of Oculus mode when an Oculus device is detected, and will not allow use of OpenComposite/OpenXR Toolkit.
 
 Do you have a game working but it's not in the list? Please file an [Issue](https://github.com/mbucchia/OpenXR-Toolkit/issues) to let us know!
 
