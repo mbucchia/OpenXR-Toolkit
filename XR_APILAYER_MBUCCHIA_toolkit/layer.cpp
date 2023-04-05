@@ -275,9 +275,9 @@ namespace {
             // not being advertised. However for certain apps using double-wide rendering, we can still enable the
             // feature, based on the list of apps below.
             m_overrideFoveatedRenderingCapability =
-                (m_applicationName == "OpenComposite_AC2-Win64-Shipping" ||
-                 m_applicationName == "OpenComposite_SkyrimVR" ||
-                 m_applicationName == "OpenComposite_Fallout4VR");                                     
+                m_applicationName == "OpenComposite_AC2-Win64-Shipping" ||
+                m_applicationName == "OpenComposite_SkyrimVR" ||
+                m_applicationName == "OpenComposite_Fallout4VR";                                     
 
             // Dump the OpenXR runtime information to help debugging customer issues.
             XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES, nullptr};
