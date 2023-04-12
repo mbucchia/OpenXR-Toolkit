@@ -76,13 +76,7 @@
       <AdditionalOptions>/ignore:4099</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>REM Sign the DLL.
-if not defined PFX_PASSWORD goto skip_signing
-if not defined PFX_NAME set PFX_NAME=selfsigncert
-$(SolutionDir)\installer\signtool.exe sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f $(SolutionDir)\installer\%PFX_NAME%.pfx /p "%PFX_PASSWORD%" /v $(TargetPath)
-:skip_signing
-
-REM Copy all dependencies.
+      <Command>REM Copy all dependencies.
 copy $(ProjectDir)\$(ProjectName).json $(OutDir)
 copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
 copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
@@ -102,7 +96,15 @@ copy $(ProjectDir)\VRS.hlsl $(OutDir)\shaders
 copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
 copy $(SolutionDir)\external\Omnicept-SDK\bin\$(Configuration)\jsoncpp.dll $(OutDir)
 copy $(SolutionDir)\external\Omnicept-SDK\bin\$(Configuration)\libzmq-mt-gd-4_3_3.dll $(OutDir)
-copy $(SolutionDir)\external\aSeeVRClient\bin\aSeeVRClient.dll $(OutDir)</Command>
+copy $(SolutionDir)\external\aSeeVRClient\bin\aSeeVRClient.dll $(OutDir)
+
+REM Sign the DLLs.
+if not defined PFX_PASSWORD goto skip_signing
+if not defined PFX_NAME set PFX_NAME=selfsigncert
+$(SolutionDir)\installer\signtool.exe sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f $(SolutionDir)\installer\%PFX_NAME%.pfx /p "%PFX_PASSWORD%" /v $(OutDir)\aSeeVRClient.dll
+$(SolutionDir)\installer\signtool.exe sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f $(SolutionDir)\installer\%PFX_NAME%.pfx /p "%PFX_PASSWORD%" /v $(TargetPath)
+:skip_signing
+</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy dependencies...</Message>
@@ -154,13 +156,7 @@ $(SolutionDir)\patches\sed.exe -i "s/VALUE \"ProductVersion\", \".*\"$/VALUE \"P
       <AdditionalOptions>/ignore:4099</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>REM Sign the DLL.
-if not defined PFX_PASSWORD goto skip_signing
-if not defined PFX_NAME set PFX_NAME=selfsigncert
-$(SolutionDir)\installer\signtool.exe sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f $(SolutionDir)\installer\%PFX_NAME%.pfx /p "%PFX_PASSWORD%" /v $(TargetPath)
-:skip_signing
-
-REM Copy all dependencies.
+      <Command>REM Copy all dependencies.
 copy $(ProjectDir)\$(ProjectName).json $(OutDir)
 copy $(SolutionDir)\scripts\Install-Layer.ps1 $(OutDir)
 copy $(SolutionDir)\scripts\Uninstall-Layer.ps1 $(OutDir)
@@ -181,6 +177,13 @@ copy $(ProjectDir)\postprocess.hlsl $(OutDir)\shaders
 copy $(SolutionDir)\external\Omnicept-SDK\bin\$(Configuration)\jsoncpp.dll $(OutDir)
 copy $(SolutionDir)\external\Omnicept-SDK\bin\$(Configuration)\libzmq-mt-4_3_3.dll $(OutDir)
 copy $(SolutionDir)\external\aSeeVRClient\bin\aSeeVRClient.dll $(OutDir)
+
+REM Sign the DLLs.
+if not defined PFX_PASSWORD goto skip_signing
+if not defined PFX_NAME set PFX_NAME=selfsigncert
+$(SolutionDir)\installer\signtool.exe sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f $(SolutionDir)\installer\%PFX_NAME%.pfx /p "%PFX_PASSWORD%" /v $(OutDir)\aSeeVRClient.dll
+$(SolutionDir)\installer\signtool.exe sign /d "OpenXR Toolkit" /du "https://mbucchia.github.io/OpenXR-Toolkit/" /f $(SolutionDir)\installer\%PFX_NAME%.pfx /p "%PFX_PASSWORD%" /v $(TargetPath)
+:skip_signing
 </Command>
     </PostBuildEvent>
     <PostBuildEvent>
