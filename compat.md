@@ -34,6 +34,7 @@ See [Supported headsets](index#supported-headsets).
 | War Thunder | Not supported when Easy Anti-Cheat is enabled - Not supported on Varjo headsets |
 | Bonelab | Steam edition only - Oculus store edition does not use OpenXR |
 | Hubris | - |
+| Pavlov VR (Beta) | - |
 | EVERSLAUGHT | - |
 | Contractors | - |
 | Light Brigade | - |
@@ -62,6 +63,7 @@ OpenXR Toolkit can also be used with certain OpenVR applications through [OpenCo
 | Dirt Rally 2 | Requires [dr2vrfix-openxr](https://github.com/mbucchia/dr2vrfix-openxr) when using the "eye accomodation fix" |
 | Elite Dangerous | - |
 | Euro Truck Simulator 2 | - |
+| Fallout 4 VR | - |
 | IL-2 Sturmovik | Does not support Fixed Foveated Rendering |
 | F1 2022 | - |
 | Pavlov VR | - |
@@ -69,6 +71,7 @@ OpenXR Toolkit can also be used with certain OpenVR applications through [OpenCo
 | Project Cars 3 | - |
 | rFactor 2 | Fixed Foveated Rendering requires to lower the "Post Effects" setting under "Video setup" to Medium or lower |
 | Subnautica | - |
+| The Elder Scrolls V: Skyrim VR | - |
 
 [1] DCS World OpenBeta supports OpenXR without OpenComposite, and should be preferred.
 
