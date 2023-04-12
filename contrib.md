@@ -10,24 +10,20 @@ Logo and icons designed by RPthreenine.
 
 User Experience designed by Andrew Lilley (FarFutureFox).
 
-Additional contributions by Micah Frisby.
+Additional contributions by Micah Frisby, James Lacey (Jabbah), Bernhard Berger, and Erik Uri.
 
 Our beta testers:
 - AmiableGalaxy9
-- bobzdar
 - DjSlane
+- edmuss
 - FearlessFrog
 - Firdimigdi
-- Gemslie
-- JB888
 - Micah Frisby
 - MickT
 - Octavian
 - Roman Bershadsky
 - RPthreenine
 - smitty
-- steiNetti
-- Stevil
 
 Special thanks to:
 - Roman Bershadsky ([Roman Design](https://flightsimulation.romandesign.ca/))
