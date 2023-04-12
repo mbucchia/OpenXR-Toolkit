@@ -27,13 +27,16 @@ The use of Eye Tracking (ET) in conjunction with [Foveated Rendering](fr) (FR) c
 
 Below is a table of games tested with eye-tracked foveated rendering:
 
-| Game |
-| --- |
-| Microsoft Flight Simulator 2020 |
-| iRacing |
-| Assetto Corsa Competizione |
-| Hubris |
-| Praydog's UE4VR Injector |
+| Game | Note |
+| --- | --- |
+| Microsoft Flight Simulator 2020 | |
+| iRacing | |
+| Assetto Corsa Competizione | |
+| Hubris | |
+| Praydog's UE4VR Injector | Mod is not yet released |
+| Pavlov VR (Beta) | Coming soon! |
+| The Elder Scrolls V: Skyrim VR | Coming soon! |
+| Fallout 4 VR | Coming soon! |
 
 Most Unreal Engine games using OpenXR directly (not OpenVR) should work, since Unreal Engine uses a rendering technique that allows left and right eye to be identified at rendering time.
 
