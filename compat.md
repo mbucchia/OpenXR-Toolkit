@@ -28,18 +28,18 @@ See [Supported headsets](index#supported-headsets).
 
 | Game | Limitations |
 | --- | --- |
-| Microsoft Flight Simulator 2020 | Foveated Rendering causes blur in the main menu |
-| iRacing | - |
-| DCS World OpenBeta | On Varjo headsets, requires the use of [OpenXR-InstanceExtensionsWrapper](https://github.com/mbucchia/OpenXR-InstanceExtensionsWrapper/releases/tag/0.0.1) |
-| War Thunder | Not supported when Easy Anti-Cheat is enabled - Not supported on Varjo headsets |
-| Bonelab | Steam edition only - Oculus store edition does not use OpenXR |
-| Hubris | - |
-| Pavlov VR (Beta) | - |
-| EVERSLAUGHT | - |
-| Contractors | - |
-| Light Brigade | - |
 | A Township Tale | - |
+| Bonelab | Steam edition only - Oculus store edition does not use OpenXR |
+| DCS World OpenBeta | On Varjo headsets, requires the use of [OpenXR-InstanceExtensionsWrapper](https://github.com/mbucchia/OpenXR-InstanceExtensionsWrapper/releases/tag/0.0.1) |
+| EVERSLAUGHT | - |
+| Ghosts of Tabor | - |
+| Hubris | - |
+| iRacing | - |
+| Light Brigade | - |
+| Microsoft Flight Simulator 2020 | Foveated Rendering causes blur in the main menu |
+| Pavlov VR (Beta) | - |
 | PLAY'A VR Video Player | - |
+| War Thunder | Not supported on Varjo headsets |
 
 Do you have a game working but it's not in the list? Please file an [Issue](https://github.com/mbucchia/OpenXR-Toolkit/issues) to let us know!
 
@@ -66,7 +66,7 @@ OpenXR Toolkit can also be used with certain OpenVR applications through [OpenCo
 | Fallout 4 VR | - |
 | IL-2 Sturmovik | Does not support Fixed Foveated Rendering |
 | F1 2022 | - |
-| Pavlov VR | - |
+| Pavlov VR [2] | - |
 | Project Cars 2 | - |
 | Project Cars 3 | - |
 | rFactor 2 | Fixed Foveated Rendering requires to lower the "Post Effects" setting under "Video setup" to Medium or lower |
@@ -74,5 +74,7 @@ OpenXR Toolkit can also be used with certain OpenVR applications through [OpenCo
 | The Elder Scrolls V: Skyrim VR | - |
 
 [1] DCS World OpenBeta supports OpenXR without OpenComposite, and should be preferred.
+
+[2] Pavlov VR Beta supports OpenXR without OpenComposite, and should be preferred.
 
 Do you have a game working but it's not in the list? Please file an [Issue](https://github.com/mbucchia/OpenXR-Toolkit/issues) to let us know!
