@@ -30,7 +30,8 @@ nav_order: 7
 - Fix an issue when using OpenComposite with Vive Cosmos.
 - Fix an issue when running non-Direct3D applications (OpenXR Toolkit will not be enabled).
 - Add an automatic check for updates in the Companion app.
-- Hotfix #1: Fix issue caused by Easy Anti-Cheat on Pavlov VR Beta and enable foveated rendering support.
+- Hotfix #1: Fix issues when using Easy Anti-Cheat (eg: War Thunder, Pavlov VR Beta, Ghosts of Tabor).
+   - __Thanks [ragesaqvr](https://twitter.com/ragesaqvr)__!
 - Hotfix #1: Enable foveated rendering support on The Elder Scrolls V: Skyrim VR and Fallout 4 VR.
    - __Contributed by Erik Uri__, thanks!
 - Hotfix #1: Fix visual glitch in Fallout 4 VR with Windows Mixed Reality headsets.
