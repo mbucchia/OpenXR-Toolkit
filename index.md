@@ -22,9 +22,9 @@ DISCLAIMER: This software is distributed as-is, without any warranties or condit
 
 ## Downloads
 
-Current version: **1.3.0**
+Current version: **1.3.1**
 
-[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.3.0/OpenXR-Toolkit-1.3.0.msi){: .btn .btn-blue }
+[Download the latest](https://github.com/mbucchia/OpenXR-Toolkit/releases/download/1.3.1/OpenXR-Toolkit-1.3.1.msi){: .btn .btn-blue }
 
 ...or expore [all versions](https://github.com/mbucchia/OpenXR-Toolkit/releases).
 
