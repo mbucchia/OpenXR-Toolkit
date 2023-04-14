@@ -113,7 +113,6 @@ It can also be used with certain OpenVR applications through [OpenComposite](ope
 ## Limitations
 
 + OpenXR Toolkit is not compatible with ReShade and many other injectors or 3rd party mods.
-+ OpenXR Toolkit might be flagged as unauthorized by some anti-cheat software, for example with War Thunder.
 
 ## Known issues
 
