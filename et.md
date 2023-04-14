@@ -29,14 +29,14 @@ Below is a table of games tested with eye-tracked foveated rendering:
 
 | Game | Note |
 | --- | --- |
-| Microsoft Flight Simulator 2020 | |
-| iRacing | |
-| Assetto Corsa Competizione | |
+| Assetto Corsa Competizione | Requires [OpenComposite](opencomposite) |
+| Fallout 4 VR | Requires OpenComposite |
 | Hubris | |
+| iRacing | Requires OpenXR mode |
+| Microsoft Flight Simulator 2020 | |
+| Pavlov VR (Beta) | |
 | Praydog's UE4VR Injector | Mod is not yet released |
-| Pavlov VR (Beta) | Coming soon! |
-| The Elder Scrolls V: Skyrim VR | Coming soon! |
-| Fallout 4 VR | Coming soon! |
+| The Elder Scrolls V: Skyrim VR | Requires OpenComposite |
 
 Most Unreal Engine games using OpenXR directly (not OpenVR) should work, since Unreal Engine uses a rendering technique that allows left and right eye to be identified at rendering time.
 
