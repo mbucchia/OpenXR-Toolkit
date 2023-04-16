@@ -93,6 +93,21 @@ namespace LAYER_NAMESPACE {
             }
         }
 
+        // HACK
+        {
+            HMODULE ovrPluginHandle = GetModuleHandle(L"ovrplugin.dll");
+            Log("ovrPluginHandle = %p\n", ovrPluginHandle);
+            if (ovrPluginHandle) {
+                using pfnSetDeveloperMode = void(__stdcall*)(bool);
+                auto ovrp_SetDeveloperMode =
+                    (pfnSetDeveloperMode)GetProcAddress(ovrPluginHandle, "ovrp_SetDeveloperMode");
+                Log("ovrp_SetDeveloperMode = %p\n", ovrp_SetDeveloperMode);
+                if (ovrp_SetDeveloperMode) {
+                    ovrp_SetDeveloperMode(1);
+                }
+            }
+        }
+
         // Determine whether we are invoked from the OpenXR Developer Tools for Windows Mixed Reality.
         // If we are, we will skip dummy instance create to avoid he XR_LIMIT_REACHED error.
         const bool fastInitialization =

@@ -119,6 +119,20 @@ XrResult __declspec(dllexport) XRAPI_CALL
 
     Log("%s layer is active\n", LayerPrettyName.c_str());
 
+    // HACK
+    {
+        HMODULE ovrPluginHandle = GetModuleHandle(L"ovrplugin.dll");
+        Log("ovrPluginHandle = %p\n", ovrPluginHandle);
+        if (ovrPluginHandle) {
+            using pfnSetDeveloperMode = void(__stdcall*)(bool);
+            auto ovrp_SetDeveloperMode = (pfnSetDeveloperMode)GetProcAddress(ovrPluginHandle, "ovrp_SetDeveloperMode");
+            Log("ovrp_SetDeveloperMode = %p\n", ovrp_SetDeveloperMode);
+            if (ovrp_SetDeveloperMode) {
+                ovrp_SetDeveloperMode(1);
+            }
+        }
+    }
+
     TraceLoggingWriteStop(local, "xrNegotiateLoaderApiLayerInterface");
 
     return XR_SUCCESS;
