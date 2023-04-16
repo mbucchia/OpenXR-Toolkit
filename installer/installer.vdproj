@@ -63,12 +63,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_2051EA1C0C6E49C4BF8F07154D25171D"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_28304571537941F2B4F6D7479A07E3F5"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -423,6 +417,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_D61FAFD0BDC9482EB2F851DB403E6206"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_E1BC621A1D994DB5A53A52AD6BD0F06D"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -737,26 +737,6 @@
             "Register" = "3:1"
             "Exclude" = "11:FALSE"
             "IsDependency" = "11:TRUE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2051EA1C0C6E49C4BF8F07154D25171D"
-            {
-            "SourcePath" = "8:..\\external\\aSeeVRClient\\bin\\aSeeVRClient.dll"
-            "TargetName" = "8:aSeeVRClient.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_28304571537941F2B4F6D7479A07E3F5"
@@ -1650,6 +1630,26 @@
             {
             "SourcePath" = "8:..\\external\\Omnicept-SDK\\bin\\Release\\libzmq-mt-4_3_3.dll"
             "TargetName" = "8:libzmq-mt-4_3_3.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D61FAFD0BDC9482EB2F851DB403E6206"
+            {
+            "SourcePath" = "8:..\\bin\\x64\\Release\\aSeeVRClient.dll"
+            "TargetName" = "8:aSeeVRClient.dll"
             "Tag" = "8:"
             "Folder" = "8:_5B75DEFBD6F54FBE9D37471984D62D5E"
             "Condition" = "8:"
