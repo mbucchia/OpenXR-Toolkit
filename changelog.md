@@ -36,7 +36,7 @@ nav_order: 7
    - __Contributed by Erik Uri__, thanks!
 - Hotfix #1: Fix visual glitch in Fallout 4 VR with Windows Mixed Reality headsets.
    - __Contributed by Erik Uri__, thanks!
-- Hotfix #2: Fix installer bug that prevented the Easy Anti-Cheat from hotfix #1.
+- Hotfix #2: Fix installer bug that prevented the Easy Anti-Cheat fix from hotfix #1.
 
 ## Changes in v1.2 (Sep 2022 / v1.2.0 - v1.2.4)
 
