@@ -31,6 +31,7 @@ Below is a table of games tested with eye-tracked foveated rendering:
 | --- | --- |
 | Assetto Corsa Competizione | Requires [OpenComposite](opencomposite) |
 | Fallout 4 VR | Requires OpenComposite |
+| Ghosts of Tabor | |
 | Hubris | |
 | iRacing | Requires OpenXR mode |
 | Microsoft Flight Simulator 2020 | |
