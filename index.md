@@ -59,10 +59,10 @@ Please note that if you are interested in using OpenXR Toolkit with OpenVR appli
 | Headset brand | Supports eye tracking in OpenXR Toolkit? |
 | --- | --- |
 | HP Reverb G2 Omnicept | Yes |
-| Oculus Quest Pro | Yes [2] |
+| Oculus Quest Pro | Yes [2] [3] |
 | Varjo (all models) | Yes |
 | Pimax with Droolon eye tracking module | Yes |
-| Pimax Crystal | Coming soon [3] |
+| Pimax Crystal | Coming soon [4] |
 | HTC Vive Pro Eye, Vive Focus 3 | No |
 | Pico Neo 4 Pro | No [1] |
 
@@ -70,7 +70,9 @@ Please note that if you are interested in using OpenXR Toolkit with OpenVR appli
 
 [2] Oculus Quest Pro only supports eye tracking for PC applications when using Oculus as the OpenXR runtime. If you are using SteamVR as the OpenXR runtime (for example, to use Virtual Desktop), this runtime cannot support eye tracking for PC applications.
 
-[3] Pimax Crystal eye tracking will be supported via [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki).
+[3] **A bug in the Meta OpenXR support prevents certain applications from using eye tracking (due to the Meta Developer mode not being recognized).** This is not an issue of OpenXR Toolkit. Please redirect your complaints to Meta!
+
+[4] Pimax Crystal eye tracking will be supported via [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki).
 
 #### Hand tracking feature
 
