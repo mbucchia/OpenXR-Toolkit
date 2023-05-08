@@ -30,6 +30,7 @@ Below is a table of games tested with eye-tracked foveated rendering:
 | Game | Note |
 | --- | --- |
 | Assetto Corsa Competizione | Requires [OpenComposite](opencomposite) |
+| Contractors | Requires to add `-hmd=openxr` to the command-line |
 | Fallout 4 VR | Requires OpenComposite |
 | Ghosts of Tabor | |
 | Hubris | |
