@@ -30,7 +30,8 @@ See [Supported headsets](index#supported-headsets).
 | --- | --- |
 | A Township Tale | - |
 | Bonelab | Steam edition only - Oculus store edition does not use OpenXR |
-| DCS World OpenBeta | On Varjo headsets, requires the use of [OpenXR-InstanceExtensionsWrapper](https://github.com/mbucchia/OpenXR-InstanceExtensionsWrapper/releases/tag/0.0.1) |
+| Contractors | Requires to add `-hmd=openxr` on the command-line |
+| DCS World | On Varjo headsets, requires the use of [OpenXR-InstanceExtensionsWrapper](https://github.com/mbucchia/OpenXR-InstanceExtensionsWrapper/releases/tag/0.0.1) |
 | EVERSLAUGHT | - |
 | Ghosts of Tabor | - |
 | Hubris | - |
