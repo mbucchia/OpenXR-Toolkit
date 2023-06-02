@@ -28,13 +28,11 @@ See [Supported headsets / Hand tracking feature](index#hand-tracking-feature).
 
 ## Using with Ultraleap (including Pimax and Varjo headsets)
 
-1. Download and install the [Leap Motion tracking software](https://developer.leapmotion.com/tracking-software-download).
+1. Download and install the [Ultraleap tracking software](https://developer.leapmotion.com/tracking-software-download) which includes their OpenXR API layer.
 
-2. Use the included Visualizer app to confirm that the Leap Motion Controller is properly setup and functional.
+2. Use the included Visualizer app to confirm that the Ultraleap tracking device is properly setup and functional, and that **OpenXR Support** is enabled in settings (it is enabled by default).
 
-3. Download and install the [Ultraleap OpenXR Hand Tracking API Layer](https://github.com/ultraleap/OpenXRHandTracking/releases).
-
-4. With your game running, open the menu (Ctrl+F2), then navigate to the **Input** tab. Under **Controller emulation**, select either **Both** to use both hands, or **Left**/**Right** to use only one hand. Restart the VR session for the hand tracking to begin.
+3. With your game running, open the menu (Ctrl+F2), then navigate to the **Input** tab. Under **Controller emulation**, select either **Both** to use both hands, or **Left**/**Right** to use only one hand. Restart the VR session for the hand tracking to begin.
 
 ![Enable hand tracking](site/hand-tracking.png)<br>
 *Enable hand tracking in OpenXR Toolkit*

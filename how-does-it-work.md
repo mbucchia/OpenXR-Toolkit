@@ -44,7 +44,7 @@ These two APIs are not compatible. An application that is written to support VR 
 
 Certain OpenXR runtimes offer VR controller to hand tracking API translation: for example the Windows Mixed Reality runtime does (and this is why if you look at the list of OpenXR extension in the _Developer Tools for Windows Mixed Reality_, you will spot the `XR_EXT_hand_tracking` extension). This means that even though the platform does not support hand tracking, applications designed with hand tracking support only will still work with the VR controllers. There are limitations, as the VR controller cannot simulate all 26 hand joints.
 
-Certain vendors, such as Ultraleap, have developed their own [OpenXR API layer](https://github.com/ultraleap/OpenXRHandTracking) to offer the `XR_EXT_hand_tracking` extension for hand tracking with their products. **However, this support only works with application that are designed with hand tracking support**. For applications that only support the VR controller input APIs, the Ultraleap support will not help.
+Certain vendors, such as Ultraleap, have developed their own [OpenXR API layer](https://developer.leapmotion.com/tracking-software-download) to offer the `XR_EXT_hand_tracking` extension for hand tracking with their products. **However, this support only works with application that are designed with hand tracking support**. For applications that only support the VR controller input APIs, the Ultraleap support will not help.
 
 Enters the OpenXR Toolkit. The toolkit's API layer sits between the application **and the Ultraleap API layer**, performing translation of the `XR_EXT_hand_tracking` APIs into VR controller inputs. Technically, the OpenXR runtime is not involved in this process.
 
