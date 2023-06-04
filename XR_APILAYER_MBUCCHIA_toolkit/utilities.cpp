@@ -41,7 +41,7 @@ namespace {
         }
 
         void stop() override {
-            m_duration = clock::now() - m_timeStart;
+            m_duration += clock::now() - m_timeStart;
         }
 
         uint64_t query(bool reset) const override {
