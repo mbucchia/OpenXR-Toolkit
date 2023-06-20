@@ -9,6 +9,12 @@ install, and use this software.
 
 DISCLAIMER: This software is distributed as-is, without any warranties or conditions of any kind. Use at your own risks.
 
+## Donate
+
+Donations are welcome and totally optional. Please use [my GitHub sponsorship page](https://github.com/sponsors/mbucchia) to make one-time or recurring donations!
+
+Thank you!
+
 ## Contributions
 
 This software was created by Matthieu Bucchianeri and Jean-Luc Dupiot.
