@@ -774,7 +774,8 @@ namespace {
                                                                                   renderWidth,
                                                                                   renderHeight,
                                                                                   m_displayWidth,
-                                                                                  m_displayHeight);
+                                                                                  m_displayHeight,
+                                                                                  !m_isOpenComposite && m_hasVisibilityMaskKHR);
 
                         // Register intercepted events.
                         m_graphicsDevice->registerSetRenderTargetEvent(

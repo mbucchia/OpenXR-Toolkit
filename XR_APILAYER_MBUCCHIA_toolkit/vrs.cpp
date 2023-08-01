@@ -128,11 +128,12 @@ namespace {
                            uint32_t displayWidth,
                            uint32_t displayHeight,
                            uint32_t tileSize,
-                           uint32_t tileRateMax)
+                           uint32_t tileRateMax,
+                           bool hasVisibilityMask)
             : m_openXR(openXR), m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
               m_renderWidth(renderWidth), m_renderHeight(renderHeight),
               m_renderRatio(float(renderWidth) / renderHeight), m_tileSize(tileSize), m_tileRateMax(tileRateMax),
-              m_actualRenderWidth(renderWidth) {
+              m_actualRenderWidth(renderWidth), m_hasVisibilityMask(hasVisibilityMask) {
             createRenderResources(m_renderWidth, m_renderHeight);
 
             // Set initial projection center
@@ -162,47 +163,49 @@ namespace {
 
         void beginSession(XrSession session) override {
             // Create HAM buffers.
-            for (uint32_t i = 0; i < ViewCount; i++) {
-                XrVisibilityMaskKHR mask{XR_TYPE_VISIBILITY_MASK_KHR};
-                if (XR_FAILED(m_openXR.xrGetVisibilityMaskKHR(session,
-                                                              XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
-                                                              i,
-                                                              XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR,
-                                                              &mask))) {
-                    break;
+            if (m_hasVisibilityMask) {
+                for (uint32_t i = 0; i < ViewCount; i++) {
+                    XrVisibilityMaskKHR mask{XR_TYPE_VISIBILITY_MASK_KHR};
+                    if (XR_FAILED(m_openXR.xrGetVisibilityMaskKHR(session,
+                                                                  XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+                                                                  i,
+                                                                  XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR,
+                                                                  &mask))) {
+                        break;
+                    }
+
+                    if (!mask.indexCountOutput) {
+                        break;
+                    }
+
+                    std::vector<XrVector2f> rawVertices(mask.vertexCountOutput);
+                    std::vector<uint32_t> rawIndices(mask.indexCountOutput);
+
+                    mask.indexCapacityInput = (uint32_t)rawIndices.size();
+                    mask.indices = rawIndices.data();
+                    mask.vertexCapacityInput = (uint32_t)rawVertices.size();
+                    mask.vertices = rawVertices.data();
+                    CHECK_XRCMD(m_openXR.xrGetVisibilityMaskKHR(session,
+                                                                XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+                                                                i,
+                                                                XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR,
+                                                                &mask));
+
+                    std::vector<SimpleMeshVertex> vertices(mask.vertexCountOutput);
+                    for (uint32_t j = 0; j < vertices.size(); j++) {
+                        vertices[j].Position = {rawVertices[j].x, rawVertices[j].y, -1.0f};
+                        vertices[j].Color = {(float)m_shadingRates[SHADING_RATE_CULL],
+                                             (float)m_shadingRates[SHADING_RATE_CULL],
+                                             (float)m_shadingRates[SHADING_RATE_CULL]};
+                    }
+
+                    std::vector<uint16_t> indices(mask.indexCountOutput);
+                    for (uint32_t j = 0; j < indices.size(); j++) {
+                        indices[j] = rawIndices[j];
+                    }
+
+                    m_HAM[i] = m_device->createSimpleMesh(vertices, indices, "VRS HAM");
                 }
-
-                if (!mask.indexCountOutput) {
-                    break;
-                }
-
-                std::vector<XrVector2f> rawVertices(mask.vertexCountOutput);
-                std::vector<uint32_t> rawIndices(mask.indexCountOutput);
-
-                mask.indexCapacityInput = (uint32_t)rawIndices.size();
-                mask.indices = rawIndices.data();
-                mask.vertexCapacityInput = (uint32_t)rawVertices.size();
-                mask.vertices = rawVertices.data();
-                CHECK_XRCMD(m_openXR.xrGetVisibilityMaskKHR(session,
-                                                            XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
-                                                            i,
-                                                            XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR,
-                                                            &mask));
-
-                std::vector<SimpleMeshVertex> vertices(mask.vertexCountOutput);
-                for (uint32_t j = 0; j < vertices.size(); j++) {
-                    vertices[j].Position = {rawVertices[j].x, rawVertices[j].y, -1.0f};
-                    vertices[j].Color = {(float)m_shadingRates[SHADING_RATE_CULL],
-                                         (float)m_shadingRates[SHADING_RATE_CULL],
-                                         (float)m_shadingRates[SHADING_RATE_CULL]};
-                }
-
-                std::vector<uint16_t> indices(mask.indexCountOutput);
-                for (uint32_t j = 0; j < indices.size(); j++) {
-                    indices[j] = rawIndices[j];
-                }
-
-                m_HAM[i] = m_device->createSimpleMesh(vertices, indices, "VRS HAM");
             }
 
             m_session = session;
@@ -1039,6 +1042,8 @@ namespace {
         std::mutex m_renderScalesLock;
         float m_filterScale{0.51f};
 
+        bool m_hasVisibilityMask{false};
+
         // This is valid for D3D11 only (single-threaded).
         struct {
             bool isActive{false};
@@ -1119,7 +1124,8 @@ namespace toolkit::graphics {
                                                                   uint32_t renderWidth,
                                                                   uint32_t renderHeight,
                                                                   uint32_t displayWidth,
-                                                                  uint32_t displayHeight) {
+                                                                  uint32_t displayHeight,
+                                                                  bool hasVisibilityMask) {
         try {
             uint32_t tileSize = 0;
             uint32_t tileRateMax = 0;
@@ -1184,7 +1190,8 @@ namespace toolkit::graphics {
                                                         displayWidth,
                                                         displayHeight,
                                                         tileSize,
-                                                        tileRateMax);
+                                                        tileRateMax,
+                                                        hasVisibilityMask);
 
         } catch (FeatureNotSupported&) {
             return nullptr;
