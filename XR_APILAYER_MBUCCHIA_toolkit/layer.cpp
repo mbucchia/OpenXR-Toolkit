@@ -1058,12 +1058,6 @@ namespace {
                 return OpenXrApi::xrCreateSwapchain(session, createInfo, swapchain);
             }
 
-            // Identify the swapchains of interest for our processing chain.
-            const bool useSwapchain =
-                createInfo->usageFlags &
-                (XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-                 XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT);
-
             // We do no do any processing to depth buffer, but we like to have them for other things like occlusion when
             // drawing.
             const bool isDepth = createInfo->usageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -1079,7 +1073,7 @@ namespace {
                 createInfo->usageFlags);
 
             XrSwapchainCreateInfo chainCreateInfo = *createInfo;
-            if (useSwapchain && !isDepth) {
+            if (!isDepth) {
                 // Modify the swapchain to handle our processing chain (eg: change resolution and/or usage.
 
                 if (m_upscaleMode == config::ScalingType::NIS || 
@@ -1100,7 +1094,7 @@ namespace {
             }
 
             const XrResult result = OpenXrApi::xrCreateSwapchain(session, &chainCreateInfo, swapchain);
-            if (XR_SUCCEEDED(result) && useSwapchain) {
+            if (XR_SUCCEEDED(result)) {
                 uint32_t imageCount;
                 CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(*swapchain, 0, &imageCount, nullptr));
 
