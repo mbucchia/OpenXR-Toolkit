@@ -33,7 +33,9 @@ namespace SetupCustomActions
             {
                 // Leave the layers that we want to be upstream of us.
                 if (value.EndsWith("\\XR_APILAYER_MBUCCHIA_vulkan_d3d12_interop.json") ||
-                    value.EndsWith("\\XR_APILAYER_NOVENDOR_vulkan_d3d12_interop.json"))
+                    value.EndsWith("\\XR_APILAYER_NOVENDOR_vulkan_d3d12_interop.json") ||
+                    value.EndsWith("OpenXR-Meta-Foveated\\openxr-api-layer.json") ||
+                    value.EndsWith("OpenXR-Quad-Views-Foveated\\openxr-api-layer.json"))
                 {
                     continue;
                 }
