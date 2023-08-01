@@ -116,9 +116,6 @@ namespace LAYER_NAMESPACE {
             dummyCreateInfo.enabledExtensionCount = dummyCreateInfo.enabledApiLayerCount = 0;
 
             {
-                // Workaround: the Vive API layers are not compliant with xrEnumerateInstanceExtensionProperties()
-                // specification and the ability to pass NULL in the first argument.
-
                 // Workaround: the Ultraleap API layer does not seem to properly enumerate the XR_EXT_hand_tracking
                 // extension when invoked from within another API layer. We assume the extension is present if we see
                 // the API layer.
@@ -127,26 +124,16 @@ namespace LAYER_NAMESPACE {
                 while (info && info->next) {
                     std::string_view layerName(info->next->layerName);
 
-                    if (layerName.substr(0, 17) == "XR_APILAYER_VIVE_") {
-                        // Skip all the Vive layers.
-                        TraceLoggingWriteTagged(
-                            local, "xrCreateApiLayerInstance_SkipLayer", TLArg(info->next->layerName, "Layer"));
-                        Log("Skipping unsupported layer: %s\n", info->next->layerName);
-                        info->nextCreateApiLayerInstance = info->next->nextCreateApiLayerInstance;
-                        info->nextGetInstanceProcAddr = info->next->nextGetInstanceProcAddr;
-                        info->next = info->next->next;
-                    } else {
-                        TraceLoggingWriteTagged(
-                            local, "xrCreateApiLayerInstance_UseLayer", TLArg(info->next->layerName, "Layer"));
-                        Log("Using layer: %s\n", info->next->layerName);
+                    TraceLoggingWriteTagged(
+                        local, "xrCreateApiLayerInstance_UseLayer", TLArg(info->next->layerName, "Layer"));
+                    Log("Using layer: %s\n", info->next->layerName);
 
-                        if (layerName == "XR_APILAYER_ULTRALEAP_hand_tracking") {
-                            // Assume hand tracking extension is present.
-                            extensionsToRequest.insert("XR_EXT_hand_tracking");
-                        }
-
-                        info = info->next;
+                    if (layerName == "XR_APILAYER_ULTRALEAP_hand_tracking") {
+                        // Assume hand tracking extension is present.
+                        extensionsToRequest.insert("XR_EXT_hand_tracking");
                     }
+
+                    info = info->next;
                 }
             }
 
