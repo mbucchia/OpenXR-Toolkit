@@ -1190,9 +1190,8 @@ namespace {
             // Scaling sub-group.
             {
                 MenuGroup upscalingGroup(this, [&] {
-                    return getCurrentScalingType() == ScalingType::NIS 
-                            || getCurrentScalingType() == ScalingType::FSR
-                            || getCurrentScalingType() == ScalingType::CAS;
+                    return getCurrentScalingType() == ScalingType::NIS || getCurrentScalingType() == ScalingType::FSR ||
+                           getCurrentScalingType() == ScalingType::CAS;
                 });
                 m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                          "Anamorphic",
@@ -1288,11 +1287,6 @@ namespace {
                            VariableShadingRateType::None;
                 });
                 if (m_isEyeTrackingSupported) {
-                    // Eye tracking sub-group.
-                    MenuGroup variableRateShaderEyeTrackingGroup(this, [&] {
-                        // We only show eye tracking availability if we are able to distinguish left/right eyes.
-                        return m_stats.hasColorBuffer[0] && m_stats.hasColorBuffer[1];
-                    });
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Eye tracking",
                                              MenuEntryType::Choice,
@@ -1301,7 +1295,6 @@ namespace {
                                              MenuEntry::LastVal<OffOnType>(),
                                              MenuEntry::FmtEnum<OffOnType>});
                     m_originalEyeTrackingEnabled = isEyeTrackingEnabled();
-                    variableRateShaderEyeTrackingGroup.finalize();
 
                     // Eye tracking settings sub-group.
                     MenuGroup variableRateShaderEyeTrackingSettingsGroup(
@@ -1416,10 +1409,6 @@ namespace {
                                              200,
                                              MenuEntry::FmtPercent});
                     m_menuEntries.back().expert = true;
-                    MenuGroup variableRateShaderHorizontalOffsetGroup(this, [&] {
-                        // We only show horizontal offset setting if we are able to distinguish left/right eyes.
-                        return m_stats.hasColorBuffer[0] && m_stats.hasColorBuffer[1];
-                    });
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Horizontal offset",
                                              MenuEntryType::Slider,
@@ -1428,7 +1417,6 @@ namespace {
                                              100,
                                              MenuEntry::FmtPercent});
                     m_menuEntries.back().expert = true;
-                    variableRateShaderHorizontalOffsetGroup.finalize();
                     m_menuEntries.push_back({MenuIndent::SubGroupIndent,
                                              "Vertical offset",
                                              MenuEntryType::Slider,

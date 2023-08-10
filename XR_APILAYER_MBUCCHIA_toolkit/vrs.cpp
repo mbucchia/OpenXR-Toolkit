@@ -72,8 +72,7 @@ namespace {
 
     // Standard shading rates
     enum ShadingRates {
-        SHADING_RATE_CULL,
-        SHADING_RATE_x16,
+        SHADING_RATE_x16 = 0,
         SHADING_RATE_x8,
         SHADING_RATE_x4,
         SHADING_RATE_x2,
@@ -84,6 +83,7 @@ namespace {
         SHADING_RATE_4x2,
         SHADING_RATE_2x4,
         SHADING_RATE_4x4,
+        SHADING_RATE_CULL,
         SHADING_RATE_COUNT
     };
 
@@ -105,7 +105,7 @@ namespace {
         // The number of frames since the mask was last used during a rendering pass.
         uint16_t age;
 
-        std::shared_ptr<IShaderBuffer> cbShading[ViewCount + 1];
+        std::shared_ptr<IShaderBuffer> cbShading[ViewCount + 2];
         std::shared_ptr<ITexture> mask[ViewCount + 1];
         std::shared_ptr<ITexture> maskDoubleWide;
         std::shared_ptr<ITexture> maskTextureArray;
@@ -871,17 +871,24 @@ namespace {
             // Draw the rings into the mask.
             const auto dispatchX = xr::math::DivideRoundingUp(mask.widthInTiles, 8);
             const auto dispatchY = xr::math::DivideRoundingUp(mask.heightInTiles, 8);
-            for (size_t i = 0; i < std::size(mask.mask); i++) {
-                const auto constants = makeShadingConstants(i, mask.widthInTiles, mask.heightInTiles);
+            for (size_t i = 0; i < std::size(mask.mask) + 1; i++) {
+                size_t target = std::min(i, std::size(mask.mask) - 1);
+                size_t eye = i;
+                ShadingConstants constants;
+                if (m_usingEyeTracking) {
+                    // The combined mask has both eyes.
+                    eye = eye % 2;
+                }
+                constants = makeShadingConstants(eye, mask.widthInTiles, mask.heightInTiles);
                 mask.cbShading[i]->uploadData(&constants, sizeof(constants));
 
                 m_csShading->updateThreadGroups({dispatchX, dispatchY, 1});
                 m_device->setShader(m_csShading, SamplerType::NearestClamp);
                 m_device->setShaderInput(0, mask.cbShading[i]);
-                mask.mask[i]->setState(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-                m_device->setShaderOutput(0, mask.mask[i]);
+                mask.mask[target]->setState(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                m_device->setShaderOutput(0, mask.mask[target]);
                 m_device->dispatchShader();
-                mask.mask[i]->setState(D3D12_RESOURCE_STATE_COPY_SOURCE);
+                mask.mask[target]->setState(D3D12_RESOURCE_STATE_COPY_SOURCE);
             }
 
             // Copy to the double wide/texture arrays mask.
@@ -929,23 +936,32 @@ namespace {
             if (api == Api::D3D11) {
                 // Implementation uses a constant table with a varying shading rate texture
                 // We set VRS on 2 viewports in case the stereo view renders in parallel.
-                m_shadingRates[SHADING_RATE_CULL] = NV_PIXEL_X0_CULL_RASTER_PIXELS;
-                m_shadingRates[SHADING_RATE_x16] = NV_PIXEL_X16_PER_RASTER_PIXEL;
-                m_shadingRates[SHADING_RATE_x8] = NV_PIXEL_X8_PER_RASTER_PIXEL;
-                m_shadingRates[SHADING_RATE_x4] = NV_PIXEL_X4_PER_RASTER_PIXEL;
-                m_shadingRates[SHADING_RATE_x2] = NV_PIXEL_X2_PER_RASTER_PIXEL;
-                m_shadingRates[SHADING_RATE_x1] = NV_PIXEL_X1_PER_RASTER_PIXEL;
-                m_shadingRates[SHADING_RATE_2x1] = NV_PIXEL_X1_PER_2X1_RASTER_PIXELS;
-                m_shadingRates[SHADING_RATE_1x2] = NV_PIXEL_X1_PER_1X2_RASTER_PIXELS;
-                m_shadingRates[SHADING_RATE_2x2] = NV_PIXEL_X1_PER_2X2_RASTER_PIXELS;
-                m_shadingRates[SHADING_RATE_4x2] = NV_PIXEL_X1_PER_4X2_RASTER_PIXELS;
-                m_shadingRates[SHADING_RATE_2x4] = NV_PIXEL_X1_PER_2X4_RASTER_PIXELS;
-                m_shadingRates[SHADING_RATE_4x4] = NV_PIXEL_X1_PER_4X4_RASTER_PIXELS;
-
-                for (size_t i = 0; i < std::size(m_shadingRates); i++) {
-                    m_nvRates[0].shadingRateTable[i] = static_cast<NV_PIXEL_SHADING_RATE>(m_shadingRates[i]);
-                }
+                m_nvRates[0].shadingRateTable[0] = NV_PIXEL_X16_PER_RASTER_PIXEL;
+                m_shadingRates[SHADING_RATE_x16] = 0;
+                m_nvRates[0].shadingRateTable[1] = NV_PIXEL_X8_PER_RASTER_PIXEL;
+                m_shadingRates[SHADING_RATE_x8] = 1;
+                m_nvRates[0].shadingRateTable[2] = NV_PIXEL_X4_PER_RASTER_PIXEL;
+                m_shadingRates[SHADING_RATE_x4] = 2;
+                m_nvRates[0].shadingRateTable[3] = NV_PIXEL_X2_PER_RASTER_PIXEL;
+                m_shadingRates[SHADING_RATE_x2] = 3;
+                m_nvRates[0].shadingRateTable[4] = NV_PIXEL_X1_PER_RASTER_PIXEL;
+                m_shadingRates[SHADING_RATE_x1] = 4;
+                m_nvRates[0].shadingRateTable[5] = NV_PIXEL_X1_PER_2X1_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_2x1] = 5;
+                m_nvRates[0].shadingRateTable[6] = NV_PIXEL_X1_PER_1X2_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_1x2] = 6;
+                m_nvRates[0].shadingRateTable[7] = NV_PIXEL_X1_PER_2X2_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_2x2] = 7;
+                m_nvRates[0].shadingRateTable[8] = NV_PIXEL_X1_PER_4X2_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_4x2] = 8;
+                m_nvRates[0].shadingRateTable[9] = NV_PIXEL_X1_PER_2X4_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_2x4] = 9;
+                m_nvRates[0].shadingRateTable[10] = NV_PIXEL_X1_PER_4X4_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_4x4] = 10;
+                m_nvRates[0].shadingRateTable[11] = NV_PIXEL_X0_CULL_RASTER_PIXELS;
+                m_shadingRates[SHADING_RATE_CULL] = 11;
                 m_nvRates[0].enableVariablePixelShadingRate = true;
+
                 for (size_t i = 1; i < std::size(m_nvRates); i++) {
                     m_nvRates[i] = m_nvRates[0];
                 }
@@ -953,7 +969,6 @@ namespace {
             if (api == Api::D3D12) {
                 // Implementation uses a varying shading rate texture.
                 // We use a constant table to lookup the shader constants only
-                m_shadingRates[SHADING_RATE_CULL] = D3D12_SHADING_RATE_4X4;
                 m_shadingRates[SHADING_RATE_x16] = D3D12_SHADING_RATE_1X1;
                 m_shadingRates[SHADING_RATE_x8] = D3D12_SHADING_RATE_1X1;
                 m_shadingRates[SHADING_RATE_x4] = D3D12_SHADING_RATE_1X1;
@@ -965,6 +980,7 @@ namespace {
                 m_shadingRates[SHADING_RATE_4x2] = D3D12_SHADING_RATE_4X2;
                 m_shadingRates[SHADING_RATE_2x4] = D3D12_SHADING_RATE_2X4;
                 m_shadingRates[SHADING_RATE_4x4] = D3D12_SHADING_RATE_4X4;
+                m_shadingRates[SHADING_RATE_CULL] = D3D12_SHADING_RATE_4X4;
             }
         }
 

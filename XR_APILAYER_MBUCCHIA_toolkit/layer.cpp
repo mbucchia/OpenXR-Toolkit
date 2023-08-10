@@ -271,14 +271,6 @@ namespace {
                 Log("Detected OpenComposite\n");
             }
 
-            // With OpenComposite, we cannot use the frame analyzer, which results in the eye-tracked foveated rendering
-            // not being advertised. However for certain apps using double-wide rendering, we can still enable the
-            // feature, based on the list of apps below.
-            m_overrideFoveatedRenderingCapability =
-                m_applicationName == "OpenComposite_AC2-Win64-Shipping" ||
-                m_applicationName == "OpenComposite_SkyrimVR" ||
-                m_applicationName == "OpenComposite_Fallout4VR";                                     
-
             // Dump the OpenXR runtime information to help debugging customer issues.
             XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES, nullptr};
             CHECK_XRCMD(xrGetInstanceProperties(GetXrInstance(), &instanceProperties));
@@ -2667,7 +2659,7 @@ namespace {
                                                proj->views[1].subImage.imageRect.offset.x != 0;
                     // TODO: Here we assume that left is always "first" (either slice 0 or "left-most" viewport).
 
-                    if (useTextureArrays || useDoubleWide || m_overrideFoveatedRenderingCapability) {
+                    if (useTextureArrays || useDoubleWide) {
                         // Assume that we've properly distinguished left/right eyes.
                         m_stats.hasColorBuffer[(int)utilities::Eye::Left] =
                             m_stats.hasColorBuffer[(int)utilities::Eye::Right] = true;
@@ -3408,7 +3400,6 @@ namespace {
         bool m_isOmniceptDetected{false};
         bool m_hasPimaxEyeTracker{false};
         bool m_isFrameThrottlingPossible{true};
-        bool m_overrideFoveatedRenderingCapability{false};
         bool m_overrideParallelProjection{false};
 
         std::mutex m_frameLock;
