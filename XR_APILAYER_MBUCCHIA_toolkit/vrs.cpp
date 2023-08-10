@@ -105,7 +105,7 @@ namespace {
         // The number of frames since the mask was last used during a rendering pass.
         uint16_t age;
 
-        std::shared_ptr<IShaderBuffer> cbShading[ViewCount + 2];
+        std::shared_ptr<IShaderBuffer> cbShading[ViewCount * 2 + 2];
         std::shared_ptr<ITexture> mask[ViewCount + 1];
         std::shared_ptr<ITexture> maskDoubleWide;
         std::shared_ptr<ITexture> maskTextureArray;
@@ -129,11 +129,13 @@ namespace {
                            uint32_t displayHeight,
                            uint32_t tileSize,
                            uint32_t tileRateMax,
-                           bool hasVisibilityMask)
+                           bool hasVisibilityMask,
+                           bool needMirroredPattern)
             : m_openXR(openXR), m_configManager(configManager), m_device(graphicsDevice), m_eyeTracker(eyeTracker),
               m_renderWidth(renderWidth), m_renderHeight(renderHeight),
               m_renderRatio(float(renderWidth) / renderHeight), m_tileSize(tileSize), m_tileRateMax(tileRateMax),
-              m_actualRenderWidth(renderWidth), m_hasVisibilityMask(hasVisibilityMask) {
+              m_actualRenderWidth(renderWidth), m_hasVisibilityMask(hasVisibilityMask),
+              m_needMirroredPattern(needMirroredPattern) {
             createRenderResources(m_renderWidth, m_renderHeight);
 
             // Set initial projection center
@@ -890,6 +892,20 @@ namespace {
                 m_device->dispatchShader();
                 mask.mask[target]->setState(D3D12_RESOURCE_STATE_COPY_SOURCE);
             }
+            if (m_usingEyeTracking && m_needMirroredPattern) {
+                for (size_t i = 0; i < 2; i++) {
+                    const auto constants = makeShadingConstants(i, mask.widthInTiles, mask.heightInTiles, true);
+                    mask.cbShading[i]->uploadData(&constants, sizeof(constants));
+
+                    m_csShading->updateThreadGroups({dispatchX, dispatchY, 1});
+                    m_device->setShader(m_csShading, SamplerType::NearestClamp);
+                    m_device->setShaderInput(0, mask.cbShading[i]);
+                    mask.mask[i]->setState(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                    m_device->setShaderOutput(0, mask.mask[i]);
+                    m_device->dispatchShader();
+                    mask.mask[i]->setState(D3D12_RESOURCE_STATE_COPY_SOURCE);
+                }
+            }
 
             // Copy to the double wide/texture arrays mask.
             mask.mask[0]->copyTo(mask.maskDoubleWide, 0, 0, 0);
@@ -904,9 +920,13 @@ namespace {
             TraceLoggingWriteStop(local, "VariableRateShading_UpdateMask");
         }
 
-        ShadingConstants makeShadingConstants(size_t eye, uint32_t texW, uint32_t texH) {
+        ShadingConstants makeShadingConstants(size_t eye, uint32_t texW, uint32_t texH, bool upsideDown = false) {
             ShadingConstants constants;
-            constants.GazeXY = m_gazeLocation[eye];
+            if (!upsideDown) {
+                constants.GazeXY = m_gazeLocation[eye];
+            } else {
+                constants.GazeXY = {m_gazeLocation[eye].x, -m_gazeLocation[eye].y};
+            }
             constants.InvDim = {1.f / texW, 1.f / texH};
             for (size_t i = 0; i < std::size(m_Rings); i++) {
                 constants.Rings[i] = m_Rings[i];
@@ -1052,6 +1072,7 @@ namespace {
 
         XrSession m_session{XR_NULL_HANDLE};
         bool m_usingEyeTracking{false};
+        bool m_needMirroredPattern{false};
 
         std::map<uint32_t, uint32_t> m_renderScales;
         uint32_t m_actualRenderWidth;
@@ -1141,7 +1162,8 @@ namespace toolkit::graphics {
                                                                   uint32_t renderHeight,
                                                                   uint32_t displayWidth,
                                                                   uint32_t displayHeight,
-                                                                  bool hasVisibilityMask) {
+                                                                  bool hasVisibilityMask,
+                                                                  bool needMirroredPattern) {
         try {
             uint32_t tileSize = 0;
             uint32_t tileRateMax = 0;
@@ -1207,7 +1229,8 @@ namespace toolkit::graphics {
                                                         displayHeight,
                                                         tileSize,
                                                         tileRateMax,
-                                                        hasVisibilityMask);
+                                                        hasVisibilityMask,
+                                                        needMirroredPattern);
 
         } catch (FeatureNotSupported&) {
             return nullptr;

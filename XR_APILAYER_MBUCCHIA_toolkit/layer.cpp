@@ -270,6 +270,7 @@ namespace {
             if (m_isOpenComposite) {
                 Log("Detected OpenComposite\n");
             }
+            m_isUnity = std::string_view(createInfo->applicationInfo.engineName) == "Unity";
 
             // Dump the OpenXR runtime information to help debugging customer issues.
             XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES, nullptr};
@@ -759,15 +760,17 @@ namespace {
                                 m_configManager, m_graphicsDevice, m_displayWidth, m_displayHeight, heuristic);
                         }
 
-                        m_variableRateShader = graphics::CreateVariableRateShader(*this,
-                                                                                  m_configManager,
-                                                                                  m_graphicsDevice,
-                                                                                  m_eyeTracker,
-                                                                                  renderWidth,
-                                                                                  renderHeight,
-                                                                                  m_displayWidth,
-                                                                                  m_displayHeight,
-                                                                                  !m_isOpenComposite && m_hasVisibilityMaskKHR);
+                        m_variableRateShader =
+                            graphics::CreateVariableRateShader(*this,
+                                                               m_configManager,
+                                                               m_graphicsDevice,
+                                                               m_eyeTracker,
+                                                               renderWidth,
+                                                               renderHeight,
+                                                               m_displayWidth,
+                                                               m_displayHeight,
+                                                               !m_isOpenComposite && m_hasVisibilityMaskKHR,
+                                                               m_isUnity);
 
                         // Register intercepted events.
                         m_graphicsDevice->registerSetRenderTargetEvent(
@@ -3386,6 +3389,7 @@ namespace {
 
         std::string m_applicationName;
         bool m_isOpenComposite{false};
+        bool m_isUnity{false};
         std::string m_runtimeName;
         std::string m_systemName;
         XrSystemId m_vrSystemId{XR_NULL_SYSTEM_ID};
