@@ -212,6 +212,7 @@ namespace {
                                         m_isOpenComposite || m_applicationName == "DCS World");
             m_configManager->setDefault("canting", 0);
             m_configManager->setDefault("vrs_capture", 0);
+            m_configManager->setDefault("viewport_vrs", 1);
             m_configManager->setDefault("force_vprt_path", 0);
             m_configManager->setDefault("droolon_port", 5347);
             m_configManager->setDefault("allow_ca_correction", 0);
@@ -776,7 +777,7 @@ namespace {
                         m_graphicsDevice->registerSetRenderTargetEvent(
                             [&](std::shared_ptr<graphics::IContext> context,
                                 std::shared_ptr<graphics::ITexture> renderTarget) {
-                                if (!m_isInFrame) {
+                                if (!m_isInFrame || m_configManager->getValue("viewport_vrs")) {
                                     return;
                                 }
 
@@ -807,6 +808,31 @@ namespace {
                                 }
                                 if (m_variableRateShader) {
                                     m_variableRateShader->onUnsetRenderTarget(context);
+                                }
+                            });
+                        m_graphicsDevice->registerSetViewportsEvent(
+                            [&](std::shared_ptr<graphics::IContext> context,
+                                std::shared_ptr<D3D11_VIEWPORT> viewports) {
+                                if (!m_isInFrame || !m_configManager->getValue("viewport_vrs")) {
+                                    return;
+                                }
+
+                                if (m_variableRateShader) {
+                                    if (m_variableRateShader->onSetViewports(
+                                            context,
+                                            viewports)) {
+                                        m_stats.numRenderTargetsWithVRS++;
+                                    }
+                                }
+                            });
+                        m_graphicsDevice->registerUnsetViewportsEvent(
+                            [&](std::shared_ptr<graphics::IContext> context) {
+                                if (!m_isInFrame) {
+                                    return;
+                                }
+
+                                if (m_variableRateShader) {
+                                    m_variableRateShader->onUnsetViewports(context);
                                 }
                             });
                         m_graphicsDevice->registerCopyTextureEvent([&](std::shared_ptr<graphics::IContext> context,

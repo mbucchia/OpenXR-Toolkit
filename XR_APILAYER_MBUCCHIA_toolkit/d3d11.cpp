@@ -1535,6 +1535,14 @@ void main(uint3 id : SV_DispatchThreadID)
             m_unsetRenderTargetEvent = event;
         }
 
+        void registerSetViewportsEvent(SetViewportsEvent event) override {
+            m_setViewportsEvent = event;
+        }
+
+        void registerUnsetViewportsEvent(UnsetViewportsEvent event) override {
+            m_unsetViewportsEvent = event;
+        }
+
         void registerCopyTextureEvent(CopyTextureEvent event) override {
             m_copyTextureEvent = event;
         }
@@ -1879,6 +1887,31 @@ void main(uint3 id : SV_DispatchThreadID)
             INVOKE_EVENT(setRenderTargetEvent, wrappedContext, renderTarget);
         }
 
+        void onSetViewports(ID3D11DeviceContext* context,
+                            UINT* numViewports,
+                            D3D11_VIEWPORT const* pViewports) {
+            if (m_blockEvents) {
+                return;
+            }
+
+            ComPtr<ID3D11Device> device;
+            context->GetDevice(set(device));
+            if (device != m_device) {
+                return;
+            }
+
+            auto wrappedContext = std::make_shared<D3D11Context>(shared_from_this(), context);
+
+            if (!numViewports || !pViewports ) {
+                INVOKE_EVENT(unsetViewportsEvent, wrappedContext);
+                return;
+            }
+
+            auto viewportTarget = std::make_shared<D3D11_VIEWPORT>(*pViewports);
+
+            INVOKE_EVENT(setViewportsEvent, wrappedContext, viewportTarget);
+        }
+
         void onCopyResource(ID3D11DeviceContext* context,
                             ID3D11Resource* pSrcResource,
                             ID3D11Resource* pDstResource,
@@ -2031,6 +2064,8 @@ void main(uint3 id : SV_DispatchThreadID)
 
         SetRenderTargetEvent m_setRenderTargetEvent;
         UnsetRenderTargetEvent m_unsetRenderTargetEvent;
+        SetViewportsEvent m_setViewportsEvent;
+        UnsetViewportsEvent m_unsetViewportsEvent;
         CopyTextureEvent m_copyTextureEvent;
         std::atomic<bool> m_blockEvents{false};
 
@@ -2189,6 +2224,8 @@ void main(uint3 id : SV_DispatchThreadID)
 
             assert(g_original_ID3D11DeviceContext_RSSetViewports);
             g_original_ID3D11DeviceContext_RSSetViewports(Context, NumViewports, pViewports);
+
+            g_instance->onSetViewports(Context, &NumViewports, pViewports);
 
             TraceLoggingWriteStop(local, "ID3D11DeviceContext_RSSetViewports");
         }
