@@ -17,7 +17,7 @@ You can access more detailed pages through the menu bar on the left.
   - **Width/Height** (NIS/FSR only): This displays the actual in-game render width and height, that is the actual number of pixels the game is rendering per eye.
   - **Sharpness**: The sharpness factor. Has a different scale/effect between NIS and FSR.
   - **Mip-map bias** (_Expert_ setting, NIS/FSR only): This settings changes how the game is rendering some of the textures in order to reveal a little bit more details when used with FSR/NIS upscalers.
-- **(Fixed) Foveated rendering** (on supported GPUs only): These settings adjust the [VRS](glossary#vrs) parameters in order to balance out peripheral visual details with rendering performance. See [Foveated Rendering](fr) for more details.
+- **(Fixed) Foveated rendering** (on supported GPUs only): These settings adjust the foveated rendering parameters in order to balance out peripheral visual details with rendering performance. See [Foveated Rendering](fr) for more details.
   - **Eye tracking** (on supported headsets only): Enable the use of eye tracking to control the position of the center of the foveated region. See [Eye Tracking](et) for more details.
   - **Eye projection distance** (only with Pimax headsets): Calibrate the sensitivy of eye gaze movements.
 

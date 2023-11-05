@@ -27,7 +27,7 @@ nav_order: 7
 - Some bug fixes related to Turbo Mode.
 - Add a command line option to alter the over-prediction reduction value.
 - Fix an issue with foveated rendering that caused blocky clouds in iRacing.
-- Fix an issue when using OpenComposite with Vive Cosmos.
+- Fix an issue with Vive Cosmos.
 - Fix an issue when running non-Direct3D applications (OpenXR Toolkit will not be enabled).
 - Add an automatic check for updates in the Companion app.
 - Hotfix #1: Fix issues when using Easy Anti-Cheat (eg: War Thunder, Pavlov VR Beta, Ghosts of Tabor).
@@ -51,7 +51,7 @@ nav_order: 7
 - Fix incompatibility between eye tracking and controller/hand tracking on Varjo.
 - Fix detection of hand tracking with PimaxXR.
 - Fix issue when RGB color correction is not applied when post-processing is off.
-- Fix upside-down image issue with certain OpenComposite games.
+- Fix upside-down image issue with certain games.
 - Add support for both eye-tracked foveated rendering and fixed foveated rendering in Assetto Corsa Competizione.
 - Add new "tutorial menu" for first time-use, will help debugging issues with users not able to bring up the menu.
 - Add option to alter filtering policy with foveated rendering (possibly eliminate unwanted glitches with certain games).
@@ -84,7 +84,7 @@ nav_order: 7
 - Hotfix #2: Remove resolution cap on Varjo.
 - Hotfix #3: Fix Turbo Mode crashes in Flight Simulator 2020.
 - Hotfix #3: Add a foveated rendering option to cull hidden area mesh (mostly for iRacing, only supported on certain applications).
-- Hotfix #3: Workaround to Oculus OpenXR issue with OpenComposite and ACC (call out of order).
+- Hotfix #3: Workaround to Oculus OpenXR issue with ACC (call out of order).
 - Hotfix #3: Do not display CPU frame time in the overlay when it cannot be determined reliably.
 - Hotfix #3: Add a "target frame rate" option to have the overlay give headroom based on a desired frame rate.
 - Hotfix #3: Fix screenshot showing both eyes with certain applications (eg: iRacing).
@@ -113,13 +113,8 @@ nav_order: 7
 - Hotfix #1: Make the overlay position customizable.
 - Hotfix #1: Fix the menu display on Pimax.
 - Hotfix #1: Fix eye tracking detection on G2 Omnicept.
-- Hotfix #1: Fix various crashes with OpenComposite (ACC, IL2).
-- Hotfix #1: Fix issue with OpenComposite and Oculus devices.
-- Hotfix #1: Fix issue with OpenComposite and missing menu/loading screens.
-- Hotfix #1: Fix issue with OpenComposite and upside-down menu.
 - Hotfix #2: Fix a crash with OpenXR Tools for Windows Mixed Reality.
 - Hotfix #3: Fix visual issues introduced in 1.1.2 for WMR users.
-- Hotfix #3: Fix NIS/FSR support with OpenComposite.
 - Hotfix #3: Add an option to change opacity of the menu.
 - Hotfix #4: Fix Pimax WFOV hack issue introduced in 1.1.1.
 
@@ -153,7 +148,7 @@ nav_order: 7
 - Hotfix #2: Allow finer adjustment of the contrast (0.01 step).
 - Hotfix #2: Fix position of the FPS overlay.
 - Hotfix #2: Disable the OpenXR Toolkit when the application is Edge/Chrome (eg: 360 videos).
-- Hotfix #3: Fix menu display with certain applications, such as OpenComposite-ACC.
+- Hotfix #3: Fix menu display with certain applications.
 - Hotfix #4: Fix issue caused by EVGA software.
 - Hotfix #4: Introduce Pimax culling workaround ("WFOV Hack") for Flight Simulator 2020.
 - Hotfix #4: Add override for each field of view angles independently.

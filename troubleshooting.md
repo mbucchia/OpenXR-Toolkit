@@ -74,7 +74,7 @@ You can also navigate to the _Menu_ tab and choose _Restore defaults_:
 
 If you had previously installed ReShade or any similar mod for your application, please disable or delete it in order to use the OpenXR Toolkit.
 
-## Missing Visual C++ system component:
+## Missing Visual C++ system component
 
 If the OpenXR Toolkit makes your application refuse to start, try installing the [Visual C++ Redistributables](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 
@@ -95,6 +95,15 @@ You may then either:
 - [Reset all the settings](#reset-all-the-settings).
 
 - Change your settings to avoid the problem. Note that in safe mode, settings are not loaded, but the modified settings are still stored. You may need to toggle a setting on/off a few times to make sure the new value is saved before exiting Safe mode.
+
+## Disable other OpenXR API layers
+
+Hover on top of the "OpenXR Toolkit is active" label in the _OpenXR Toolkit Companion app_ to see a list of other OpenXR API layers.
+
+![Other API layers](site/list-api-layers.png)<br>
+*The list of other OpenXR API layers in use on your system*
+
+Try disabling or uninstalling them and see if the problem is resolved.
 
 ## Inspect the log file
 
@@ -136,11 +145,11 @@ When the value of **app GPU** is greater than the value of **app CPU**, you are 
 
 ## Asking for help
 
-Some issues may be known by the community. Please read the Support channels on our [Discord server](https://discord.gg/WXFshwMnke) and ask questions there if you do not find the answer already.
+Some issues may be known by the community. Please read the Support channels on our [Discord server](https://discord.gg/mPKJYeGUjH) and ask questions there if you do not find the answer already.
 
 ## Filing a bug report
 
-**Please do not file issues for questions about tuning of the settings.** Use the [Discord server](https://discord.gg/WXFshwMnke) for that.
+**Please do not file issues for questions about tuning of the settings.** Use the [Discord server](https://discord.gg/mPKJYeGUjH) for that.
 
 **Please do not file issues about OpenComposite.** Use the [OpenComposite GitLab page](https://gitlab.com/znixian/OpenOVR/-/issues) for that.
 

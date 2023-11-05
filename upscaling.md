@@ -19,8 +19,6 @@ Upscaling allows an application to render at a resolution lower than the resolut
 
 The upscaling techniques included in the OpenXR Toolkit strive to produce better results through the use of additional filtering and sharpening techniques, while keeping a very low cost. Note that even with an upscaling factor set to 100% (no upscaling), some benefit can be seen from adjusting the sharpening.
 
-See [What is AMD FidelityFX Super Resolution](glossary.md#fsr) and [What is NVIDIA Image Scaling](glossary.md#nis) for more information.
-
 ## Configuring upscaling
 
 In the paragraphs below, we use the term "target display resolution" to refer to the per-eye resolution exposed by the OpenXR runtime. This resolution may be the native resolution of the headset, or it may be tweaked through the use of any "custom render scale" further down the rendering chain, like when setting a custom render scale in the OpenXR Tools for Windows Mixed Reality.

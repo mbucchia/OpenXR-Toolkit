@@ -113,7 +113,7 @@ Configuring a narrower inner and middle regions may improve performance further,
 
 In the example above, we show how the Narrow pattern creates a large region at low resolution near the edges of the screen. This region is noticeable even with the distortion created by the lense inside the headset.
 
-It is important to understand that the [Variable Rate Shading (VRS)](glossary#vrs) technology employed for FFR is only effective at reducing or eliminating certain bottlenecks of the graphics pipeline.
+It is important to understand that the Variable Rate Shading (VRS) technology employed for FFR is only effective at reducing or eliminating certain bottlenecks of the graphics pipeline.
 
 ![FFR limit](site/ffr-ps-limited.jpg)<br>
 *FFR set to the lowest resolution for the whole screen.*
