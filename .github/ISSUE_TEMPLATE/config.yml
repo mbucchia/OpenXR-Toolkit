@@ -3,12 +3,6 @@ contact_links:
   - name: OpenXR Toolkit Homepage
     url: https://mbucchia.github.io/OpenXR-Toolkit/
     about: The homepage has A LOT OF INFORMATION. Check there first for the answer to your questions/issues. There is a Search bar at the top.
-  - name: OpenComposite Homepage
-    url: https://gitlab.com/znixian/OpenOVR/-/tree/openxr
-    about: If your questions/issues are with OpenComposite and not OpenXR Toolkit, head to their homepage for information.
-  - name: OpenComposite Discord
-    url: https://discord.gg/sQ2jwSb62J
-    about: If your questions/issues are with OpenComposite and not OpenXR Toolkit, use their Discord.
-  - name: OpenXR Toolkit Discord
-    url: https://discord.gg/NxvH3x66js
-    about: Finally, if you have checked all the information above, but still cannot address your questions/issues, ask and answer questions on our Discord.
+  - name: OpenXR Toolkit Discord (NO OPENCOMPOSITE SUPPORT)
+    url: https://discord.gg/mPKJYeGUjH
+    about: If you have checked all the information above, but still cannot address your questions/issues, ask and answer questions on our Discord.
