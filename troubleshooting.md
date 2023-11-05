@@ -18,9 +18,9 @@ Before starting troubleshooting, always make sure you are running the latest ver
 
 - Latest version of your OpenXR runtime. This is typically updated or installed via the Windows store (for Windows Mixed Reality) or the vendor's software (for Oculus, Varjo). Sometimes, you will need to manually check the vendor's website (for Pimax unofficial runtime for example).
 
-- Latest version of [OpenComposite](opencomposite) if applicable (ie: your application does not use OpenXR natively). If using the OpenComposite launcher, look for the update button.
-
 - Latest version of OpenXR Toolkit, downloadable from the front page of this website.
+
+- Latest version of your graphics drivers.
 
 **Half of the "something does not work for me" issues are resolved by updating to the latest software.**
 
@@ -30,16 +30,14 @@ There are a few common situations leading to this issue.
 
 ### Make sure your application uses OpenXR
 
-OpenXR Toolkit can only work if the application uses OpenXR for interfacing with the VR platform. Either your application natively support OpenXR (eg: Microsoft Flight Simulator, iRacing...) or it requires [OpenComposite](opencomposite) to bridge to OpenXR.
+**OpenXR Toolkit only works with OpenXR applications**. Not all applications are built for OpenXR. See the [index#supported-applications](Compatibility list) for a list of applications known to work.
 
 After running your application for the first time, open the _OpenXR Toolkit Companion app_, and inspect the list of applications:
 
 ![List of registered applications](site/per-app-disable.png)<br>
 *The list of recognized applications*
 
-If your application does not show up here: it's not using OpenXR or OpenComposite is not properly setup. **The OpenXR Toolkit will not work.**
-
-If your application does not support OpenXR natively and requires to use [OpenComposite](opencomposite), please refer to the OpenComposite instructions to setup and troubleshoot OpenComposite.
+If your application does not show up here: your application is not built using OpenXR. **The OpenXR Toolkit will not work.**
 
 ### Try the legacy menu mode
 
@@ -65,7 +63,7 @@ Please use the _OpenXR Toolkit Companion app_ to try different hotkeys, selectin
 
 ## Reset all the settings
 
-While an application is running, you may at any point reset all the settings to their default values by pressing simultaneously the keys bound to all 3 of the menu actions. If no custom key combinations have been set in the _OpenXR Toolkit Companion app_, this combination is Ctrl+F1+F2+F3.
+While an application is running, you may at any point reset all the settings to their default values by pressing simultaneously the keys bound to all 3 of the menu actions. If no custom key combinations have been set in the _OpenXR Toolkit Companion app_, this combination is Ctrl+F1+F2+F3. **Spam all 4 keys until you see the Welcome prompt display.**
 
 You can also navigate to the _Menu_ tab and choose _Restore defaults_:
 
@@ -80,10 +78,9 @@ If you had previously installed ReShade or any similar mod for your application,
 
 If the OpenXR Toolkit makes your application refuse to start, try installing the [Visual C++ Redistributables](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 
-This issue will manifest itself with the `XR_ERROR_FILE_ACCESS_ERROR` when using Windows Mixed Reality, or with the -32 error code with OpenComposite:
+This issue will manifest itself with the `XR_ERROR_FILE_ACCESS_ERROR` when using Windows Mixed Reality or inspecting log files.
 
 ![File access error](site/file-access-error.png)<br>
-![OpenComposite error message](site/oc-error-missing-dll.png)<br>
 *Errors you will see when missing Visual C++ Redistributables*
 
 ## Start in Safe mode
@@ -106,7 +103,7 @@ In order to inspect the log file to try to understand issues with the toolkit, y
 ![Open logs](site/logs.png)<br>
 *Accessing the log file*
 
-Please note that certain applications may run in a security-sandbox environment. In this case, the log file may be located under the corresponding application subfolder in `%LocalAppData%\Packages`. You may search for a file named `XR_APILAYER_NOVENDOR_toolkit.log` if unsure of the exact location.
+Please note that certain applications may run in a security-sandbox environment. In this case, the log file may be located under the corresponding application subfolder in `%LocalAppData%\Packages`. You may search for a file named `XR_APILAYER_MBUCCHIA_toolkit.log` if unsure of the exact location.
 
 ![An example log file](site/log-file.png)<br>
 *An example log file*
@@ -121,17 +118,6 @@ Origin: m_fontWrapperFactory->CreateFontWrapper(get(m_device), m_fontFamily.c_st
 ```
 
 To solve this problem, please install the [DirectX legacy runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=35).
-
-## Confirming that the Ultraleap OpenXR layer is active
-
-**Note: this is applicable for troubleshooting hand tracking with Ultraleap devices only.**
-
-To confirm that the Ultraleap OpenXR layer is active and loaded in the correct order, open the _OpenXR Toolkit Companion app_ (found on the desktop or Start menu) and hover the mouse cursor on the _OpenXR Toolkit layer is active_ label.
-
-![Listing the OpenXR layers](site/list-layers.png)<br>
-*Listing the OpenXR layers*
-
-The `XR_APILAYER_ULTRALEAP_hand_tracking` layer **must** appear after the `XR_APILAYER_NOVENDOR_toolkit` layer. If this is not the case, you may re-install either one of the layers to correct the order.
 
 ## Disabling the OpenXR Toolkit with incompatible applications
 

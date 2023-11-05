@@ -70,10 +70,6 @@ You can access more detailed pages through the menu bar on the left.
 
 **Inputs** tab:
 - **Shaking reduction**, formerly **Prediction dampening** (only when supported by the system): The prediction override, which can be use to dampen the prediction for head, controllers, and hand movements.
-- **Controller emulation** (only when hand tracking is supported by the system): Enable the use of hand tracking in place of the VR controller. Requires a compatible device, such a Leap Motion controller or an Oculus Quest 2 headset. Either or both hands can be enabled at a time. Requires to restart the VR session when toggling on or off. See [Hand tracking](hand-tracking) for more details.
-  - **Hands skeleton**: Whether the hands are displayed and what color tone to use.
-  - **Hand occlusion** (on supported apps only): Whether the hands can be occluded by geometry from the application.
-  - **Controller timeout**: The amount of time after losing track of the hands before simulator shutdown of the simulated VR controller.
 
 **System** tab:
 - **Override resolution**: Enable overriding the OpenXR target resolution (same as what the "custom render scale" in OpenXR Tools for WMR does).

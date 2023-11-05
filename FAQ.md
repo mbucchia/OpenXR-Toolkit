@@ -22,7 +22,7 @@ The goal of the OpenXR Toolkit is to bring innovative features to the community 
 
 ## Q: What headset does the OpenXR Toolkit work with?
 
-It should work with any VR headset thanks to OpenXR. The following headsets have been confirmed to work: Windows Mixed Reality (eg: HP Reverb), Oculus Quest & Quest 2, Pimax 5K & 8KX, Varjo Aero, Valve Index, HTC Vive, Pico Neo 3 & 4.
+It works with any VR headset thanks to OpenXR. See [index#supported-headsets](supported headsets).
 
 ## Q: What GPUs does the OpenXR Toolkit work with?
 
@@ -30,22 +30,15 @@ Any GPU that is compatible DirectX 11.
 
 Yes, even the NVIDIA Image Scaling (NIS) will work on non-NVIDIA cards, and AMD's FSR will work on non-AMD cards.
 
-Foveated rendering is only supported with the following GPUs:
+Foveated rendering requires additional support, see See [index#supported-graphics-cards](supported graphics cards).
 
-* NVIDIA GeForce GTX 1600 series and RTX series, both DX11 and DX12 applications.
-* AMD RX 6000 series, with DX12 applications only.
+## Q: Does the OpenXR Toolkit work with OpenGL or Vulkan.
 
-## Q: Does the OpenXR Toolkit work with DX11 and DX12?
-
-It works with both, however DX12 support is considered experimental at this time.
+No.
 
 ## Q: Will the OpenXR Toolkit work with other games like the ones from Steam?
 
-This software only works with OpenXR applications, not OpenVR applications.
-
-Some OpenVR applications are supported through the use of [OpenComposite](opencomposite).
-
-Whether it is OpenXR applications or OpenVR applications, we cannot guarantee it will work.
+This software only works with OpenXR applications, not OpenVR not OVR applications. See [index#supported-applications](supported applications).
 
 ## Q: Do I need to uninstall the OpenXR Toolkit if a game is not compatible?
 
@@ -87,11 +80,7 @@ While Matthieu is a Microsoft employee working on OpenXR, please note that this 
 
 ## Q: How can I support this project?
 
-You can support this project in two ways:
-
-- Report issues and/or success (especially if you have exotic configurations), be active on the [Discord server](https://discord.gg/WXFshwMnke) to share you experience and help others.
-
-- Tell others about the OpenXR Toolkit, post about it in other communities where it might be useful, and redirect them to this site!
+You can use my [GitHub sponsor page](https://github.com/sponsors/mbucchia).
 
 ## Q: Is it open source? Can I contribute?
 
