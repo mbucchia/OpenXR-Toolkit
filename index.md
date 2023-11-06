@@ -125,7 +125,7 @@ Certain features, like Foveated Rendering, have additional requirements, per the
 | Praydog's UEVR injector | Yes | Must use the injector in OpenXR mode |
 | The 7th Guest VR | Yes | - |
 | War Thunder | Yes | - |
-| X-Plane 12 | No | Must start the game in OpenXR mode (`--open_xr` parameter) |
+| X-Plane 12 | No | - |
 
 #### OpenComposite
 

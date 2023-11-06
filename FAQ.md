@@ -22,7 +22,7 @@ The goal of the OpenXR Toolkit is to bring innovative features to the community 
 
 ## Q: What headset does the OpenXR Toolkit work with?
 
-It works with any VR headset thanks to OpenXR. See [index#supported-headsets](supported headsets).
+It works with any VR headset thanks to OpenXR. See [supported headsets](index#supported-headsets).
 
 ## Q: What GPUs does the OpenXR Toolkit work with?
 
@@ -30,7 +30,7 @@ Any GPU that is compatible DirectX 11.
 
 Yes, even the NVIDIA Image Scaling (NIS) will work on non-NVIDIA cards, and AMD's FSR will work on non-AMD cards.
 
-Foveated rendering requires additional support, see See [index#supported-graphics-cards](supported graphics cards).
+Foveated rendering requires additional support, see See [supported graphics cards](index#supported-graphics-cards).
 
 ## Q: Does the OpenXR Toolkit work with OpenGL or Vulkan.
 
@@ -38,7 +38,7 @@ No.
 
 ## Q: Will the OpenXR Toolkit work with other games like the ones from Steam?
 
-This software only works with OpenXR applications, not OpenVR not OVR applications. See [index#supported-applications](supported applications).
+This software only works with OpenXR applications, not OpenVR not OVR applications. See [supported applications](index#supported-applications)).
 
 ## Q: Do I need to uninstall the OpenXR Toolkit if a game is not compatible?
 
