@@ -133,10 +133,7 @@ Follow the instructions to install [OpenXR-Eye-Trackers](https://github.com/mbuc
 
 <details>
   <summary>Click for details...</summary>
-  <p>- Open the <i>PimaxXR Control Center</i> application on your PC then select PimaxXR runtime.<br>
-  <img src="site/pimax-openxr.png"></p>
-
-  <p>- Enable 'Allow use of the eye tracker'.<br>
+  <p>- Open the <i>PimaxXR Control Center</i> application on your PC then select PimaxXR runtime and enable 'Allow use of the eye tracker'.<br>
   <img src="site/et-pimax-1.png"></p>
   
   <p>- Open the <i>Pimax Play</i> application on your PC then navigate to 'Device Settings'. In the 'Device' tab, make sure that 'Eye Tracking' is enabled and use the 'Calibration' button to perform the calibration if needed.<br>
@@ -153,10 +150,7 @@ Follow the instructions to install [OpenXR-Eye-Trackers](https://github.com/mbuc
 
 <details>
   <summary>Click for details...</summary>
-  <p>- Open the <i>PimaxXR Control Center</i> application on your PC then select PimaxXR runtime.<br>
-  <img src="site/pimax-openxr.png"></p>
-
-  <p>- Enable 'Allow use of the eye tracker'.<br>
+  <p>- Open the <i>PimaxXR Control Center</i> application on your PC then select PimaxXR runtime and enable 'Allow use of the eye tracker'.<br>
   <img src="site/et-pimax-1.png"></p>
 
   <p>Download and install the <a href="https://github.com/guppyexpress/Pimax-Eye-Tracking-Fix">7invensun runtime</a>, specifically the version modified by GuppyExpress. Follow the instructions to install and calibrate the eye tracker. _PimaxXR_ will automatically detect the Droolon Pi1 module once the 7invensun runtime is running.</p>
