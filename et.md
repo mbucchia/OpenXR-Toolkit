@@ -88,7 +88,7 @@ Follow the instructions to install [OpenXR-Eye-Trackers](https://github.com/mbuc
 
 #### Using SteamVR OpenXR with Steam Link
 
-Coming Soon!
+Follow the instructions to install [OpenXR-Eye-Trackers](https://github.com/mbucchia/OpenXR-Eye-Trackers/wiki/Meta-Quest-Pro#with-steam-link).
 
 ### Considerations for Varjo
 
