@@ -41,7 +41,8 @@ OpenXR Toolkit is compatible with any headset with OpenXR capabilities on PC, wh
 | --- | --- | --- |
 | Windows Mixed Reality (HP Reverb, Samsung Odyssey...) | Yes | OpenXR for Windows Mixed Reality, SteamVR OpenXR |
 | Oculus (Rift, Quest, Quest 2, Quest 3 Quest Pro...) via Oculus Link | Yes | Oculus OpenXR, SteamVR OpenXR |
-| Oculus (Rift, Quest, Quest 2, Quest 3 Quest Pro...) via Virtual Desktop | Yes | VirtualDesktopXR (VDXR), SteamVR OpenXR |
+| Oculus (Quest, Quest 2, Quest 3 Quest Pro...) via Virtual Desktop | Yes | VirtualDesktopXR (VDXR), SteamVR OpenXR |
+| Oculus (Quest, Quest 2, Quest 3 Quest Pro...) via Steam Link | Yes | SteamVR OpenXR |
 | Varjo (Aero, VR-3...) | Yes | Varjo OpenXR, SteamVR OpenXR |
 | Pimax (5K, 8K...) | Yes | [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki), SteamVR OpenXR |
 | HTC Tier 1 (Vive original, Vive Pro) | Yes | SteamVR OpenXR |
@@ -62,6 +63,7 @@ The eye tracking feature of OpenXR Toolkit is supported on a majority of headset
 | Oculus Quest Pro via Oculus Link | SteamVR OpenXR | No |
 | Oculus Quest Pro via Virtual Desktop | VirtualDesktopXR (VDXR) | Yes |
 | Oculus Quest Pro via Virtual Desktop | SteamVR OpenXR | Yes [1] |
+| Oculus Quest Pro via Steam Link | SteamVR OpenXR | Yes [1] |
 | Varjo (all models) | Varjo OpenXR | Yes |
 | Varjo (all models) | SteamVR OpenXR | Yes [1] |
 | Pimax Crystal | PimaxXR | Yes |
