@@ -41,7 +41,7 @@ OpenXR Toolkit is compatible with any headset with OpenXR capabilities on PC, wh
 | --- | --- | --- |
 | Windows Mixed Reality (HP Reverb, Samsung Odyssey...) | Yes | OpenXR for Windows Mixed Reality, SteamVR OpenXR |
 | Oculus (Rift, Quest, Quest 2, Quest 3 Quest Pro...) via Oculus Link | Yes | Oculus OpenXR, SteamVR OpenXR |
-| Oculus (Quest, Quest 2, Quest 3 Quest Pro...) via Virtual Desktop | Yes | VirtualDesktopXR (VDXR), SteamVR OpenXR |
+| Oculus (Quest, Quest 2, Quest 3 Quest Pro...) via Virtual Desktop | Yes | [VirtualDesktopXR (VDXR)](https://github.com/mbucchia/VirtualDesktop-OpenXR/wiki), SteamVR OpenXR |
 | Oculus (Quest, Quest 2, Quest 3 Quest Pro...) via Steam Link | Yes | SteamVR OpenXR |
 | Varjo (Aero, VR-3...) | Yes | Varjo OpenXR, SteamVR OpenXR |
 | Pimax (5K, 8K...) | Yes | [PimaxXR](https://github.com/mbucchia/Pimax-OpenXR/wiki), SteamVR OpenXR |
@@ -49,7 +49,7 @@ OpenXR Toolkit is compatible with any headset with OpenXR capabilities on PC, wh
 | HTC Tier 2 (Vive Cosmos, Vive Focus) | Yes | Vive OpenXR, SteamVR OpenXR |
 | Valve Index | Yes | SteamVR OpenXR |
 | Pico (Neo 3, Neo 4) via Steaming Assistant | Yes | SteamVR OpenXR |
-| Pico (Neo 3, Neo 4) via Virtual Desktop | Yes | VirtualDesktopXR (VDXR), SteamVR OpenXR |
+| Pico (Neo 3, Neo 4) via Virtual Desktop | Yes | [VirtualDesktopXR (VDXR)](https://github.com/mbucchia/VirtualDesktop-OpenXR/wiki), SteamVR OpenXR |
 
 #### Eye tracking feature
 
