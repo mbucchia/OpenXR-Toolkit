@@ -86,6 +86,10 @@ For Digital Combat Simulator, check out [Quad-Views-Foveated](https://github.com
 
 Follow the instructions to install [OpenXR-Eye-Trackers](https://github.com/mbucchia/OpenXR-Eye-Trackers/wiki/Meta-Quest-Pro#with-virtual-desktop).
 
+#### Using SteamVR OpenXR with Steam Link
+
+Coming Soon!
+
 ### Considerations for Varjo
 
 #### Using Varjo OpenXR
