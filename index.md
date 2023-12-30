@@ -99,7 +99,7 @@ Certain features, like Foveated Rendering, have additional requirements, per the
 | Intel Gen11 (Ice Lake and above) | Yes (but untested) | Application must use Direct3D 12 [1] |
 | Intel (any other model) | No | - |
 
-[1] AMD and Intel do not support foveated rendering with Direct3D applications. This is a limitation of the AMD and Intel drivers and not a limitation of OpenXR Toolkit.
+[1] AMD and Intel do not support foveated rendering with Direct3D 11 applications. This is a limitation of the AMD and Intel drivers and not a limitation of OpenXR Toolkit.
 
 ### Supported applications
 
