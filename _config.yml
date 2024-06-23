@@ -16,11 +16,6 @@ back_to_top_text: "Back to top"
 last_edit_timestamp: true
 last_edit_time_format: "%b %e %Y at %I:%M %p"
 
-aux_links:
-  "Join the Discord server":
-    - "https://discord.gg/mPKJYeGUjH"
-aux_links_new_tab: true
-
 search_enabled: true
 search:
   # Split pages into sections that can be searched individually
