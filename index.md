@@ -8,6 +8,13 @@ nav_order: 1
 
 This software provides a collection of useful features to customize and improve existing OpenXR applications, including render upscaling and sharpening, foveated rendering, image post-processing and other game-enhancing tweaks.
 
+**AS OF 2024, SUPPORT FOR OPENXR TOOLKIT IS DISCONTINUED. THERE IS NO NEW DEVELOPMENT AND NO TECH SUPPORT OF ANY SORT.**
+**THE DEVELOPER DOES NOT RECOMMEND TO INSTALL/USE OPENXR TOOLKIT, AS IT IS KNOWN TO CAUSE ISSUES WITH MANY OF THE NEWER GAMES RELEASED IN SINCE 2024.**
+
+**The goal of OpenXR Toolkit was to demonstrate how certain features could be built for VR and how they would benefit end users by increasing quality and/or performance. However the model of OpenXR Toolkit - as a universal injector that "takes over" application code - is not sustainable due to the growing complexity and variety of VR applications. The CORRECT way to implement these features is directly in each game, by the game developers. This approach will lead to better quality (for example features such as upscaling produce a better output with the appropriate participation from the game engine), better reliability (for example feature such as foveated rendering cannot work universally without enough understanding of how the game engine works) and better user experience (no need for additional software, better integration of settings to the user interface).**
+
+**Many of the features of OpenXR Toolkit tool less than a week for their initial implementation and have proven their value. THERE ARE NO EXCUSES FOR GAME DEVELOPERS TO NOT SPEND TIME ON DEVELOPING THESE FEATURES.**
+
 DISCLAIMER: This software is distributed as-is, without any warranties or conditions of any kind. Use at your own risks.
 
 ## Table of contents
