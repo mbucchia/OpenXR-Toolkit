@@ -8,12 +8,43 @@ nav_order: 1
 
 This software provides a collection of useful features to customize and improve existing OpenXR applications, including render upscaling and sharpening, foveated rendering, image post-processing and other game-enhancing tweaks.
 
+<p style="background-color: #800000">
+<strong>PLEASE READ AND TAKE ACTION</strong><br>
+EDIT: Toned down the message at the request of peer developers.
+<br>
+<br>
+Since 2024, the OpenXR ecosystem on PC is in bad health. What you have all enjoyed as a technology to create a better VR experience
+is in jeopardy and is at the brink of extinction. One of the key problem is brought by Meta, through a piece of software called "OVRPlugin".
+OVRPlugin is a piece of software (a "middleware") published by Meta for integration to Unity and Unreal Engine. OVRPlugin claims
+to be an OpenXR middleware, however it violates several fundamental principles behind OpenXR. Meta is using OVRPlugin to preclude
+developer's content (games) from running through OpenXR on any platform other than theirs. This includes blocking applications from
+running with Virtual Desktop, SteamLink or ALVR's OpenXR support, even if you have a Meta Quest headset. This includes blocking applications from running
+on your non-Meta headset's OpenXR runtime as well, such as Pimax, Pico, Varjo, Vive, etc. More and more content has become subject to these unwarranted restrictions in the past year.<br>
+<br>
+YOU MUST ACT NOW if you wish to continue to benefit from OpenXR and the superior performance and experience that it has provided you on PC.
+</p>
+<p style="background-color: #800000">1. If you are a developer, <strong>DO NOT CREATE A UNITY/UNREAL PROJECT WITH META'S OVRPLUGIN</strong>. Your application/game will not work on anything but Quest Link if you do so. You will exclude thousands of end-users from enjoying your content with OpenXR. See the detailed <a href="ovrplugin.html">technical explanation</a>.</p>
+<p style="background-color: #800000">2. Spread this message. We need as many developers as possible to understand the risks and the damage caused to their content when they use Meta's OVRPlugin. You can link this <a href="ovrplugin.html">technical explanation</a>.</p>
+<p style="background-color: #800000">
+<strong>WHAT DOES A WIN-WIN-WIN ECOSYSTEM LOOK LIKE?</strong><br>
+<br>
+Step 1): Meta to fix the 2-3 OpenXR conformance issues in their plugin (see the <a href="ovrplugin.html">technical explanation</a>). This isn't difficult - Meta is part of Khronos and knows exactly how to use and properly handle the API. Having Meta fixing these issues is no different than Khronos asking developers to stick to the OpenXR specification. Per all the work I have done with their plugin in the past, I estimate the effort to fix their plugin is a matter of "days, not weeks".<br>
+<br>
+Step 2): Remove the lockdown to specific OpenXR runtimes. This is trivial once Meta has spent a few days on 1).<br>
+<br>
+Step 3): <strong>Everybody wins! Meta continues to deliver their OVRPlugin. Developers can leverage OVRPlugin for the special features they do not find anywhere else. End-users can run applications on any runtime and any platform (OpenXR's primary mission).</strong><br>
+<br>
+The only medium-term investment for Meta is to begin testing their OVRPlugin on more than just Quest Link. This shouldn't be that hard - they can test with SteamVR OpenXR for example - they probably already have a QA pipeline that does such validation.
+<br>
+</p>
+
+
 **AS OF 2024, SUPPORT FOR OPENXR TOOLKIT IS DISCONTINUED. THERE IS NO NEW DEVELOPMENT AND NO TECH SUPPORT OF ANY SORT.**
 **THE DEVELOPER DOES NOT RECOMMEND TO INSTALL/USE OPENXR TOOLKIT, AS IT IS KNOWN TO CAUSE ISSUES WITH MANY OF THE NEWER GAMES RELEASED IN SINCE 2024.**
 
-**The goal of OpenXR Toolkit was to demonstrate how certain features could be built for VR and how they would benefit end users by increasing quality and/or performance. However the model of OpenXR Toolkit - as a universal injector that "takes over" application code - is not sustainable due to the growing complexity and variety of VR applications. The CORRECT way to implement these features is directly in each game, by the game developers. This approach will lead to better quality (for example features such as upscaling produce a better output with the appropriate participation from the game engine), better reliability (for example feature such as foveated rendering cannot work universally without enough understanding of how the game engine works) and better user experience (no need for additional software, better integration of settings to the user interface).**
+  The goal of OpenXR Toolkit was to demonstrate how certain features could be built for VR and how they would benefit end users by increasing quality and/or performance. However the model of OpenXR Toolkit - as a universal injector that "takes over" application code - is not sustainable due to the growing complexity and variety of VR applications. The CORRECT way to implement these features is directly in each game, by the game developers. This approach will lead to better quality (for example features such as upscaling produce a better output with the appropriate participation from the game engine), better reliability (for example feature such as foveated rendering cannot work universally without enough understanding of how the game engine works) and better user experience (no need for additional software, better integration of settings to the user interface).
 
-**Many of the features of OpenXR Toolkit took less than a week for their initial implementation and have proven their value. THERE ARE NO EXCUSES FOR GAME DEVELOPERS TO NOT SPEND TIME ON DEVELOPING THESE FEATURES.**
+  Many of the features of OpenXR Toolkit took less than a week for their initial implementation and have proven their value. THERE ARE NO EXCUSES FOR GAME DEVELOPERS TO NOT SPEND TIME ON DEVELOPING THESE FEATURES.
 
 DISCLAIMER: This software is distributed as-is, without any warranties or conditions of any kind. Use at your own risks.
 
