@@ -653,6 +653,11 @@ namespace toolkit {
             virtual void registerSetRenderTargetEvent(SetRenderTargetEvent event) = 0;
             using UnsetRenderTargetEvent = std::function<void(std::shared_ptr<IContext>)>;
             virtual void registerUnsetRenderTargetEvent(UnsetRenderTargetEvent event) = 0;
+            using SetViewportsEvent =
+                std::function<void(std::shared_ptr<IContext>, std::shared_ptr<D3D11_VIEWPORT> viewports)>;
+            virtual void registerSetViewportsEvent(SetViewportsEvent event) = 0;
+            using UnsetViewportsEvent = std::function<void(std::shared_ptr<IContext>)>;
+            virtual void registerUnsetViewportsEvent(UnsetRenderTargetEvent event) = 0;
             using CopyTextureEvent = std::function<void(std::shared_ptr<IContext> /* context */,
                                                         std::shared_ptr<ITexture> /* source */,
                                                         std::shared_ptr<ITexture> /* destination */,
@@ -740,6 +745,10 @@ namespace toolkit {
                                            std::shared_ptr<ITexture> renderTarget,
                                            std::optional<utilities::Eye> eyeHint) = 0;
             virtual void onUnsetRenderTarget(std::shared_ptr<graphics::IContext> context) = 0;
+
+            virtual bool onSetViewports(std::shared_ptr<IContext> context,
+                                              std::shared_ptr<D3D11_VIEWPORT> viewports) = 0;
+            virtual void onUnsetViewports(std::shared_ptr<IContext> context) = 0;
 
             virtual void updateGazeLocation(XrVector2f gaze, utilities::Eye eye) = 0;
             virtual void setViewProjectionCenters(XrVector2f left, XrVector2f right) = 0;

@@ -463,6 +463,75 @@ namespace {
             disable(context);
         }
 
+        bool onSetViewports(std::shared_ptr<graphics::IContext> context,
+                                  std::shared_ptr<D3D11_VIEWPORT> viewportTarget) override{
+
+            XrSwapchainCreateInfo info;
+            info.width = viewportTarget->Width;
+            info.height = viewportTarget->Height;
+            info.arraySize = 1;
+            info.format = 29;
+
+            bool isDoubleWide = false;
+            if (m_mode == VariableShadingRateType::None || !isVariableRateShadingCandidate(info, isDoubleWide)) {
+                disable(context);
+                return false;
+            }
+
+            const Eye eye = Eye::Both;
+            TraceLoggingWrite(g_traceProvider, "EnableVariableRateShading", TLArg(isDoubleWide, "IsDoubleWide"));
+
+            size_t maskIndex;
+            {
+                std::unique_lock lock(m_shadingRateMaskLock);
+
+                if (!getMaskIndex(isDoubleWide ? info.width / 2 : info.width, info.height, maskIndex)) {
+                    // Creation was deferred to the next frame.
+                    TraceLoggingWrite(
+                        g_traceProvider, "SkipEnableVariableRateShading", TLArg("DeferredCreation", "Reason"));
+                    return true;
+                }
+
+                // Reset the age to keep this mask active.
+                m_shadingRateMask[maskIndex].age = 0;
+            }
+
+            if (auto context11 = context->getAs<D3D11>()) {
+                if (m_currentState.isActive && m_currentState.width == info.width &&
+                    m_currentState.height == info.height && m_currentState.eye == eye) {
+                    TraceLoggingWrite(g_traceProvider, "SkipEnableVariableRateShading", TLArg("AlreadySet", "Reason"));
+                    return true;
+                }
+
+                // We set VRS on all viewports in case multiple views render in parallel.
+                NV_D3D11_VIEWPORTS_SHADING_RATE_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+                desc.version = NV_D3D11_VIEWPORTS_SHADING_RATE_DESC_VER;
+                desc.numViewports = (uint32_t)std::size(m_nvRates);
+                desc.pViewports = m_nvRates;
+                CHECK_NVCMD(NvAPI_D3D11_RSSetViewportsPixelShadingRates(context11, &desc));
+
+                auto& mask = isDoubleWide          ? m_NvShadingRateResources.viewsDoubleWide[maskIndex]
+                             : info.arraySize == 2 ? m_NvShadingRateResources.viewsTextureArray[maskIndex]
+                                                   : m_NvShadingRateResources.views[maskIndex][(size_t)eye];
+
+                CHECK_NVCMD(NvAPI_D3D11_RSSetShadingRateResourceView(context11, get(mask)));
+
+                m_currentState.width = info.width;
+                m_currentState.height = info.height;
+                m_currentState.eye = eye;
+                m_currentState.isActive = true;
+            } else {
+                throw std::runtime_error("Unsupported graphics runtime");
+            }
+
+            return true;
+        }
+
+        void onUnsetViewports(std::shared_ptr<graphics::IContext> context) override {
+            disable(context);
+        }
+
         void updateGazeLocation(XrVector2f gaze, Eye eye) override {
             // works with left, right and both
             if (eye != Eye::Right)
@@ -1009,8 +1078,7 @@ namespace {
                               "IsVariableRateShadingCandidate",
                               TLArg(info.width, "Width"),
                               TLArg(info.height, "Height"),
-                              TLArg(info.arraySize, "ArraySize"),
-                              TLArg(info.format, "Format"));
+                              TLArg(info.arraySize, "ArraySize"));
 
             const float aspectRatio = (float)info.width / info.height;
             const float aspectRatioWidthDiv2 = (float)(info.width / 2) / info.height;

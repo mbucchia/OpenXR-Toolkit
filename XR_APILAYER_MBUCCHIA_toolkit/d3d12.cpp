@@ -1655,6 +1655,12 @@ namespace {
             m_currentMesh.reset();
         }
 
+        void onSetViewports(ID3D11DeviceContext* context,
+                            UINT* numViewports,
+                            const D3D11_VIEWPORT* pViewports) {
+            return; // do nothing
+        }
+
         XrExtent2Di getViewportSize() const override {
             return m_currentDrawRenderTargetViewport.extent;
         }
@@ -1949,6 +1955,15 @@ namespace {
         void registerUnsetRenderTargetEvent(UnsetRenderTargetEvent event) override {
             m_unsetRenderTargetEvent = event;
         }
+
+        void registerSetViewportsEvent(SetViewportsEvent event) override {
+            m_setViewportsEvent = event;
+        }
+
+        void registerUnsetViewportsEvent(UnsetViewportsEvent event) override {
+            m_unsetViewportsEvent = event;
+        }
+
 
         void registerCopyTextureEvent(CopyTextureEvent event) override {
             m_copyTextureEvent = event;
@@ -2338,6 +2353,8 @@ namespace {
 
         SetRenderTargetEvent m_setRenderTargetEvent;
         UnsetRenderTargetEvent m_unsetRenderTargetEvent;
+        SetViewportsEvent m_setViewportsEvent;
+        UnsetViewportsEvent m_unsetViewportsEvent;
         CopyTextureEvent m_copyTextureEvent;
         std::atomic<bool> m_blockEvents{false};
 
