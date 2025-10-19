@@ -1,8 +1,11 @@
 # Meta's OVRPlugin
 
-Meta releases a [plugin for Unity and Unreal Engine](https://developers.meta.com/horizon/documentation/unity/unity-xr-plugin/#oculus-xr-plugin), internally called OVRPlugin (sometimes called Oculus XR Plugin in their public documentation). This plugin claims to implement OpenXR, [an open standard that promotes cross-vendor and cross-plaform](https://www.khronos.org/openxr/). (Contrary to what the name implies, OVRPlugin is not just targeted at the legacy OVR API, but is also Meta's middleware for OpenXR).
+Meta releases a [plugin for Unity and Unreal Engine](https://developers.meta.com/horizon/documentation/unity/unity-xr-plugin/#oculus-xr-plugin), internally called OVRPlugin (sometimes called Oculus XR Plugin in their public documentation). This plugin claims to implement OpenXR, [an open standard that promotes cross-vendor and cross-plaform](https://www.khronos.org/openxr/).
 
-However, the OVRPlugin takes intentional precautions to exclude non-Meta platforms. This means that content developed with OVRPlugin will only work with Quest Link, and it will not work with any other runtime.
+- Contrary to what the name implies, OVRPlugin is not just targeted at the legacy OVR API, but is also Meta's middleware for OpenXR.
+- While Meta claimed to stop recommending the use of OVRPlugin, they continue to promote it (with paid advertisment) on developer forums.
+
+The OVRPlugin takes intentional precautions to exclude non-Meta platforms. This means that content developed with OVRPlugin will only work with Quest Link, and it will not work with any other runtime.
 - This includes blocking applications from running with Virtual Desktop, SteamLink or ALVR, even on a Meta Quest headset.
 - This includes blocking applications from running on non-Meta headsets such as Pimax, Pico, Varjo, Vive, etc.
 
@@ -36,24 +39,4 @@ As a developer, you must take immediate action and NOT USE OVRPLUGIN (AKA "OCULU
 
 This section is listed for reference to any platform developer who wishes to defeat OVRPlugin's platform restrictions.
 
-- Return "Oculus" as the runtime name. You can simply make your runtime always return "Oculus" in [`xrGetInstanceProperties()`](https://registry.khronos.org/OpenXR/specs/1.0/man/html/xrGetInstanceProperties.html). A better technique is to detect OVRPlugin, as shown [here](https://github.com/mbucchia/VirtualDesktop-OpenXR/blob/510b3a2195fbfbe5b4ffe6c0c38808ceeb9e7d5a/virtualdesktop-openxr/instance.cpp#L238).
-
-  In your `xrCreateInstance()` implementation, check for the application name passed in the [XrInstanceCreateInfo](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrInstanceCreateInfo.html) and also check whether the DLL "OVRPlugin.dll" is loaded in the process' memory.
-
-  ```
-  m_isOculusXrPlugin =
-      m_applicationName.find("Oculus VR Plugin") == 0 ||
-      GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, "OVRPlugin.dll", &ovrPlugin);
-  ```
-
-- Advertise the `XR_META_headset_id` extension. This extension does not do anything useful, and it is just used by Meta to facilitate locking down applications to their platform. You can find an implementation of this extension [here](https://github.com/mbucchia/VirtualDesktop-OpenXR/commit/be9431186e4098259aff97d8c4a0033050bf2b00).
-
-- Impersonate LibOVR to make `ovr_Detect()` pass. This one is tricky and it requires to fake the existence and state of the named event `OculusHMDConnected`. Because creating the event ourselves can be problematic (permissions, but also importantly the Oculus Services might be running in background and force the event to a specific state), you may use a Detours or hook to redirect the named event when `ovr_Detect()` (which is often statically linked into the application) calls `OpenEventW()`. You can find an implementation of this strategy [here](https://github.com/mbucchia/VirtualDesktop-OpenXR/commit/d8c306d4bb3b8622468017337895d799ab5d9101).
-
-- Do not allow cube map swapchain unless your runtime supports [`XR_KHR_composition_layer_cube`](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XR_KHR_composition_layer_cube.html). The OVRPlugin does not check properly for this extension. If your runtime sees an `xrCreateSwapchain()` with a [`faceCount`](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrSwapchainCreateInfo.html) of 6, you must fail to create the swapchain.
-
-- Advertise and implement `XR_KHR_vulkan_enable`. Even when OVRPlugin will use Direct3D, the plugin will request Vulkan support for no reason, and not actually use Vulkan.
-
-- Incorrect hand poses offset or hands are facing upward/downward - unfortunately there is no good solution to this issue at the time. This issue can be "resolved" in two manners:
-  - For the hands facing upward and downward, the known workaround is for the runtime to un-advertise `XR_EXT_hand_tracking` or set `supportsHandTracking` to false when the application uses [xrGetSystemProperties()](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrSystemHandTrackingPropertiesEXT.html).
-  - For the incorrect offset - typically 10cm off the actual controller pose - the known workaround involves correcting the offset per-game, an example of it is shown for Contractors VR [here](https://github.com/mbucchia/VirtualDesktop-OpenXR/blob/36421c9ccb923d17318777049720b94108527412/virtualdesktop-openxr/instance.cpp#L291). 
+A complete guide, accompanied with an open source implementation, is available in the [Virtual Desktop OpenXR project](https://github.com/mbucchia/VirtualDesktop-OpenXR/wiki/OculusXR-(OVRPlugin)-Compatibility-Mode).
